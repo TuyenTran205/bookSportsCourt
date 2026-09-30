@@ -1,0 +1,8 @@
+﻿blank_issues_enabled: false
+contact_links:
+  - name: "Tài liệu dự án"
+    url: https://github.com/TuyenTran205/bookSportsCourt/tree/main/docs
+    about: "Đọc docs trước khi tạo issue"
+  - name: "GitHub Workflow"
+    url: https://github.com/TuyenTran205/bookSportsCourt/blob/main/docs/14-github-workflow.md
+    about: "Quy trình làm việc nhóm"

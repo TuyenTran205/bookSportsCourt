@@ -1,0 +1,51 @@
+﻿name: "Tác vụ kỹ thuật"
+description: "Setup, config, refactor, DevOps, không phải feature mới"
+title: "[TASK] "
+labels: ["type:task"]
+assignees: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Mô tả công việc"
+    validations:
+      required: true
+
+  - type: textarea
+    id: done-criteria
+    attributes:
+      label: "Tiêu chí hoàn thành"
+      value: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: "Khu vực"
+      options:
+        - "area:web"
+        - "area:api"
+        - "area:shared"
+        - "area:db"
+        - "area:infra"
+        - "area:design"
+    validations:
+      required: true
+
+  - type: input
+    id: depends-on
+    attributes:
+      label: "Phụ thuộc vào"
+      placeholder: "#XX, #YY"
+
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: "Ước lượng"
+      options:
+        - "S – 1-2 ngày"
+        - "M – 3-4 ngày"
+        - "L – ~1 tuần"
