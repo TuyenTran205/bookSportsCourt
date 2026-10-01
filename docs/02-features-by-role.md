@@ -1,8 +1,21 @@
-﻿# 02 – Tính năng theo vai trò
+# 02 – Tính năng theo vai trò
 
 > **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
+
+---
+
+## Guest (Khách vãng lai – chưa đăng nhập)
+
+| Mã | Tính năng | Ưu tiên | Tiêu chí chấp nhận |
+|----|-----------|---------|---------------------|
+| GST-01 | Tìm kiếm sân (khu vực, môn, giá, tiện ích) | P0 | Lọc được theo: tỉnh/quận, môn thể thao, giá tối đa, tiện ích; hiển thị kết quả pagination; không cần đăng nhập |
+| GST-02 | Xem sân trên bản đồ (Leaflet + OpenStreetMap) | P0 | Hiển thị pin venue, click vào pin mở card venue; không cần đăng nhập |
+| GST-03 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa; không cần đăng nhập |
+| GST-04 | Xem lưới block 30 phút (chỉ đọc) | P0 | Hiển thị đúng trạng thái block (available/booked/held) theo realtime; không thể chọn block; hiển thị nút CTA "Đăng nhập để đặt sân" |
+| GST-05 | Xem đánh giá sân | P1 | Hiển thị danh sách review (sao, nhận xét, ngày); không cần đăng nhập; không thể gửi đánh giá |
+| GST-06 | Đăng ký / Đăng nhập | P0 | Hiển thị form đăng ký và đăng nhập; sau khi đăng nhập thành công redirect về trang trước đó |
 
 ---
 
