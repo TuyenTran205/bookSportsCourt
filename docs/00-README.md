@@ -51,6 +51,6 @@
 |------|----------|----------------|
 | 2026-10-07 | Vẽ lại ERD 3 cấp độ (Conceptual/Logical/Physical) | `04` |
 | 2026-10-07 | Bổ sung endpoint còn thiếu cho 3 vai trò (uploads, notifications, favorites, owner reports, admin, catalogs, v.v.) | `11` |
-| 2026-10-07 | Đổi thanh toán sang chuyển khoản QR + ảnh chứng minh + Owner duyệt (ADR-006, ADR-010); bỏ webhook/sandbox khỏi MVP | `01` `02` `03` `04` `05` `10` `11` `15` `16` `17` `18` |
+| 2026-10-07 | Đổi thanh toán sang chuyển khoản qua QR chủ sân + gửi ảnh xác nhận + Owner duyệt (ADR-006, ADR-010); bỏ webhook/sandbox khỏi MVP; FE tự dựng QR từ thông tin tài khoản, thêm `payments.status` `cancelled`/`expired`, `transfer_code` nullable cho `cash`, lỗi `PAYMENT_ACCOUNT_MISSING` | `01` `02` `03` `04` `05` `10` `11` `15` `16` `17` `18` |
 | 2026-10-07 | Chọn UUID v7 sinh ở tầng ứng dụng (ADR-011), thay ghi chú "chưa thống nhất" | `04` `10` `18` |
 | 2026-10-07 | Thêm bảng `areas` (ADR-009), `auth_tokens`, `owner_applications`, `venue_payment_accounts`, `cancellation_policies`; thêm cột `users.email_verified_at`, `reviews.owner_reply`, `bookings.source/guest_*/created_by/deposit_amount`; `bookings.customer_id` cho phép NULL | `04` |

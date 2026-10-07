@@ -31,7 +31,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | CUS-06 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa |
 | CUS-07 | Chọn ngày và xem lưới block 30 phút (SlotGrid) | P0 | Hiển thị đúng trạng thái block realtime; giá hiển thị ở mỗi block; kéo chọn nhiều block liên tiếp |
 | CUS-08 | Giữ chỗ (Hold) và đếm ngược 10 phút | P0 | Sau khi chọn block, server tạo hold; client hiển thị countdown; hết hạn tự động trả về available |
-| CUS-09 | Thanh toán chuyển khoản QR | P1 | Hiển thị mã VietQR (số tiền cọc + nội dung chuyển khoản), tải ảnh chuyển khoản trong 10 phút; booking sang pending_payment, chờ Owner duyệt |
+| CUS-09 | Thanh toán chuyển khoản QR | P1 | Người đặt chuyển khoản qua mã QR của chủ sân (số tiền cọc + nội dung chuyển khoản điền sẵn), lúc xác nhận thanh toán thì gửi ảnh đã chuyển khoản trong 10 phút; booking sang pending_payment, chờ Owner duyệt |
 | CUS-10 | Xem lịch sử đặt sân | P0 | Danh sách booking với filter trạng thái; xem chi tiết từng booking |
 | CUS-11 | Huỷ booking | P1 | Tuân theo chính sách huỷ của Owner; hiển thị điều kiện huỷ trước khi xác nhận |
 | CUS-12 | Yêu thích sân (Favorite) | P1 | Toggle yêu thích; xem danh sách sân đã yêu thích |

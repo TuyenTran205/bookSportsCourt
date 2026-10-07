@@ -121,7 +121,7 @@
 6. Kéo chọn 2 block liên tiếp 08:00 – 09:00
 7. Countdown 10 phút hiển thị, sticky summary bar xuất hiện
 8. Nhấn "Xác nhận đặt sân" → trang checkout
-9. Checkout: hiển thị mã VietQR + nội dung chuyển khoản, khách tải ảnh chuyển khoản
+9. Checkout: người đặt chuyển khoản qua mã QR của chủ sân, lúc xác nhận thanh toán gửi ảnh đã chuyển khoản lên hệ thống
 10. Booking sang `pending_payment` → Owner mở trang duyệt, xem ảnh, nhấn Duyệt
 11. Booking chuyển sang `confirmed` → slot xanh dương trên lưới
 
@@ -132,7 +132,7 @@
 4. Nhấn "Giữ chỗ" gần như cùng lúc
 5. **Kết quả:** Tab 1 thành công (slot chuyển `my_hold` xanh nhạt), Tab 2 nhận thông báo "Slot vừa được người khác đặt"
 6. Tab 1 thấy slot của mình; Tab 2 thấy slot đó là `held`
-7. Sau 10 phút không thanh toán: slot trở lại `available` realtime trên cả 2 tab
+7. Sau 10 phút khách không gửi ảnh chuyển khoản: slot trở lại `available` realtime trên cả 2 tab
 
 ### Kịch bản C – Owner quản lý
 1. Đăng nhập với tài khoản Owner

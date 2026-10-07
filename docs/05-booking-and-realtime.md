@@ -48,7 +48,7 @@ HOLD REQUEST
     ▼
 [held] ──── expires_at (10 phút, khách chưa gửi ảnh) ────► [expired]
     │
-    │ POST /bookings/:id/payment/proof (khách chuyển khoản QR, tải ảnh chứng minh)
+    │ POST /bookings/:id/payment/proof (người đặt chuyển khoản QR chủ sân, gửi ảnh xác nhận)
     ▼
 [pending_payment]  (vẫn chiếm block, chờ Owner duyệt)
     │
@@ -83,17 +83,18 @@ Mọi chuyển trạng thái ngoài bảng trên phải ném lỗi `INVALID_STAT
 | `bookings.status` | `payments.status` | Người thực hiện |
 |-------------------|-------------------|-----------------|
 | `held` | `pending` (tạo cùng lúc với hold, có `transfer_code`) | Hệ thống |
-| `pending_payment` | `submitted` | Khách tải ảnh chứng minh |
+| `expired` | `expired` | Cron hết hạn hold 10 phút, khách chưa gửi ảnh |
+| `pending_payment` | `submitted` | Người đặt gửi ảnh xác nhận chuyển khoản |
 | `confirmed` | `completed` | Owner duyệt |
 | `cancelled` | `rejected` | Owner từ chối (kèm `reject_reason`) |
 | `cancelled` | `refunded` | Khách/Owner huỷ booking đã `completed` thanh toán, hoàn theo chính sách huỷ |
-| `cancelled` | `pending` hoặc `submitted` | Quá hạn duyệt (cron), không tạo hoàn tiền |
+| `cancelled` | `cancelled` | Khách huỷ khi thanh toán chưa duyệt (`pending`/`submitted`), hoặc quá hạn Owner duyệt (cron); không tạo hoàn tiền |
 
 ### Quy trình thanh toán chuyển khoản QR
 
-1. Khách tạo hold: server tính `total_price`, `deposit_amount = total_price × deposit_percent / 100` (theo `cancellation_policies`, mặc định 100%), sinh `transfer_code` dạng `BSC-XXXXXX`, và tạo `payments` ở trạng thái `pending`.
-2. FE hiển thị mã VietQR sinh từ `venue_payment_accounts` (BIN, số tài khoản, tên) kèm số tiền = `deposit_amount` và nội dung = `transfer_code`. Khách chuyển khoản bằng app ngân hàng.
-3. Khách tải ảnh chuyển khoản trong vòng 10 phút kể từ lúc hold. Server lưu `proof_url`, đặt `payments.status = 'submitted'`, `bookings.status = 'pending_payment'` và **xoá `expires_at`** (hết hạn hold không còn áp dụng).
+1. Khách tạo hold: server tính `total_price`, `deposit_amount = total_price × deposit_percent / 100` (theo `cancellation_policies`, mặc định 100%), sinh `transfer_code` dạng `BSC-XXXXXX`, và tạo `payments` ở trạng thái `pending`. Nếu venue chưa có `venue_payment_accounts`, hold bị từ chối với lỗi `PAYMENT_ACCOUNT_MISSING`.
+2. API trả `bankBin`, `accountNo`, `accountName`; **FE tự dựng mã QR phía client** từ các trường này cùng số tiền cọc `deposit_amount` và nội dung `transfer_code` (không gọi dịch vụ sinh QR bên ngoài, server không lưu ảnh QR). Người đặt quét mã để chuyển khoản qua ứng dụng ngân hàng, FE vẫn hiển thị ngân hàng, số tài khoản và nội dung dạng văn bản kèm nút sao chép để dự phòng khi không quét được.
+3. Lúc xác nhận thanh toán, người đặt gửi ảnh đã chuyển khoản lên hệ thống trong vòng 10 phút kể từ lúc hold. Server lưu `proof_url`, đặt `payments.status = 'submitted'`, `bookings.status = 'pending_payment'` và **xoá `expires_at`** (hết hạn hold không còn áp dụng).
 4. Owner nhận thông báo realtime `booking_created`/`payment_submitted`, đối chiếu ảnh với sao kê, rồi duyệt hoặc từ chối.
 5. Quá **2 giờ** (hằng số `OWNER_REVIEW_TIMEOUT`, cấu hình qua env) kể từ `proof_uploaded_at` mà Owner chưa xử lý, cron chuyển booking sang `cancelled` và thông báo cho khách. Hệ thống không tự hoàn tiền; khách liên hệ Owner.
 6. Owner **phải** được xác nhận là chủ của venue chứa court trong booking (`NOT_VENUE_OWNER`) trước khi duyệt/từ chối.
@@ -281,7 +282,7 @@ Cột `payments.idempotency_key` giữ lại (NULL ở MVP) cho tích hợp webh
 - [ ] **BOOKING-TEST-05:** **[QUAN TRỌNG]** N request đồng thời đặt cùng một block → chỉ 1 thành công, N-1 nhận 409.
 - [ ] **BOOKING-TEST-06:** Giá tính đúng theo pricing_rules (khung giờ, thứ, ngày lễ).
 - [ ] **BOOKING-TEST-07:** Duyệt thanh toán idempotent (Owner approve 2 lần chỉ xử lý 1 lần, không lỗi).
-- [ ] **BOOKING-TEST-11:** Khách tải ảnh chứng minh → booking sang `pending_payment`, `expires_at` bị xoá, cron expire không huỷ.
+- [ ] **BOOKING-TEST-11:** Người đặt gửi ảnh xác nhận chuyển khoản → booking sang `pending_payment`, `expires_at` bị xoá, cron expire không huỷ.
 - [ ] **BOOKING-TEST-12:** Owner của venue khác duyệt/từ chối → 403 `NOT_VENUE_OWNER`.
 - [ ] **BOOKING-TEST-13:** Quá `OWNER_REVIEW_TIMEOUT` chưa duyệt → cron chuyển `cancelled`, slot trả về available.
 - [ ] **BOOKING-TEST-14:** `deposit_amount` tính đúng theo `deposit_percent`, bỏ qua giá từ client.

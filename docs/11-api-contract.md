@@ -68,7 +68,8 @@
 | 422 | `HOLD_LIMIT_EXCEEDED` | Quá giới hạn hold đồng thời |
 | 422 | `CANCELLATION_NOT_ALLOWED` | Booking không còn được huỷ theo chính sách huỷ |
 | 422 | `PAYMENT_ACCOUNT_MISSING` | Venue chưa cấu hình tài khoản nhận tiền nên chưa thể tạo hold |
-| 422 | `HOLD_EXPIRED` | Hold đã hết hạn, không thể tải ảnh chứng minh |
+| 422 | `HOLD_EXPIRED` | Hold đã hết hạn, không thể gửi ảnh xác nhận chuyển khoản |
+| 422 | `PAYMENT_ACCOUNT_MISSING` | Venue chưa cấu hình tài khoản nhận tiền, không thể tạo hold |
 | 422 | `REVIEW_NOT_ALLOWED` | Booking chưa `completed` hoặc không thuộc về người dùng |
 | 429 | `RATE_LIMIT_EXCEEDED` | Quá số request cho phép |
 | 500 | `INTERNAL_ERROR` | Lỗi server |
@@ -187,20 +188,20 @@ GET    /api/v1/owner/bookings            [Owner] Xem bookings của venue mình 
 POST   /api/v1/owner/bookings/manual     [Owner] Tạo booking thủ công (body: courtId, start, end, customerId hoặc guestName + guestPhone); tạo thẳng `confirmed`, thanh toán `cash`
 ```
 
-`POST /bookings/hold` trả `booking` ở trạng thái `held` kèm `expiresAt` (FE đếm ngược 10 phút, CUS-08) và `payment` gồm `amount`, `transferCode`, `bankAccount` (`bankBin`, `accountNo`, `accountName`) để FE dựng mã VietQR.
+`POST /bookings/hold` trả `booking` ở trạng thái `held` kèm `expiresAt` (FE đếm ngược 10 phút, CUS-08) và `payment` gồm `amount`, `transferCode`, `bankAccount` (`bankBin`, `accountNo`, `accountName`) để FE tự dựng mã QR chuyển khoản của chủ sân phía client (không có endpoint sinh QR, server không lưu ảnh QR). Lúc xác nhận thanh toán, người đặt gửi ảnh đã chuyển khoản lên để chủ sân đối soát xác nhận.
 
 ### Payments (chuyển khoản QR, ADR-006)
 ```
-POST   /api/v1/bookings/:id/payment/proof   [Customer] Tải ảnh chuyển khoản (multipart, field `file`); booking → pending_payment
-GET    /api/v1/bookings/:id/payment         [Customer/Owner] Trạng thái thanh toán và ảnh chứng minh
-GET    /api/v1/owner/payments               [Owner] Danh sách chờ duyệt (query: status=submitted, venueId, page, limit)
+POST   /api/v1/bookings/:id/payment/proof   [Customer] Gửi ảnh đã chuyển khoản (multipart, field `file`); booking → pending_payment
+GET    /api/v1/bookings/:id/payment         [Customer/Owner] Trạng thái thanh toán và ảnh xác nhận chuyển khoản
+GET    /api/v1/owner/payments               [Owner] Danh sách chờ duyệt (đối soát ảnh xác nhận, query: status=submitted, venueId, page, limit)
 PATCH  /api/v1/owner/payments/:id/approve   [Owner] Duyệt đã nhận tiền; booking → confirmed
 PATCH  /api/v1/owner/payments/:id/reject    [Owner] Từ chối (body: reason); booking → cancelled
 GET    /api/v1/owner/venues/:id/payment-account  [Owner] Tài khoản nhận tiền của venue
 PUT    /api/v1/owner/venues/:id/payment-account  [Owner] Cập nhật tài khoản nhận tiền (bankBin, accountNo, accountName)
 ```
 
-Quá `OWNER_REVIEW_TIMEOUT` (2 giờ) kể từ lúc khách tải ảnh mà Owner chưa xử lý, hệ thống tự huỷ booking. Không có webhook ngân hàng ở MVP.
+Quá `OWNER_REVIEW_TIMEOUT` (2 giờ) kể từ lúc khách gửi ảnh mà Owner chưa xử lý, hệ thống tự huỷ booking. Không có webhook ngân hàng ở MVP.
 
 ### Reviews
 ```

@@ -263,8 +263,10 @@ Venue status:    pending(vàng) | approved(xanh) | rejected(đỏ)
 
 ### BookingSummary / Checkout
 - Hiển thị: Venue, Court, ngày, giờ bắt đầu – kết thúc, số block, đơn giá từng block, tổng giá.
-- Countdown giữ chỗ nổi bật.
-- Nút "Xác nhận đặt sân" là CTA duy nhất.
+- Countdown giữ chỗ 10 phút nổi bật.
+- Khối thanh toán chuyển khoản: người đặt chuyển khoản qua mã QR của chủ sân (kèm số tiền cọc + nội dung `BSC-XXXXXX`), tên ngân hàng, số tài khoản chủ sân kèm nút sao chép.
+- Ô tải ảnh xác nhận: lúc xác nhận thanh toán, người đặt gửi ảnh đã chuyển khoản (chọn/kéo thả, xem trước, thanh tiến trình) để chủ sân đối soát xác nhận.
+- Nút "Gửi ảnh xác nhận thanh toán" là CTA duy nhất, chỉ bật khi đã chọn ảnh. Sau khi gửi hiển thị trạng thái "Chờ chủ sân xác nhận".
 
 ## 11. Layout
 

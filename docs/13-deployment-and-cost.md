@@ -9,7 +9,7 @@
 | **Neon** (PostgreSQL) | Free | 0.5 GB storage, 1 project | 0đ | Pause sau 5 ngày không hoạt động → cron ping |
 | **Vercel** (FE) | Hobby | 100 GB bandwidth, serverless functions | 0đ | ⚠️ Cấm thương mại; deploy dưới tài khoản sinh viên |
 | **Railway/Render** (BE) | Free | 500 MB RAM, 1 GB disk | 0đ | Sleep sau 15 phút; cron ping |
-| **Cloudflare R2** | Free | 10 GB/tháng, 10M request | 0đ | Tốt cho ảnh venue |
+| **Cloudflare R2** | Free | 10 GB/tháng, 10M request | 0đ | Lưu ảnh venue và ảnh xác nhận chuyển khoản (presigned URL) |
 | **Resend** (Email) | Free | 3,000 email/tháng | 0đ | |
 | **Sentry** | Free | 5,000 event/tháng | 0đ | |
 | **UptimeRobot** | Free | 50 monitors, 5 phút/lần | 0đ | Dùng ping chống sleep |

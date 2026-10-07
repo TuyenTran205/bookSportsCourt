@@ -69,7 +69,7 @@
 |---|---------|----|----|---------|------|-----------|
 | BSC-040 | FE: Admin Dashboard – duyệt owner/venue | ADM-01 ADM-02 | `type:feature` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-016 |
 | BSC-041 | FE: Admin – quản lý user, audit log | ADM-03 ADM-09 | `type:feature` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-040 |
-| BSC-042 | Thanh toán QR: sinh mã chuyển khoản, upload ảnh chứng minh | CUS-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | L | BSC-024 |
+| BSC-042 | Thanh toán QR: chuyển khoản qua QR chủ sân, upload ảnh xác nhận | CUS-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | L | BSC-024 |
 | BSC-043 | Owner duyệt/từ chối thanh toán idempotent + cron huỷ quá hạn | CUS-09 OWN-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | M | BSC-042 |
 | BSC-044 | FE: Trang thanh toán QR + tải ảnh; trang Owner duyệt | CUS-09 OWN-09 | `type:feature` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-042 |
 | BSC-045 | Email thông báo (Resend) | CUS-14 OWN-14 | `type:feature` `area:api` `prio:P1` `phase:4` | TV1 | M | BSC-024 |
