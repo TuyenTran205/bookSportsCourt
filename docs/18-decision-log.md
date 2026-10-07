@@ -1,6 +1,6 @@
 ﻿# 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. Thêm dependency mới PHẢI có ADR.
 
@@ -90,23 +90,29 @@
 
 ---
 
-## ADR-006: Payment Sandbox (VietQR Mock)
+## ADR-006: Thanh toán chuyển khoản QR + Owner duyệt
 
-**Ngày:** 2026-09-30 | **Trạng thái:** Accepted
+**Ngày:** 2026-09-30 (cập nhật 2026-10-07) | **Trạng thái:** Accepted (thay thế bản "Payment Sandbox / VietQR Mock")
 
-**Quyết định:** Payment ở chế độ SANDBOX/MOCK, thiết kế interface để thay thế sau.
+**Quyết định:** Khách chuyển khoản qua mã VietQR tới tài khoản của chủ sân, tải ảnh chuyển khoản lên, chủ sân đối chiếu và duyệt hoặc từ chối. Không có webhook ngân hàng ở MVP.
 
 **Lý do:**
-- Đồ án không nhận tiền thật; sandbox đủ để demo flow.
-- Interface `PaymentAdapter` abstract → dễ thay SePay/Casso/PayOS thật sau.
-- Tránh thủ tục đăng ký tài khoản merchant, KYC.
+- Đồ án không nhận tiền thật và không có merchant account; luồng này khớp cách chủ sân nhỏ vận hành ngoài đời.
+- Owner là người duy nhất xác nhận đã nhận tiền, nên không cần tích hợp bên thứ ba.
+- Vẫn giữ `PaymentAdapter` để thay bằng SePay/Casso/PayOS (webhook tự động) sau này.
 
-**Interface:**
+**Hệ quả:**
+- Booking đi `held → pending_payment → confirmed`; `pending_payment` vẫn chiếm block (xem `05-booking-and-realtime.md`).
+- Quá 2 giờ Owner chưa xử lý thì cron huỷ booking (`OWNER_REVIEW_TIMEOUT`).
+- Không đối soát tự động: rủi ro ảnh giả thuộc về Owner; ghi rõ trong báo cáo.
+- Bảng mới: `venue_payment_accounts`, `cancellation_policies`; `payments` có `transfer_code`, `proof_url`, `reviewed_by`.
+
+**Interface giữ lại cho giai đoạn sau:**
 ```typescript
 interface PaymentAdapter {
-  initiate(booking: Booking): Promise<PaymentInitiateResult>;
-  verify(ref: string): Promise<PaymentVerifyResult>;
-  refund(paymentId: string): Promise<void>;
+  initiate(booking: Booking): Promise<PaymentInitiateResult>; // MVP: trả dữ liệu QR + transfer_code
+  verify(ref: string): Promise<PaymentVerifyResult>;          // MVP: Owner duyệt thủ công
+  refund(paymentId: string): Promise<void>;                   // MVP: đánh dấu refunded, chuyển tiền ngoài hệ thống
 }
 ```
 
@@ -137,6 +143,49 @@ interface PaymentAdapter {
 **Lý do:** Tiết kiệm thời gian phát triển; design token đã dùng CSS variables sẵn sàng cho dark mode sau.
 
 **Khi nào thêm:** Phase 5+ nếu còn thời gian; phải tạo ADR mới và cập nhật `07-design-system.md` trước.
+
+---
+
+## ADR-009: Danh mục khu vực dạng bảng `areas`
+
+**Ngày:** 2026-10-07 | **Trạng thái:** Accepted
+
+**Quyết định:** Khu vực hai cấp (tỉnh/thành, quận/huyện) lưu trong bảng `areas`; `venues` dùng `province_id` và `district_id` thay cho hai cột TEXT.
+
+**Lý do:** ADM-06 yêu cầu Admin quản lý danh mục khu vực; FK ngăn nhập sai chính tả và cho phép lọc chính xác, không cần tách chuỗi.
+
+**Hệ quả:** xoá khu vực đang dùng trả `RESOURCE_IN_USE`; service phải kiểm tra `district_id` là con của `province_id`; cần seed danh sách tỉnh/quận.
+
+---
+
+## ADR-010: Owner duyệt booking bằng ảnh chuyển khoản
+
+**Ngày:** 2026-10-07 | **Trạng thái:** Accepted
+
+**Quyết định:** Có bước Owner duyệt (OWN-09) giữa `pending_payment` và `confirmed`; thêm endpoint `approve` cho payment. Chi tiết luồng ở ADR-006 và `05-booking-and-realtime.md`.
+
+**Lý do:** Tài liệu cũ mâu thuẫn (tính năng nói Owner duyệt, state machine chỉ có webhook). Giải quyết theo thực tế vận hành: Owner là người xác nhận đã nhận tiền.
+
+**Hệ quả:** booking `pending_payment` vẫn chiếm block; cron huỷ sau `OWNER_REVIEW_TIMEOUT`; cần thêm sự kiện realtime `payment_submitted`.
+
+---
+
+## ADR-011: Dùng UUID v7 làm khoá chính, sinh ở tầng ứng dụng
+
+**Ngày:** 2026-10-07 | **Trạng thái:** Accepted
+
+**Quyết định:** Mọi khoá chính là `UUID` v7. ID được sinh trong code bằng `v7()` của thư viện `uuid` (gắn qua `$defaultFn` trong Drizzle schema), không dùng `gen_random_uuid()` làm nguồn chính.
+
+**Lý do:**
+- v7 có phần đầu là timestamp nên các hàng mới được chèn gần cuối index B-tree, ít phân mảnh hơn v4 ngẫu nhiên; thứ tự ID gần với thứ tự tạo, tiện sắp xếp và phân trang.
+- Vẫn không đoán được ID kế tiếp và không lộ số lượng bản ghi như ID tăng dần.
+- PostgreSQL 16 (phiên bản dự án dùng) chưa có hàm `uuidv7()`; hàm này mới có từ PostgreSQL 18, nên sinh ở app là cách đơn giản nhất.
+
+**Hệ quả:**
+- Kiểu cột vẫn là `UUID`, không đổi schema. SQL mẫu giữ `DEFAULT gen_random_uuid()` chỉ làm dự phòng cho seed hoặc SQL thủ công.
+- Mọi insert phải đi qua Drizzle để có `$defaultFn`; script seed dùng cùng hàm sinh ID.
+- ID lộ thời điểm tạo (phần timestamp). Chấp nhận được vì `created_at` đã công khai ở nhiều resource; không dùng ID làm bí mật.
+- Nâng PostgreSQL lên 18 thì có thể đổi sang `DEFAULT uuidv7()` bằng migration mới.
 
 ---
 

@@ -1,6 +1,6 @@
 ﻿# 03 – Kiến trúc hệ thống
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Sơ đồ tổng thể
 
@@ -25,7 +25,6 @@ graph TB
 
     subgraph External["Dịch vụ ngoài"]
         RESEND["Resend\nEmail"]
-        VIETQR["VietQR\nSandbox"]
         SENTRY["Sentry\nError tracking"]
     end
 
@@ -38,7 +37,6 @@ graph TB
     REPO --> PG
     SVC --> R2
     SVC --> RESEND
-    SVC --> VIETQR
     FE -.->|"Error SDK"| SENTRY
     API -.->|"Error SDK"| SENTRY
 ```

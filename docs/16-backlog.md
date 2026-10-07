@@ -1,6 +1,6 @@
 ﻿# 16 – Backlog
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 >
 > Danh sách issue sẵn sàng tạo trên GitHub. Mã tính năng khớp với `02-features-by-role.md`.
 
@@ -69,9 +69,9 @@
 |---|---------|----|----|---------|------|-----------|
 | BSC-040 | FE: Admin Dashboard – duyệt owner/venue | ADM-01 ADM-02 | `type:feature` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-016 |
 | BSC-041 | FE: Admin – quản lý user, audit log | ADM-03 ADM-09 | `type:feature` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-040 |
-| BSC-042 | VietQR sandbox payment adapter | CUS-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | L | BSC-024 |
-| BSC-043 | Webhook thanh toán idempotent | CUS-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | M | BSC-042 |
-| BSC-044 | FE: Trang thanh toán VietQR QR | CUS-09 | `type:feature` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-042 |
+| BSC-042 | Thanh toán QR: sinh mã chuyển khoản, upload ảnh chứng minh | CUS-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | L | BSC-024 |
+| BSC-043 | Owner duyệt/từ chối thanh toán idempotent + cron huỷ quá hạn | CUS-09 OWN-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | M | BSC-042 |
+| BSC-044 | FE: Trang thanh toán QR + tải ảnh; trang Owner duyệt | CUS-09 OWN-09 | `type:feature` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-042 |
 | BSC-045 | Email thông báo (Resend) | CUS-14 OWN-14 | `type:feature` `area:api` `prio:P1` `phase:4` | TV1 | M | BSC-024 |
 | BSC-046 | Đánh giá sân API + FE | CUS-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-024 |
 | BSC-047 | Google OAuth | CUS-03 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV1 | M | BSC-011 |

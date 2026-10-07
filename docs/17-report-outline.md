@@ -1,6 +1,6 @@
 ﻿# 17 – Dàn ý báo cáo đồ án
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Dàn ý các chương
 
@@ -121,8 +121,9 @@
 6. Kéo chọn 2 block liên tiếp 08:00 – 09:00
 7. Countdown 10 phút hiển thị, sticky summary bar xuất hiện
 8. Nhấn "Xác nhận đặt sân" → trang checkout
-9. VietQR sandbox: hiển thị QR, chờ confirm
-10. Booking chuyển sang `confirmed` → slot xanh dương trên lưới
+9. Checkout: hiển thị mã VietQR + nội dung chuyển khoản, khách tải ảnh chuyển khoản
+10. Booking sang `pending_payment` → Owner mở trang duyệt, xem ảnh, nhấn Duyệt
+11. Booking chuyển sang `confirmed` → slot xanh dương trên lưới
 
 ### Kịch bản B – Demo race condition (2 trình duyệt)
 1. Mở 2 tab trình duyệt, đăng nhập 2 tài khoản khác nhau

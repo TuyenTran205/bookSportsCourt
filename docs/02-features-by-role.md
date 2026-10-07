@@ -1,6 +1,6 @@
 # 02 – Tính năng theo vai trò
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
 
@@ -31,7 +31,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | CUS-06 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa |
 | CUS-07 | Chọn ngày và xem lưới block 30 phút (SlotGrid) | P0 | Hiển thị đúng trạng thái block realtime; giá hiển thị ở mỗi block; kéo chọn nhiều block liên tiếp |
 | CUS-08 | Giữ chỗ (Hold) và đếm ngược 10 phút | P0 | Sau khi chọn block, server tạo hold; client hiển thị countdown; hết hạn tự động trả về available |
-| CUS-09 | Thanh toán VietQR sandbox | P1 | Hiển thị QR, polling hoặc webhook xác nhận; idempotency; booking chuyển sang confirmed |
+| CUS-09 | Thanh toán chuyển khoản QR | P1 | Hiển thị mã VietQR (số tiền cọc + nội dung chuyển khoản), tải ảnh chuyển khoản trong 10 phút; booking sang pending_payment, chờ Owner duyệt |
 | CUS-10 | Xem lịch sử đặt sân | P0 | Danh sách booking với filter trạng thái; xem chi tiết từng booking |
 | CUS-11 | Huỷ booking | P1 | Tuân theo chính sách huỷ của Owner; hiển thị điều kiện huỷ trước khi xác nhận |
 | CUS-12 | Yêu thích sân (Favorite) | P1 | Toggle yêu thích; xem danh sách sân đã yêu thích |
@@ -53,7 +53,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | OWN-06 | Xem OwnerTimeline (Resource view) | P0 | Timeline sân × giờ, block 30 phút, màu theo trạng thái, kéo để tạo booking thủ công |
 | OWN-07 | Tạo booking thủ công | P0 | Tạo booking trực tiếp cho khách đến trực tiếp; bỏ qua bước thanh toán online |
 | OWN-08 | Khoá giờ bảo trì (Blackout Period) | P0 | Tạo blackout trên court cho khoảng thời gian cụ thể; không cho khách đặt |
-| OWN-09 | Duyệt / Từ chối / Đánh dấu No-show booking | P0 | Owner xem pending bookings, duyệt hoặc từ chối với lý do |
+| OWN-09 | Duyệt / Từ chối thanh toán, Đánh dấu No-show | P0 | Owner xem ảnh chuyển khoản của booking pending_payment, duyệt (→ confirmed) hoặc từ chối kèm lý do (→ cancelled); quá 2 giờ không xử lý tự huỷ |
 | OWN-10 | Thiết lập chính sách huỷ và cọc | P1 | Cấu hình: huỷ trước X giờ được hoàn Y%; yêu cầu cọc Z% |
 | OWN-11 | Báo cáo doanh thu | P1 | Biểu đồ doanh thu theo ngày/tuần/tháng; lọc theo venue/court |
 | OWN-12 | Báo cáo tỷ lệ lấp đầy | P1 | Phần trăm block được đặt; peak hours; so sánh kỳ |

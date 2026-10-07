@@ -1,6 +1,6 @@
 ﻿# 15 – Phân công & Lộ trình
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 >
 > **Giả định:** 12 tuần khả dụng (điền thông tin thực tế vào mục Giả định ở cuối).
 
@@ -121,13 +121,13 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 |---|------|-------|---------|
 | 34 | Admin Dashboard: duyệt owner/venue | TV4 | M |
 | 35 | Admin: user management, audit log | TV4 | M |
-| 36 | VietQR sandbox payment adapter | TV2 | L |
-| 37 | Webhook xác nhận idempotent | TV2 | M |
+| 36 | Thanh toán chuyển khoản QR: sinh QR, upload ảnh chứng minh | TV2 | L |
+| 37 | Owner duyệt/từ chối thanh toán + cron huỷ quá hạn | TV2 | M |
 | 38 | Email thông báo (Resend) | TV1 | M |
 | 39 | Đánh giá sân | TV3 | M |
 | 40 | Google OAuth | TV1 | M |
 
-**Tiêu chí hoàn thành:** Admin hoạt động, thanh toán sandbox OK, email đi được. OpenAPI-3 published.
+**Tiêu chí hoàn thành:** Admin hoạt động, luồng thanh toán QR + Owner duyệt chạy được, email đi được. OpenAPI-3 published.
 
 ---
 
