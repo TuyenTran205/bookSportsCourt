@@ -1,6 +1,6 @@
 ﻿# 04 – Database Schema
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Quy ước chung
 
@@ -11,35 +11,528 @@
 - **Múi giờ:** Lưu UTC (timestamptz/tstzrange), hiển thị Asia/Ho_Chi_Minh ở FE/API response.
 - **Migration:** Mọi thay đổi schema qua file migration có version (`0001_init.sql`, `0002_...sql`). KHÔNG sửa tay.
 
-## ERD Tổng quan
+## ERD theo 3 cấp độ
+
+Sơ đồ được vẽ theo 3 mức trừu tượng, từ nghiệp vụ đến cài đặt. Cả ba mô tả **cùng một schema**, chỉ khác mức chi tiết:
+
+| Cấp độ | Mục đích | Có gì | Không có gì |
+|--------|----------|-------|-------------|
+| **1. Conceptual** (khái niệm) | Trao đổi nghiệp vụ, báo cáo | Thực thể, thuộc tính chính, quan hệ (hình thoi), bản số; quan hệ N-N giữ nguyên | Khóa ngoại, bảng trung gian, kiểu dữ liệu |
+| **2. Logical** (logic) | Thiết kế dữ liệu | Mọi thuộc tính nghiệp vụ, PK/FK/UK, bảng trung gian cho quan hệ N-N | Kiểu dữ liệu riêng của PostgreSQL, index |
+| **3. Physical** (vật lý) | Cài đặt migration | Mọi cột, kiểu PostgreSQL, PK/FK/UK, ràng buộc chính | (SQL đầy đủ nằm ở mục "Chi tiết bảng") |
+
+Ký hiệu bản số: `1` = đúng một, `0..1` = không hoặc một, `N` = nhiều.
+
+### 1. Conceptual ERD (Mô hình khái niệm)
+
+Chỉ giữ thực thể nghiệp vụ. Bỏ `refresh_tokens` (chi tiết kỹ thuật của đăng nhập). Quan hệ N-N (**Cơ sở – Môn thể thao**, **Cơ sở – Tiện ích**, **Người dùng – Cơ sở yêu thích**) được vẽ thành hình thoi và chưa tách bảng. Chia 2 sơ đồ cho dễ đọc; **Người dùng** và **Cơ sở** xuất hiện ở cả hai.
+
+**1a. Danh mục: cơ sở, sân, giá, giờ mở cửa**
+
+```mermaid
+flowchart LR
+    classDef entity fill:#eef6ff,stroke:#1d4ed8,stroke-width:1.5px,color:#0f172a;
+    classDef rel fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#0f172a;
+
+    USER["<b>NGƯỜI DÙNG</b><br/><u>id</u> · email · họ tên<br/>SĐT · vai trò · trạng thái"]:::entity
+    VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug · địa chỉ<br/>quận/huyện · tỉnh · trạng thái"]:::entity
+    COURT["<b>SÂN</b><br/><u>id</u> · tên · mô tả<br/>trạng thái"]:::entity
+    SPORT["<b>MÔN THỂ THAO</b><br/><u>id</u> · tên · slug"]:::entity
+    AMEN["<b>TIỆN ÍCH</b><br/><u>id</u> · tên · slug"]:::entity
+    IMG["<b>ẢNH CƠ SỞ</b><br/><u>id</u> · url"]:::entity
+    OH["<b>GIỜ MỞ CỬA</b><br/><u>id</u> · thứ · giờ mở · giờ đóng"]:::entity
+    PR["<b>QUY TẮC GIÁ</b><br/><u>id</u> · tên · giá/slot<br/>khung giờ · ưu tiên"]:::entity
+    BO["<b>THỜI GIAN KHÓA SÂN</b><br/><u>id</u> · lý do · khoảng thời gian"]:::entity
+    OAUTH["<b>TÀI KHOẢN LIÊN KẾT</b><br/><u>id</u> · nhà cung cấp · mã nhà cung cấp"]:::entity
+
+    R_OWN{"sở hữu"}:::rel
+    R_CON{"gồm"}:::rel
+    R_IMG{"có ảnh"}:::rel
+    R_OFF{"cung cấp"}:::rel
+    R_PRO{"có"}:::rel
+    R_FOR{"dành cho"}:::rel
+    R_OH{"mở cửa theo"}:::rel
+    R_PR{"áp dụng giá"}:::rel
+    R_BO{"bị khóa bởi"}:::rel
+    R_LNK{"đăng nhập qua"}:::rel
+
+    USER ---|1| R_OWN ---|N| VENUE
+    VENUE ---|1| R_CON ---|N| COURT
+    VENUE ---|1| R_IMG ---|N| IMG
+    VENUE ---|N| R_OFF ---|N| SPORT
+    VENUE ---|N| R_PRO ---|N| AMEN
+    COURT ---|N| R_FOR ---|"0..1"| SPORT
+    COURT ---|1| R_OH ---|N| OH
+    COURT ---|1| R_PR ---|N| PR
+    COURT ---|1| R_BO ---|N| BO
+    USER ---|1| R_LNK ---|N| OAUTH
+```
+
+**1b. Giao dịch: đặt sân, thanh toán, đánh giá, thông báo**
+
+```mermaid
+flowchart LR
+    classDef entity fill:#eef6ff,stroke:#1d4ed8,stroke-width:1.5px,color:#0f172a;
+    classDef rel fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#0f172a;
+
+    USER["<b>NGƯỜI DÙNG</b><br/><u>id</u> · email · họ tên · vai trò"]:::entity
+    VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug"]:::entity
+    COURT["<b>SÂN</b><br/><u>id</u> · tên"]:::entity
+    BOOK["<b>ĐẶT SÂN</b><br/><u>id</u> · khoảng thời gian · trạng thái<br/>tổng tiền · hết hạn giữ chỗ · lý do hủy"]:::entity
+    PAY["<b>THANH TOÁN</b><br/><u>id</u> · số tiền · nhà cung cấp<br/>trạng thái · thời điểm trả"]:::entity
+    REV["<b>ĐÁNH GIÁ</b><br/><u>id</u> · điểm 1-5 · nội dung<br/>hiển thị"]:::entity
+    NOTI["<b>THÔNG BÁO</b><br/><u>id</u> · loại · tiêu đề<br/>nội dung · thời điểm đọc"]:::entity
+    AUDIT["<b>NHẬT KÝ HỆ THỐNG</b><br/><u>id</u> · hành động · loại đối tượng<br/>dữ liệu cũ/mới · IP"]:::entity
+
+    R_MAKE{"đặt"}:::rel
+    R_HOST{"được đặt"}:::rel
+    R_CAN{"hủy"}:::rel
+    R_PAY{"được thanh toán bằng"}:::rel
+    R_ABOUT{"được đánh giá bằng"}:::rel
+    R_WRITE{"viết"}:::rel
+    R_RECV{"nhận đánh giá"}:::rel
+    R_FAV{"yêu thích"}:::rel
+    R_NOTI{"nhận"}:::rel
+    R_ACT{"thực hiện"}:::rel
+
+    USER ---|1| R_MAKE ---|N| BOOK
+    COURT ---|1| R_HOST ---|N| BOOK
+    USER ---|"0..1"| R_CAN ---|N| BOOK
+    BOOK ---|1| R_PAY ---|N| PAY
+    BOOK ---|1| R_ABOUT ---|"0..1"| REV
+    USER ---|1| R_WRITE ---|N| REV
+    VENUE ---|1| R_RECV ---|N| REV
+    USER ---|N| R_FAV ---|N| VENUE
+    USER ---|1| R_NOTI ---|N| NOTI
+    USER ---|"0..1"| R_ACT ---|N| AUDIT
+```
+
+### 2. Logical ERD (Mô hình logic)
+
+Các bước chuyển từ conceptual sang logical:
+
+- Quan hệ N-N được tách thành bảng trung gian: `venue_sports`, `venue_amenities`, `favorites`.
+- Quan hệ 1-N được biểu diễn bằng khóa ngoại (FK) ở phía "N".
+- Thêm `refresh_tokens` (phần kỹ thuật của xác thực).
+- Mọi thuộc tính nghiệp vụ đều có mặt. **Không vẽ** các cột chung `created_at`, `updated_at`, `deleted_at` và `sort_order` để sơ đồ gọn (xem bảng ở mục Physical).
 
 ```mermaid
 erDiagram
-    users ||--o{ venues : "owns"
-    users ||--o{ bookings : "makes"
-    users ||--o{ reviews : "writes"
-    users ||--o{ favorites : "saves"
-    users ||--o{ notifications : "receives"
-    users ||--o{ refresh_tokens : "has"
-    users ||--o{ audit_logs : "triggers"
+    users {
+        id id PK
+        string email UK
+        string password_hash "NULL nếu chỉ đăng nhập OAuth"
+        string full_name
+        string phone
+        string avatar_url
+        string role "customer, owner, admin"
+        string status "active, suspended, pending"
+    }
+    oauth_accounts {
+        id id PK
+        id user_id FK
+        string provider "google"
+        string provider_id "UK cùng provider"
+    }
+    refresh_tokens {
+        id id PK
+        id user_id FK
+        string token_hash UK
+        datetime expires_at
+        boolean revoked
+    }
+    venues {
+        id id PK
+        id owner_id FK
+        string name
+        string slug UK
+        text description
+        string address
+        string district
+        string province
+        decimal lat
+        decimal lng
+        string status "pending, approved, rejected, suspended"
+        string cover_url
+    }
+    venue_images {
+        id id PK
+        id venue_id FK
+        string url
+    }
+    sports {
+        id id PK
+        string name UK
+        string slug UK
+        string icon
+    }
+    amenities {
+        id id PK
+        string name UK
+        string slug UK
+        string icon
+    }
+    venue_sports {
+        id venue_id PK, FK
+        id sport_id PK, FK
+    }
+    venue_amenities {
+        id venue_id PK, FK
+        id amenity_id PK, FK
+    }
+    courts {
+        id id PK
+        id venue_id FK
+        id sport_id FK "nullable"
+        string name
+        text description
+        string status "active, inactive"
+    }
+    opening_hours {
+        id id PK
+        id court_id FK
+        int day_of_week "0=CN ... 6=T7, UK cùng court_id"
+        time open_time
+        time close_time
+    }
+    pricing_rules {
+        id id PK
+        id court_id FK
+        string name
+        int price_per_slot "VND mỗi 30 phút"
+        time start_time
+        time end_time
+        int_list day_of_week "NULL = mọi ngày"
+        date date_override "ngày lễ"
+        int priority
+    }
+    blackout_periods {
+        id id PK
+        id court_id FK
+        string reason
+        datetime_range during
+    }
+    bookings {
+        id id PK
+        id court_id FK
+        id customer_id FK
+        id cancelled_by FK "nullable"
+        datetime_range during
+        string status "held, pending_payment, confirmed, completed, cancelled, expired, no_show"
+        int total_price "VND, tính ở server"
+        string note
+        string cancel_reason
+        datetime expires_at "chỉ dùng khi held"
+    }
+    payments {
+        id id PK
+        id booking_id FK
+        int amount
+        string provider
+        string provider_ref
+        string status "pending, completed, failed, refunded"
+        string idempotency_key UK
+        datetime paid_at
+    }
+    reviews {
+        id id PK
+        id booking_id FK, UK
+        id venue_id FK "suy ra từ booking, lưu thừa để truy vấn nhanh"
+        id customer_id FK
+        int rating "1..5"
+        text content
+        boolean is_visible
+    }
+    favorites {
+        id user_id PK, FK
+        id venue_id PK, FK
+    }
+    notifications {
+        id id PK
+        id user_id FK
+        string type
+        string title
+        string body
+        json data
+        datetime read_at
+    }
+    audit_logs {
+        id id PK
+        id actor_id FK "nullable"
+        string action
+        string entity_type
+        id entity_id
+        json old_data
+        json new_data
+        string ip_address
+    }
 
-    venues ||--o{ courts : "contains"
-    venues ||--o{ venue_sports : "offers"
-    venues ||--o{ venue_amenities : "provides"
-    venues ||--o{ reviews : "receives"
-    venues ||--o{ favorites : "saved_in"
+    users ||--o{ oauth_accounts : "liên kết"
+    users ||--o{ refresh_tokens : "có"
+    users ||--o{ venues : "sở hữu"
+    users ||--o{ bookings : "đặt"
+    users |o--o{ bookings : "hủy"
+    users ||--o{ reviews : "viết"
+    users ||--o{ favorites : "yêu thích"
+    users ||--o{ notifications : "nhận"
+    users |o--o{ audit_logs : "thực hiện"
 
-    courts ||--o{ opening_hours : "has"
-    courts ||--o{ pricing_rules : "has"
-    courts ||--o{ blackout_periods : "has"
-    courts ||--o{ bookings : "hosts"
+    venues ||--o{ venue_images : "có ảnh"
+    venues ||--o{ courts : "gồm"
+    venues ||--o{ venue_sports : "cung cấp"
+    venues ||--o{ venue_amenities : "có"
+    venues ||--o{ reviews : "nhận"
+    venues ||--o{ favorites : "được yêu thích"
 
-    bookings ||--o{ payments : "has"
-    bookings ||--o| reviews : "linked_to"
+    sports ||--o{ venue_sports : "thuộc"
+    sports |o--o{ courts : "dành cho"
+    amenities ||--o{ venue_amenities : "thuộc"
 
-    sports ||--o{ venue_sports : "categorizes"
-    amenities ||--o{ venue_amenities : "categorizes"
+    courts ||--o{ opening_hours : "mở cửa"
+    courts ||--o{ pricing_rules : "áp dụng giá"
+    courts ||--o{ blackout_periods : "bị khóa"
+    courts ||--o{ bookings : "được đặt"
+
+    bookings ||--o{ payments : "thanh toán"
+    bookings ||--o| reviews : "được đánh giá"
 ```
+
+### 3. Physical ERD (Mô hình vật lý)
+
+Kiểu dữ liệu và ràng buộc là của PostgreSQL 16. Một số kiểu viết gọn vì Mermaid không cho dấu phẩy trong kiểu: `NUMERIC_10_7` là `NUMERIC(10,7)`. Cột `PK` kiểu `UUID` có `DEFAULT gen_random_uuid()`.
+
+```mermaid
+erDiagram
+    users {
+        UUID id PK
+        TEXT email UK "NOT NULL"
+        TEXT password_hash "NULL nếu OAuth only"
+        TEXT full_name "NOT NULL"
+        TEXT phone
+        TEXT avatar_url
+        TEXT role "CHECK customer, owner, admin"
+        TEXT status "DEFAULT active, CHECK active, suspended, pending"
+        TIMESTAMPTZ created_at "DEFAULT now()"
+        TIMESTAMPTZ updated_at "DEFAULT now()"
+        TIMESTAMPTZ deleted_at "soft delete"
+    }
+    oauth_accounts {
+        UUID id PK
+        UUID user_id FK "ON DELETE CASCADE"
+        TEXT provider "CHECK google"
+        TEXT provider_id "UNIQUE (provider, provider_id)"
+        TIMESTAMPTZ created_at
+    }
+    refresh_tokens {
+        UUID id PK
+        UUID user_id FK "ON DELETE CASCADE"
+        TEXT token_hash UK
+        TIMESTAMPTZ expires_at
+        BOOLEAN revoked "DEFAULT false"
+        TIMESTAMPTZ created_at
+    }
+    venues {
+        UUID id PK
+        UUID owner_id FK
+        TEXT name
+        TEXT slug UK
+        TEXT description
+        TEXT address
+        TEXT district
+        TEXT province
+        NUMERIC_10_7 lat "NUMERIC(10,7)"
+        NUMERIC_10_7 lng "NUMERIC(10,7)"
+        TEXT status "DEFAULT pending, CHECK pending, approved, rejected, suspended"
+        TEXT cover_url
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at "soft delete"
+    }
+    venue_images {
+        UUID id PK
+        UUID venue_id FK "ON DELETE CASCADE"
+        TEXT url
+        INT sort_order "DEFAULT 0"
+        TIMESTAMPTZ created_at
+    }
+    sports {
+        UUID id PK
+        TEXT name UK
+        TEXT slug UK
+        TEXT icon "tên icon lucide"
+        INT sort_order "DEFAULT 0"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    amenities {
+        UUID id PK
+        TEXT name UK
+        TEXT slug UK
+        TEXT icon
+        INT sort_order "DEFAULT 0"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    venue_sports {
+        UUID venue_id PK, FK "ON DELETE CASCADE"
+        UUID sport_id PK, FK "ON DELETE CASCADE"
+    }
+    venue_amenities {
+        UUID venue_id PK, FK "ON DELETE CASCADE"
+        UUID amenity_id PK, FK "ON DELETE CASCADE"
+    }
+    courts {
+        UUID id PK
+        UUID venue_id FK "ON DELETE CASCADE"
+        UUID sport_id FK "nullable"
+        TEXT name
+        TEXT description
+        TEXT status "DEFAULT active, CHECK active, inactive"
+        INT sort_order "DEFAULT 0"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+        TIMESTAMPTZ deleted_at "soft delete"
+    }
+    opening_hours {
+        UUID id PK
+        UUID court_id FK "ON DELETE CASCADE"
+        SMALLINT day_of_week "CHECK 0..6, UNIQUE (court_id, day_of_week)"
+        TIME open_time "CHECK open_time trước close_time"
+        TIME close_time
+    }
+    pricing_rules {
+        UUID id PK
+        UUID court_id FK "ON DELETE CASCADE"
+        TEXT name
+        INT price_per_slot "VND mỗi 30 phút"
+        TIME start_time
+        TIME end_time
+        SMALLINT[] day_of_week "NULL = mọi ngày"
+        DATE date_override "ngày lễ"
+        INT priority "DEFAULT 0, cao hơn = ưu tiên hơn"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    blackout_periods {
+        UUID id PK
+        UUID court_id FK "ON DELETE CASCADE"
+        TEXT reason
+        TSTZRANGE during "NOT NULL, GiST (court_id, during)"
+        TIMESTAMPTZ created_at
+    }
+    bookings {
+        UUID id PK
+        UUID court_id FK
+        UUID customer_id FK
+        UUID cancelled_by FK "nullable, tham chiếu users"
+        TSTZRANGE during "UTC, NOT NULL"
+        TEXT status "DEFAULT held, CHECK 7 trạng thái"
+        INT total_price "VND, tính ở server"
+        TEXT note
+        TEXT cancel_reason
+        TIMESTAMPTZ expires_at "chỉ dùng khi held"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    payments {
+        UUID id PK
+        UUID booking_id FK
+        INT amount
+        TEXT provider "DEFAULT vietqr"
+        TEXT provider_ref
+        TEXT status "DEFAULT pending, CHECK pending, completed, failed, refunded"
+        TEXT idempotency_key UK "chống xử lý webhook 2 lần"
+        TIMESTAMPTZ paid_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    reviews {
+        UUID id PK
+        UUID booking_id FK, UK
+        UUID venue_id FK
+        UUID customer_id FK
+        SMALLINT rating "CHECK 1..5"
+        TEXT content
+        BOOLEAN is_visible "DEFAULT true"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    favorites {
+        UUID user_id PK, FK "ON DELETE CASCADE"
+        UUID venue_id PK, FK "ON DELETE CASCADE"
+        TIMESTAMPTZ created_at
+    }
+    notifications {
+        UUID id PK
+        UUID user_id FK "ON DELETE CASCADE"
+        TEXT type
+        TEXT title
+        TEXT body
+        JSONB data
+        TIMESTAMPTZ read_at
+        TIMESTAMPTZ created_at
+    }
+    audit_logs {
+        UUID id PK
+        UUID actor_id FK "nullable"
+        TEXT action
+        TEXT entity_type
+        UUID entity_id
+        JSONB old_data
+        JSONB new_data
+        INET ip_address
+        TIMESTAMPTZ created_at
+    }
+
+    users ||--o{ oauth_accounts : "user_id"
+    users ||--o{ refresh_tokens : "user_id"
+    users ||--o{ venues : "owner_id"
+    users ||--o{ bookings : "customer_id"
+    users |o--o{ bookings : "cancelled_by"
+    users ||--o{ reviews : "customer_id"
+    users ||--o{ favorites : "user_id"
+    users ||--o{ notifications : "user_id"
+    users |o--o{ audit_logs : "actor_id"
+
+    venues ||--o{ venue_images : "venue_id"
+    venues ||--o{ courts : "venue_id"
+    venues ||--o{ venue_sports : "venue_id"
+    venues ||--o{ venue_amenities : "venue_id"
+    venues ||--o{ reviews : "venue_id"
+    venues ||--o{ favorites : "venue_id"
+
+    sports ||--o{ venue_sports : "sport_id"
+    sports |o--o{ courts : "sport_id"
+    amenities ||--o{ venue_amenities : "amenity_id"
+
+    courts ||--o{ opening_hours : "court_id"
+    courts ||--o{ pricing_rules : "court_id"
+    courts ||--o{ blackout_periods : "court_id"
+    courts ||--o{ bookings : "court_id"
+
+    bookings ||--o{ payments : "booking_id"
+    bookings ||--o| reviews : "booking_id"
+```
+
+**Ràng buộc và index quan trọng** (không vẽ được trong ERD, SQL đầy đủ ở mục "Chi tiết bảng"):
+
+| Bảng | Ràng buộc / index | Mục đích |
+|------|-------------------|----------|
+| `bookings` | `EXCLUDE USING gist (court_id WITH =, during WITH &&) WHERE (status IN ('held','pending_payment','confirmed'))`, cần `btree_gist` | **Chống trùng lịch ở DB** (Quy tắc #2) |
+| `bookings` | GiST `(court_id, during)`; B-tree `customer_id`, `status`; `expires_at WHERE status='held'` | Truy vấn lịch sân, dọn booking hết hạn giữ chỗ |
+| `blackout_periods` | GiST `(court_id, during)` | Kiểm tra sân bị khóa |
+| `opening_hours` | `UNIQUE (court_id, day_of_week)`, `CHECK (open_time < close_time)` | Mỗi sân một khung giờ mở cửa mỗi thứ |
+| `reviews` | `UNIQUE (booking_id)` | Một booking chỉ được đánh giá một lần |
+| `payments` | `UNIQUE (idempotency_key)` | Chống xử lý webhook trùng |
+| `users`, `venues`, `courts` | Partial index `WHERE deleted_at IS NULL` | Soft delete |
+
+### Ghi chú thiết kế
+
+- **Chỉnh sửa so với ERD cũ (v1.0.0):** schema SQL không đổi. ERD cũ thiếu bảng `oauth_accounts`, `venue_images` và hai quan hệ có trong SQL: `sports → courts` (`courts.sport_id`) và `users → bookings` qua `cancelled_by`. Quan hệ `users → audit_logs` được sửa thành tùy chọn (`actor_id` cho phép NULL). Các bảng trung gian không còn bị xem là thực thể nghiệp vụ ở mức conceptual.
+- **`reviews.venue_id` là dữ liệu thừa có chủ đích** (suy ra được qua `booking → court → venue`) để truy vấn điểm trung bình nhanh. Service phải gán đúng bằng venue của booking khi tạo review.
+- **`courts.sport_id`** nên thuộc tập môn trong `venue_sports` của cơ sở. DB chưa ép ràng buộc này, service phải kiểm tra.
+- **`pricing_rules.day_of_week SMALLINT[]`** là cột đa trị (chưa đạt 1NF). Giữ nguyên vì đơn giản hơn một bảng con và chỉ được đọc cùng rule.
+- **Chưa thống nhất UUID:** mục "Quy ước chung" ghi UUID v7 nhưng SQL dùng `gen_random_uuid()` (v4). Cần quyết định khi viết migration `0001` (ghi vào `docs/18-decision-log.md`).
 
 ## Chi tiết bảng
 
