@@ -1,13 +1,13 @@
 ﻿# 04 – Database Schema
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Quy ước chung
 
 - **snake_case** cho tất cả tên bảng và cột.
 - **Soft delete:** thêm cột `deleted_at TIMESTAMPTZ DEFAULT NULL`; query luôn filter `deleted_at IS NULL`.
 - **Timestamps:** mọi bảng có `created_at TIMESTAMPTZ DEFAULT now()` và `updated_at TIMESTAMPTZ DEFAULT now()`.
-- **UUID v7** làm primary key (sắp xếp theo thời gian, phù hợp index B-tree).
+- **UUID v7** làm primary key (sắp xếp theo thời gian, phù hợp index B-tree). PostgreSQL 16 chưa có `uuidv7()` gốc (có từ PG 18), nên **ID được sinh ở tầng ứng dụng** (`v7()` của thư viện `uuid`, gắn vào `$defaultFn` của Drizzle). Cột trong DB vẫn kiểu `UUID`. `DEFAULT gen_random_uuid()` (v4) trong SQL mẫu chỉ là phương án dự phòng cho seed hoặc SQL thủ công. Xem ADR-011.
 - **Múi giờ:** Lưu UTC (timestamptz/tstzrange), hiển thị Asia/Ho_Chi_Minh ở FE/API response.
 - **Migration:** Mọi thay đổi schema qua file migration có version (`0001_init.sql`, `0002_...sql`). KHÔNG sửa tay.
 
@@ -15,11 +15,11 @@
 
 Sơ đồ được vẽ theo 3 mức trừu tượng, từ nghiệp vụ đến cài đặt. Cả ba mô tả **cùng một schema**, chỉ khác mức chi tiết:
 
-| Cấp độ | Mục đích | Có gì | Không có gì |
-|--------|----------|-------|-------------|
+| Cấp độ                        | Mục đích                    | Có gì                                                                           | Không có gì                               |
+| ----------------------------- | --------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------- |
 | **1. Conceptual** (khái niệm) | Trao đổi nghiệp vụ, báo cáo | Thực thể, thuộc tính chính, quan hệ (hình thoi), bản số; quan hệ N-N giữ nguyên | Khóa ngoại, bảng trung gian, kiểu dữ liệu |
-| **2. Logical** (logic) | Thiết kế dữ liệu | Mọi thuộc tính nghiệp vụ, PK/FK/UK, bảng trung gian cho quan hệ N-N | Kiểu dữ liệu riêng của PostgreSQL, index |
-| **3. Physical** (vật lý) | Cài đặt migration | Mọi cột, kiểu PostgreSQL, PK/FK/UK, ràng buộc chính | (SQL đầy đủ nằm ở mục "Chi tiết bảng") |
+| **2. Logical** (logic)        | Thiết kế dữ liệu            | Mọi thuộc tính nghiệp vụ, PK/FK/UK, bảng trung gian cho quan hệ N-N             | Kiểu dữ liệu riêng của PostgreSQL, index  |
+| **3. Physical** (vật lý)      | Cài đặt migration           | Mọi cột, kiểu PostgreSQL, PK/FK/UK, ràng buộc chính                             | (SQL đầy đủ nằm ở mục "Chi tiết bảng")    |
 
 Ký hiệu bản số: `1` = đúng một, `0..1` = không hoặc một, `N` = nhiều.
 
@@ -35,7 +35,11 @@ flowchart LR
     classDef rel fill:#fff7ed,stroke:#c2410c,stroke-width:1.5px,color:#0f172a;
 
     USER["<b>NGƯỜI DÙNG</b><br/><u>id</u> · email · họ tên<br/>SĐT · vai trò · trạng thái"]:::entity
-    VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug · địa chỉ<br/>quận/huyện · tỉnh · trạng thái"]:::entity
+    VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug · địa chỉ<br/>trạng thái"]:::entity
+    AREA["<b>KHU VỰC</b><br/><u>id</u> · loại (tỉnh/quận) · tên"]:::entity
+    APP["<b>HỒ SƠ CHỦ SÂN</b><br/><u>id</u> · tên doanh nghiệp · SĐT<br/>trạng thái duyệt"]:::entity
+    BANK["<b>TÀI KHOẢN NHẬN TIỀN</b><br/>ngân hàng · số tài khoản<br/>tên chủ tài khoản"]:::entity
+    POLICY["<b>CHÍNH SÁCH HỦY & CỌC</b><br/>hủy trước (giờ) · % hoàn · % cọc"]:::entity
     COURT["<b>SÂN</b><br/><u>id</u> · tên · mô tả<br/>trạng thái"]:::entity
     SPORT["<b>MÔN THỂ THAO</b><br/><u>id</u> · tên · slug"]:::entity
     AMEN["<b>TIỆN ÍCH</b><br/><u>id</u> · tên · slug"]:::entity
@@ -55,6 +59,10 @@ flowchart LR
     R_PR{"áp dụng giá"}:::rel
     R_BO{"bị khóa bởi"}:::rel
     R_LNK{"đăng nhập qua"}:::rel
+    R_APP{"nộp"}:::rel
+    R_LOC{"nằm tại"}:::rel
+    R_BANK{"nhận tiền qua"}:::rel
+    R_POL{"áp dụng"}:::rel
 
     USER ---|1| R_OWN ---|N| VENUE
     VENUE ---|1| R_CON ---|N| COURT
@@ -66,6 +74,10 @@ flowchart LR
     COURT ---|1| R_PR ---|N| PR
     COURT ---|1| R_BO ---|N| BO
     USER ---|1| R_LNK ---|N| OAUTH
+    USER ---|1| R_APP ---|N| APP
+    VENUE ---|N| R_LOC ---|"1 (tỉnh + quận)"| AREA
+    VENUE ---|1| R_BANK ---|"0..1"| BANK
+    VENUE ---|1| R_POL ---|"0..1"| POLICY
 ```
 
 **1b. Giao dịch: đặt sân, thanh toán, đánh giá, thông báo**
@@ -78,9 +90,9 @@ flowchart LR
     USER["<b>NGƯỜI DÙNG</b><br/><u>id</u> · email · họ tên · vai trò"]:::entity
     VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug"]:::entity
     COURT["<b>SÂN</b><br/><u>id</u> · tên"]:::entity
-    BOOK["<b>ĐẶT SÂN</b><br/><u>id</u> · khoảng thời gian · trạng thái<br/>tổng tiền · hết hạn giữ chỗ · lý do hủy"]:::entity
-    PAY["<b>THANH TOÁN</b><br/><u>id</u> · số tiền · nhà cung cấp<br/>trạng thái · thời điểm trả"]:::entity
-    REV["<b>ĐÁNH GIÁ</b><br/><u>id</u> · điểm 1-5 · nội dung<br/>hiển thị"]:::entity
+    BOOK["<b>ĐẶT SÂN</b><br/><u>id</u> · khoảng thời gian · trạng thái · nguồn (online/thủ công)<br/>tổng tiền · tiền cọc · hết hạn giữ chỗ · lý do hủy"]:::entity
+    PAY["<b>THANH TOÁN</b><br/><u>id</u> · số tiền · mã chuyển khoản<br/>ảnh chứng minh · trạng thái · hoàn tiền"]:::entity
+    REV["<b>ĐÁNH GIÁ</b><br/><u>id</u> · điểm 1-5 · nội dung<br/>hiển thị · phản hồi của chủ sân"]:::entity
     NOTI["<b>THÔNG BÁO</b><br/><u>id</u> · loại · tiêu đề<br/>nội dung · thời điểm đọc"]:::entity
     AUDIT["<b>NHẬT KÝ HỆ THỐNG</b><br/><u>id</u> · hành động · loại đối tượng<br/>dữ liệu cũ/mới · IP"]:::entity
 
@@ -88,6 +100,7 @@ flowchart LR
     R_HOST{"được đặt"}:::rel
     R_CAN{"hủy"}:::rel
     R_PAY{"được thanh toán bằng"}:::rel
+    R_APR{"duyệt thanh toán"}:::rel
     R_ABOUT{"được đánh giá bằng"}:::rel
     R_WRITE{"viết"}:::rel
     R_RECV{"nhận đánh giá"}:::rel
@@ -95,10 +108,11 @@ flowchart LR
     R_NOTI{"nhận"}:::rel
     R_ACT{"thực hiện"}:::rel
 
-    USER ---|1| R_MAKE ---|N| BOOK
+    USER ---|"0..1"| R_MAKE ---|N| BOOK
     COURT ---|1| R_HOST ---|N| BOOK
     USER ---|"0..1"| R_CAN ---|N| BOOK
     BOOK ---|1| R_PAY ---|N| PAY
+    USER ---|"0..1"| R_APR ---|N| PAY
     BOOK ---|1| R_ABOUT ---|"0..1"| REV
     USER ---|1| R_WRITE ---|N| REV
     VENUE ---|1| R_RECV ---|N| REV
@@ -127,6 +141,46 @@ erDiagram
         string avatar_url
         string role "customer, owner, admin"
         string status "active, suspended, pending"
+        datetime email_verified_at "NULL = chưa xác thực"
+    }
+    auth_tokens {
+        id id PK
+        id user_id FK
+        string type "email_verify, password_reset"
+        string token_hash UK
+        datetime expires_at
+        datetime used_at
+    }
+    owner_applications {
+        id id PK
+        id user_id FK
+        id reviewed_by FK "nullable"
+        string business_name
+        string phone
+        string address
+        string note
+        string status "pending, approved, rejected"
+        string review_note
+        datetime reviewed_at
+    }
+    areas {
+        id id PK
+        id parent_id FK "nullable, NULL = tỉnh/thành"
+        string type "province, district"
+        string name
+        string slug "UK cùng parent_id"
+    }
+    venue_payment_accounts {
+        id venue_id PK, FK
+        string bank_bin
+        string account_no
+        string account_name
+    }
+    cancellation_policies {
+        id venue_id PK, FK
+        int cancel_before_hours
+        int refund_percent
+        int deposit_percent
     }
     oauth_accounts {
         id id PK
@@ -148,8 +202,8 @@ erDiagram
         string slug UK
         text description
         string address
-        string district
-        string province
+        id province_id FK "areas.type = province"
+        id district_id FK "areas.type = district, con của province_id"
         decimal lat
         decimal lng
         string status "pending, approved, rejected, suspended"
@@ -215,11 +269,16 @@ erDiagram
     bookings {
         id id PK
         id court_id FK
-        id customer_id FK
+        id customer_id FK "nullable khi booking thủ công cho khách vãng lai"
+        id created_by FK "nullable, Owner tạo booking thủ công"
         id cancelled_by FK "nullable"
+        string source "online, manual"
+        string guest_name "chỉ khi manual"
+        string guest_phone "chỉ khi manual"
         datetime_range during
         string status "held, pending_payment, confirmed, completed, cancelled, expired, no_show"
         int total_price "VND, tính ở server"
+        int deposit_amount "VND khách phải chuyển khoản"
         string note
         string cancel_reason
         datetime expires_at "chỉ dùng khi held"
@@ -227,11 +286,15 @@ erDiagram
     payments {
         id id PK
         id booking_id FK
+        id reviewed_by FK "nullable, Owner duyệt"
         int amount
-        string provider
-        string provider_ref
-        string status "pending, completed, failed, refunded"
-        string idempotency_key UK
+        string provider "bank_transfer, cash"
+        string transfer_code "nội dung chuyển khoản trong QR"
+        string proof_url "ảnh chuyển khoản"
+        string status "pending, submitted, completed, rejected, refunded"
+        string reject_reason
+        int refund_amount
+        string idempotency_key UK "nullable, dành cho webhook sau này"
         datetime paid_at
     }
     reviews {
@@ -242,6 +305,8 @@ erDiagram
         int rating "1..5"
         text content
         boolean is_visible
+        text owner_reply "nullable"
+        datetime owner_replied_at
     }
     favorites {
         id user_id PK, FK
@@ -269,14 +334,25 @@ erDiagram
 
     users ||--o{ oauth_accounts : "liên kết"
     users ||--o{ refresh_tokens : "có"
+    users ||--o{ auth_tokens : "nhận"
+    users ||--o{ owner_applications : "nộp"
+    users |o--o{ owner_applications : "duyệt"
     users ||--o{ venues : "sở hữu"
-    users ||--o{ bookings : "đặt"
+    users |o--o{ bookings : "đặt"
     users |o--o{ bookings : "hủy"
+    users |o--o{ bookings : "tạo thủ công"
+    users |o--o{ payments : "duyệt"
     users ||--o{ reviews : "viết"
     users ||--o{ favorites : "yêu thích"
     users ||--o{ notifications : "nhận"
     users |o--o{ audit_logs : "thực hiện"
 
+    areas |o--o{ areas : "gồm"
+    areas ||--o{ venues : "tỉnh"
+    areas ||--o{ venues : "quận"
+
+    venues ||--o| venue_payment_accounts : "nhận tiền qua"
+    venues ||--o| cancellation_policies : "áp dụng"
     venues ||--o{ venue_images : "có ảnh"
     venues ||--o{ courts : "gồm"
     venues ||--o{ venue_sports : "cung cấp"
@@ -299,7 +375,7 @@ erDiagram
 
 ### 3. Physical ERD (Mô hình vật lý)
 
-Kiểu dữ liệu và ràng buộc là của PostgreSQL 16. Một số kiểu viết gọn vì Mermaid không cho dấu phẩy trong kiểu: `NUMERIC_10_7` là `NUMERIC(10,7)`. Cột `PK` kiểu `UUID` có `DEFAULT gen_random_uuid()`.
+Kiểu dữ liệu và ràng buộc là của PostgreSQL 16. Một số kiểu viết gọn vì Mermaid không cho dấu phẩy trong kiểu: `NUMERIC_10_7` là `NUMERIC(10,7)`. Cột `PK` kiểu `UUID`; giá trị là UUID v7 do ứng dụng sinh (SQL mẫu ghi `DEFAULT gen_random_uuid()` chỉ để dự phòng).
 
 ```mermaid
 erDiagram
@@ -312,6 +388,7 @@ erDiagram
         TEXT avatar_url
         TEXT role "CHECK customer, owner, admin"
         TEXT status "DEFAULT active, CHECK active, suspended, pending"
+        TIMESTAMPTZ email_verified_at "NULL = chưa xác thực"
         TIMESTAMPTZ created_at "DEFAULT now()"
         TIMESTAMPTZ updated_at "DEFAULT now()"
         TIMESTAMPTZ deleted_at "soft delete"
@@ -331,6 +408,38 @@ erDiagram
         BOOLEAN revoked "DEFAULT false"
         TIMESTAMPTZ created_at
     }
+    auth_tokens {
+        UUID id PK
+        UUID user_id FK "ON DELETE CASCADE"
+        TEXT type "CHECK email_verify, password_reset"
+        TEXT token_hash UK
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ used_at "NULL = chưa dùng"
+        TIMESTAMPTZ created_at
+    }
+    owner_applications {
+        UUID id PK
+        UUID user_id FK
+        TEXT business_name
+        TEXT phone
+        TEXT address
+        TEXT note
+        TEXT status "DEFAULT pending, CHECK pending, approved, rejected"
+        TEXT review_note
+        UUID reviewed_by FK "nullable"
+        TIMESTAMPTZ reviewed_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    areas {
+        UUID id PK
+        TEXT type "CHECK province, district"
+        TEXT name
+        TEXT slug "UNIQUE NULLS NOT DISTINCT (parent_id, slug)"
+        UUID parent_id FK "NULL nếu là tỉnh, ON DELETE RESTRICT"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
     venues {
         UUID id PK
         UUID owner_id FK
@@ -338,8 +447,8 @@ erDiagram
         TEXT slug UK
         TEXT description
         TEXT address
-        TEXT district
-        TEXT province
+        UUID province_id FK "areas, type = province"
+        UUID district_id FK "areas, type = district"
         NUMERIC_10_7 lat "NUMERIC(10,7)"
         NUMERIC_10_7 lng "NUMERIC(10,7)"
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected, suspended"
@@ -375,11 +484,27 @@ erDiagram
     }
     venue_sports {
         UUID venue_id PK, FK "ON DELETE CASCADE"
-        UUID sport_id PK, FK "ON DELETE CASCADE"
+        UUID sport_id PK, FK "ON DELETE RESTRICT"
     }
     venue_amenities {
         UUID venue_id PK, FK "ON DELETE CASCADE"
-        UUID amenity_id PK, FK "ON DELETE CASCADE"
+        UUID amenity_id PK, FK "ON DELETE RESTRICT"
+    }
+    venue_payment_accounts {
+        UUID venue_id PK, FK "ON DELETE CASCADE"
+        TEXT bank_bin "mã BIN VietQR"
+        TEXT account_no
+        TEXT account_name
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    cancellation_policies {
+        UUID venue_id PK, FK "ON DELETE CASCADE"
+        INT cancel_before_hours "DEFAULT 24, CHECK >= 0"
+        INT refund_percent "DEFAULT 100, CHECK 0..100"
+        INT deposit_percent "DEFAULT 100, CHECK 10..100"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
     courts {
         UUID id PK
@@ -423,11 +548,16 @@ erDiagram
     bookings {
         UUID id PK
         UUID court_id FK
-        UUID customer_id FK
+        UUID customer_id FK "nullable khi booking thủ công cho khách vãng lai"
+        UUID created_by FK "nullable, Owner tạo thủ công"
         UUID cancelled_by FK "nullable, tham chiếu users"
+        TEXT source "DEFAULT online, CHECK online, manual"
+        TEXT guest_name "chỉ khi manual"
+        TEXT guest_phone "chỉ khi manual"
         TSTZRANGE during "UTC, NOT NULL"
         TEXT status "DEFAULT held, CHECK 7 trạng thái"
         INT total_price "VND, tính ở server"
+        INT deposit_amount "VND khách phải chuyển khoản"
         TEXT note
         TEXT cancel_reason
         TIMESTAMPTZ expires_at "chỉ dùng khi held"
@@ -437,11 +567,18 @@ erDiagram
     payments {
         UUID id PK
         UUID booking_id FK
+        UUID reviewed_by FK "nullable, Owner duyệt"
         INT amount
-        TEXT provider "DEFAULT vietqr"
-        TEXT provider_ref
-        TEXT status "DEFAULT pending, CHECK pending, completed, failed, refunded"
-        TEXT idempotency_key UK "chống xử lý webhook 2 lần"
+        TEXT provider "DEFAULT bank_transfer, CHECK bank_transfer, cash"
+        TEXT transfer_code "nội dung chuyển khoản"
+        TEXT proof_url "ảnh chuyển khoản"
+        TIMESTAMPTZ proof_uploaded_at
+        TEXT status "DEFAULT pending, CHECK pending, submitted, completed, rejected, refunded"
+        TIMESTAMPTZ reviewed_at
+        TEXT reject_reason
+        INT refund_amount
+        TIMESTAMPTZ refunded_at
+        TEXT idempotency_key UK "nullable, dành cho webhook sau này"
         TIMESTAMPTZ paid_at
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -454,6 +591,8 @@ erDiagram
         SMALLINT rating "CHECK 1..5"
         TEXT content
         BOOLEAN is_visible "DEFAULT true"
+        TEXT owner_reply "nullable"
+        TIMESTAMPTZ owner_replied_at
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -486,14 +625,25 @@ erDiagram
 
     users ||--o{ oauth_accounts : "user_id"
     users ||--o{ refresh_tokens : "user_id"
+    users ||--o{ auth_tokens : "user_id"
+    users ||--o{ owner_applications : "user_id"
+    users |o--o{ owner_applications : "reviewed_by"
     users ||--o{ venues : "owner_id"
-    users ||--o{ bookings : "customer_id"
+    users |o--o{ bookings : "customer_id"
     users |o--o{ bookings : "cancelled_by"
+    users |o--o{ bookings : "created_by"
+    users |o--o{ payments : "reviewed_by"
     users ||--o{ reviews : "customer_id"
     users ||--o{ favorites : "user_id"
     users ||--o{ notifications : "user_id"
     users |o--o{ audit_logs : "actor_id"
 
+    areas |o--o{ areas : "parent_id"
+    areas ||--o{ venues : "province_id"
+    areas ||--o{ venues : "district_id"
+
+    venues ||--o| venue_payment_accounts : "venue_id"
+    venues ||--o| cancellation_policies : "venue_id"
     venues ||--o{ venue_images : "venue_id"
     venues ||--o{ courts : "venue_id"
     venues ||--o{ venue_sports : "venue_id"
@@ -516,27 +666,32 @@ erDiagram
 
 **Ràng buộc và index quan trọng** (không vẽ được trong ERD, SQL đầy đủ ở mục "Chi tiết bảng"):
 
-| Bảng | Ràng buộc / index | Mục đích |
-|------|-------------------|----------|
-| `bookings` | `EXCLUDE USING gist (court_id WITH =, during WITH &&) WHERE (status IN ('held','pending_payment','confirmed'))`, cần `btree_gist` | **Chống trùng lịch ở DB** (Quy tắc #2) |
-| `bookings` | GiST `(court_id, during)`; B-tree `customer_id`, `status`; `expires_at WHERE status='held'` | Truy vấn lịch sân, dọn booking hết hạn giữ chỗ |
-| `blackout_periods` | GiST `(court_id, during)` | Kiểm tra sân bị khóa |
-| `opening_hours` | `UNIQUE (court_id, day_of_week)`, `CHECK (open_time < close_time)` | Mỗi sân một khung giờ mở cửa mỗi thứ |
-| `reviews` | `UNIQUE (booking_id)` | Một booking chỉ được đánh giá một lần |
-| `payments` | `UNIQUE (idempotency_key)` | Chống xử lý webhook trùng |
-| `users`, `venues`, `courts` | Partial index `WHERE deleted_at IS NULL` | Soft delete |
+| Bảng                        | Ràng buộc / index                                                                                                                 | Mục đích                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `bookings`                  | `EXCLUDE USING gist (court_id WITH =, during WITH &&) WHERE (status IN ('held','pending_payment','confirmed'))`, cần `btree_gist` | **Chống trùng lịch ở DB** (Quy tắc #2)                                        |
+| `bookings`                  | GiST `(court_id, during)`; B-tree `customer_id`, `status`; `expires_at WHERE status='held'`                                       | Truy vấn lịch sân, dọn booking hết hạn giữ chỗ                                |
+| `blackout_periods`          | GiST `(court_id, during)`                                                                                                         | Kiểm tra sân bị khóa                                                          |
+| `opening_hours`             | `UNIQUE (court_id, day_of_week)`, `CHECK (open_time < close_time)`                                                                | Mỗi sân một khung giờ mở cửa mỗi thứ                                          |
+| `reviews`                   | `UNIQUE (booking_id)`                                                                                                             | Một booking chỉ được đánh giá một lần                                         |
+| `payments`                  | `UNIQUE (idempotency_key)`; partial unique `(booking_id) WHERE status IN ('pending','submitted','completed')`                     | Chống webhook trùng (sau này); mỗi booking chỉ có một thanh toán còn hiệu lực |
+| `owner_applications`        | partial unique `(user_id) WHERE status = 'pending'`                                                                               | Mỗi người chỉ có một hồ sơ đang chờ duyệt                                     |
+| `areas`                     | `UNIQUE NULLS NOT DISTINCT (parent_id, slug)`, `CHECK` tỉnh không có cha, quận phải có cha                                        | Danh mục hai cấp nhất quán                                                    |
+| `users`, `venues`, `courts` | Partial index `WHERE deleted_at IS NULL`                                                                                          | Soft delete                                                                   |
 
 ### Ghi chú thiết kế
 
-- **Chỉnh sửa so với ERD cũ (v1.0.0):** schema SQL không đổi. ERD cũ thiếu bảng `oauth_accounts`, `venue_images` và hai quan hệ có trong SQL: `sports → courts` (`courts.sport_id`) và `users → bookings` qua `cancelled_by`. Quan hệ `users → audit_logs` được sửa thành tùy chọn (`actor_id` cho phép NULL). Các bảng trung gian không còn bị xem là thực thể nghiệp vụ ở mức conceptual.
+- **Thay đổi v1.2.0:** thêm bảng `auth_tokens`, `owner_applications`, `areas`, `venue_payment_accounts`, `cancellation_policies`; thêm cột `users.email_verified_at`, `reviews.owner_reply`, `reviews.owner_replied_at`, `bookings.source/guest_name/guest_phone/created_by/deposit_amount`; `bookings.customer_id` cho phép NULL (booking thủ công cho khách vãng lai, có `CHECK` phải có `customer_id` hoặc `guest_name`); `venues.district/province` (TEXT) thay bằng `district_id/province_id` (FK `areas`); `payments` chuyển sang luồng chuyển khoản QR + ảnh chứng minh + Owner duyệt.
+- **Luồng thanh toán:** `held` (10 phút) → khách chuyển khoản theo QR, tải ảnh → `pending_payment` (vẫn chiếm block) → Owner duyệt → `confirmed`, hoặc Owner từ chối / quá hạn duyệt → `cancelled`. Chi tiết ở `05-booking-and-realtime.md`.
+- **Quan hệ `users → bookings`:** `customer_id` nay là tùy chọn (booking thủ công cho khách vãng lai), nên quan hệ là `|o--o{`.
 - **`reviews.venue_id` là dữ liệu thừa có chủ đích** (suy ra được qua `booking → court → venue`) để truy vấn điểm trung bình nhanh. Service phải gán đúng bằng venue của booking khi tạo review.
 - **`courts.sport_id`** nên thuộc tập môn trong `venue_sports` của cơ sở. DB chưa ép ràng buộc này, service phải kiểm tra.
 - **`pricing_rules.day_of_week SMALLINT[]`** là cột đa trị (chưa đạt 1NF). Giữ nguyên vì đơn giản hơn một bảng con và chỉ được đọc cùng rule.
-- **Chưa thống nhất UUID:** mục "Quy ước chung" ghi UUID v7 nhưng SQL dùng `gen_random_uuid()` (v4). Cần quyết định khi viết migration `0001` (ghi vào `docs/18-decision-log.md`).
+- **UUID v7 (ADR-011):** ID do ứng dụng sinh bằng `v7()` của thư viện `uuid`, vì PostgreSQL 16 chưa có `uuidv7()` gốc. Mọi insert phải đi qua Drizzle (đã gắn `$defaultFn`); insert bằng SQL thủ công phải tự điền `id`, hoặc dùng `gen_random_uuid()` (v4, vẫn hợp lệ nhưng không sắp theo thời gian). Nếu nâng lên PostgreSQL 18 thì đổi sang `DEFAULT uuidv7()` ở migration mới.
 
 ## Chi tiết bảng
 
 ### users
+
 ```sql
 CREATE TABLE users (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -547,6 +702,7 @@ CREATE TABLE users (
   avatar_url  TEXT,
   role        TEXT NOT NULL CHECK (role IN ('customer','owner','admin')),
   status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','pending')),
+  email_verified_at TIMESTAMPTZ,         -- NULL = chưa xác thực email (CUS-01)
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now(),
   deleted_at  TIMESTAMPTZ
@@ -556,6 +712,7 @@ CREATE INDEX idx_users_role  ON users(role)  WHERE deleted_at IS NULL;
 ```
 
 ### oauth_accounts
+
 ```sql
 CREATE TABLE oauth_accounts (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -568,6 +725,7 @@ CREATE TABLE oauth_accounts (
 ```
 
 ### refresh_tokens
+
 ```sql
 CREATE TABLE refresh_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -580,7 +738,68 @@ CREATE TABLE refresh_tokens (
 CREATE INDEX idx_rt_user ON refresh_tokens(user_id) WHERE revoked = false;
 ```
 
+### auth_tokens
+
+Token dùng một lần cho xác thực email và đặt lại mật khẩu. Chỉ lưu hash, không lưu token gốc.
+
+```sql
+CREATE TABLE auth_tokens (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL CHECK (type IN ('email_verify','password_reset')),
+  token_hash  TEXT NOT NULL UNIQUE,
+  expires_at  TIMESTAMPTZ NOT NULL,
+  used_at     TIMESTAMPTZ,               -- NULL = chưa dùng
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX idx_auth_tokens_user ON auth_tokens(user_id, type) WHERE used_at IS NULL;
+```
+
+### owner_applications
+
+Hồ sơ đăng ký làm chủ sân (OWN-01, ADM-01). Khi Admin duyệt `approved`, service đổi `users.role` từ `customer` sang `owner` trong cùng transaction.
+
+```sql
+CREATE TABLE owner_applications (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id),
+  business_name TEXT NOT NULL,
+  phone         TEXT NOT NULL,
+  address       TEXT NOT NULL,
+  note          TEXT,
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  review_note   TEXT,
+  reviewed_by   UUID REFERENCES users(id),
+  reviewed_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now()
+);
+-- Mỗi người chỉ có tối đa 1 hồ sơ đang chờ duyệt
+CREATE UNIQUE INDEX uq_owner_app_pending ON owner_applications(user_id) WHERE status = 'pending';
+CREATE INDEX idx_owner_app_status ON owner_applications(status);
+```
+
+### areas
+
+Danh mục khu vực hai cấp (ADM-06): tỉnh/thành và quận/huyện. Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
+
+```sql
+CREATE TABLE areas (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type       TEXT NOT NULL CHECK (type IN ('province','district')),
+  name       TEXT NOT NULL,             -- "Thành phố Hồ Chí Minh", "Thành phố Thủ Đức"
+  slug       TEXT NOT NULL,             -- "ho-chi-minh", "thu-duc"
+  parent_id  UUID REFERENCES areas(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  CHECK ((type = 'province' AND parent_id IS NULL) OR (type = 'district' AND parent_id IS NOT NULL)),
+  UNIQUE NULLS NOT DISTINCT (parent_id, slug)   -- PostgreSQL 15+
+);
+CREATE INDEX idx_areas_parent ON areas(parent_id);
+```
+
 ### sports
+
 ```sql
 CREATE TABLE sports (
   id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -594,6 +813,7 @@ CREATE TABLE sports (
 ```
 
 ### amenities
+
 ```sql
 CREATE TABLE amenities (
   id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -607,6 +827,7 @@ CREATE TABLE amenities (
 ```
 
 ### venues
+
 ```sql
 CREATE TABLE venues (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -615,8 +836,8 @@ CREATE TABLE venues (
   slug         TEXT NOT NULL UNIQUE,
   description  TEXT,
   address      TEXT NOT NULL,
-  district     TEXT NOT NULL,
-  province     TEXT NOT NULL,
+  province_id  UUID NOT NULL REFERENCES areas(id),   -- areas.type = 'province'
+  district_id  UUID NOT NULL REFERENCES areas(id),   -- areas.type = 'district', cha phải là province_id
   lat          NUMERIC(10,7),
   lng          NUMERIC(10,7),
   status       TEXT NOT NULL DEFAULT 'pending'
@@ -628,10 +849,11 @@ CREATE TABLE venues (
 );
 CREATE INDEX idx_venues_owner   ON venues(owner_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_status  ON venues(status)   WHERE deleted_at IS NULL;
-CREATE INDEX idx_venues_district ON venues(province, district) WHERE deleted_at IS NULL;
+CREATE INDEX idx_venues_area ON venues(province_id, district_id) WHERE deleted_at IS NULL;
 ```
 
 ### venue_images
+
 ```sql
 CREATE TABLE venue_images (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -643,21 +865,53 @@ CREATE TABLE venue_images (
 ```
 
 ### venue_sports / venue_amenities (junction)
+
 ```sql
 CREATE TABLE venue_sports (
   venue_id  UUID REFERENCES venues(id) ON DELETE CASCADE,
-  sport_id  UUID REFERENCES sports(id) ON DELETE CASCADE,
+  sport_id  UUID REFERENCES sports(id) ON DELETE RESTRICT,      -- đang dùng thì không xoá được môn
   PRIMARY KEY (venue_id, sport_id)
 );
 
 CREATE TABLE venue_amenities (
   venue_id    UUID REFERENCES venues(id) ON DELETE CASCADE,
-  amenity_id  UUID REFERENCES amenities(id) ON DELETE CASCADE,
+  amenity_id  UUID REFERENCES amenities(id) ON DELETE RESTRICT,  -- đang dùng thì không xoá được tiện ích
   PRIMARY KEY (venue_id, amenity_id)
 );
 ```
 
+### venue_payment_accounts
+
+Tài khoản ngân hàng nhận tiền của venue. Dùng để sinh mã VietQR (số tiền và nội dung chuyển khoản điền sẵn) cho khách. Mỗi venue có tối đa một tài khoản.
+
+```sql
+CREATE TABLE venue_payment_accounts (
+  venue_id       UUID PRIMARY KEY REFERENCES venues(id) ON DELETE CASCADE,
+  bank_bin       TEXT NOT NULL,          -- Mã BIN ngân hàng theo chuẩn VietQR, VD "970422"
+  account_no     TEXT NOT NULL,
+  account_name   TEXT NOT NULL,
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  updated_at     TIMESTAMPTZ DEFAULT now()
+);
+```
+
+### cancellation_policies
+
+Chính sách huỷ và cọc của venue (OWN-10). Chưa cấu hình thì áp dụng mặc định: cọc 100%, huỷ trước 24 giờ hoàn 100%.
+
+```sql
+CREATE TABLE cancellation_policies (
+  venue_id            UUID PRIMARY KEY REFERENCES venues(id) ON DELETE CASCADE,
+  cancel_before_hours INT NOT NULL DEFAULT 24 CHECK (cancel_before_hours >= 0),
+  refund_percent      INT NOT NULL DEFAULT 100 CHECK (refund_percent BETWEEN 0 AND 100), -- hoàn khi huỷ trước mốc; huỷ muộn hơn không hoàn
+  deposit_percent     INT NOT NULL DEFAULT 100 CHECK (deposit_percent BETWEEN 10 AND 100), -- % tổng tiền khách phải chuyển khoản
+  created_at          TIMESTAMPTZ DEFAULT now(),
+  updated_at          TIMESTAMPTZ DEFAULT now()
+);
+```
+
 ### courts
+
 ```sql
 CREATE TABLE courts (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -675,6 +929,7 @@ CREATE INDEX idx_courts_venue ON courts(venue_id) WHERE deleted_at IS NULL;
 ```
 
 ### opening_hours
+
 ```sql
 CREATE TABLE opening_hours (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -688,6 +943,7 @@ CREATE TABLE opening_hours (
 ```
 
 ### pricing_rules
+
 ```sql
 CREATE TABLE pricing_rules (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -706,6 +962,7 @@ CREATE INDEX idx_pricing_court ON pricing_rules(court_id);
 ```
 
 ### blackout_periods
+
 ```sql
 CREATE TABLE blackout_periods (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -718,6 +975,7 @@ CREATE INDEX idx_blackout_court ON blackout_periods USING gist (court_id, during
 ```
 
 ### bookings (bảng quan trọng nhất)
+
 ```sql
 -- Extension bắt buộc
 CREATE EXTENSION IF NOT EXISTS btree_gist;
@@ -725,20 +983,28 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 CREATE TABLE bookings (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   court_id        UUID NOT NULL REFERENCES courts(id),
-  customer_id     UUID NOT NULL REFERENCES users(id),
+  customer_id     UUID REFERENCES users(id),  -- NULL với booking thủ công cho khách vãng lai
+  source          TEXT NOT NULL DEFAULT 'online' CHECK (source IN ('online','manual')),
+  guest_name      TEXT,                       -- Chỉ dùng khi source = 'manual' và không có tài khoản
+  guest_phone     TEXT,
+  created_by      UUID REFERENCES users(id),  -- Owner tạo booking thủ công
   during          TSTZRANGE NOT NULL,         -- UTC, ví dụ: [2026-10-15 08:00+07, 2026-10-15 09:30+07)
   status          TEXT NOT NULL DEFAULT 'held'
                     CHECK (status IN ('held','pending_payment','confirmed','completed','cancelled','expired','no_show')),
   total_price     INT NOT NULL,               -- VND, tính ở server
+  deposit_amount  INT NOT NULL,               -- VND khách phải chuyển khoản, tính từ cancellation_policies.deposit_percent
   note            TEXT,
   cancelled_by    UUID REFERENCES users(id),
   cancel_reason   TEXT,
-  expires_at      TIMESTAMPTZ,               -- Chỉ dùng cho trạng thái held
+  expires_at      TIMESTAMPTZ,               -- Chỉ dùng cho trạng thái held; NULL khi đã sang pending_payment
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
 
+  CHECK (customer_id IS NOT NULL OR guest_name IS NOT NULL),
+
   -- CONSTRAINT QUAN TRỌNG: Chống trùng lịch
   -- Chỉ áp dụng cho held, pending_payment, confirmed (không áp dụng cho cancelled/expired/no_show/completed)
+  -- pending_payment vẫn chiếm block cho tới khi Owner duyệt hoặc từ chối
   EXCLUDE USING gist (
     court_id WITH =,
     during   WITH &&
@@ -749,26 +1015,43 @@ CREATE INDEX idx_bookings_court_during ON bookings USING gist (court_id, during)
 CREATE INDEX idx_bookings_customer     ON bookings(customer_id);
 CREATE INDEX idx_bookings_status       ON bookings(status);
 CREATE INDEX idx_bookings_expires      ON bookings(expires_at) WHERE status = 'held';
+CREATE INDEX idx_bookings_pending      ON bookings(court_id) WHERE status = 'pending_payment';
 ```
 
 ### payments
+
+Thanh toán bằng chuyển khoản QR (ADR-006 cập nhật). Khách chuyển khoản tới tài khoản trong `venue_payment_accounts`, tải ảnh chứng minh lên, Owner đối chiếu và duyệt. Không có webhook ngân hàng ở MVP.
+
 ```sql
 CREATE TABLE payments (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   booking_id      UUID NOT NULL REFERENCES bookings(id),
-  amount          INT NOT NULL,
-  provider        TEXT NOT NULL DEFAULT 'vietqr',
-  provider_ref    TEXT,                        -- Mã giao dịch của provider
+  amount          INT NOT NULL,                -- VND khách phải chuyển (= bookings.deposit_amount)
+  provider        TEXT NOT NULL DEFAULT 'bank_transfer' CHECK (provider IN ('bank_transfer','cash')),
+  transfer_code   TEXT NOT NULL,               -- Nội dung chuyển khoản sinh sẵn trong QR, VD "BSC-7F3A91"
+  proof_url       TEXT,                        -- Ảnh chuyển khoản khách tải lên
+  proof_uploaded_at TIMESTAMPTZ,
   status          TEXT NOT NULL DEFAULT 'pending'
-                    CHECK (status IN ('pending','completed','failed','refunded')),
-  idempotency_key TEXT NOT NULL UNIQUE,        -- Tránh xử lý webhook 2 lần
-  paid_at         TIMESTAMPTZ,
+                    CHECK (status IN ('pending','submitted','completed','rejected','refunded')),
+                    -- pending: chờ khách chuyển + tải ảnh; submitted: chờ Owner duyệt;
+                    -- completed: Owner xác nhận đã nhận tiền; rejected: Owner từ chối; refunded: đã hoàn
+  reviewed_by     UUID REFERENCES users(id),   -- Owner duyệt/từ chối
+  reviewed_at     TIMESTAMPTZ,
+  reject_reason   TEXT,
+  refund_amount   INT,                         -- VND hoàn lại khi huỷ theo chính sách
+  refunded_at     TIMESTAMPTZ,
+  idempotency_key TEXT UNIQUE,                 -- Dành cho tích hợp webhook sau này; NULL ở MVP
+  paid_at         TIMESTAMPTZ,                 -- Thời điểm Owner duyệt
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now()
 );
+CREATE INDEX idx_payments_booking ON payments(booking_id);
+-- Mỗi booking chỉ có tối đa 1 thanh toán còn hiệu lực
+CREATE UNIQUE INDEX uq_payments_active ON payments(booking_id) WHERE status IN ('pending','submitted','completed');
 ```
 
 ### reviews
+
 ```sql
 CREATE TABLE reviews (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -778,6 +1061,8 @@ CREATE TABLE reviews (
   rating      SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
   content     TEXT,
   is_visible  BOOLEAN NOT NULL DEFAULT true,
+  owner_reply TEXT,                      -- Phản hồi của Owner (OWN-13)
+  owner_replied_at TIMESTAMPTZ,
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now()
 );
@@ -785,6 +1070,7 @@ CREATE INDEX idx_reviews_venue ON reviews(venue_id) WHERE is_visible = true;
 ```
 
 ### favorites
+
 ```sql
 CREATE TABLE favorites (
   user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -795,6 +1081,7 @@ CREATE TABLE favorites (
 ```
 
 ### notifications
+
 ```sql
 CREATE TABLE notifications (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -810,6 +1097,7 @@ CREATE INDEX idx_notif_user_unread ON notifications(user_id) WHERE read_at IS NU
 ```
 
 ### audit_logs
+
 ```sql
 CREATE TABLE audit_logs (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -825,6 +1113,12 @@ CREATE TABLE audit_logs (
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_actor  ON audit_logs(actor_id);
 ```
+
+Hệ quả cần nhớ:
+
+Mọi insert phải đi qua Drizzle, nếu không id sẽ không được tự sinh. Script seed dùng cùng hàm sinh ID.
+ID lộ thời điểm tạo. Chấp nhận được, vì created_at đã công khai ở nhiều resource.
+Nếu sau này nâng lên PostgreSQL 18, bạn có thể đổi sang DEFAULT uuidv7() bằng một migration mới.
 
 ## Quy tắc migration
 
