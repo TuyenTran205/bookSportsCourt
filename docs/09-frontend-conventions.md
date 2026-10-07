@@ -153,7 +153,7 @@ const t = useTranslations('booking');
 <p>{t('holdSuccess')}</p>
 
 // messages/vi.json
-{ "booking": { "holdSuccess": "Giữ chỗ thành công! Bạn có 10 phút để thanh toán." } }
+{ "booking": { "holdSuccess": "Giữ chỗ thành công! Hãy chuyển khoản qua mã QR và tải ảnh xác nhận trong 10 phút." } }
 ```
 
 **Quy tắc:** KHÔNG hard-code bất kỳ chuỗi hiển thị nào. Luôn qua `t()`.

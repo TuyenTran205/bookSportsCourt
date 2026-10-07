@@ -9,7 +9,7 @@
 | Thành viên | Vai trò chính | Phụ trách |
 |-----------|---------------|-----------|
 | **TV1** (BE) | Backend Core | Auth, phân quyền (JWT, OAuth, Guard), Venue/Court CRUD, Pricing Rules, Migration DB |
-| **TV2** (BE) | Backend Booking | Booking (hold, confirm, cancel), chống trùng lịch, giữ chỗ, Cron expire, Realtime Socket.IO, Payment adapter |
+| **TV2** (BE) | Backend Booking | Booking (hold, confirm, cancel), chống trùng lịch, giữ chỗ, Cron expire, Realtime Socket.IO, Thanh toán QR (chuyển khoản qua QR chủ sân, gửi ảnh xác nhận, Owner duyệt) |
 | **TV3** (FE) | Frontend Customer | Trang tìm sân, SlotGrid, Checkout, Lịch sử booking, Trang chi tiết sân, Bản đồ |
 | **TV4** (FE+DevOps) | Frontend Owner/Admin + DevOps | Design system, OwnerTimeline, Dashboard Owner, Trang Admin, CI/CD, Deploy |
 
@@ -22,7 +22,7 @@
 | TV2 cần schema Booking | TV1 migration DB base | TV1 → TV2 |
 | TV4 cần design tokens | TV4 tự thiết lập trước | TV4 là unblocked |
 | TV4 admin cần user/venue API | TV1 hoàn thành | TV1 → TV4 |
-| TV2 Payment cần Booking confirmed | TV2 booking flow | TV2 → TV2 |
+| TV2 Payment (QR + gửi ảnh xác nhận) cần Booking `held` | TV2 booking flow (hold) | TV2 → TV2 |
 
 ### Mốc chốt OpenAPI (QUAN TRỌNG)
 Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
@@ -121,7 +121,7 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 |---|------|-------|---------|
 | 34 | Admin Dashboard: duyệt owner/venue | TV4 | M |
 | 35 | Admin: user management, audit log | TV4 | M |
-| 36 | Thanh toán chuyển khoản QR: sinh QR, upload ảnh chứng minh | TV2 | L |
+| 36 | Thanh toán chuyển khoản QR: người đặt chuyển khoản qua QR chủ sân, upload ảnh xác nhận | TV2 | L |
 | 37 | Owner duyệt/từ chối thanh toán + cron huỷ quá hạn | TV2 | M |
 | 38 | Email thông báo (Resend) | TV1 | M |
 | 39 | Đánh giá sân | TV3 | M |

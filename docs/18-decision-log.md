@@ -92,9 +92,9 @@
 
 ## ADR-006: Thanh toán chuyển khoản QR + Owner duyệt
 
-**Ngày:** 2026-09-30 (cập nhật 2026-10-07) | **Trạng thái:** Accepted (thay thế bản "Payment Sandbox / VietQR Mock")
+**Ngày:** 2026-09-30 (cập nhật 2026-10-07) | **Trạng thái:** Accepted (thay thế bản "Payment Sandbox / Mock")
 
-**Quyết định:** Khách chuyển khoản qua mã VietQR tới tài khoản của chủ sân, tải ảnh chuyển khoản lên, chủ sân đối chiếu và duyệt hoặc từ chối. Không có webhook ngân hàng ở MVP.
+**Quyết định:** Người đặt chuyển khoản qua mã QR của chủ sân, lúc xác nhận thanh toán gửi ảnh đã chuyển khoản lên hệ thống để chủ sân đối soát và duyệt hoặc từ chối. Không có webhook ngân hàng ở MVP.
 
 **Lý do:**
 - Đồ án không nhận tiền thật và không có merchant account; luồng này khớp cách chủ sân nhỏ vận hành ngoài đời.

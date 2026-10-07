@@ -91,7 +91,7 @@ flowchart LR
     VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug"]:::entity
     COURT["<b>SÂN</b><br/><u>id</u> · tên"]:::entity
     BOOK["<b>ĐẶT SÂN</b><br/><u>id</u> · khoảng thời gian · trạng thái · nguồn (online/thủ công)<br/>tổng tiền · tiền cọc · hết hạn giữ chỗ · lý do hủy"]:::entity
-    PAY["<b>THANH TOÁN</b><br/><u>id</u> · số tiền · mã chuyển khoản<br/>ảnh chứng minh · trạng thái · hoàn tiền"]:::entity
+    PAY["<b>THANH TOÁN</b><br/><u>id</u> · số tiền · mã chuyển khoản<br/>ảnh xác nhận chuyển khoản · trạng thái · hoàn tiền"]:::entity
     REV["<b>ĐÁNH GIÁ</b><br/><u>id</u> · điểm 1-5 · nội dung<br/>hiển thị · phản hồi của chủ sân"]:::entity
     NOTI["<b>THÔNG BÁO</b><br/><u>id</u> · loại · tiêu đề<br/>nội dung · thời điểm đọc"]:::entity
     AUDIT["<b>NHẬT KÝ HỆ THỐNG</b><br/><u>id</u> · hành động · loại đối tượng<br/>dữ liệu cũ/mới · IP"]:::entity
@@ -289,9 +289,9 @@ erDiagram
         id reviewed_by FK "nullable, Owner duyệt"
         int amount
         string provider "bank_transfer, cash"
-        string transfer_code "nội dung chuyển khoản trong QR"
+        string transfer_code "nullable, nội dung chuyển khoản trong QR; NULL khi cash"
         string proof_url "ảnh chuyển khoản"
-        string status "pending, submitted, completed, rejected, refunded"
+        string status "pending, submitted, completed, rejected, refunded, cancelled, expired"
         string reject_reason
         int refund_amount
         string idempotency_key UK "nullable, dành cho webhook sau này"
@@ -492,7 +492,7 @@ erDiagram
     }
     venue_payment_accounts {
         UUID venue_id PK, FK "ON DELETE CASCADE"
-        TEXT bank_bin "mã BIN VietQR"
+        TEXT bank_bin "mã BIN ngân hàng dùng để sinh QR"
         TEXT account_no
         TEXT account_name
         TIMESTAMPTZ created_at
@@ -570,10 +570,10 @@ erDiagram
         UUID reviewed_by FK "nullable, Owner duyệt"
         INT amount
         TEXT provider "DEFAULT bank_transfer, CHECK bank_transfer, cash"
-        TEXT transfer_code "nội dung chuyển khoản"
+        TEXT transfer_code "nullable, NULL khi cash; CHECK bắt buộc khi bank_transfer"
         TEXT proof_url "ảnh chuyển khoản"
         TIMESTAMPTZ proof_uploaded_at
-        TEXT status "DEFAULT pending, CHECK pending, submitted, completed, rejected, refunded"
+        TEXT status "DEFAULT pending, CHECK pending, submitted, completed, rejected, refunded, cancelled, expired"
         TIMESTAMPTZ reviewed_at
         TEXT reject_reason
         INT refund_amount
@@ -680,8 +680,8 @@ erDiagram
 
 ### Ghi chú thiết kế
 
-- **Thay đổi v1.2.0:** thêm bảng `auth_tokens`, `owner_applications`, `areas`, `venue_payment_accounts`, `cancellation_policies`; thêm cột `users.email_verified_at`, `reviews.owner_reply`, `reviews.owner_replied_at`, `bookings.source/guest_name/guest_phone/created_by/deposit_amount`; `bookings.customer_id` cho phép NULL (booking thủ công cho khách vãng lai, có `CHECK` phải có `customer_id` hoặc `guest_name`); `venues.district/province` (TEXT) thay bằng `district_id/province_id` (FK `areas`); `payments` chuyển sang luồng chuyển khoản QR + ảnh chứng minh + Owner duyệt.
-- **Luồng thanh toán:** `held` (10 phút) → khách chuyển khoản theo QR, tải ảnh → `pending_payment` (vẫn chiếm block) → Owner duyệt → `confirmed`, hoặc Owner từ chối / quá hạn duyệt → `cancelled`. Chi tiết ở `05-booking-and-realtime.md`.
+- **Thay đổi v1.2.0:** thêm bảng `auth_tokens`, `owner_applications`, `areas`, `venue_payment_accounts`, `cancellation_policies`; thêm cột `users.email_verified_at`, `reviews.owner_reply`, `reviews.owner_replied_at`, `bookings.source/guest_name/guest_phone/created_by/deposit_amount`; `bookings.customer_id` cho phép NULL (booking thủ công cho khách vãng lai, có `CHECK` phải có `customer_id` hoặc `guest_name`); `venues.district/province` (TEXT) thay bằng `district_id/province_id` (FK `areas`); `payments` chuyển sang luồng chuyển khoản qua QR chủ sân + gửi ảnh xác nhận + Owner duyệt.
+- **Luồng thanh toán:** `held` (10 phút) → người đặt chuyển khoản theo mã QR của chủ sân, lúc xác nhận thanh toán gửi ảnh đã chuyển khoản → `pending_payment` (vẫn chiếm block) → Owner đối soát duyệt → `confirmed`, hoặc Owner từ chối / quá hạn duyệt → `cancelled`. Chi tiết ở `05-booking-and-realtime.md`.
 - **Quan hệ `users → bookings`:** `customer_id` nay là tùy chọn (booking thủ công cho khách vãng lai), nên quan hệ là `|o--o{`.
 - **`reviews.venue_id` là dữ liệu thừa có chủ đích** (suy ra được qua `booking → court → venue`) để truy vấn điểm trung bình nhanh. Service phải gán đúng bằng venue của booking khi tạo review.
 - **`courts.sport_id`** nên thuộc tập môn trong `venue_sports` của cơ sở. DB chưa ép ràng buộc này, service phải kiểm tra.
@@ -882,12 +882,12 @@ CREATE TABLE venue_amenities (
 
 ### venue_payment_accounts
 
-Tài khoản ngân hàng nhận tiền của venue. Dùng để sinh mã VietQR (số tiền và nội dung chuyển khoản điền sẵn) cho khách. Mỗi venue có tối đa một tài khoản.
+Tài khoản ngân hàng nhận tiền của venue. API trả `bank_bin`, `account_no`, `account_name` để FE tự dựng mã QR chuyển khoản phía client (kèm số tiền cọc và nội dung điền sẵn); server không lưu ảnh QR. Người đặt chuyển khoản qua QR này và lúc xác nhận thanh toán thì gửi ảnh đã chuyển khoản để chủ sân đối soát xác nhận. Mỗi venue có tối đa một tài khoản; venue chưa có tài khoản thì không nhận được hold.
 
 ```sql
 CREATE TABLE venue_payment_accounts (
   venue_id       UUID PRIMARY KEY REFERENCES venues(id) ON DELETE CASCADE,
-  bank_bin       TEXT NOT NULL,          -- Mã BIN ngân hàng theo chuẩn VietQR, VD "970422"
+  bank_bin       TEXT NOT NULL,          -- Mã BIN ngân hàng, VD "970422"
   account_no     TEXT NOT NULL,
   account_name   TEXT NOT NULL,
   created_at     TIMESTAMPTZ DEFAULT now(),
@@ -1020,7 +1020,7 @@ CREATE INDEX idx_bookings_pending      ON bookings(court_id) WHERE status = 'pen
 
 ### payments
 
-Thanh toán bằng chuyển khoản QR (ADR-006 cập nhật). Khách chuyển khoản tới tài khoản trong `venue_payment_accounts`, tải ảnh chứng minh lên, Owner đối chiếu và duyệt. Không có webhook ngân hàng ở MVP.
+Thanh toán bằng chuyển khoản QR (ADR-006 cập nhật). Người đặt chuyển khoản qua mã QR của chủ sân tới tài khoản trong `venue_payment_accounts`, lúc xác nhận thanh toán gửi ảnh đã chuyển khoản lên hệ thống, Owner đối soát và duyệt. Không có webhook ngân hàng ở MVP.
 
 ```sql
 CREATE TABLE payments (
@@ -1028,13 +1028,15 @@ CREATE TABLE payments (
   booking_id      UUID NOT NULL REFERENCES bookings(id),
   amount          INT NOT NULL,                -- VND khách phải chuyển (= bookings.deposit_amount)
   provider        TEXT NOT NULL DEFAULT 'bank_transfer' CHECK (provider IN ('bank_transfer','cash')),
-  transfer_code   TEXT NOT NULL,               -- Nội dung chuyển khoản sinh sẵn trong QR, VD "BSC-7F3A91"
+  transfer_code   TEXT,                        -- Nội dung chuyển khoản điền sẵn trong QR, VD "BSC-7F3A91"; NULL khi provider = 'cash'
   proof_url       TEXT,                        -- Ảnh chuyển khoản khách tải lên
   proof_uploaded_at TIMESTAMPTZ,
   status          TEXT NOT NULL DEFAULT 'pending'
-                    CHECK (status IN ('pending','submitted','completed','rejected','refunded')),
+                    CHECK (status IN ('pending','submitted','completed','rejected','refunded','cancelled','expired')),
                     -- pending: chờ khách chuyển + tải ảnh; submitted: chờ Owner duyệt;
-                    -- completed: Owner xác nhận đã nhận tiền; rejected: Owner từ chối; refunded: đã hoàn
+                    -- completed: Owner xác nhận đã nhận tiền; rejected: Owner từ chối; refunded: đã hoàn;
+                    -- cancelled: booking bị huỷ khi chưa duyệt (khách huỷ hoặc quá hạn Owner duyệt), không hoàn tiền;
+                    -- expired: hold hết hạn 10 phút, khách chưa gửi ảnh
   reviewed_by     UUID REFERENCES users(id),   -- Owner duyệt/từ chối
   reviewed_at     TIMESTAMPTZ,
   reject_reason   TEXT,
@@ -1043,10 +1045,11 @@ CREATE TABLE payments (
   idempotency_key TEXT UNIQUE,                 -- Dành cho tích hợp webhook sau này; NULL ở MVP
   paid_at         TIMESTAMPTZ,                 -- Thời điểm Owner duyệt
   created_at      TIMESTAMPTZ DEFAULT now(),
-  updated_at      TIMESTAMPTZ DEFAULT now()
+  updated_at      TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT chk_payments_transfer_code CHECK (provider = 'cash' OR transfer_code IS NOT NULL)
 );
 CREATE INDEX idx_payments_booking ON payments(booking_id);
--- Mỗi booking chỉ có tối đa 1 thanh toán còn hiệu lực
+-- Mỗi booking chỉ có tối đa 1 thanh toán còn hiệu lực (rejected/cancelled/expired/refunded không tính)
 CREATE UNIQUE INDEX uq_payments_active ON payments(booking_id) WHERE status IN ('pending','submitted','completed');
 ```
 
