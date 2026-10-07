@@ -1,6 +1,6 @@
 ﻿# 06 – Bảo mật & Phân quyền
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Ma trận Role × Resource × Action
 
@@ -16,6 +16,20 @@
 | **Bookings** – View own | ❌ | ✅ | ✅ (venue của mình) | ✅ |
 | **Bookings** – View all | ❌ | ❌ | ❌ | ✅ |
 | **Bookings** – Cancel | ❌ | ✅ (theo chính sách) | ✅ (sở hữu venue) | ✅ |
+| **Bookings** – Manual create / No-show | ❌ | ❌ | ✅ (sở hữu venue) | ✅ |
+| **Payments** – Upload proof | ❌ | ✅ (booking của mình, đang held) | ❌ | ❌ |
+| **Payments** – View | ❌ | ✅ (booking của mình) | ✅ (venue của mình) | ✅ |
+| **Payments** – Approve/Reject | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
+| **Payment account / Cancellation policy** – Edit | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
+| **Owner applications** – Submit/View own | ❌ | ✅ | ✅ (xem) | ✅ |
+| **Owner applications** – Approve/Reject | ❌ | ❌ | ❌ | ✅ |
+| **Favorites** – CRUD | ❌ | ✅ | ✅ | ✅ |
+| **Notifications** – View/Mark read | ❌ | ✅ | ✅ | ✅ |
+| **Reviews** – Reply | ❌ | ❌ | ✅ (venue của mình) | ❌ |
+| **Catalogs (sports, amenities, areas)** – Read | ✅ | ✅ | ✅ | ✅ |
+| **Catalogs (sports, amenities, areas)** – CRUD | ❌ | ❌ | ❌ | ✅ |
+| **Owner reports** – View | ❌ | ❌ | ✅ (venue của mình) | ❌ |
+| **Admin stats** – View | ❌ | ❌ | ❌ | ✅ |
 | **Pricing Rules** – CRUD | ❌ | ❌ | ✅ (sở hữu court) | ✅ |
 | **Users** – View/Edit own | ❌ | ✅ | ✅ | ✅ |
 | **Users** – Suspend/Activate | ❌ | ❌ | ❌ | ✅ |

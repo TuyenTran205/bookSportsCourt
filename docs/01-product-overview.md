@@ -1,6 +1,6 @@
 ﻿# 01 – Tổng quan sản phẩm
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Mục tiêu sản phẩm
 
@@ -46,12 +46,12 @@ held → expired                        ↘ no_show
 
 | Trạng thái | Mô tả |
 |------------|-------|
-| `held` | Đang giữ chỗ (10 phút), chờ thanh toán |
-| `pending_payment` | Đã xác nhận thanh toán, chờ webhook xác nhận |
-| `confirmed` | Thanh toán thành công, booking hợp lệ |
+| `held` | Đang giữ chỗ (10 phút), chờ khách chuyển khoản và tải ảnh chứng minh |
+| `pending_payment` | Khách đã tải ảnh chuyển khoản, chờ Owner duyệt (vẫn chiếm block) |
+| `confirmed` | Owner đã duyệt đã nhận tiền, booking hợp lệ |
 | `completed` | Đã sử dụng xong |
-| `cancelled` | Bị huỷ (bởi Customer hoặc Owner, theo chính sách) |
-| `expired` | Hold hết hạn 10 phút, không thanh toán |
+| `cancelled` | Bị huỷ (bởi Customer hoặc Owner theo chính sách; Owner từ chối thanh toán; quá hạn Owner duyệt) |
+| `expired` | Hold hết hạn 10 phút, khách không tải ảnh chứng minh |
 | `no_show` | Khách không đến (Owner đánh dấu) |
 
 ### Trạng thái Block trên lưới (Slot State)
@@ -80,7 +80,7 @@ held → expired                        ↘ no_show
 ## Phạm vi P1 – Nên có
 
 - [ ] Báo cáo doanh thu & tỷ lệ lấp đầy (Owner)
-- [ ] Thanh toán VietQR sandbox
+- [ ] Thanh toán chuyển khoản QR + ảnh chứng minh + Owner duyệt
 - [ ] Email thông báo (Resend)
 - [ ] Đánh giá sân
 - [ ] Huỷ booking theo chính sách

@@ -1,6 +1,6 @@
 ﻿# 05 – Đặt sân & Realtime
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
 
 ## 1. Block 30 phút
 
@@ -46,35 +46,59 @@ EXCLUDE USING gist (
 HOLD REQUEST
     │
     ▼
-[held] ──────────── expires_at (10 phút) ──────────► [expired]
+[held] ──── expires_at (10 phút, khách chưa gửi ảnh) ────► [expired]
     │
-    │ POST /payments (thanh toán)
+    │ POST /bookings/:id/payment/proof (khách chuyển khoản QR, tải ảnh chứng minh)
     ▼
-[pending_payment]
+[pending_payment]  (vẫn chiếm block, chờ Owner duyệt)
     │
-    │ Webhook xác nhận
+    │ Owner duyệt (PATCH /owner/payments/:id/approve)
     ├────────────────────────────────────────────► [confirmed]
     │                                                   │
-    │ Webhook thất bại / timeout                        │ Thời gian qua
-    ▼                                                   ▼
-[cancelled]                                        [completed]
-                                                        │
+    │ Owner từ chối, hoặc quá 2 giờ Owner                │ Thời gian qua
+    │ chưa xử lý (cron)                                 ▼
+    ▼                                              [completed]
+[cancelled]                                             │
                                                         │ Owner đánh dấu
                                                         ▼
                                                    [no_show]
 ```
 
+**Booking thủ công của Owner (OWN-07):** tạo thẳng ở trạng thái `confirmed` với `source = 'manual'` và `payments.provider = 'cash'` (status `completed`), bỏ qua `held` và `pending_payment`.
+
 ### Bảng chuyển trạng thái hợp lệ
 
 | Từ → | → held | → pending_payment | → confirmed | → completed | → cancelled | → expired | → no_show |
 |------|--------|-------------------|-------------|-------------|-------------|-----------|-----------|
-| (tạo mới) | ✅ | | | | | | |
+| (tạo mới) | ✅ | | ✅ (chỉ booking thủ công) | | | | |
 | held | | ✅ | | | ✅ | ✅ | |
 | pending_payment | | | ✅ | | ✅ | | |
 | confirmed | | | | ✅ | ✅ | | |
 | completed | | | | | | | ✅ |
 
 Mọi chuyển trạng thái ngoài bảng trên phải ném lỗi `INVALID_STATUS_TRANSITION`.
+
+### Trạng thái thanh toán đi kèm
+
+| `bookings.status` | `payments.status` | Người thực hiện |
+|-------------------|-------------------|-----------------|
+| `held` | `pending` (tạo cùng lúc với hold, có `transfer_code`) | Hệ thống |
+| `pending_payment` | `submitted` | Khách tải ảnh chứng minh |
+| `confirmed` | `completed` | Owner duyệt |
+| `cancelled` | `rejected` | Owner từ chối (kèm `reject_reason`) |
+| `cancelled` | `refunded` | Khách/Owner huỷ booking đã `completed` thanh toán, hoàn theo chính sách huỷ |
+| `cancelled` | `pending` hoặc `submitted` | Quá hạn duyệt (cron), không tạo hoàn tiền |
+
+### Quy trình thanh toán chuyển khoản QR
+
+1. Khách tạo hold: server tính `total_price`, `deposit_amount = total_price × deposit_percent / 100` (theo `cancellation_policies`, mặc định 100%), sinh `transfer_code` dạng `BSC-XXXXXX`, và tạo `payments` ở trạng thái `pending`.
+2. FE hiển thị mã VietQR sinh từ `venue_payment_accounts` (BIN, số tài khoản, tên) kèm số tiền = `deposit_amount` và nội dung = `transfer_code`. Khách chuyển khoản bằng app ngân hàng.
+3. Khách tải ảnh chuyển khoản trong vòng 10 phút kể từ lúc hold. Server lưu `proof_url`, đặt `payments.status = 'submitted'`, `bookings.status = 'pending_payment'` và **xoá `expires_at`** (hết hạn hold không còn áp dụng).
+4. Owner nhận thông báo realtime `booking_created`/`payment_submitted`, đối chiếu ảnh với sao kê, rồi duyệt hoặc từ chối.
+5. Quá **2 giờ** (hằng số `OWNER_REVIEW_TIMEOUT`, cấu hình qua env) kể từ `proof_uploaded_at` mà Owner chưa xử lý, cron chuyển booking sang `cancelled` và thông báo cho khách. Hệ thống không tự hoàn tiền; khách liên hệ Owner.
+6. Owner **phải** được xác nhận là chủ của venue chứa court trong booking (`NOT_VENUE_OWNER`) trước khi duyệt/từ chối.
+
+**Hạn chế đã chấp nhận (MVP):** không có đối soát tự động với ngân hàng; Owner chịu trách nhiệm kiểm tra ảnh chuyển khoản. Tích hợp webhook ngân hàng (SePay/Casso/PayOS) để dành cho giai đoạn sau, xem ADR-006.
 
 ## 4. Giữ chỗ (Hold) và Expire
 
@@ -92,15 +116,29 @@ async hold(courtId: string, during: TsTzRange, customerId: string): Promise<Book
         lt(bookings.expires_at, new Date())
       ));
 
-    // 2. Tạo booking mới (EXCLUDE constraint sẽ từ chối nếu trùng)
+    // 2. Tính giá ở server (bỏ qua mọi giá từ client) và lấy chính sách cọc
+    const total_price = await this.calculatePrice(courtId, during, tx);
+    const policy = await this.getCancellationPolicy(courtId, tx); // mặc định deposit 100%
+
+    // 3. Tạo booking mới (EXCLUDE constraint sẽ từ chối nếu trùng)
     const [booking] = await tx.insert(bookings).values({
       court_id: courtId,
       customer_id: customerId,
       during,
       status: 'held',
       expires_at: new Date(Date.now() + 10 * 60 * 1000), // 10 phút
-      total_price: await this.calculatePrice(courtId, during, tx),
+      total_price,
+      deposit_amount: Math.round(total_price * policy.deposit_percent / 100),
     }).returning();
+
+    // 4. Tạo payment chờ chuyển khoản, kèm mã nội dung chuyển khoản
+    await tx.insert(payments).values({
+      booking_id: booking.id,
+      amount: booking.deposit_amount,
+      provider: 'bank_transfer',
+      transfer_code: generateTransferCode(), // "BSC-" + 6 ký tự ngẫu nhiên
+      status: 'pending',
+    });
 
     return booking;
   });
@@ -118,6 +156,16 @@ async expireHolds() {
       lt(bookings.expires_at, new Date())
     ));
   // Sau đó emit WebSocket để client biết slot available lại
+}
+```
+
+### Cron huỷ booking quá hạn duyệt (mỗi 5 phút)
+```typescript
+@Cron('*/5 * * * *')
+async cancelStalePendingPayments() {
+  // pending_payment mà payments.proof_uploaded_at < now() - OWNER_REVIEW_TIMEOUT
+  // → bookings.status = 'cancelled', cancel_reason = 'Chủ sân không xử lý kịp thời'
+  // → emit booking_cancelled cho khách, slot_updated cho room venue
 }
 ```
 
@@ -198,13 +246,16 @@ socket.on('connect', () => {
 
 ## 7. Idempotency & Race Condition
 
-### Webhook thanh toán
+### Duyệt thanh toán và tính idempotent
+Không có webhook ở MVP. Việc duyệt phải idempotent: gọi `approve` lần 2 trên payment đã `completed` trả 200 với trạng thái hiện tại, không đổi dữ liệu; gọi `approve` trên payment `rejected`/booking `cancelled` trả `INVALID_STATUS_TRANSITION`.
 ```typescript
-// Dùng idempotency_key để tránh xử lý 2 lần
-const existing = await tx.select().from(payments)
-  .where(eq(payments.idempotency_key, webhookData.ref));
-if (existing.length > 0) return; // Đã xử lý rồi, bỏ qua
+// PaymentsService.approve() – trong một transaction, khoá hàng bằng FOR UPDATE
+const [p] = await tx.select().from(payments)
+  .where(eq(payments.id, paymentId)).for('update');
+if (p.status === 'completed') return p;            // đã duyệt, bỏ qua
+if (p.status !== 'submitted') throw new InvalidStatusTransition();
 ```
+Cột `payments.idempotency_key` giữ lại (NULL ở MVP) cho tích hợp webhook ngân hàng sau này.
 
 ### Race condition – 2 người đặt cùng lúc
 - Không cần distributed lock ở MVP (1 instance).
@@ -229,7 +280,11 @@ if (existing.length > 0) return; // Đã xử lý rồi, bỏ qua
 - [ ] **BOOKING-TEST-04:** Cron expire chạy và expire đúng hold quá hạn.
 - [ ] **BOOKING-TEST-05:** **[QUAN TRỌNG]** N request đồng thời đặt cùng một block → chỉ 1 thành công, N-1 nhận 409.
 - [ ] **BOOKING-TEST-06:** Giá tính đúng theo pricing_rules (khung giờ, thứ, ngày lễ).
-- [ ] **BOOKING-TEST-07:** Webhook thanh toán idempotent (gọi 2 lần chỉ xử lý 1 lần).
+- [ ] **BOOKING-TEST-07:** Duyệt thanh toán idempotent (Owner approve 2 lần chỉ xử lý 1 lần, không lỗi).
+- [ ] **BOOKING-TEST-11:** Khách tải ảnh chứng minh → booking sang `pending_payment`, `expires_at` bị xoá, cron expire không huỷ.
+- [ ] **BOOKING-TEST-12:** Owner của venue khác duyệt/từ chối → 403 `NOT_VENUE_OWNER`.
+- [ ] **BOOKING-TEST-13:** Quá `OWNER_REVIEW_TIMEOUT` chưa duyệt → cron chuyển `cancelled`, slot trả về available.
+- [ ] **BOOKING-TEST-14:** `deposit_amount` tính đúng theo `deposit_percent`, bỏ qua giá từ client.
 - [ ] **BOOKING-TEST-08:** Chuyển trạng thái không hợp lệ → nhận lỗi INVALID_STATUS_TRANSITION.
 - [ ] **BOOKING-TEST-09:** Blackout period chặn booking trong khoảng thời gian đó.
 - [ ] **BOOKING-TEST-10:** WebSocket emit đúng payload sau khi tạo hold.

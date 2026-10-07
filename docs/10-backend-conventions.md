@@ -1,6 +1,6 @@
 ﻿# 10 – Quy ước Backend
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
 
 ## Cấu trúc module NestJS
 
@@ -16,7 +16,7 @@ apps/api/src/
 │   └── pipes/                  # ZodValidationPipe
 ├── config/                     # ConfigModule (env validation với Zod)
 ├── database/
-│   ├── schema/                 # Drizzle schema files
+│   ├── schema/                 # Drizzle schema files (id: uuid().primaryKey().$defaultFn(() => v7()), ADR-011)
 │   ├── migrations/             # SQL migration files
 │   └── database.module.ts
 ├── modules/
@@ -25,8 +25,8 @@ apps/api/src/
 │   ├── venues/                 # VenuesModule: CRUD venue, duyệt
 │   ├── courts/                 # CourtsModule: CRUD court, giờ mở cửa
 │   ├── pricing/                # PricingModule: pricing rules
-│   ├── bookings/               # BookingsModule: hold, confirm, cancel
-│   ├── payments/               # PaymentsModule: VietQR, webhook
+│   ├── bookings/               # BookingsModule: hold, cancel
+│   ├── payments/               # PaymentsModule: QR chuyển khoản, upload ảnh, Owner duyệt
 │   ├── realtime/               # RealtimeModule: Socket.IO gateway
 │   ├── reviews/                # ReviewsModule
 │   ├── notifications/          # NotificationsModule
