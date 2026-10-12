@@ -1,8 +1,12 @@
 ﻿# 06 – Bảo mật & Phân quyền
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 
 ## Ma trận Role × Resource × Action
+
+> **Nguyên tắc:** Admin là vai trò **kiểm duyệt và quản trị**, KHÔNG thay thế hành vi của Customer hay Owner. Admin **không** tạo hold, không viết đánh giá, không thêm yêu thích, không tạo booking thủ công — những việc đó thuộc về Customer/Owner. Admin chỉ có đúng các quyền được ghi rõ là của Admin.
+>
+> Ma trận này phải khớp với nhãn `[Customer]` / `[Owner]` / `[Admin]` ở [11-api-contract.md](11-api-contract.md). Khi lệch, **11 là nguồn đúng** vì đó là hợp đồng API.
 
 | Resource | Guest | Customer | Owner | Admin |
 |----------|-------|----------|-------|-------|
@@ -12,18 +16,18 @@
 | **Venues** – Update | ❌ | ❌ | ✅ (sở hữu) | ✅ |
 | **Venues** – Approve/Reject | ❌ | ❌ | ❌ | ✅ |
 | **Courts** – CRUD | ❌ | ❌ | ✅ (sở hữu venue) | ✅ |
-| **Bookings** – Create Hold | ❌ | ✅ | ❌ | ✅ |
-| **Bookings** – View own | ❌ | ✅ | ✅ (venue của mình) | ✅ |
+| **Bookings** – Create Hold | ❌ | ✅ | ❌ | ❌ |
+| **Bookings** – View own | ❌ | ✅ | ✅ (venue của mình) | ❌ |
 | **Bookings** – View all | ❌ | ❌ | ❌ | ✅ |
-| **Bookings** – Cancel | ❌ | ✅ (theo chính sách) | ✅ (sở hữu venue) | ✅ |
-| **Bookings** – Manual create / No-show | ❌ | ❌ | ✅ (sở hữu venue) | ✅ |
+| **Bookings** – Cancel | ❌ | ✅ (theo chính sách) | ✅ (sở hữu venue) | ❌ |
+| **Bookings** – Manual create / No-show | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
 | **Payments** – Upload proof | ❌ | ✅ (booking của mình, đang held) | ❌ | ❌ |
 | **Payments** – View | ❌ | ✅ (booking của mình) | ✅ (venue của mình) | ✅ |
 | **Payments** – Approve/Reject | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
 | **Payment account / Cancellation policy** – Edit | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
 | **Owner applications** – Submit/View own | ❌ | ✅ | ✅ (xem) | ✅ |
 | **Owner applications** – Approve/Reject | ❌ | ❌ | ❌ | ✅ |
-| **Favorites** – CRUD | ❌ | ✅ | ✅ | ✅ |
+| **Favorites** – CRUD | ❌ | ✅ | ✅ | ❌ |
 | **Notifications** – View/Mark read | ❌ | ✅ | ✅ | ✅ |
 | **Reviews** – Reply | ❌ | ❌ | ✅ (venue của mình) | ❌ |
 | **Catalogs (sports, amenities, areas)** – Read | ✅ | ✅ | ✅ | ✅ |
@@ -34,7 +38,7 @@
 | **Users** – View/Edit own | ❌ | ✅ | ✅ | ✅ |
 | **Users** – Suspend/Activate | ❌ | ❌ | ❌ | ✅ |
 | **Audit Logs** – View | ❌ | ❌ | ❌ | ✅ |
-| **Reviews** – Create | ❌ | ✅ (booking completed) | ❌ | ✅ |
+| **Reviews** – Create | ❌ | ✅ (booking completed) | ❌ | ❌ |
 | **Reviews** – Hide/Show | ❌ | ❌ | ❌ | ✅ |
 
 ## Guard & Policy trong NestJS
@@ -89,8 +93,10 @@ app.enableCors({
 
 ## CSRF Protection
 
-- Access/Refresh Token lưu trong cookie `httpOnly; SameSite=Strict` → ngăn CSRF tự động.
-- Với mutation quan trọng (thanh toán), thêm header `X-Request-Origin` và kiểm tra ở BE.
+- Access/Refresh Token lưu trong cookie `httpOnly; Secure; SameSite=Lax`.
+- **Bắt buộc dùng `Lax`, KHÔNG dùng `Strict`:** luồng đăng nhập Google OAuth là redirect cross-site (`accounts.google.com` → callback của BE). Với `SameSite=Strict`, trình duyệt không gửi cookie `state`/phiên theo request redirect đó, khiến callback không đọc được `state` và OAuth luôn thất bại. `Lax` vẫn gửi cookie cho điều hướng top-level bằng GET, nên luồng OAuth chạy đúng.
+- `Lax` đã đủ chặn CSRF cho mutation: các request `POST/PUT/PATCH/DELETE` cross-site **không** được gửi kèm cookie.
+- Với mutation quan trọng (thanh toán), thêm header `X-Request-Origin` và kiểm tra ở BE (phòng thủ nhiều lớp).
 
 ## Rate Limiting (MVP – in-memory)
 
@@ -111,8 +117,25 @@ ThrottlerModule.forRoot([{
 
 ## Chống lạm dụng giữ chỗ (Hold Abuse)
 
-1. Mỗi customer chỉ được giữ tối đa **3 booking** trạng thái `held` cùng lúc.
-2. Sau khi expire, không giữ lại đúng court đó quá 5 lần trong 1 giờ.
+1. Mỗi customer chỉ được giữ tối đa **3 booking** trạng thái `held` cùng lúc (hằng số `HOLD_LIMIT`, cấu hình qua env — xem `.env.example`). Vượt giới hạn → **422 `HOLD_LIMIT_EXCEEDED`** (xem [11-api-contract.md](11-api-contract.md)).
+2. Sau khi hold hết hạn, không được giữ lại **cùng một court** quá **5 lần trong 1 giờ** → **429 `HOLD_RATE_LIMITED`**.
+
+**Cách đếm (rule 2)** — phải chốt rõ, nếu không mỗi người hiểu một kiểu:
+
+- Đếm theo **cặp (customer_id, court_id)**, không phải theo customer hay theo court riêng lẻ. Một khách giữ 5 court khác nhau trong 1 giờ là hợp lệ.
+- Cửa sổ **trượt 60 phút** tính từ thời điểm hiện tại (`created_at > now() - interval '1 hour'`), không phải cửa sổ cố định theo giờ đồng hồ.
+- Đếm **mọi** booking đã tạo ở trạng thái `held`, `expired`, `pending_payment`, `confirmed` — kể cả `expired`. Nếu chỉ đếm `held` thì kẻ lạm dụng chỉ cần để hold hết hạn rồi giữ lại, và rule trở nên vô dụng.
+- **Không** đếm `cancelled` do Owner huỷ hoặc do cron huỷ quá hạn duyệt — đó không phải hành vi của khách.
+
+```sql
+-- Kiểm tra trong cùng transaction với INSERT hold, dưới lock của customer
+SELECT COUNT(*) FROM bookings
+WHERE customer_id = $1 AND court_id = $2
+  AND created_at > now() - interval '1 hour'
+  AND status <> 'cancelled';
+```
+
+> Ngưỡng 5/giờ là để chặn việc giữ chỗ rồi thả liên tục nhằm phá người khác, chứ không nhắm vào khách đặt đi đặt lại bình thường. Nếu ngưỡng này chặn nhầm khách thật trong demo, nâng qua env `HOLD_RATE_LIMIT_PER_HOUR` thay vì sửa code.
 
 ## Quản lý PII
 
@@ -149,7 +172,8 @@ ALLOWED_ORIGINS=
 - [ ] Không có `console.log` chứa data nhạy cảm
 - [ ] Rate limit đã bật ở môi trường production
 - [ ] CORS chỉ cho phép domain production
-- [ ] Cookie `Secure=true; SameSite=Strict` ở production
+- [ ] Cookie `Secure=true; SameSite=Lax` ở production (xem mục CSRF Protection – `Strict` sẽ phá Google OAuth)
+- [ ] Kiểm tra luồng đăng nhập Google OAuth chạy được sau khi đổi `SameSite`
 - [ ] Tất cả secret được lưu ở CI/CD secrets, không phải code
 - [ ] `.env.local` đã trong `.gitignore`
 - [ ] Sentry đang nhận error từ cả FE và BE

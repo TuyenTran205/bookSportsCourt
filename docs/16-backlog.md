@@ -1,6 +1,6 @@
 ﻿# 16 – Backlog
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 >
 > Danh sách issue sẵn sàng tạo trên GitHub. Mã tính năng khớp với `02-features-by-role.md`.
 
@@ -69,9 +69,9 @@
 |---|---------|----|----|---------|------|-----------|
 | BSC-040 | FE: Admin Dashboard – duyệt owner/venue | ADM-01 ADM-02 | `type:feature` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-016 |
 | BSC-041 | FE: Admin – quản lý user, audit log | ADM-03 ADM-09 | `type:feature` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-040 |
-| BSC-042 | Thanh toán QR: chuyển khoản qua QR chủ sân, upload ảnh xác nhận | CUS-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | L | BSC-024 |
-| BSC-043 | Owner duyệt/từ chối thanh toán idempotent + cron huỷ quá hạn | CUS-09 OWN-09 | `type:feature` `area:api` `prio:P1` `phase:4` | TV2 | M | BSC-042 |
-| BSC-044 | FE: Trang thanh toán QR + tải ảnh; trang Owner duyệt | CUS-09 OWN-09 | `type:feature` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-042 |
+| BSC-042 | Thanh toán QR: chuyển khoản qua QR chủ sân, upload ảnh xác nhận | CUS-09 | `type:feature` `area:api` `prio:P0` `phase:4` | TV2 | L | BSC-024 |
+| BSC-043 | Owner duyệt/từ chối thanh toán idempotent + cron huỷ quá hạn | CUS-09 OWN-09 | `type:feature` `area:api` `prio:P0` `phase:4` | TV2 | M | BSC-042 |
+| BSC-044 | FE: Trang thanh toán QR + tải ảnh; trang Owner duyệt | CUS-09 OWN-09 | `type:feature` `area:web` `prio:P0` `phase:4` | TV3 | M | BSC-042 |
 | BSC-045 | Email thông báo (Resend) | CUS-14 OWN-14 | `type:feature` `area:api` `prio:P1` `phase:4` | TV1 | M | BSC-024 |
 | BSC-046 | Đánh giá sân API + FE | CUS-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-024 |
 | BSC-047 | Google OAuth | CUS-03 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV1 | M | BSC-011 |
@@ -85,3 +85,57 @@
 | BSC-050 | Deploy FE lên Vercel + BE lên Railway | — | `type:task` `area:infra` `prio:P0` `phase:5` | TV4 | M | — |
 | BSC-051 | Seed dữ liệu demo thực tế | — | `type:task` `area:db` `prio:P0` `phase:5` | TV1 | S | BSC-050 |
 | BSC-052 | Sentry integration FE + BE | — | `type:chore` `area:infra` `prio:P1` `phase:5` | TV4 | S | BSC-050 |
+
+## Bổ sung – work item còn thiếu
+
+> Phần này bù các khoảng trống đã phát hiện khi đối chiếu backlog với `02-features-by-role.md` (39 mã tính năng) và `04-database-schema.md` (24 bảng). Trước khi bổ sung, backlog chỉ phủ 30/39 mã và 8/24 bảng.
+>
+> **Không** tạo issue trùng cho `CUS-14`, `ADM-04`, `ADM-05`, `ADM-06` — chúng đã có ở BSC-045 và BSC-016.
+
+### Schema còn thiếu (C38)
+
+| # | Tiêu đề | Mã | Labels | Assignee | Size | Phụ thuộc |
+|---|---------|----|----|---------|------|-----------|
+| BSC-053 | Schema DB: bảng auth còn lại (`oauth_accounts`, `refresh_tokens`, `auth_tokens`) | CUS-03 CUS-16 | `type:task` `area:db` `prio:P0` `phase:1` | TV2 | M | BSC-010 |
+| BSC-054 | Schema DB: `areas` (danh mục khu vực) | ADM-06 | `type:task` `area:db` `prio:P0` `phase:1` | TV2 | S | BSC-010 |
+| BSC-055 | Schema DB: `venue_images`, `venue_sports`, `venue_amenities` | OWN-02 | `type:task` `area:db` `prio:P0` `phase:1` | TV2 | S | BSC-010 |
+| BSC-056 | Schema DB: `opening_hours`, `pricing_rules` | OWN-04 OWN-05 | `type:task` `area:db` `prio:P0` `phase:1` | TV2 | M | BSC-010 |
+| BSC-057 | Schema DB: `venue_payment_accounts`, `cancellation_policies` | OWN-09 OWN-10 | `type:task` `area:db` `prio:P0` `phase:1` | TV2 | S | BSC-010 |
+| BSC-058 | Schema DB: `owner_applications` | OWN-01 | `type:task` `area:db` `prio:P0` `phase:1` | TV2 | S | BSC-010 |
+| BSC-059 | Schema DB: `reviews`, `favorites`, `notifications`, `audit_logs` | CUS-12 CUS-13 | `type:task` `area:db` `prio:P0` `phase:2` | TV2 | M | BSC-010 |
+| BSC-060 | Trigger đồng bộ cột cache `venues.rating_avg/review_count/from_price` | — | `type:task` `area:db` `prio:P0` `phase:2` | TV2 | M | BSC-059 |
+| BSC-061 | Trigger chặn booking trong `blackout_periods` ở tầng DB | OWN-08 | `type:task` `area:db` `prio:P0` `phase:2` | TV2 | S | BSC-023 |
+
+### Tính năng còn thiếu issue (C37)
+
+| # | Tiêu đề | Mã | Labels | Assignee | Size | Phụ thuộc |
+|---|---------|----|----|---------|------|-----------|
+| BSC-062 | Đăng ký làm chủ sân (owner application) API + FE | OWN-01 | `type:feature` `area:api` `area:web` `prio:P0` `phase:1` | TV1 | M | BSC-058 |
+| BSC-063 | Xem và chỉnh sửa hồ sơ cá nhân API + FE | CUS-15 | `type:feature` `area:api` `area:web` `prio:P0` `phase:1` | TV1 | S | BSC-010 |
+| BSC-064 | Yêu thích sân API + FE | CUS-12 | `type:feature` `area:api` `area:web` `prio:P1` `phase:2` | TV3 | S | BSC-059 |
+| BSC-065 | Chính sách huỷ & cọc (cấu hình Owner + áp dụng khi huỷ) | OWN-10 CUS-11 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV2 | M | BSC-057 |
+| BSC-066 | Báo cáo tỷ lệ lấp đầy (Owner) | OWN-12 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV4 | M | BSC-036 |
+| BSC-067 | Owner quản lý đánh giá (ẩn/hiện, phản hồi) | OWN-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV3 | M | BSC-059 |
+| BSC-068 | Admin: xem toàn bộ booking + lọc | ADM-07 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
+| BSC-069 | Admin: thống kê toàn hệ thống | ADM-08 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
+| BSC-070 | Admin API: khoá / mở khoá tài khoản | ADM-03 | `type:feature` `area:api` `prio:P0` `phase:4` | TV1 | S | BSC-010 |
+| BSC-071 | Audit log middleware + ghi vết hành động Admin | ADM-09 | `type:feature` `area:api` `prio:P0` `phase:4` | TV1 | M | BSC-059 |
+| BSC-072 | Admin: kiểm duyệt đánh giá (ẩn/hiện) | ADM-10 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-059 |
+
+### Hạ tầng & vòng đời còn thiếu (C37, C40)
+
+| # | Tiêu đề | Mã | Labels | Assignee | Size | Phụ thuộc |
+|---|---------|----|----|---------|------|-----------|
+| BSC-073 | Health endpoint `GET /api/v1/health` (không auth, `SELECT 1`) | — | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | S | — |
+| BSC-074 | Upload R2 presigned URL | OWN-02 | `type:feature` `area:api` `prio:P0` `phase:1` | TV2 | M | BSC-010 |
+| BSC-075 | Rate limiting (`@nestjs/throttler`) cho auth + hold | — | `type:task` `area:api` `prio:P0` `phase:1` | TV1 | S | BSC-010 |
+| BSC-076 | Quên / đặt lại mật khẩu | CUS-16 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV1 | M | BSC-053 |
+| BSC-077 | Cron auto-complete booking (`confirmed` → `completed`) | — | `type:feature` `area:api` `prio:P0` `phase:2` | TV2 | S | BSC-024 |
+| BSC-078 | Cron nhắc lịch trước 24h (`reminders_sent_at`) | CUS-14 | `type:feature` `area:api` `prio:P1` `phase:2` | TV2 | S | BSC-024 |
+| BSC-079 | Cron dọn dữ liệu hết hạn (auth_tokens, notifications, audit_logs) | — | `type:task` `area:api` `prio:P1` `phase:5` | TV2 | S | BSC-059 |
+| BSC-080 | `middleware.ts` chặn route theo role + `providers.tsx` | — | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | M | BSC-013 |
+| BSC-081 | Dựng môi trường staging (Vercel Preview + Railway staging + Neon branch) | — | `type:chore` `area:infra` `prio:P1` `phase:5` | TV4 | M | BSC-050 |
+
+> **Vì sao BSC-077 ở P0:** không có nó thì `completed` là trạng thái không thể đạt tới, khiến CUS-13 (đánh giá, chỉ cho booking `completed`) và OWN-09 (đánh số no-show) vĩnh viễn không dùng được. Xem [05-booking-and-realtime.md](05-booking-and-realtime.md).
+>
+> **Vì sao BSC-073 ở P0:** `keep-alive.yml` và UptimeRobot đều ping `/api/v1/health`; thiếu endpoint này thì không có cách chống Neon/Railway sleep.

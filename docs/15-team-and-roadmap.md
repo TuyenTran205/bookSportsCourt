@@ -1,6 +1,6 @@
 ﻿# 15 – Phân công & Lộ trình
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 >
 > **Giả định:** 12 tuần khả dụng (điền thông tin thực tế vào mục Giả định ở cuối).
 
@@ -105,10 +105,12 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 | # | Việc | Người | Estimate |
 |---|------|-------|---------|
 | 29 | OwnerTimeline component | TV4 | L |
-| 30 | Dashboard Owner: venue/court management | TV4 | M |
+| 30 | Dashboard Owner: venue/court management | **TV3** | M |
 | 31 | Booking thủ công (Owner) | TV2 | M |
-| 32 | Blackout Period API + UI | TV1+TV4 | M |
+| 32 | Blackout Period API + UI | TV1 | M |
 | 33 | Báo cáo doanh thu API (P1) | TV2 | M |
+
+> **Cân bằng tải:** trước đây TV4 nhận cùng lúc #29 (L) + #30 (M) + #32 (M) trong một tuần — vượt quá một người làm được. #30 chuyển cho TV3 (đang rảnh hơn ở phase này vì phần booking FE đã xong ở Phase 2), #32 giao trọn cho TV1 thay vì chia đôi. TV4 giữ #29 vì OwnerTimeline là component phức tạp nhất và cần người nắm design system.
 
 **Tiêu chí hoàn thành:** Owner quản lý được sân, xem OwnerTimeline, tạo booking thủ công.
 
@@ -127,7 +129,11 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 | 39 | Đánh giá sân | TV3 | M |
 | 40 | Google OAuth | TV1 | M |
 
-**Tiêu chí hoàn thành:** Admin hoạt động, luồng thanh toán QR + Owner duyệt chạy được, email đi được. OpenAPI-3 published.
+**Tiêu chí hoàn thành:** Admin hoạt động, luồng thanh toán QR + Owner duyệt chạy được, email đi được.
+
+> **Về mốc OpenAPI-3:** spec OpenAPI **không thể** "publish ở đầu Phase 4" vì các endpoint Admin/Payment mà nó mô tả lại được **xây trong** Phase 4 — publish trước nghĩa là mô tả những API chưa tồn tại, và spec sẽ lệch ngay khi code bắt đầu.
+>
+> Mốc đúng: **OpenAPI-3 publish ở CUỐI Phase 4**, sau khi các endpoint Admin/Payment đã xong và được test. Trong lúc làm, spec cập nhật dần theo từng PR (checklist ở [14-github-workflow.md](14-github-workflow.md) đã yêu cầu "OpenAPI cập nhật nếu có thay đổi API") — bản publish chỉ là bản chốt cuối phase.
 
 ---
 
@@ -136,13 +142,16 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 
 | # | Việc | Người | Estimate |
 |---|------|-------|---------|
-| 41 | E2E test Playwright (flow đặt sân) | TV3 | L |
-| 42 | Test demo 2 trình duyệt race condition | TV2+TV3 | M |
-| 43 | SEO: metadata, structured data | TV3 | S |
-| 44 | Deploy lên Vercel + Railway | TV4 | M |
-| 45 | Seed dữ liệu demo | TV1 | S |
-| 46 | Quay video demo | Cả nhóm | M |
-| 47 | Viết báo cáo (dựa theo `17-report-outline.md`) | Cả nhóm | L |
+| 41 | **Dựng môi trường staging** (Vercel Preview + Railway staging + Neon branch) | TV4 | M |
+| 42 | E2E test Playwright (flow đặt sân) | TV3 | L |
+| 43 | Test demo 2 trình duyệt race condition | TV2+TV3 | M |
+| 44 | SEO: metadata, structured data | TV3 | S |
+| 45 | Deploy production lên Vercel + Railway | TV4 | M |
+| 46 | Seed dữ liệu demo | TV1 | S |
+| 47 | Quay video demo | Cả nhóm | M |
+| 48 | Viết báo cáo (dựa theo `17-report-outline.md`) | Cả nhóm | L |
+
+> **Vì sao staging đứng trước deploy production:** [13-deployment-and-cost.md](13-deployment-and-cost.md) định nghĩa ba môi trường (dev / staging / production), nhưng trước đây không có việc nào dựng staging. Không có staging thì mọi thay đổi cuối kỳ được thử trực tiếp trên production — đúng lúc không được phép hỏng. Staging cũng là nơi chạy E2E (#42) mà không đụng dữ liệu demo thật.
 
 ---
 

@@ -1,6 +1,6 @@
 # 02 – Tính năng theo vai trò
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
 
@@ -31,13 +31,14 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | CUS-06 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa |
 | CUS-07 | Chọn ngày và xem lưới block 30 phút (SlotGrid) | P0 | Hiển thị đúng trạng thái block realtime; giá hiển thị ở mỗi block; kéo chọn nhiều block liên tiếp |
 | CUS-08 | Giữ chỗ (Hold) và đếm ngược 10 phút | P0 | Sau khi chọn block, server tạo hold; client hiển thị countdown; hết hạn tự động trả về available |
-| CUS-09 | Thanh toán chuyển khoản QR | P1 | Người đặt chuyển khoản qua mã QR của chủ sân (số tiền cọc + nội dung chuyển khoản điền sẵn), lúc xác nhận thanh toán thì gửi ảnh đã chuyển khoản trong 10 phút; booking sang pending_payment, chờ Owner duyệt |
+| CUS-09 | Thanh toán chuyển khoản QR | **P0** | Người đặt chuyển khoản qua mã QR của chủ sân (số tiền cọc + nội dung chuyển khoản điền sẵn), lúc xác nhận thanh toán thì gửi ảnh đã chuyển khoản trong 10 phút; booking sang pending_payment, chờ Owner duyệt |
 | CUS-10 | Xem lịch sử đặt sân | P0 | Danh sách booking với filter trạng thái; xem chi tiết từng booking |
 | CUS-11 | Huỷ booking | P1 | Tuân theo chính sách huỷ của Owner; hiển thị điều kiện huỷ trước khi xác nhận |
 | CUS-12 | Yêu thích sân (Favorite) | P1 | Toggle yêu thích; xem danh sách sân đã yêu thích |
 | CUS-13 | Đánh giá sân sau khi hoàn thành | P1 | Chỉ đánh giá được booking trạng thái completed; 1-5 sao + nhận xét văn bản |
 | CUS-14 | Thông báo trong app | P1 | Thông báo khi booking confirmed, sắp diễn ra (24h trước), huỷ |
 | CUS-15 | Xem và chỉnh sửa hồ sơ | P0 | Cập nhật tên, số điện thoại, ảnh đại diện |
+| CUS-16 | Quên / đặt lại mật khẩu | P1 | Gửi email chứa link đặt lại (`POST /auth/forgot-password`); luôn trả 204 để không lộ email có tồn tại; link chứa token dùng một lần, hết hạn 15 phút (`auth_tokens.type = 'password_reset'`); đặt lại xong thu hồi mọi refresh token cũ |
 
 ---
 

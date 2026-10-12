@@ -11,7 +11,7 @@ Mã tính năng: <!-- CUS-XX / OWN-XX / ADM-XX / BSC-XXX -->
 ## Loại thay đổi
 
 - [ ] `type:feature` – Tính năng mới
-- [ ] `type:fix` – Sửa lỗi
+- [ ] `type:bug` – Sửa lỗi
 - [ ] `type:task` – Tác vụ kỹ thuật (setup, config, refactor)
 - [ ] `type:docs` – Chỉ cập nhật tài liệu
 - [ ] `type:chore` – Dọn dẹp, cập nhật dependency

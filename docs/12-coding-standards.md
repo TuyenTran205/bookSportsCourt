@@ -1,6 +1,6 @@
 ﻿# 12 – Tiêu chuẩn code
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
 
 ## TypeScript Strict
 
@@ -106,16 +106,45 @@ describe('BookingService.createHold', () => {
 
 ### API Test (Supertest)
 ```typescript
-// Test integration endpoints quan trọng
-it('POST /api/v1/bookings/hold - concurrent requests', async () => {
-  const requests = Array(5).fill(null).map(() =>
-    request(app).post('/api/v1/bookings/hold').send(sameSlotDto)
+// Test integration endpoints quan trọng.
+//
+// PHÂN BIỆT hai tình huống — trước đây tài liệu gộp làm một nên mâu thuẫn với
+// quy tắc idempotency ở 11-api-contract.md:
+//
+//   (a) CÙNG người dùng gửi lại cùng courtId + during trong 10 phút
+//       → idempotent: request sau trả 200 kèm hold ĐANG CÓ, không tạo mới.
+//   (b) NHIỀU người dùng KHÁC NHAU tranh cùng một block
+//       → đúng 1 người nhận 201, những người còn lại nhận 409 SLOT_TAKEN.
+//
+// Test dưới đây là (b): mỗi request dùng token của một user khác nhau.
+
+it('POST /api/v1/bookings/hold - nhiều user tranh cùng block', async () => {
+  const requests = Array(5).fill(null).map((_, i) =>
+    request(app)
+      .post('/api/v1/bookings/hold')
+      .set('Authorization', `Bearer ${tokens[i]}`) // 5 user KHÁC nhau
+      .send(sameSlotDto)
   );
   const results = await Promise.all(requests);
   const success = results.filter(r => r.status === 201);
   const conflict = results.filter(r => r.status === 409);
   expect(success).toHaveLength(1);
   expect(conflict).toHaveLength(4);
+});
+
+it('POST /api/v1/bookings/hold - cùng user gửi lại là idempotent', async () => {
+  const first = await request(app)
+    .post('/api/v1/bookings/hold')
+    .set('Authorization', `Bearer ${tokens[0]}`)
+    .send(sameSlotDto);
+  expect(first.status).toBe(201);
+
+  const again = await request(app)
+    .post('/api/v1/bookings/hold')
+    .set('Authorization', `Bearer ${tokens[0]}`) // CÙNG user
+    .send(sameSlotDto);
+  expect(again.status).toBe(200);                      // không phải 201
+  expect(again.body.data.id).toBe(first.body.data.id); // đúng hold cũ
 });
 ```
 

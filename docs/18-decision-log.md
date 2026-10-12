@@ -1,8 +1,34 @@
 ﻿# 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 >
-> Mọi quyết định kiến trúc quan trọng được ghi ở đây. Thêm dependency mới PHẢI có ADR.
+> Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
+
+| ADR | Quyết định |
+|-----|-----------|
+| 001 | Tách FE và BE qua REST API |
+| 002 | NestJS cho Backend |
+| 003 | PostgreSQL + btree_gist + EXCLUDE constraint |
+| 004 | Không dùng Redis/BullMQ ở MVP |
+| 005 | Drizzle ORM |
+| 006 | Thanh toán chuyển khoản QR + Owner duyệt |
+| 007 | Monorepo pnpm + Turborepo |
+| 008 | Dark mode – Không làm ở MVP |
+| 009 | Danh mục khu vực dạng bảng `areas` |
+| 010 | Owner duyệt booking bằng ảnh chuyển khoản |
+| 011 | UUID v7 làm khoá chính |
+| 012 | Bộ thư viện frontend (Next.js, Tailwind, shadcn/ui, TanStack Query, Zustand) |
+| 013 | Socket.IO cho realtime |
+| 014 | Leaflet + OpenStreetMap thay Google Maps |
+| 015 | Xác thực bằng JWT trong cookie httpOnly + Argon2 |
+| 016 | Cloudflare R2 để lưu ảnh |
+| 017 | Resend cho email giao dịch |
+| 018 | Sentry để giám sát lỗi |
+| 019 | Vercel + Railway/Render + Neon |
+| 020 | Bộ công cụ kiểm thử (Vitest, Supertest, Playwright) |
+| 021 | Sinh mã QR phía client |
+
+> ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
 
 ---
 
@@ -186,6 +212,211 @@ interface PaymentAdapter {
 - Mọi insert phải đi qua Drizzle để có `$defaultFn`; script seed dùng cùng hàm sinh ID.
 - ID lộ thời điểm tạo (phần timestamp). Chấp nhận được vì `created_at` đã công khai ở nhiều resource; không dùng ID làm bí mật.
 - Nâng PostgreSQL lên 18 thì có thể đổi sang `DEFAULT uuidv7()` bằng migration mới.
+
+---
+
+## ADR-012: Bộ thư viện frontend (Next.js, Tailwind, shadcn/ui, TanStack Query, Zustand)
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần chốt stack FE trước khi chia việc. Các lựa chọn này trước đây chỉ xuất hiện trong sơ đồ kiến trúc và code mẫu, chưa có ADR nào ghi lại lý do — vi phạm quy tắc "không thêm dependency khi chưa có ADR".
+
+**Quyết định:** Dùng **Next.js 14 (App Router) + React 18 + TypeScript**, **Tailwind CSS 3** với **shadcn/ui** (component copy vào repo, không phải thư viện đóng gói), icon **Lucide**, **TanStack Query v5** cho server state, **Zustand 4** cho UI state cục bộ, **Zod** cho validate dùng chung với BE, **next-intl** cho i18n, **Framer Motion** cho animation.
+
+**Lý do:**
+- **Next.js App Router:** SEO cho trang sân là yêu cầu thật (khách tìm qua Google); Server Component cho trang chi tiết sân giảm JS gửi xuống máy khách. Deploy Vercel free tier khớp ngân sách đồ án.
+- **shadcn/ui:** code nằm trong repo nên sửa được trực tiếp, không bị kẹt khi thư viện đổi API; không thêm dependency runtime.
+- **TanStack Query:** lưới slot cần cache, invalidate và merge dữ liệu realtime; tự viết sẽ trùng lặp và dễ sai. Zustand chỉ giữ state UI (filter, modal) — tách hai loại state để không nhầm "server state" với "UI state".
+- **Zod:** dùng chung schema giữa FE và BE qua `packages/shared`, tránh viết validate hai lần và lệch nhau.
+
+**Loại bỏ:**
+- **Pages Router:** không dùng được Server Component, và dự án mới nên theo App Router.
+- **MUI / Ant Design:** nặng, khó tuỳ biến theo design system riêng, và bundle lớn hơn đáng kể trên mobile.
+- **Redux Toolkit:** quá mức cần thiết; phần lớn state ở đây là server state, đã có TanStack Query lo.
+- **CSS-in-JS (styled-components/emotion):** không chơi tốt với Server Component, và Tailwind đã đủ.
+
+**Hệ quả:** Ghim phiên bản ở [03-architecture.md](03-architecture.md#phiên-bản-stack-ghim-cứng). Thêm bất kỳ thư viện nào ngoài danh sách này phải mở ADR mới.
+
+---
+
+## ADR-013: Socket.IO cho realtime
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Nhiều khách xem cùng một lưới slot; một người giữ chỗ thì những người khác phải thấy ngay. Không có realtime thì phải polling, vừa trễ vừa tốn request (free tier có giới hạn).
+
+**Quyết định:** Dùng **Socket.IO 4** với room `venue:{venueId}:date:{date}` cho lưới slot và room `user:`/`owner:` cho thông báo cá nhân.
+
+**Lý do:**
+- Socket.IO tự động fallback (WebSocket → HTTP long-polling) khi mạng chặn WebSocket — quan trọng vì khách dùng 3G/4G và wifi công cộng.
+- Có sẵn room, ack, và reconnect tự động; WebSocket thuần phải tự viết hết.
+- NestJS có `@nestjs/websockets` + `@nestjs/platform-socket.io` chính thức.
+
+**Loại bỏ:**
+- **WebSocket thuần:** phải tự làm room, heartbeat, fallback, reconnect.
+- **SSE:** một chiều, không đủ cho `join_venue`.
+- **Polling:** độ trễ cao, và ở free tier dễ đụng rate limit.
+
+**Hệ quả:** Socket cần sticky session nếu BE scale nhiều instance. Ở MVP chỉ 1 instance nên chưa cần; khi scale phải thêm Redis adapter (xem [ADR-004](#adr-004-không-dùng-redisbullmq-ở-mvp)).
+
+---
+
+## ADR-014: Leaflet + OpenStreetMap thay Google Maps
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần bản đồ hiển thị vị trí sân (GST-02) và bản đồ chọn vị trí khi Owner tạo venue.
+
+**Quyết định:** Dùng **Leaflet** + tile **OpenStreetMap**.
+
+**Lý do:**
+- Google Maps Platform yêu cầu thẻ tín dụng và tính phí theo lượt tải bản đồ; hạn mức miễn phí $200/tháng có thể vượt nếu demo nhiều. OSM miễn phí hoàn toàn.
+- Leaflet là thư viện mở, không cần API key, không ràng buộc điều khoản thương mại.
+- Đủ nhu cầu: marker, popup, geocoding cơ bản (qua Nominatim).
+
+**Loại bỏ:**
+- **Google Maps:** chi phí và yêu cầu thẻ; không cần độ chính xác địa chỉ ở mức đó.
+- **Mapbox:** free tier tốt nhưng vẫn cần tài khoản + API key, và vượt hạn mức sẽ bị tính phí.
+
+**Hệ quả:** Chất lượng ảnh vệ tinh và geocoding thấp hơn Google. Chấp nhận được — người dùng chủ yếu cần biết sân ở khu vực nào. Tile OSM có giới hạn fair-use, không được dùng cho lưu lượng thương mại lớn.
+
+---
+
+## ADR-015: Xác thực bằng JWT trong cookie httpOnly + Argon2
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần cơ chế phiên cho web app có cả SSR (Next.js) và client component, đồng thời chống XSS và CSRF.
+
+**Quyết định:** **Access token + refresh token** ký JWT, lưu trong cookie **`httpOnly; Secure; SameSite=Lax`**. Mật khẩu băm bằng **Argon2id**. Xác thực qua **Passport** với chiến lược JWT đọc token từ cookie.
+
+**Lý do:**
+- `httpOnly` khiến JS không đọc được token → XSS không lấy được phiên.
+- Cookie tự gửi kèm request nên Server Component đọc được phiên mà không cần lớp trung gian.
+- **Argon2id** thắng bcrypt ở khả năng chống tấn công GPU/ASIC; là lựa chọn được khuyến nghị hiện nay cho băm mật khẩu.
+- `SameSite=Lax` (không phải `Strict`) là bắt buộc để luồng Google OAuth redirect hoạt động — xem [06-security-and-permissions.md](06-security-and-permissions.md).
+
+**Loại bỏ:**
+- **Token trong localStorage:** dễ bị XSS đánh cắp; đây là lý do chính không chọn.
+- **Session server-side + Redis:** cần Redis, mà MVP không dùng (xem [ADR-004](#adr-004-không-dùng-redisbullmq-ở-mvp)).
+- **bcrypt:** vẫn chấp nhận được nhưng Argon2id tốt hơn ở cùng chi phí triển khai.
+
+**Hệ quả:** Cookie cần `Secure` ở production → **bắt buộc HTTPS**. Refresh token phải thu hồi được khi đăng xuất hoặc đổi mật khẩu (bảng `refresh_tokens`). Vì token nằm trong cookie, CSRF vẫn là mối quan tâm → giữ kiểm tra `X-Request-Origin` cho mutation quan trọng.
+
+---
+
+## ADR-016: Cloudflare R2 để lưu ảnh
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần lưu ảnh venue và **ảnh xác nhận chuyển khoản**. Ảnh chuyển khoản là dữ liệu nhạy cảm — không được public.
+
+**Quyết định:** **Cloudflare R2** với **presigned URL**: client xin URL từ BE rồi upload trực tiếp lên R2, không qua BE.
+
+**Lý do:**
+- Free tier 10 GB + 10M request/tháng, và **không tính phí egress** — khác S3.
+- Presigned URL tránh đẩy file lớn qua BE (tiết kiệm RAM/CPU của free tier 500 MB).
+- Tương thích API S3 nên đổi nhà cung cấp sau này không phải viết lại.
+
+**Loại bỏ:**
+- **Lưu file trong ổ đĩa BE:** Railway/Render free tier có ổ đĩa ephemeral, mất file mỗi lần deploy.
+- **Lưu ảnh trong DB:** phình DB, Neon free chỉ 0.5 GB.
+- **S3 trực tiếp:** tính phí egress.
+
+**Hệ quả:** Ảnh xác nhận chuyển khoản **phải** ở bucket private, chỉ truy cập qua URL có chữ ký hết hạn ngắn. Ảnh venue có thể ở bucket public hoặc cũng dùng presigned URL.
+
+---
+
+## ADR-017: Resend cho email giao dịch
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần gửi email xác thực, đặt lại mật khẩu, xác nhận booking.
+
+**Quyết định:** Dùng **Resend** (free tier 3,000 email/tháng).
+
+**Lý do:** API hiện đại, SDK TypeScript tốt, free tier đủ cho đồ án, và không cần dựng SMTP server. Cấu hình DKIM/SPF đơn giản để tránh vào spam.
+
+**Loại bỏ:**
+- **SMTP tự dựng (Gmail SMTP):** giới hạn thấp, dễ bị chặn, không phù hợp môi trường production.
+- **SendGrid/Mailgun:** free tier ổn nhưng UI và SDK kém thuận tiện hơn cho dự án nhỏ.
+
+**Hệ quả:** Phụ thuộc dịch vụ ngoài. Email ở môi trường dev nên dùng chế độ test/log thay vì gửi thật, để không đốt hạn mức.
+
+---
+
+## ADR-018: Sentry để giám sát lỗi
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Không có ai trực log; lỗi ở production (đặc biệt trong tuần demo) cần được phát hiện.
+
+**Quyết định:** **Sentry** cho cả FE và BE (free tier 5,000 event/tháng).
+
+**Lý do:** Bắt lỗi ở cả hai phía với stack trace đầy đủ và source map; free tier đủ cho lưu lượng đồ án. Tự dựng hệ thống log tập trung là quá sức với thời lượng đồ án.
+
+**Loại bỏ:** **Log file + xem tay:** không phát hiện được lỗi phía client, và không ai ngồi đọc log liên tục.
+
+**Hệ quả:** Phải cấu hình để **không** gửi dữ liệu nhạy cảm (token, ảnh chuyển khoản, thông tin cá nhân) lên Sentry.
+
+---
+
+## ADR-019: Vercel + Railway/Render + Neon
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần môi trường deploy miễn phí cho FE, BE và DB trong một học kỳ.
+
+**Quyết định:** **Vercel** cho FE, **Railway hoặc Render** cho BE, **Neon** cho PostgreSQL.
+
+**Lý do:** Cả ba đều có free tier thật (không chỉ dùng thử), deploy từ GitHub tự động, và khớp với stack (Next.js tối ưu trên Vercel; Neon là Postgres 16 có `btree_gist`).
+
+**Loại bỏ:**
+- **Tự dựng VPS:** tốn thời gian quản trị, không phù hợp thời lượng đồ án.
+- **Supabase:** tốt nhưng gộp nhiều thứ không cần (auth, storage) và dễ lệch khỏi thiết kế đã chốt.
+
+**Hệ quả:** Free tier có **sleep** (Railway/Render sau 15 phút, Neon pause sau 5 ngày) → cần endpoint health và keep-alive. **Vercel Hobby cấm dùng thương mại** — đồ án phi thương mại là hợp lệ. Xem [13-deployment-and-cost.md](13-deployment-and-cost.md).
+
+---
+
+## ADR-020: Bộ công cụ kiểm thử
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần test cho logic nghiệp vụ (đặc biệt chống trùng lịch), API, và luồng người dùng.
+
+**Quyết định:** **Vitest** cho unit/integration, **Supertest** cho API, **Playwright** cho E2E. Test DB chạy trên PostgreSQL thật (không mock) vì ràng buộc `EXCLUDE` là thứ cần kiểm chứng.
+
+**Lý do:**
+- **Vitest** nhanh, cấu hình đơn giản, chạy tốt với TypeScript/ESM.
+- **Supertest** là chuẩn cho NestJS, test được cả guard và interceptor.
+- **Playwright** chạy được nhiều trình duyệt và có trace khi fail — hữu ích khi demo.
+- Test trên Postgres thật là bắt buộc: mock không tái hiện được hành vi `EXCLUDE`, vốn là cơ chế chống trùng lịch cốt lõi.
+
+**Loại bỏ:**
+- **Jest:** chậm hơn với ESM/TS và cấu hình rườm rà hơn Vitest.
+- **Cypress:** chỉ chạy Chromium ở bản free, và chậm hơn Playwright.
+- **Mock DB (sqlite/in-memory):** không kiểm chứng được `EXCLUDE` và `tstzrange` — đúng những thứ dễ sai nhất.
+
+**Hệ quả:** CI phải dựng service PostgreSQL (xem `.github/workflows/ci.yml`). Job `e2e` chạy Playwright tách riêng vì chậm hơn.
+
+---
+
+## ADR-021: Sinh mã QR phía client
+
+**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Màn hình thanh toán cần hiện mã QR chuyển khoản (VietQR) với số tiền và nội dung điền sẵn.
+
+**Quyết định:** Sinh ảnh QR **ở client** bằng thư viện JS, từ dữ liệu BE trả về (`bank_code`, `account_number`, `account_name`, `amount`, `transfer_code`).
+
+**Lý do:** Chuỗi VietQR chỉ là văn bản theo chuẩn EMVCo — sinh ở client không cần round-trip, không tốn CPU/ảnh lưu trữ ở BE, và hiển thị ngay khi mở trang. BE chỉ trả dữ liệu, không phải ảnh.
+
+**Loại bỏ:**
+- **Sinh ảnh ở BE rồi lưu R2:** tốn storage và thêm một bước không cần thiết.
+- **Gọi API sinh QR của bên thứ ba:** phụ thuộc dịch vụ ngoài và có thể bị giới hạn tần suất.
+
+**Hệ quả:** Nội dung chuyển khoản (`transfer_code`) **phải** được sinh ở BE và lưu DB (có ràng buộc duy nhất) — client chỉ hiển thị, không tự sinh, nếu không Owner không đối soát được.
 
 ---
 

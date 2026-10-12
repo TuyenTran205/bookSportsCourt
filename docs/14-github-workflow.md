@@ -1,6 +1,6 @@
 ﻿# 14 – GitHub Workflow
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
 
 ## Mô hình quản lý dự án
 
@@ -24,8 +24,10 @@
 
 ## Label chuẩn
 
-| Label | Ý nghĩa | Màu gợi ý |
-|-------|---------|-----------|
+> **Nguồn đúng là [`.github/labels.yml`](../.github/labels.yml)** (và `.github/scripts/setup-github.sh` tạo label từ đó). Bảng dưới chỉ để tra cứu nhanh — khi sửa label, sửa ở `labels.yml` rồi cập nhật lại bảng này.
+
+| Label | Ý nghĩa | Màu |
+|-------|---------|-----|
 | `type:feature` | Tính năng mới | #0075ca |
 | `type:bug` | Sửa lỗi | #d73a4a |
 | `type:task` | Tác vụ kỹ thuật (setup, config) | #e4e669 |
@@ -34,7 +36,7 @@
 | `area:web` | Frontend Next.js | #bfd4f2 |
 | `area:api` | Backend NestJS | #d4c5f9 |
 | `area:shared` | packages/shared | #f9d0c4 |
-| `area:db` | Database, migration | #e8f5e9 |
+| `area:db` | Database, migration | #c3f0ca |
 | `area:infra` | CI, Docker, Deploy | #fff3cd |
 | `area:design` | Design system, UI | #fce4ec |
 | `prio:P0` | Bắt buộc (MVP) | #b60205 |
@@ -42,6 +44,8 @@
 | `prio:P2` | Hướng phát triển | #c2e0c6 |
 | `phase:0` – `phase:6` | Milestone tương ứng | |
 | `status:blocked` | Issue bị chặn bởi issue khác | #f9d0c4 |
+
+> Tên label trong PR template, issue template và bảng này phải **khớp từng ký tự** với `labels.yml`. Gắn label không tồn tại thì GitHub bỏ qua im lặng, khiến PR không được phân loại mà không ai biết.
 
 ## Definition of Ready (DoR) – Issue đủ điều kiện làm
 
@@ -67,38 +71,50 @@
 ## Quy trình nhánh
 
 ```
-main (protected)
+main (protected, nhánh phát hành)
+  ▲
+  │  chỉ merge từ develop khi tới mốc phát hành/demo
+  │
+develop (protected, nhánh tích hợp – nhánh làm việc mặc định)
   └── feat/42-slot-grid-component       ← Phát triển tính năng
   └── fix/38-refresh-token-rotation     ← Sửa lỗi
   └── docs/15-update-api-contract       ← Cập nhật tài liệu
   └── chore/8-setup-eslint-config       ← Cấu hình
 ```
 
+**Nhánh làm việc:** mọi nhánh `feat/`, `fix/`, `docs/`, `chore/` đều tách từ **`develop`** và PR ngược về **`develop`**. `main` chỉ nhận merge từ `develop` khi tới mốc phát hành (xem `docs/15-*`).
+
 **Quy tắc đặt tên:** `<type>/<số-issue>-<slug-ngắn>`
 
 **Luồng làm việc:**
 ```
 1. Kéo issue từ Ready → In progress
-2. git checkout -b feat/42-slot-grid-component
+2. git checkout develop && git pull
+   git checkout -b feat/42-slot-grid-component
 3. Commit theo Conventional Commits với #42
-4. Push và mở PR → Chuyển issue sang In review
+4. Push và mở PR → develop; Chuyển issue sang In review
 5. Review trong 24h; CI pass; resolve comment
-6. Squash merge vào main
+6. Squash merge vào develop
 7. Issue tự đóng; chuyển sang Done
 ```
 
-## Branch Protection (main)
+> **Lưu ý:** `ci.yml` trigger trên cả `develop` và `main`, nên PR vào `develop` cũng có CI chạy.
 
-Cài đặt trong GitHub repository Settings → Branches:
+## Branch Protection (develop và main)
+
+Cài đặt trong GitHub repository Settings → Branches, áp dụng cho **cả hai** nhánh:
 - [x] Require a pull request before merging
 - [x] Require approvals: **1** (tối thiểu)
 - [x] Dismiss stale pull request approvals when new commits are pushed
 - [x] Require status checks to pass: `lint`, `typecheck`, `test`, `build`
+- [ ] **Từ Phase 5 trở đi:** thêm `e2e` vào danh sách check bắt buộc (job `e2e` trong `ci.yml` đã có sẵn; chỉ bật khi flow đặt sân đã chạy được đầu-cuối. Bật sớm sẽ chặn mọi PR vì chưa có gì để test.)
 - [x] Require branches to be up to date before merging
 - [x] Do not allow bypassing the above settings
 - [x] Restrict force pushes: **Tất cả** (kể cả admin)
 
-**Nghiêm cấm:** Push trực tiếp vào `main`. Tự approve PR của mình.
+> Tên check phải khớp **chính xác** tên job trong `.github/workflows/ci.yml` (`lint`, `typecheck`, `test`, `build` — chữ thường). Đổi tên job mà quên sửa mục này thì branch protection sẽ chặn mọi PR vì check không bao giờ xuất hiện.
+
+**Nghiêm cấm:** Push trực tiếp vào `main` hoặc `develop`. Tự approve PR của mình.
 
 ## Quy trình PR
 
@@ -140,7 +156,7 @@ Cài đặt trong GitHub repository Settings → Branches:
 ## Quy tắc monorepo
 
 ### Xung đột merge
-- Khi merge nhánh vào main bị conflict: người tạo PR chịu trách nhiệm resolve.
+- Khi merge nhánh vào `develop` (hoặc `develop` vào `main`) bị conflict: người tạo PR chịu trách nhiệm resolve.
 - Ưu tiên rebase thay vì merge commit (để lịch sử sạch hơn).
 
 ### Thay đổi packages/shared
@@ -149,13 +165,19 @@ Cài đặt trong GitHub repository Settings → Branches:
 - Sau khi merge → người còn lại cập nhật nhánh của mình ngay.
 
 ### Release tag cho demo
-```
-v0.1 – Kết thúc Phase 1 (auth + venue + search)
-v0.2 – Kết thúc Phase 2 (booking + realtime)
-v0.3 – Kết thúc Phase 3 (owner dashboard)
-v0.4 – Kết thúc Phase 4 (admin + payment + email)
-v1.0 – Demo cuối kỳ
-```
+
+| Tag | Mốc | Phase |
+|-----|-----|-------|
+| v0.1 | Kết thúc Phase 1 (auth + venue + search) | 1 |
+| v0.2 | Kết thúc Phase 2 (booking + realtime) | 2 |
+| v0.3 | Kết thúc Phase 3 (owner dashboard) | 3 |
+| v0.4 | Kết thúc Phase 4 (admin + payment + email) | 4 |
+| v0.5 | Kết thúc Phase 5 (test + deploy + hoàn thiện) | 5 |
+| v1.0 | Demo cuối kỳ (đóng băng, nộp bài) | – |
+
+> Phase 6 (Mobile) là **tuỳ chọn, làm sau khi nộp bài** (xem [15-team-and-roadmap.md](15-team-and-roadmap.md)) nên **không** có tag trong đồ án.
+>
+> Tag chỉ đánh trên `main`, sau khi merge từ `develop`. Không tag trên nhánh tính năng.
 
 ## Quy tắc dùng AI Agent
 
@@ -165,4 +187,4 @@ v1.0 – Demo cuối kỳ
 4. **Không tự thêm dependency** khi chưa ghi vào `18-decision-log.md`.
 5. Không tự quyết định design pattern, màu sắc, layout ngoài `07-design-system.md`.
 6. Mọi thay đổi DB phải kèm migration file.
-7. Không push thẳng vào main dưới bất kỳ lý do gì.
+7. Không push thẳng vào `develop` hoặc `main` dưới bất kỳ lý do gì.
