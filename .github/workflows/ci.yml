@@ -1,14 +1,18 @@
 ﻿# CI – Lint, Typecheck, Test, Build
-# Chạy trên mọi PR vào main
+# Chạy trên mọi PR vào develop hoặc main (develop là nhánh tích hợp, main là nhánh phát hành)
 # Ghi chú: Bản nháp – sẽ chạy được khi có code ứng dụng
+#
+# Tên job (lint / typecheck / test / build) PHẢI khớp đúng danh sách check
+# trong branch protection ở docs/14-github-workflow.md. Đổi tên job ở đây
+# thì phải sửa cả tài liệu, nếu không branch protection sẽ chặn mọi PR.
 
 name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [develop, main]
   push:
-    branches: [main]
+    branches: [develop, main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -18,8 +22,8 @@ env:
   PNPM_VERSION: 9
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Typecheck
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,11 +43,29 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Typecheck
         run: pnpm typecheck
 
   test:
-    name: Test
+    name: test
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -83,12 +105,14 @@ jobs:
         run: pnpm --filter @bsc/api db:migrate
 
       - name: Test
-        run: pnpm test --passWithNoTests
+        # `--` bắt buộc: nếu thiếu, pnpm hiểu `--passWithNoTests` là cờ của chính pnpm
+        # và không chuyển tiếp xuống script test → Jest/Vitest báo lỗi khi chưa có test.
+        run: pnpm test -- --passWithNoTests
 
   build:
-    name: Build
+    name: build
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck]
+    needs: [lint, typecheck, test]
     steps:
       - uses: actions/checkout@v4
 
@@ -107,4 +131,72 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          NEXT_PUBLIC_API_URL: http://placeholder.example.com
+          # NEXT_PUBLIC_* được inline lúc build nên phải có giá trị, dù CI không gọi API.
+          # Dùng localhost:3001 (khớp bảng môi trường ở docs/13-deployment-and-cost.md),
+          # KHÔNG dùng domain giả kiểu placeholder.example.com — tránh nhầm với URL thật
+          # và giữ nhất quán với các workflow khác.
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    needs: [build]
+    # Chậm hơn nhiều so với các job khác (dựng DB + BE + FE + trình duyệt),
+    # nên tách riêng và chỉ chạy sau khi build xanh. Phase 5 có hạng mục
+    # "E2E test Playwright (flow đặt sân)" — job này là chỗ thực thi nó.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: booksports_e2e
+          POSTGRES_USER: bsc_user
+          POSTGRES_PASSWORD: bsc_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://bsc_user:bsc_password@localhost:5432/booksports_e2e
+      JWT_ACCESS_SECRET: test-access-secret-at-least-32-chars
+      JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars
+      NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run migrations + seed
+        run: |
+          pnpm --filter @bsc/api db:migrate
+          pnpm --filter @bsc/api db:seed
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report khi fail
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+

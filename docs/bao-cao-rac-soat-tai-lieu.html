@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Báo cáo rà soát tài liệu dự án BookSportsCourt</title>
+<style>
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 13pt;
+    line-height: 1.5;
+    color: #000;
+    max-width: 960px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+  h1 {
+    font-size: 18pt;
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 11.5pt;
+    font-style: italic;
+    color: #444;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: 15pt;
+    font-weight: bold;
+    margin-top: 28px;
+    margin-bottom: 10px;
+    color: #111;
+    border-bottom: 1.5px solid #333;
+    padding-bottom: 4px;
+  }
+  h3 {
+    font-size: 13pt;
+    font-weight: bold;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    color: #1e3a8a;
+  }
+  p { margin-bottom: 10px; }
+  ol, ul {
+    margin-top: 6px;
+    margin-bottom: 14px;
+    padding-left: 28px;
+  }
+  li { margin-bottom: 8px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 22px 0;
+  }
+  th, td {
+    border: 1px solid #444;
+    padding: 7px 10px;
+    text-align: left;
+    font-size: 11pt;
+    vertical-align: top;
+  }
+  th {
+    background-color: #f1f5f9;
+    font-weight: bold;
+    text-align: center;
+  }
+  td.center { text-align: center; }
+  code {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 10.5pt;
+    background-color: #f8fafc;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #0f172a;
+  }
+  .guide-box {
+    background-color: #eff6ff;
+    padding: 10px 14px;
+    border-left: 4px solid #2563eb;
+    margin-bottom: 22px;
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+  }
+  .sev-critical {
+    background-color: #fee2e2;
+    padding: 12px 16px;
+    border-left: 4px solid #dc2626;
+    margin: 16px 0;
+    font-size: 11.5pt;
+  }
+  .sev-summary {
+    background-color: #f0fdf4;
+    padding: 12px 16px;
+    border-left: 4px solid #16a34a;
+    margin: 16px 0;
+    font-size: 11.5pt;
+  }
+  .tag {
+    display: inline-block;
+    font-family: Arial, sans-serif;
+    font-size: 9.5pt;
+    font-weight: bold;
+    padding: 1px 7px;
+    border-radius: 10px;
+    color: #fff;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .tag-a { background-color: #dc2626; }
+  .tag-b { background-color: #d97706; }
+  .tag-c { background-color: #2563eb; }
+</style>
+</head>
+<body>
+
+<div class="guide-box">
+  💡 <strong>Hướng dẫn dán vào Google Docs:</strong> Nhấn <strong>Ctrl + A</strong> (chọn tất cả) &rarr; <strong>Ctrl + C</strong> (sao chép), sau đó chuyển sang Google Docs nhấn <strong>Ctrl + V</strong>. Toàn bộ tiêu đề, bảng và định dạng sẽ hiển thị chuẩn 100%.
+</div>
+
+<h1>Báo cáo rà soát tài liệu dự án BookSportsCourt</h1>
+<p class="subtitle">Phạm vi: 20 file Markdown trong <code>docs/</code> + <code>AGENTS.md</code> + 6 file cấu hình trong <code>.github/</code><br>
+Nguyên tắc khi rà soát: <strong>Chỉ rà soát – KHÔNG chỉnh sửa nội dung</strong> (báo cáo phản ánh trạng thái tài liệu tại thời điểm rà soát)</p>
+
+<div class="guide-box">
+  ✏️ <strong>Đã đính chính ngày 2026-10-12:</strong> 7 phát hiện dưới đây có <em>chi tiết dẫn chứng bị sai</em> (bản chất vấn đề vẫn đúng, nhưng chỗ viện dẫn thì sai) và đã được sửa lại: <strong>A3, B9, B23, C37, C38, C39, C43</strong>. Mỗi mục đều có dòng <strong>Đính chính</strong> ghi rõ chỗ sai cũ, để người đi sửa không sửa nhầm. 37 phát hiện còn lại đã được kiểm chứng là đúng nguyên văn.
+  <br><br>
+  <em>Lưu ý:</em> việc đính chính này chỉ sửa <strong>báo cáo</strong>; trạng thái khắc phục của tài liệu nguồn xem mục <a href="#trang-thai-khac-phuc">Trạng thái khắc phục</a> ngay dưới đây.
+</div>
+
+<div class="guide-box" id="trang-thai-khac-phuc" style="border-left-color:#16a34a; background:#f0fdf4;">
+  ✅ <strong>Đã khắc phục toàn bộ – cập nhật ngày 2026-10-12:</strong> cả <strong>44/44 phát hiện</strong> (A1–A8, B9–B31, C32–C44) đã được sửa trực tiếp trong <code>docs/</code>, <code>AGENTS.md</code> và <code>.github/</code>. Báo cáo này giữ nguyên nội dung gốc để làm <strong>bản đối chiếu lịch sử</strong>; mọi câu ở thì hiện tại trong các mục dưới đây mô tả <em>trạng thái trước khi sửa</em>.
+  <br><br>
+  <table style="margin-top:8px;">
+    <thead>
+      <tr><th style="width:16%;">Nhóm</th><th style="width:14%;">Số lượng</th><th style="width:70%;">Cách xử lý</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>A – Lỗi kỹ thuật</strong></td><td class="center">8/8</td><td>Sửa số liệu và mã mẫu tại chỗ: tỉ lệ tương phản, <code>docker-compose</code>, cú pháp TanStack Query, <code>SameSite</code>, CI, keep-alive, touch target, logic tính giá.</td></tr>
+      <tr><td><strong>B – Mâu thuẫn</strong></td><td class="center">23/23</td><td>Chốt một nguồn sự thật cho mỗi điểm lệch, đồng bộ file còn lại theo nguồn đó (máy trạng thái, phân quyền, tên check CI, chi phí, domain, hợp đồng API).</td></tr>
+      <tr><td><strong>C – Bổ sung</strong></td><td class="center">13/13</td><td>Thêm file gốc repo, trường và ràng buộc schema, module còn thiếu, issue backlog, ADR, job CI <code>e2e</code>, mốc lộ trình.</td></tr>
+    </tbody>
+  </table>
+  <br>
+  <em>Ghi chú:</em> <strong>B14</strong> (nhánh <code>develop</code>) và <strong>C43</strong> (<code>CODEOWNERS</code>) được xử lý ở mức <em>tài liệu</em> — đã ghi rõ quy trình/điều kiện kích hoạt, nhưng thao tác trên GitHub (bật branch protection, điền username thật) vẫn cần người có quyền thực hiện.
+</div>
+
+<div class="sev-summary">
+  <strong>Nhận xét tổng quan (tại thời điểm rà soát):</strong> Phần <strong>kiến trúc lõi rất chắc</strong> — ràng buộc <code>EXCLUDE</code> kết hợp <code>tstzrange</code> chống trùng lịch, ERD 3 cấp độ, máy trạng thái booking, hệ thống ADR, quy trình GitHub và design tokens đều được thiết kế bài bản, có căn cứ kỹ thuật rõ ràng.
+  <br><br>
+  Vấn đề tồn tại khi đó tập trung vào 3 nhóm: <strong>(1)</strong> một số lỗi kỹ thuật cụ thể sẽ khiến code không chạy đúng; <strong>(2)</strong> vòng đời đặt sân <strong>chưa khép kín</strong> (thiếu cron tự động hoàn tất đơn, thiếu cron nhắc lịch, thiếu luồng hoàn tiền, cron không đồng bộ trạng thái thanh toán); <strong>(3)</strong> tài liệu và backlog <strong>chưa phủ hết chính API và schema mà dự án đã định nghĩa</strong>. Cả ba nhóm đã được xử lý — xem <a href="#trang-thai-khac-phuc">Trạng thái khắc phục</a>.
+</div>
+
+<h2>Phần A – Lỗi kỹ thuật rõ ràng (sai, sẽ không chạy đúng) <span style="font-size:11pt; font-weight:normal; color:#16a34a;">— đã sửa hết</span></h2>
+
+<h3><span class="tag tag-a">A1</span> Tỉ lệ tương phản trong Design System sai cả 3 con số</h3>
+<p><strong>Vị trí:</strong> <code>docs/07-design-system.md</code> (dòng 100–102)</p>
+<table>
+  <thead>
+    <tr><th style="width:34%;">Tổ hợp màu</th><th style="width:18%;">Tài liệu ghi</th><th style="width:18%;">Thực tế</th><th style="width:30%;">Kết luận</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Chữ <code>white</code> trên nền <code>primary-600</code> (#16a34a)</td><td class="center">7.2:1</td><td class="center">≈ 3.29:1</td><td><strong>KHÔNG đạt WCAG AA</strong> (cần 4.5:1)</td></tr>
+    <tr><td>Chữ <code>white</code> trên nền <code>accent-600</code> (#ea580c)</td><td class="center">5.8:1</td><td class="center">≈ 3.56:1</td><td><strong>KHÔNG đạt WCAG AA</strong></td></tr>
+    <tr><td>Chữ <code>neutral-600</code> trên nền trắng</td><td class="center">6.2:1</td><td class="center">≈ 7.6:1</td><td>Đạt, nhưng số liệu ghi sai</td></tr>
+  </tbody>
+</table>
+<p><strong>Hệ quả:</strong> Hai dòng đầu chính là style của <strong>nút Primary</strong> chuẩn trong hệ thống — trong khi <code>docs/08-ui-quality-rules.md</code> lại yêu cầu "kiểm tra tương phản AA trước khi chốt màu".</p>
+
+<h3><span class="tag tag-a">A2</span> Cấu hình <code>docker-compose.yml</code> sai về <code>btree_gist</code></h3>
+<p><strong>Vị trí:</strong> <code>docs/13-deployment-and-cost.md</code> (dòng 53)</p>
+<ul>
+  <li>File đặt <code>command: postgres -c shared_preload_libraries=''</code> kèm chú thích "Extensions bắt buộc: btree_gist" — nhưng <strong><code>btree_gist</code> KHÔNG phải preload library</strong>. Nó chỉ cần chạy <code>CREATE EXTENSION btree_gist</code> (đã có trong <code>docs/04-database-schema.md</code>). Dòng <code>command</code> này vô nghĩa và gây hiểu sai cho người triển khai.</li>
+  <li>Thuộc tính <code>version: '3.9'</code> đã lỗi thời và bị bỏ qua ở Docker Compose v2.</li>
+</ul>
+
+<h3><span class="tag tag-a">A3</span> Dùng cú pháp TanStack Query v4 nhưng không nơi nào ghim phiên bản</h3>
+<p><strong>Vị trí:</strong> <code>docs/05-booking-and-realtime.md</code> (dòng 244)</p>
+<p>Code mẫu viết <code>queryClient.invalidateQueries(['slots', venueId, date])</code> — đây là cú pháp v4. Ở <strong>v5 bắt buộc</strong> dùng dạng object: <code>queryClient.invalidateQueries({ queryKey: [...] })</code>.</p>
+<p><strong>Đính chính:</strong> bản gốc viết "Trong khi đó stack của dự án ghi rõ là React Query <strong>v5</strong>" — <em>không đúng</em>. Không tài liệu nào ghim phiên bản TanStack Query, và repo chưa có <code>package.json</code> để đối chiếu. Vì vậy đây là lỗi <strong>tiềm ẩn</strong>: người triển khai phải tự chốt phiên bản, và nếu chọn v5 thì code mẫu trên phải sửa sang dạng object.</p>
+
+<h3><span class="tag tag-a">A4</span> <code>SameSite=Strict</code> sẽ làm hỏng luồng Google OAuth</h3>
+<p><strong>Vị trí:</strong> <code>docs/06-security-and-permissions.md</code> (dòng 92 và dòng 152)</p>
+<p>Cookie <code>SameSite=Strict</code> <strong>không được trình duyệt gửi</strong> khi điều hướng cross-site từ <code>accounts.google.com</code> quay về endpoint callback. Kết quả: mất cookie <code>state</code> → xác thực OAuth thất bại. Cần dùng <code>Lax</code>, hoặc tách cookie riêng cho tham số <code>state</code>.</p>
+
+<h3><span class="tag tag-a">A5</span> CI không thực sự chạy test đúng cách</h3>
+<p><strong>Vị trí:</strong> <code>.github/workflows/ci.yml</code> (dòng 86 và 91)</p>
+<ul>
+  <li>Lệnh <code>pnpm test --passWithNoTests</code> sai cú pháp khi đi qua Turborepo — phải là <code>pnpm test -- --passWithNoTests</code>.</li>
+  <li>Job <code>build</code> chỉ khai báo <code>needs: [lint-and-typecheck]</code>, <strong>không chờ job <code>test</code></strong> → build vẫn xanh dù test đỏ.</li>
+</ul>
+
+<h3><span class="tag tag-a">A6</span> <code>keep-alive.yml</code> luôn báo xanh dù máy chủ đã chết</h3>
+<p><strong>Vị trí:</strong> <code>.github/workflows/keep-alive.yml</code></p>
+<ul>
+  <li>Input <code>duration_minutes</code> được khai báo nhưng <strong>không hề sử dụng</strong> trong workflow.</li>
+  <li>Mọi lệnh <code>curl</code> đều gắn <code>|| echo "Warning..."</code> → workflow <strong>không bao giờ fail</strong>.</li>
+  <li>URL còn là placeholder <code>api.booksports.example</code> (không tồn tại) → job báo "thành công" nhưng thực chất không ping được gì.</li>
+</ul>
+
+<h3><span class="tag tag-a">A7</span> Ví dụ touch target không đạt chính yêu cầu của nó</h3>
+<p><strong>Vị trí:</strong> <code>docs/08-ui-quality-rules.md</code> (dòng 183–186)</p>
+<p>Quy tắc yêu cầu touch target tối thiểu <strong>44px</strong>, nhưng ví dụ minh hoạ dùng <code>p-3 -m-1</code> trên icon 16px → tổng chỉ <strong>40px</strong>.</p>
+
+<h3><span class="tag tag-a">A8</span> Code tính giá có thể cho đặt sân với giá 0 đồng</h3>
+<p><strong>Vị trí:</strong> <code>docs/05-booking-and-realtime.md</code> (dòng 184–190)</p>
+<ul>
+  <li>Biểu thức <code>rule?.price_per_slot ?? 0</code> — nếu không khớp quy tắc giá nào thì giá trả về <strong>0 đồng</strong>, cho phép đặt sân miễn phí.</li>
+  <li>Hàm <code>findMatchingRule</code> chỉ sắp xếp theo <code>priority DESC</code>, <strong>mâu thuẫn</strong> với thứ tự ưu tiên đã ghi trong tài liệu: <em>date_override &gt; theo thứ trong tuần &gt; quy tắc chung</em>.</li>
+</ul>
+
+<h2>Phần B – Mâu thuẫn giữa các tài liệu <span style="font-size:11pt; font-weight:normal; color:#16a34a;">— đã sửa hết</span></h2>
+
+<h3><span class="tag tag-b">B9</span> Máy trạng thái booking: tài liệu 01 và 05 lệch nhau</h3>
+<p><strong>Vị trí:</strong> <code>docs/01-product-overview.md</code> (dòng 42–44) vs <code>docs/05-booking-and-realtime.md</code></p>
+<ul>
+  <li>01 (dòng 42–44) vẽ: <code>completed ↘ cancelled</code> và <code>completed ↘ no_show</code> — <strong>cả hai mũi tên đều nằm dưới <code>completed</code></strong> (cột 39), không có mũi tên nào dưới <code>confirmed</code>.</li>
+  <li>05 (bảng dòng 71–77) cho phép <code>confirmed → cancelled</code> và <code>completed → no_show</code>, nhưng <strong>không</strong> có <code>completed → cancelled</code> — thiếu trong bảng nên theo dòng 79 sẽ bị ném <code>INVALID_STATUS_TRANSITION</code>.</li>
+  <li><strong>Lệch thật:</strong> <code>completed → cancelled</code> có ở 01 mà <em>không</em> có ở 05. Riêng <code>completed → no_show</code> thì <em>cả hai</em> tài liệu đều có, nên đó <strong>không phải</strong> điểm lệch.</li>
+  <li><strong>Về nghiệp vụ:</strong> <code>no_show</code> (01 định nghĩa "Khách không đến") lẽ ra phải đi từ <code>confirmed</code> — nhưng cả 01 lẫn 05 đều đặt nó sau <code>completed</code>, tức booking đã "hoàn thành" rồi mới ghi nhận khách không đến.</li>
+  <li><strong>Đính chính:</strong> bản gốc viết "01 vẽ <code>confirmed ↘ no_show</code>" và "05 cấm <code>confirmed → no_show</code>" — <em>sai hướng mũi tên</em>. Đo theo cột ký tự, cả hai mũi tên <code>↘</code> trong 01 đều ở cột 39, tức dưới <code>completed</code> (cột 38–46); <code>confirmed</code> chiếm cột 26–34. Điểm lệch đúng phải là <code>completed → cancelled</code>.</li>
+</ul>
+
+<h3><span class="tag tag-b">B10</span> Trạng thái <code>confirmed → completed</code> không có ai kích hoạt</h3>
+<ul>
+  <li>05 chỉ có 2 cron: <code>expireHolds</code> và <code>cancelStalePendingPayments</code>.</li>
+  <li>10 chỉ liệt kê <code>expire-holds.schedule.ts</code>.</li>
+  <li>Backlog không có issue nào cho việc này.</li>
+</ul>
+<p><strong>Hệ quả nghiêm trọng:</strong> <code>completed</code> trở thành <strong>trạng thái không thể đạt tới</strong> → tính năng CUS-13 (đánh giá sân, yêu cầu booking ở trạng thái <code>completed</code>) <strong>vĩnh viễn không dùng được</strong>; tính năng OWN-09 (đánh dấu no-show) cũng không tới được. <strong>Thiếu:</strong> cron <code>autoCompleteBookings</code> và cron nhắc lịch trước 24 giờ cho CUS-14.</p>
+
+<h3><span class="tag tag-b">B11</span> Cron không cập nhật trạng thái <code>payments</code></h3>
+<p>Bảng ánh xạ trạng thái ở 05 ghi booking <code>expired</code> ⇒ payment <code>expired</code>, nhưng code <code>expireHolds()</code> chỉ cập nhật bảng <code>bookings</code>; còn <code>cancelStalePendingPayments()</code> chỉ là <strong>khối comment rỗng (stub)</strong>, không hề set payment sang <code>cancelled</code>.</p>
+
+<h3><span class="tag tag-b">B12</span> Trạng thái <code>refunded</code> không có phần triển khai</h3>
+<p>05 và ADR-006 (qua <code>PaymentAdapter.refund()</code>) đều yêu cầu hoàn tiền, nhưng <code>docs/11-api-contract.md</code> <strong>không có endpoint hoàn tiền</strong> và không có cron/quy tắc nào set trạng thái <code>refunded</code>.</p>
+
+<h3><span class="tag tag-b">B13</span> Tên check trong branch protection không tồn tại</h3>
+<p><code>docs/14-github-workflow.md</code> yêu cầu các check <code>lint</code>, <code>typecheck</code>, <code>test</code>, <code>build</code>, nhưng <code>ci.yml</code> chỉ sinh 3 check: <strong>"Lint &amp; Typecheck"</strong>, "Test", "Build".</p>
+
+<h3><span class="tag tag-b">B14</span> Repo đang dùng nhánh <code>develop</code> nhưng không tài liệu nào nhắc tới</h3>
+<ul>
+  <li>Nhánh hiện tại của repo là <code>develop</code>, và tồn tại cả <code>origin/develop</code>.</li>
+  <li>Trong khi 14 chỉ mô tả nhánh <code>main</code>, AGENTS.md không nhắc nhánh nào.</li>
+  <li><code>ci.yml</code> <strong>chỉ trigger trên <code>main</code></strong> → PR vào <code>develop</code> không có CI nào chạy.</li>
+</ul>
+
+<h3><span class="tag tag-b">B15</span> Phase trong issue template bị lệch</h3>
+<p><code>.github/ISSUE_TEMPLATE/feature.yml</code> chỉ cho chọn Phase 0–5, nhưng <code>docs/14</code> và <code>labels.yml</code> định nghĩa <code>phase:0</code>–<code>phase:6</code>, và <code>docs/15</code> có Phase 6.</p>
+
+<h3><span class="tag tag-b">B16</span> PR template gắn label không tồn tại</h3>
+<p><code>.github/PULL_REQUEST_TEMPLATE.md</code> có checkbox <code>type:fix</code>, nhưng <code>labels.yml</code> chỉ định nghĩa <code>type:bug</code>.</p>
+
+<h3><span class="tag tag-b">B17</span> Màu label <code>area:db</code> lệch giữa các file</h3>
+<p><code>docs/14-github-workflow.md</code> ghi <code>#e8f5e9</code>, còn <code>.github/labels.yml</code> và <code>.github/scripts/setup-github.sh</code> ghi <code>c3f0ca</code>.</p>
+
+<h3><span class="tag tag-b">B18</span> Thiếu release tag cho Phase 5</h3>
+<p><code>docs/14</code> liệt kê tag dừng ở <code>v0.4</code> (Phase 4) rồi nhảy thẳng <code>v1.0</code>, trong khi <code>docs/15</code> định nghĩa Phase 5 là "Hoàn thiện, Test, Deploy".</p>
+
+<h3><span class="tag tag-b">B19</span> <code>00-README.md</code> không được cập nhật phiên bản</h3>
+<p>Header ghi <strong>v1.0.0 / 2026-09-30</strong>, nhưng mục CHANGELOG ngay trong cùng file đã có 5 dòng ngày <strong>2026-10-07</strong>; các file khác đã lên 1.1.0 / 1.2.0.</p>
+
+<h3><span class="tag tag-b">B20</span> Quy ước "mọi file có CHANGELOG ở cuối" bị vi phạm</h3>
+<p>Chỉ duy nhất <code>00-README.md</code> có mục CHANGELOG; <strong>18 file còn lại đều không có</strong>.</p>
+
+<h3><span class="tag tag-b">B21</span> Ma trận phân quyền ở 06 mâu thuẫn với 11</h3>
+<p><code>docs/06</code> đánh dấu <strong>Admin ✅</strong> ở các dòng "Create Hold", "Create Review", "Favorites CRUD" — nhưng <code>docs/11</code> đánh dấu các endpoint tương ứng là <code>[Customer]</code> độc quyền.</p>
+
+<h3><span class="tag tag-b">B22</span> Số liệu chi phí trong 13 tự mâu thuẫn</h3>
+<ul>
+  <li>Tiêu đề ghi "~0đ đến <strong>~800k</strong>/học kỳ", nhưng phần tổng kết ghi "0đ – <strong>100k</strong>/học kỳ".</li>
+  <li>Ghi UptimeRobot "ping mỗi <strong>4 ngày</strong>", trong khi cùng file ghi free tier cho phép 5 phút/lần.</li>
+  <li>Ghi keep-alive "mặc định tắt", nhưng lại khuyến nghị bật ping mỗi 10 phút.</li>
+</ul>
+
+<h3><span class="tag tag-b">B23</span> Ba domain placeholder khác nhau</h3>
+<table>
+  <thead>
+    <tr><th style="width:40%;">File</th><th style="width:60%;">Domain placeholder</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>.github/workflows/keep-alive.yml</code> (dòng 23, 30)</td><td><code>api.booksports.example</code> và <code>booksports.example</code></td></tr>
+    <tr><td><code>docs/13-deployment-and-cost.md</code> (dòng 75)</td><td><code>api.bsc.example</code></td></tr>
+    <tr><td><code>.github/workflows/ci.yml</code> (dòng 110)</td><td><code>placeholder.example.com</code></td></tr>
+  </tbody>
+</table>
+<p><strong>Đính chính:</strong> bản gốc ghi dòng thứ ba là <code>.github/ISSUE_TEMPLATE/config.yml</code> với nội dung "đã ghi repo thật" — <em>sai</em>, file đó <strong>không</strong> chứa domain placeholder nào (nó dùng repo thật, tức là làm <em>đúng</em>, không phải lỗi). Chỗ sai thật là <code>.github/workflows/ci.yml</code> dòng 110 với <code>placeholder.example.com</code>. Đủ 3 domain placeholder khác nhau như tiêu đề nêu.</p>
+
+<h3><span class="tag tag-b">B24</span> Trùng lặp và không nhất quán trong hợp đồng API</h3>
+<ul>
+  <li><code>GET /auth/me</code> và <code>GET /users/me</code> trùng chức năng.</li>
+  <li>Mã lỗi <code>PAYMENT_ACCOUNT_MISSING</code> bị <strong>lặp 2 dòng</strong> với mô tả khác nhau (dòng 70 và 72).</li>
+  <li>Định danh tham số không nhất quán: <code>GET /venues/:slug</code> dùng slug, nhưng <code>GET /venues/:id/slots</code> lại dùng id.</li>
+</ul>
+
+<h3><span class="tag tag-b">B25</span> Test đồng thời ở 12 mâu thuẫn với idempotency ở 11</h3>
+<ul>
+  <li><code>docs/12</code> kỳ vọng 1 request nhận <code>201</code> và N-1 request nhận <code>409</code>.</li>
+  <li>Nhưng <code>docs/11</code> ghi: gửi lại cùng <code>courtId + during</code> trong 10 phút thì <strong>trả về hold hiện tại</strong> → với cùng một người dùng, cả N request đều thành công.</li>
+  <li>Ngoài ra 11 không ghi rõ endpoint hold trả về <code>201</code>.</li>
+</ul>
+
+<h3><span class="tag tag-b">B26</span> Trạng thái <code>my_hold</code> không có trong enum của API</h3>
+<p><code>docs/01</code> coi <code>my_hold</code> là một trạng thái của slot, <code>docs/07</code> có token <code>slot.my-hold</code>, nhưng <code>docs/11</code> chỉ trả về 5 giá trị kèm cờ <code>mine: true</code> và <strong>không ghi quy tắc ánh xạ</strong> <code>held + mine:true → my_hold</code>.</p>
+
+<h3><span class="tag tag-b">B27</span> Bảng màu Badge ở 07 thiếu trạng thái</h3>
+<ul>
+  <li>Booking status chỉ liệt kê 5/7 trạng thái — <strong>thiếu <code>pending_payment</code> và <code>no_show</code></strong>.</li>
+  <li>Venue status chỉ liệt kê 3/4 — <strong>thiếu <code>suspended</code></strong> (đã có trong enum ở 04).</li>
+</ul>
+
+<h3><span class="tag tag-b">B28</span> Tailwind config ở 07 thiếu màu semantic</h3>
+<p>Config chỉ map <code>primary / accent / neutral / slot</code>, nhưng 07 sử dụng <code>bg-danger</code> và 08 sử dụng <code>text-info</code> → các class này <strong>không resolve được</strong>.</p>
+
+<h3><span class="tag tag-b">B29</span> Sự kiện realtime thiếu định nghĩa room</h3>
+<p><code>docs/05</code> chỉ định nghĩa room <code>venue:{id}:date:{date}</code>, nhưng bảng WebSocket ở <code>docs/11</code> gửi tới 6 sự kiện vào "user room" / "owner room" — <strong>không nơi nào định nghĩa tên room</strong>, và không có sự kiện <code>join_user</code> / <code>join_owner</code> cho client.</p>
+
+<h3><span class="tag tag-b">B30</span> Lệch breakpoint, lệch quy ước i18n và lỗi kiểu dữ liệu</h3>
+<ul>
+  <li><strong>Breakpoint:</strong> 08 dùng 375/1440; 09 dùng 375/768/1280/1440; PR template dùng 375/1440.</li>
+  <li><strong>i18n:</strong> 09 cấm hard-code chuỗi hiển thị, nhưng ví dụ trong 07/08/09 đều hard-code tiếng Việt.</li>
+  <li><strong>Kiểu dữ liệu:</strong> 09 viết <code>if (!data?.length)</code>, trong khi response của 11 có dạng <code>{data, meta}</code> (object, không phải mảng).</li>
+</ul>
+
+<h3><span class="tag tag-b">B31</span> OwnerTimeline hard-code trục thời gian</h3>
+<p><code>docs/07</code> hard-code trục thời gian "8:00–22:00", nhưng <code>opening_hours</code> là cấu hình riêng theo từng sân (tính năng OWN-04).</p>
+
+<h2>Phần C – Nội dung còn thiếu <span style="font-size:11pt; font-weight:normal; color:#16a34a;">— đã bổ sung hết</span></h2>
+
+<h3><span class="tag tag-c">C32</span> Thiếu file bắt buộc ở gốc repo</h3>
+<table>
+  <thead>
+    <tr><th style="width:26%;">File còn thiếu</th><th style="width:74%;">Căn cứ / Hệ quả</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>README.md</code></td><td><code>docs/17</code> yêu cầu trong checklist nộp bài: "README.md ở gốc repo có hướng dẫn chạy local".</td></tr>
+    <tr><td><code>.gitignore</code></td><td>Rủi ro commit nhầm <code>node_modules</code>, <code>.env</code>, thư mục build.</td></tr>
+    <tr><td><code>.env.example</code></td><td><code>docs/06</code> ghi "commit vào repo"; <code>docs/15</code> có task này ở Phase 0.</td></tr>
+  </tbody>
+</table>
+
+<h3><span class="tag tag-c">C33</span> Schema thiếu trường cho chính API của mình</h3>
+<ul>
+  <li>Bảng <code>venues</code> <strong>không có <code>rating_avg</code> / <code>review_count</code></strong> — nhưng 11 cho phép <code>sort=rating</code> và 07 hiển thị rating trên VenueCard.</li>
+  <li>Bảng <code>venues</code> <strong>không có <code>from_price</code></strong> — nhưng 11 cho <code>sort=price</code>, filter <code>maxPrice</code>, và 07 hiển thị "giá từ".</li>
+  <li>Không có index tìm kiếm cho tham số <code>q</code> — cần extension <code>pg_trgm</code> + index GIN trên <code>venues.name</code> / <code>venues.address</code>.</li>
+</ul>
+
+<h3><span class="tag tag-c">C34</span> Ràng buộc toàn vẹn dữ liệu còn thiếu</h3>
+<ul>
+  <li><code>users.email UNIQUE</code> vô điều kiện, kết hợp soft delete → tài khoản đã xoá <strong>chặn vĩnh viễn</strong> email đó đăng ký lại. Cần partial unique index.</li>
+  <li><code>payments.transfer_code</code> <strong>không UNIQUE</strong>, dù chủ sân dùng chính mã này để đối soát.</li>
+  <li><code>blackout_periods</code> <strong>không được enforce ở tầng DB</strong> (không có EXCLUDE/trigger) → race condition có thể tạo booking trong giờ bảo trì.</li>
+  <li><code>audit_logs</code> "chỉ đọc" mới chỉ là quy ước, <strong>không có gì enforce</strong> (không trigger, không REVOKE); đồng thời thiếu index trên <code>created_at</code>.</li>
+  <li><code>auth_tokens</code> và <code>refresh_tokens</code> <strong>không có job dọn dữ liệu hết hạn</strong>.</li>
+</ul>
+
+<h3><span class="tag tag-c">C35</span> Module backend thiếu so với API surface</h3>
+<p>Các nhóm endpoint sau đều có trong 11 nhưng <strong>không có module tương ứng</strong> trong cấu trúc thư mục ở 10: <code>favorites</code>, <code>owner-applications</code>, <code>catalogs</code> (areas/sports/amenities), <code>reports</code>, <code>uploads</code>, <code>health</code>.</p>
+
+<h3><span class="tag tag-c">C36</span> Frontend thiếu thành phần hạ tầng</h3>
+<ul>
+  <li>Thiếu <code>middleware.ts</code> để bảo vệ Route Groups <code>(customer)</code> / <code>(owner)</code> / <code>(admin)</code>.</li>
+  <li>Thiếu provider cho TanStack Query và Socket.IO.</li>
+  <li>09 chưa có route cho login / register / OAuth callback.</li>
+  <li>09 ghi "Axios/fetch" (chưa chốt) trong khi Axios không có trong stack và không có ADR nào cho nó.</li>
+</ul>
+
+<h3><span class="tag tag-c">C37</span> Backlog và lộ trình phủ thiếu nhiều tính năng</h3>
+<p>Không có issue / work item cho các tính năng sau (dù đã có mã trong 02):</p>
+<table>
+  <thead>
+    <tr><th style="width:34%;">Nhóm</th><th style="width:66%;">Tính năng còn thiếu issue</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Customer</td><td>CUS-12 Yêu thích sân, CUS-15 Xem và chỉnh sửa hồ sơ</td></tr>
+    <tr><td>Owner</td><td>OWN-01 Đăng ký làm chủ sân, OWN-10 Chính sách huỷ và cọc, OWN-12 Báo cáo tỷ lệ lấp đầy, OWN-13 Quản lý đánh giá</td></tr>
+    <tr><td>Admin</td><td>ADM-07 Xem toàn bộ booking, ADM-08 Thống kê toàn hệ thống, ADM-10 Kiểm duyệt đánh giá</td></tr>
+    <tr><td>Hạ tầng</td><td>Rate limiting, Health endpoint, Upload R2 presigned URL, Quên/đặt lại mật khẩu, Cron auto-complete, Cron nhắc lịch</td></tr>
+  </tbody>
+</table>
+<p><strong>Đính chính:</strong> bản gốc ghi thừa <strong>4 mã đã có issue</strong> — <code>CUS-14</code> (đã có ở BSC-045), <code>ADM-04</code>, <code>ADM-05</code>, <code>ADM-06</code> (đã có ở BSC-016). Đối chiếu đầy đủ: 02 định nghĩa <strong>39 mã</strong>, backlog 16 phủ <strong>30 mã</strong>, thiếu đúng <strong>9 mã</strong> liệt kê ở trên. Đừng đi tạo issue cho CUS-14/ADM-04/05/06 — chúng đã có rồi.</p>
+
+<h3><span class="tag tag-c">C38</span> Công việc cơ sở dữ liệu bị khai báo thiếu</h3>
+<p>Hai issue schema BSC-010 (5 bảng: <code>users</code>, <code>venues</code>, <code>courts</code>, <code>sports</code>, <code>amenities</code>) và BSC-023 (3 bảng: <code>bookings</code>, <code>payments</code>, <code>blackout_periods</code>) chỉ bao <strong>8 bảng</strong>, nhưng 04 định nghĩa tới <strong>24 bảng</strong> — còn lại <strong>16 bảng không có issue schema nào</strong>: <code>oauth_accounts</code>, <code>refresh_tokens</code>, <code>auth_tokens</code>, <code>owner_applications</code>, <code>areas</code>, <code>venue_images</code>, <code>venue_sports</code>, <code>venue_amenities</code>, <code>venue_payment_accounts</code>, <code>cancellation_policies</code>, <code>opening_hours</code>, <code>pricing_rules</code>, <code>reviews</code>, <code>favorites</code>, <code>notifications</code>, <code>audit_logs</code>.</p>
+<p><strong>Đính chính:</strong> bản gốc liệt kê thiếu 2 bảng — <code>opening_hours</code> và <code>pricing_rules</code>. Hai bảng này <em>chỉ</em> được nhắc ở tầng API (BSC-015 "Opening Hours + Pricing Rules API"), <strong>không</strong> có issue schema nào. Vậy danh sách đủ là <strong>16 bảng</strong>, không phải 14. Phép trừ khớp: 24 - 8 = 16.</p>
+<p>Tương tự, phần backend cho ADM-03 (khoá tài khoản) và ADM-09 (ghi audit log) cũng không có issue nào.</p>
+
+<h3><span class="tag tag-c">C39</span> Phạm vi P0 của 01 không đóng được vòng đời booking</h3>
+<ul>
+  <li>Thanh toán QR được xếp vào <strong>P1</strong> (<code>docs/01</code> dòng 83) — nhưng nếu không có nó thì booking <strong>không bao giờ tới được trạng thái <code>confirmed</code></strong>.</li>
+  <li>Danh sách P0/P1 của 01 <strong>thiếu</strong> nhiều tính năng đang là P0/P1 ở 02: CUS-12, CUS-14, CUS-15, OWN-01, OWN-10, OWN-13, ADM-06 → ADM-10.</li>
+  <li><strong>Đính chính:</strong> bản gốc xếp thừa <code>OWN-12</code> và <code>ADM-04/05</code> vào nhóm "thiếu". Thực tế 01 <em>đã có</em>: dòng 82 "Báo cáo doanh thu &amp; <strong>tỷ lệ lấp đầy</strong>" phủ OWN-12, và dòng 71 "Quản lý Venue / Court / <strong>Sport / Amenity</strong>" phủ ADM-04, ADM-05. Chỉ <code>ADM-06</code> (danh mục khu vực) là thật sự thiếu, nên khoảng đúng là <strong>ADM-06 → ADM-10</strong>. Đừng đi bổ sung OWN-12 hay ADM-04/05 — chúng đã nằm trong phạm vi P0/P1 rồi.</li>
+</ul>
+
+<h3><span class="tag tag-c">C40</span> Chức năng quên mật khẩu tồn tại trong code nhưng không có trong tài liệu tính năng</h3>
+<p>11 có <code>POST /auth/forgot-password</code> và <code>POST /auth/reset-password</code>; 04 có <code>auth_tokens.type = 'password_reset'</code>. Nhưng 02 <strong>không có mã tính năng</strong> nào, 01 không xếp mức ưu tiên, 16 không có issue.</p>
+
+<h3><span class="tag tag-c">C41</span> Quy tắc "không thêm dependency khi chưa có ADR" bị vi phạm hàng loạt</h3>
+<p>18 chỉ có 11 ADR, <strong>không có ADR</strong> cho các công nghệ đang dùng:</p>
+<p>Next.js / React / Tailwind / shadcn / Lucide · TanStack Query · Zustand · <strong>Socket.IO</strong> · <strong>Leaflet + OpenStreetMap</strong> (so với Google Maps) · next-intl · Framer Motion · Zod · Argon2 · Passport + JWT trong cookie · <strong>Cloudflare R2</strong> · Resend · Sentry · Vercel / Railway / Neon · Bộ công cụ test · Sinh mã QR phía client.</p>
+
+<h3><span class="tag tag-c">C42</span> Vấn đề lập kế hoạch khác</h3>
+<ul>
+  <li><strong>Phase 3 (1 tuần) quá tải</strong> — TV4 nhận cùng lúc 1 task L + 2 task M.</li>
+  <li>Mốc "OpenAPI-3 ở đầu Phase 4" không hợp lý, vì API mà nó mô tả lại được xây <strong>trong</strong> Phase 4.</li>
+  <li>Thiếu job CI <code>e2e</code> / Playwright, dù Phase 5 có hạng mục kiểm thử E2E.</li>
+  <li>Thiếu issue setup môi trường staging, dù 13 có định nghĩa môi trường staging.</li>
+</ul>
+
+<h3><span class="tag tag-c">C43</span> <code>CODEOWNERS</code> toàn placeholder</h3>
+<p>File chứa toàn <code>@TV1_USERNAME</code>, <code>@TV2_USERNAME</code>… nên <strong>hoàn toàn vô hiệu</strong> — không ai được tự động request review.</p>
+<p><strong>Đính chính:</strong> bản gốc viết "quy tắc <em>Require review from Code Owners</em> ở 14 không thể bật được" — <strong>sai</strong>, vì 14 <em>không hề có</em> mục đó. Checklist Branch Protection (dòng 93–99) chỉ gồm 7 mục: require PR, require 1 approval, dismiss stale approvals, require status checks, require branch up-to-date, do not allow bypassing, restrict force pushes. Vậy đây là một <strong>file thừa chưa dùng tới</strong>, <em>không phải</em> một quy tắc đã bật rồi bị hỏng.</p>
+<p>Repo còn tồn tại 2 nhánh cũ: <code>backup/pre-rewrite-main</code> và <code>backup/pre-rewrite-develop</code>.</p>
+
+<h3><span class="tag tag-c">C44</span> Các điểm lặt vặt</h3>
+<ul>
+  <li>05 đánh số thứ tự test sai: …11, 12, 13, 14 rồi mới tới 08, 09, 10.</li>
+  <li>06 có quy tắc "không giữ lại cùng court quá 5 lần/giờ" nhưng <strong>không có mã lỗi</strong>, không có issue, và không nói cách đếm.</li>
+  <li><code>HOLD_LIMIT_EXCEEDED</code> ở 11 <strong>không ghi giá trị cụ thể</strong> (là 3, chỉ có ở 06).</li>
+  <li>04 không nói rõ thư mục chứa migration (chỉ 10 có nói).</li>
+  <li>Đoạn "Hệ quả cần nhớ" ở cuối 04 bị mất định dạng bullet.</li>
+  <li>AGENTS.md thiếu lệnh <code>docker compose up</code> và <code>db:seed</code> trong danh sách lệnh dev; thứ tự đọc tài liệu bỏ sót các file 12, 13, 15, 16, 17, 18.</li>
+  <li>17 có bảng "mục nào trích từ docs nào" nhưng thiếu nhiều file, và nhắc tới "personas" mà không tài liệu nào định nghĩa.</li>
+</ul>
+
+<h2>Bảng tổng hợp ưu tiên xử lý</h2>
+<p><em>Cột “Trạng thái” phản ánh tình hình sau đợt khắc phục ngày 2026-10-12 — xem <a href="#trang-thai-khac-phuc">Trạng thái khắc phục</a>.</em></p>
+<table>
+  <thead>
+    <tr>
+      <th style="width:10%;">Mức</th>
+      <th style="width:48%;">Hạng mục</th>
+      <th style="width:28%;">Mã tham chiếu</th>
+      <th style="width:14%;">Trạng thái</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="center"><strong>1 – Sửa ngay</strong><br>(chặn tiến độ)</td>
+      <td>Vòng đời booking chưa khép kín: thiếu cron tự động hoàn tất đơn; thiếu cron nhắc lịch 24h; cron không đồng bộ trạng thái payment; không có luồng hoàn tiền.</td>
+      <td>B10, B11, B12</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã sửa</td>
+    </tr>
+    <tr>
+      <td class="center"><strong>1 – Sửa ngay</strong></td>
+      <td>Lỗi kỹ thuật khiến code không chạy đúng: cú pháp TanStack Query v4; <code>SameSite=Strict</code> phá OAuth; tính giá 0 đồng; CI không chờ test.</td>
+      <td>A3, A4, A5, A8</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã sửa</td>
+    </tr>
+    <tr>
+      <td class="center"><strong>2 – Sửa sớm</strong></td>
+      <td>Số liệu và cấu hình sai: tỉ lệ tương phản WCAG; <code>btree_gist</code> trong docker-compose; touch target 40px; keep-alive luôn xanh.</td>
+      <td>A1, A2, A6, A7</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã sửa</td>
+    </tr>
+    <tr>
+      <td class="center"><strong>2 – Sửa sớm</strong></td>
+      <td>Mâu thuẫn tài liệu: máy trạng thái 01 vs 05; ma trận phân quyền 06 vs 11; tên check CI; nhánh <code>develop</code> không có CI.</td>
+      <td>B9, B13, B14, B21, B25</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã sửa</td>
+    </tr>
+    <tr>
+      <td class="center"><strong>3 – Bổ sung</strong></td>
+      <td>Thiếu file gốc repo: <code>README.md</code>, <code>.gitignore</code>, <code>.env.example</code>.</td>
+      <td>C32</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã bổ sung</td>
+    </tr>
+    <tr>
+      <td class="center"><strong>3 – Bổ sung</strong></td>
+      <td>Schema thiếu trường và ràng buộc cho chính API đã định nghĩa; backlog chưa phủ hết schema/tính năng.</td>
+      <td>C33, C34, C37, C38, C39</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã bổ sung</td>
+    </tr>
+    <tr>
+      <td class="center"><strong>4 – Hoàn thiện</strong></td>
+      <td>Bổ sung ADR cho các công nghệ đang dùng; đồng bộ label/tag/phase; cập nhật version và CHANGELOG; các điểm lặt vặt.</td>
+      <td>C41, B15–B20, B22, B23, C44</td>
+      <td class="center" style="color:#16a34a; font-weight:bold;">✅ Đã bổ sung</td>
+    </tr>
+  </tbody>
+</table>
+
+</body>
+</html>

@@ -1,6 +1,12 @@
-﻿# Keep-alive – Ping health endpoints chống sleep (free tier)
+# Keep-alive – Ping health endpoints chống sleep (free tier)
 # MẶC ĐỊNH TẮT – Bật bằng cách thêm schedule hoặc gọi workflow_dispatch
 # Khi cần demo liên tục, bật schedule: "*/10 * * * *"
+#
+# Yêu cầu cấu hình repo variables (Settings → Secrets and variables → Actions → Variables):
+#   API_HEALTH_URL – ví dụ https://<api-domain>/api/v1/health
+#   FE_URL         – ví dụ https://<fe-domain>
+# Chưa cấu hình, hoặc còn là placeholder *.example → workflow FAIL ngay,
+# KHÔNG báo xanh giả (xem docs/bao-cao-rac-soat-tai-lieu.html mục A6).
 
 name: Keep Alive
 
@@ -8,8 +14,9 @@ on:
   workflow_dispatch:
     inputs:
       duration_minutes:
-        description: "Thời gian ping (phút)"
+        description: "Thời gian ping liên tục (phút)"
         default: "60"
+        type: string
   # schedule:
   #   - cron: "*/10 * * * *"  # Bỏ comment khi cần
 
@@ -17,17 +24,61 @@ jobs:
   ping:
     name: Ping services
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
-      - name: Ping API health
+      - name: Kiểm tra biến đã cấu hình
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+          FE_URL: ${{ vars.FE_URL }}
         run: |
-          curl -f "${{ vars.API_HEALTH_URL || 'https://api.booksports.example/api/v1/health' }}" \
-            --max-time 10 \
-            --retry 3 \
-            --retry-delay 5 || echo "Warning: Health check failed"
+          if [ -z "$API_HEALTH_URL" ] || [ -z "$FE_URL" ]; then
+            echo "::error::Thiếu repo variable API_HEALTH_URL hoặc FE_URL. Vào Settings → Secrets and variables → Actions → Variables để cấu hình."
+            exit 1
+          fi
+          case "$API_HEALTH_URL$FE_URL" in
+            *example*)
+              echo "::error::URL vẫn là placeholder (*.example) nên không ping được gì. Cập nhật biến trước khi chạy."
+              exit 1
+              ;;
+          esac
 
-      - name: Ping Frontend
+      - name: Ping liên tục
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+          FE_URL: ${{ vars.FE_URL }}
+          # Chạy từ schedule không truyền input → mặc định 60 phút.
+          DURATION_MINUTES: ${{ inputs.duration_minutes || '60' }}
         run: |
-          curl -f "${{ vars.FE_URL || 'https://booksports.example' }}" \
-            --max-time 10 \
-            --retry 3 \
-            --retry-delay 5 || echo "Warning: FE ping failed"
+          set -euo pipefail
+
+          case "$DURATION_MINUTES" in
+            '' | *[!0-9]*)
+              echo "::error::duration_minutes phải là số nguyên dương (nhận: '$DURATION_MINUTES')"
+              exit 1
+              ;;
+          esac
+          if [ "$DURATION_MINUTES" -lt 1 ]; then
+            echo "::error::duration_minutes phải >= 1"
+            exit 1
+          fi
+
+          deadline=$(( $(date +%s) + DURATION_MINUTES * 60 ))
+          echo "Ping mỗi 60s trong ${DURATION_MINUTES} phút, kết thúc lúc $(date -u -d "@$deadline" +%H:%M:%S) UTC"
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            for url in "$API_HEALTH_URL" "$FE_URL"; do
+              # KHÔNG bọc `|| echo "Warning..."`: ping hỏng phải làm job đỏ,
+              # nếu không thì máy chủ đã sleep/chết mà workflow vẫn báo thành công.
+              if curl -fsS --max-time 10 --retry 3 --retry-delay 5 "$url" >/dev/null; then
+                echo "$(date -u +%H:%M:%S) OK   $url"
+              else
+                echo "::error::Ping thất bại: $url"
+                exit 1
+              fi
+            done
+
+            remaining=$(( deadline - $(date +%s) ))
+            if [ "$remaining" -gt 0 ]; then
+              if [ "$remaining" -lt 60 ]; then sleep "$remaining"; else sleep 60; fi
+            fi
+          done

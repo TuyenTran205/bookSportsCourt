@@ -1,6 +1,6 @@
 ﻿# 07 – Design System
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
 >
 > **AI AGENT KHÔNG ĐƯỢC tự ý quyết định thiết kế giao diện ngoài tài liệu này.**
 
@@ -97,9 +97,16 @@
 **TUYỆT ĐỐI CẤM:** Gradient tím-xanh (`from-purple-500 to-blue-500`), `bg-gradient-to-r from-indigo`, glassmorphism (`backdrop-blur` trên card).
 
 ### Kiểm tra tương phản AA
-- Text trên `primary-600` bg: `white` → **7.2:1** ✅
-- Text trên `accent-600` bg: `white` → **5.8:1** ✅
-- `neutral-600` trên `neutral-0`: **6.2:1** ✅
+
+Ngưỡng WCAG 2.1 AA: **4.5:1** cho text thường (< 18.66px bold hoặc < 24px), **3:1** cho large text (≥ 18.66px bold hoặc ≥ 24px).
+
+| Tổ hợp | Tỉ lệ | Kết luận |
+|--------|-------|----------|
+| `white` trên `primary-600` (#16a34a) | **3.30:1** | Chỉ đạt AA **large text**. Text thường phải dùng `primary-700` (#15803d) → **5.02:1** ✅ |
+| `white` trên `accent-600` (#ea580c) | **3.56:1** | Chỉ đạt AA **large text**. Text thường phải dùng `accent-700` (#c2410c) → **5.18:1** ✅ |
+| `neutral-600` (#475569) trên `neutral-0` (#ffffff) | **7.58:1** | ✅ Đạt AA cho mọi cỡ chữ |
+
+**Quy tắc bắt buộc:** Nút Primary dùng `bg-primary-700 text-white` cho text thường, **hoặc** giữ `bg-primary-600` nhưng chữ phải `font-semibold` và cỡ ≥ 18.66px (large text). Không dùng `bg-primary-600` + chữ trắng cỡ nhỏ.
 
 ### Cấu hình Tailwind
 ```js
@@ -108,13 +115,22 @@ colors: {
   primary: { /* map từ CSS variables */ },
   accent:  { /* map từ CSS variables */ },
   neutral: { /* map từ CSS variables */ },
+  // Màu semantic — BẮT BUỘC khai báo, nếu không `bg-danger` / `text-info`
+  // (dùng ở mục Buttons và 08-ui-quality-rules.md) sẽ không resolve thành class nào.
+  success: 'var(--color-success)',
+  warning: 'var(--color-warning)',
+  danger:  'var(--color-danger)',
+  info:    'var(--color-info)',
   slot: {
+    // 5 khoá đầu khớp đúng enum `status` của API.
+    // `my_hold` KHÔNG phải giá trị API — FE suy ra từ status === 'held' && mine === true.
+    // Đặt gạch dưới cho khớp quy ước `status` của API (xem 01-product-overview.md).
     available: 'var(--color-slot-available)',
     held:      'var(--color-slot-held)',
     booked:    'var(--color-slot-booked)',
-    'my-hold': 'var(--color-slot-my-hold)',
     blocked:   'var(--color-slot-blocked)',
     past:      'var(--color-slot-past)',
+    my_hold:   'var(--color-slot-my-hold)', // CSS variable giữ gạch nối theo lệ CSS
   }
 }
 ```
@@ -214,7 +230,7 @@ Sizes:     sm (h-8) | md (h-10, default) | lg (h-12)
 States:    default | hover | focus-visible | active | disabled | loading
 ```
 
-- Primary: `bg-primary-600 text-white hover:bg-primary-700`
+- Primary: `bg-primary-700 text-white hover:bg-primary-800` (đảm bảo tương phản AA cho text thường — xem mục "Kiểm tra tương phản AA")
 - Danger: `bg-danger text-white`
 - Loading state: spinner thay thế icon, disabled tự động.
 - Mỗi trang/modal chỉ có **1 nút Primary** chính.
@@ -225,9 +241,34 @@ States:    default | hover | focus-visible | active | disabled | loading
 - Error state: `border-danger` + text lỗi `text-danger text-sm` phía dưới.
 
 ### Badge trạng thái
+
+Mỗi trạng thái phải đủ **toàn bộ** giá trị trong enum tương ứng ở [04-database-schema.md](04-database-schema.md) — thiếu màu cho một giá trị nghĩa là UI sẽ render badge trắng/không màu khi gặp giá trị đó.
+
+| Nhóm | Trạng thái (đủ enum) | Màu |
+|------|---------------------|-----|
+| **Booking** (7) | `held` | vàng |
+| | `pending_payment` | vàng đậm |
+| | `confirmed` | xanh dương |
+| | `completed` | xanh lá |
+| | `cancelled` | đỏ |
+| | `expired` | xám |
+| | `no_show` | cam |
+| **Venue** (4) | `pending` | vàng |
+| | `approved` | xanh lá |
+| | `rejected` | đỏ |
+| | `suspended` | xám đậm |
+| **Payment** (7) | `pending` | xám |
+| | `submitted` | vàng |
+| | `completed` | xanh lá |
+| | `rejected` | đỏ |
+| | `refunded` | tím |
+| | `cancelled` | xám |
+| | `expired` | xám nhạt |
+
 ```
-Booking status:  held(vàng) | confirmed(xanh) | cancelled(đỏ) | expired(xám) | completed(xanh lá)
-Venue status:    pending(vàng) | approved(xanh) | rejected(đỏ)
+// Component Badge nhận đủ mọi giá trị enum; giá trị lạ phải fail to typecheck,
+// KHÔNG fallback im lặng về màu mặc định.
+<StatusBadge kind="booking" status="no_show" />
 ```
 
 ### Card sân (VenueCard)
@@ -254,7 +295,14 @@ Venue status:    pending(vàng) | approved(xanh) | rejected(đỏ)
 - **Sticky summary:** Bar tóm tắt (số block, tổng giá, nút đặt) sticky ở cuối màn hình.
 
 ### OwnerTimeline (Resource View)
-- **Trục X:** Thời gian (8:00 – 22:00), block 30 phút.
+- **Trục X:** Thời gian, block 30 phút. **Phạm vi trục KHÔNG hard-code 8:00–22:00.**
+  Trục phải suy ra từ `opening_hours` của **từng court** (OWN-04 cấu hình riêng theo sân):
+  lấy `min(open)` và `max(close)` trên các court đang hiển thị, rồi vẽ từ mốc sớm nhất
+  đến mốc muộn nhất. Sân cầu lông mở 6:00–23:00 và sân bóng đá 8:00–22:00 trong cùng
+  một venue thì trục phải là 6:00–23:00, và mỗi hàng court chỉ tô block trong giờ của sân đó.
+  - Block ngoài `opening_hours` của court: hiển thị **trống có gạch chéo**, không cho kéo tạo,
+    không tính là `blocked` (blackout là khái niệm khác — xem 01-product-overview.md).
+  - Nếu venue không có court nào → không render trục, hiện EmptyState.
 - **Trục Y:** Danh sách Court trong Venue.
 - **Màu block:** Theo trạng thái booking.
 - **Click block:** Mở detail panel (không mở modal riêng).

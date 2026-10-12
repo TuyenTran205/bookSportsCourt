@@ -1,6 +1,6 @@
 ﻿# 03 – Kiến trúc hệ thống
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 
 ## Sơ đồ tổng thể
 
@@ -15,7 +15,7 @@ graph TB
         WS["Socket.IO Gateway\nvenue:{id}:date:{date}"]
         SVC["Services\n(nghiệp vụ)"]
         REPO["Repositories\n(Drizzle ORM)"]
-        CRON["@nestjs/schedule\nExpire holds mỗi phút"]
+        CRON["@nestjs/schedule\n5 cron: expire holds, auto-complete,\ncancel stale payments, reminders,\ncleanup expired data"]
     end
 
     subgraph Storage["Lưu trữ"]
@@ -40,6 +40,27 @@ graph TB
     FE -.->|"Error SDK"| SENTRY
     API -.->|"Error SDK"| SENTRY
 ```
+
+## Phiên bản stack (ghim cứng)
+
+Mọi phiên bản dưới đây là **bắt buộc**; đổi phiên bản phải mở ADR mới. Code mẫu trong `docs/` viết theo đúng các phiên bản này — đặc biệt là cú pháp TanStack Query (xem ghi chú bên dưới).
+
+| Thành phần | Phiên bản | Ghi chú |
+|-----------|-----------|---------|
+| Node.js | 20 LTS | Khớp `setup-node` trong `.github/workflows/ci.yml` |
+| pnpm | 9 | Khớp `PNPM_VERSION` trong CI |
+| TypeScript | 5.x | |
+| Next.js | 14 (App Router) | |
+| React | 18 | |
+| **TanStack Query** | **5.x** | **Cú pháp v5, KHÔNG dùng cú pháp v4** |
+| Zustand | 4.x | State UI phía client |
+| Tailwind CSS | 3.x | |
+| NestJS | 10.x | |
+| Drizzle ORM | 0.3x | |
+| PostgreSQL | 16 | Có `btree_gist`, `tstzrange` |
+| Socket.IO | 4.x | |
+
+> **TanStack Query v5 – khác biệt cú pháp so với v4:** các hàm nhận *filters* (`invalidateQueries`, `refetchQueries`, `removeQueries`, `cancelQueries`, `resetQueries`) bắt buộc dùng **dạng object**: `invalidateQueries({ queryKey: ['slots', id, date] })`. Ngược lại, `setQueryData` / `getQueryData` nhận **queryKey trực tiếp (mảng)**: `setQueryData(['slots', id, date], updater)` — **không** bọc trong object. Code mẫu ở [05-booking-and-realtime.md](05-booking-and-realtime.md) đã theo đúng quy tắc này.
 
 ## Ranh giới trách nhiệm
 

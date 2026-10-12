@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-12
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -65,13 +65,13 @@
 | 409 | `ALREADY_EXISTS` | Trùng giá trị duy nhất (slug môn, tiện ích, khu vực, đánh giá của một booking, hồ sơ chủ sân đang chờ duyệt) |
 | 409 | `RESOURCE_IN_USE` | Không xoá được vì còn được tham chiếu (môn, tiện ích, khu vực đang dùng) |
 | 413 | `FILE_TOO_LARGE` | File upload vượt dung lượng cho phép |
-| 422 | `HOLD_LIMIT_EXCEEDED` | Quá giới hạn hold đồng thời |
+| 422 | `HOLD_LIMIT_EXCEEDED` | Quá giới hạn hold đồng thời: mỗi khách tối đa **3** booking ở trạng thái `held` (hằng số `HOLD_LIMIT`, cấu hình qua env). Chi tiết quy tắc ở [06-security-and-permissions.md](06-security-and-permissions.md) |
 | 422 | `CANCELLATION_NOT_ALLOWED` | Booking không còn được huỷ theo chính sách huỷ |
 | 422 | `PAYMENT_ACCOUNT_MISSING` | Venue chưa cấu hình tài khoản nhận tiền nên chưa thể tạo hold |
 | 422 | `HOLD_EXPIRED` | Hold đã hết hạn, không thể gửi ảnh xác nhận chuyển khoản |
-| 422 | `PAYMENT_ACCOUNT_MISSING` | Venue chưa cấu hình tài khoản nhận tiền, không thể tạo hold |
 | 422 | `REVIEW_NOT_ALLOWED` | Booking chưa `completed` hoặc không thuộc về người dùng |
 | 429 | `RATE_LIMIT_EXCEEDED` | Quá số request cho phép |
+| 429 | `HOLD_RATE_LIMITED` | Giữ rồi thả cùng một court quá **5 lần/giờ** (cửa sổ trượt 60 phút, hằng số `HOLD_RATE_LIMIT_PER_HOUR`) — chi tiết cách đếm ở [06-security-and-permissions.md](06-security-and-permissions.md) |
 | 500 | `INTERNAL_ERROR` | Lỗi server |
 
 ## Phân trang
@@ -84,9 +84,11 @@ Response luôn kèm `meta.total` và `meta.totalPages`.
 
 ## Idempotency
 
-- `POST /api/v1/bookings/hold`: gửi cùng `courtId + during` trong 10 phút → trả về hold hiện tại (không tạo mới).
+- `POST /api/v1/bookings/hold`: **chỉ idempotent theo từng người dùng.** Gửi lại cùng `courtId + during` khi **chính người dùng đó** đang có hold còn hiệu lực → trả **200** kèm hold hiện tại, không tạo mới. Người dùng **khác** tranh cùng block đã bị giữ → **409 `SLOT_TAKEN`**. Tạo hold mới thành công → **201**.
 - `PATCH /api/v1/owner/payments/:id/approve`: gọi lại trên payment đã `completed` → 200 với trạng thái hiện tại, không đổi dữ liệu.
 - `POST /api/v1/bookings/:id/payment/proof`: tải lại ảnh khi payment đang `submitted` → thay ảnh, không tạo payment mới.
+
+> **Vì sao phân biệt 201/200/409:** tính idempotent bảo vệ **một** người dùng khỏi double-submit (bấm hai lần, mạng chập chờn) — họ nhận lại đúng hold cũ. Nó **không** được phép biến việc tranh chấp giữa nhiều người thành thành công: hai người khác nhau không thể cùng giữ một block. Ràng buộc `EXCLUDE` ở tầng DB là nơi thực thi điều này; `409` chỉ là cách báo lại. Xem test tương ứng ở [12-coding-standards.md](12-coding-standards.md#api-test-supertest).
 
 ## Danh sách Endpoint theo Module
 
@@ -98,12 +100,13 @@ POST   /api/v1/auth/logout            Đăng xuất (revoke token)
 POST   /api/v1/auth/refresh           Làm mới access token
 GET    /api/v1/auth/google            Bắt đầu OAuth Google
 GET    /api/v1/auth/google/callback   OAuth callback
-GET    /api/v1/auth/me                Lấy thông tin user hiện tại
 POST   /api/v1/auth/forgot-password   Gửi email đặt lại mật khẩu (luôn trả 204, không lộ email có tồn tại)
 POST   /api/v1/auth/reset-password    Đặt mật khẩu mới bằng token trong email
 POST   /api/v1/auth/verify-email      Xác thực email bằng token (CUS-01)
 POST   /api/v1/auth/resend-verification  Gửi lại email xác thực
 ```
+
+> **Thông tin user hiện tại:** dùng `GET /api/v1/users/me` (mục Users), **không** có `GET /auth/me` — trước đây tài liệu liệt kê cả hai cho cùng một chức năng. `/auth/*` chỉ còn các endpoint xác thực/phiên, không trả hồ sơ.
 
 ### Users
 ```
@@ -119,7 +122,7 @@ PATCH  /api/v1/users/me/password      Đổi mật khẩu (cần mật khẩu c�
 ```
 GET    /api/v1/venues                 Tìm kiếm venue (public)
 GET    /api/v1/venues/map             Venue cho bản đồ (public, GST-02): chỉ id, slug, name, lat, lng, giá thấp nhất, điểm TB; lọc cùng bộ lọc /venues + `bbox`
-GET    /api/v1/venues/:slug           Chi tiết venue (public)
+GET    /api/v1/venues/:slug           Chi tiết venue (public, URL SEO — nhận cả slug lẫn UUID)
 POST   /api/v1/venues                 [Owner] Tạo venue
 PATCH  /api/v1/venues/:id             [Owner] Cập nhật venue (gồm sportIds, amenityIds)
 DELETE /api/v1/venues/:id             [Owner] Xoá venue
@@ -156,10 +159,17 @@ PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính
 
 `status` ∈ `available | held | booked | blocked | past` (khớp token màu slot ở `07-design-system.md`). Slot `held` của chính người gọi trả thêm `mine: true`.
 
+> **Quy ước tham số đường dẫn (áp dụng toàn bộ API):**
+> - **`:id`** – id của tài nguyên được **nêu tên ở segment ngay trước**: `/venues/:id`, `/bookings/:id`, `/reviews/:id`, `/payments/:id`. Vì vậy các route con của venue cũng dùng `:id`: `/venues/:id/slots`, `/venues/:id/courts`, `/venues/:id/reviews`.
+> - **`:venueId`** – id venue khi nó xuất hiện dưới một segment **không** tên là `venues`: `/favorites/:venueId`, query `?venueId=`.
+> - **`:slug`** – chỉ dùng ở `GET /venues/:slug`, URL SEO công khai (chấp nhận cả slug lẫn UUID). Response trả kèm `id` để FE dùng UUID cho các lời gọi tiếp theo.
+>
+> Trước đây tài liệu trộn `:slug`, `:id` và `:venueId` cho cùng một tài nguyên venue.
+
 ### Courts
 ```
-GET    /api/v1/venues/:venueId/courts            Danh sách courts
-POST   /api/v1/venues/:venueId/courts            [Owner] Tạo court
+GET    /api/v1/venues/:id/courts                 Danh sách courts
+POST   /api/v1/venues/:id/courts                 [Owner] Tạo court
 PATCH  /api/v1/courts/:id                        [Owner] Cập nhật court
 DELETE /api/v1/courts/:id                        [Owner] Xoá court
 GET    /api/v1/courts/:id/opening-hours          Giờ mở cửa
@@ -203,9 +213,19 @@ PUT    /api/v1/owner/venues/:id/payment-account  [Owner] Cập nhật tài kho�
 
 Quá `OWNER_REVIEW_TIMEOUT` (2 giờ) kể từ lúc khách gửi ảnh mà Owner chưa xử lý, hệ thống tự huỷ booking. Không có webhook ngân hàng ở MVP.
 
+**Hoàn tiền (refund):** MVP **không** có endpoint hoàn tiền tự động và **không** gọi API ngân hàng. Khi booking đã thanh toán (`payments.status = 'completed'`) bị huỷ theo chính sách, Owner chuyển khoản lại cho khách **ngoài hệ thống**, rồi đánh dấu để đóng sổ:
+
+```
+PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiền (body: note?); payments.status → 'refunded'
+```
+
+> Ai đặt `payments.status = 'refunded'`? **Chỉ endpoint này** (do Owner bấm sau khi đã chuyển tiền thật). Các cron tự động **không** bao giờ đặt `refunded` — cron huỷ hold hết hạn và booking quá hạn duyệt chỉ đặt `expired`/`cancelled`, vì lúc đó Owner chưa xác nhận nhận tiền nên hệ thống không ghi nhận đã thu. Xem bảng ánh xạ trạng thái ở [05-booking-and-realtime.md](05-booking-and-realtime.md#trạng-thái-thanh-toán-đi-kèm).
+
+> **`PAYMENT_ACCOUNT_MISSING` là lỗi cấu hình, không phải lỗi dữ liệu người dùng.** Nó chỉ phát sinh ở `POST /bookings/hold` (bước đầu của luồng thanh toán) khi venue chưa cấu hình tài khoản nhận tiền — không phát sinh ở các endpoint trong mục Payments này, vì chúng chỉ chạy sau khi hold đã tồn tại.
+
 ### Reviews
 ```
-GET    /api/v1/venues/:venueId/reviews   Danh sách review (public, chỉ review đang hiển thị)
+GET    /api/v1/venues/:id/reviews        Danh sách review (public, chỉ review đang hiển thị)
 POST   /api/v1/reviews                   [Customer] Đánh giá (cần booking completed)
 PATCH  /api/v1/reviews/:id/visibility    [Admin] Ẩn/hiện review
 POST   /api/v1/reviews/:id/reply         [Owner] Phản hồi đánh giá (OWN-13)
@@ -289,15 +309,21 @@ GET    /api/v1/admin/audit-logs          Audit log (query: actorId, action, enti
 
 ## Sự kiện WebSocket (Socket.IO)
 
-| Sự kiện | Hướng | Payload | Mô tả |
-|---------|-------|---------|-------|
-| `join_venue` | Client → Server | `{ venueId, date }` | Tham gia room theo venue+ngày |
-| `leave_venue` | Client → Server | `{ venueId, date }` | Rời room |
-| `slot_updated` | Server → Client | `SlotUpdatedPayload` | Cập nhật trạng thái slot |
-| `hold_expired` | Server → Client | `{ courtId, bookingId }` | Thông báo hold hết hạn |
-| `booking_confirmed` | Server → Client (user room) | `{ bookingId }` | Booking được xác nhận |
-| `booking_cancelled` | Server → Client (user room) | `{ bookingId, reason }` | Booking bị huỷ (bởi khách, Owner hoặc hết hạn thanh toán) |
-| `booking_created` | Server → Client (owner room) | `{ bookingId, venueId, courtId }` | Có hold mới tại venue của Owner (OWN-14) |
-| `payment_submitted` | Server → Client (owner room) | `{ paymentId, bookingId, venueId }` | Khách đã tải ảnh chuyển khoản, chờ Owner duyệt |
-| `payment_rejected` | Server → Client (user room) | `{ bookingId, reason }` | Owner từ chối thanh toán |
-| `notification_created` | Server → Client (user room) | `{ id, type, title }` | Có thông báo mới, FE tăng badge chưa đọc |
+Tên room dùng đúng quy ước ở [05-booking-and-realtime.md](05-booking-and-realtime.md#kênh-channelroom):
+`venue:{venueId}:date:{yyyy-mm-dd}`, `user:{userId}`, `owner:{userId}`.
+Room `user:`/`owner:` do server gán sau khi xác thực JWT, client không tự join.
+
+| Sự kiện | Hướng | Room nhận | Payload | Mô tả |
+|---------|-------|-----------|---------|-------|
+| `join_venue` | Client → Server | – | `{ venueId, date }` | Tham gia room venue+ngày (sai định dạng → `INVALID_ROOM`) |
+| `leave_venue` | Client → Server | – | `{ venueId, date }` | Rời room venue+ngày |
+| `slot_updated` | Server → Client | `venue:{venueId}:date:{date}` | `SlotUpdatedPayload` | Cập nhật trạng thái slot |
+| `hold_expired` | Server → Client | `user:{userId}` | `{ courtId, bookingId }` | Hold của khách hết hạn |
+| `booking_confirmed` | Server → Client | `user:{userId}` | `{ bookingId }` | Booking được xác nhận |
+| `booking_cancelled` | Server → Client | `user:{userId}` | `{ bookingId, reason }` | Booking bị huỷ (bởi khách, Owner hoặc hết hạn thanh toán) |
+| `booking_created` | Server → Client | `owner:{userId}` | `{ bookingId, venueId, courtId }` | Có hold mới tại venue của Owner (OWN-14) |
+| `payment_submitted` | Server → Client | `owner:{userId}` | `{ paymentId, bookingId, venueId }` | Khách đã tải ảnh chuyển khoản, chờ Owner duyệt |
+| `payment_rejected` | Server → Client | `user:{userId}` | `{ bookingId, reason }` | Owner từ chối thanh toán |
+| `notification_created` | Server → Client | `user:{userId}` | `{ id, type, title }` | Có thông báo mới, FE tăng badge chưa đọc |
+
+**Xác thực socket:** JWT gửi qua `handshake.auth.token`. Token sai/hết hạn → server ngắt kết nối với lỗi `UNAUTHORIZED`, **không** gán room nào. Không có kết nối ẩn danh cho realtime (khác với xem lịch công khai qua REST).

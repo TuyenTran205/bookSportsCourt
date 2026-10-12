@@ -1,6 +1,6 @@
 ﻿# 08 – Quy tắc chất lượng UI
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-09-30
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
 >
 > **Mọi PR có thay đổi UI PHẢI tự kiểm tra checklist này trước khi mở PR.**
 
@@ -182,11 +182,23 @@ Mọi component UI phải có:
 
 ### ✅ BẮT-06: Touch target tối thiểu 44px (mobile)
 ```html
-<!-- Nút icon nhỏ cần có vùng click đủ lớn -->
-<button class="p-3 -m-1">  <!-- Thêm padding và negative margin -->
+<!-- Icon 16px: cần tổng vùng chạm ≥ 44px -->
+<!-- p-3 = 12px mỗi bên → 16 + 12 + 12 = 40px, VẪN THIẾU 4px -->
+<button class="p-3 -m-1">   <!-- ❌ chỉ đạt 40px -->
   <Lucide.X size={16} />
 </button>
+
+<!-- Đúng: p-3.5 = 14px mỗi bên → 16 + 14 + 14 = 44px -->
+<button class="p-3.5 -m-1.5"> <!-- ✅ đạt 44px -->
+  <Lucide.X size={16} />
+</button>
+
+<!-- Hoặc đặt kích thước tối thiểu tường minh, không phụ thuộc phép cộng padding -->
+<button class="min-h-11 min-w-11 inline-flex items-center justify-center">
+  <Lucide.X size={16} />      <!-- ✅ 11 × 4px = 44px -->
+</button>
 ```
+> `min-h-11 min-w-11` (44px) là cách an toàn nhất vì không phải cộng nhẩm padding + icon mỗi lần.
 
 ### ✅ BẮT-07: Hiển thị giá ở mọi nơi chọn giờ
 SlotGrid, BookingSummary, OwnerTimeline đều phải hiển thị giá per slot.
@@ -214,14 +226,14 @@ Không có 2 nút Primary trên cùng màn hình.
 [ ] Hover state rõ ràng (không chỉ cursor-pointer)
 [ ] Focus-visible ring hiển thị khi dùng bàn phím
 [ ] Touch target ≥ 44px trên mobile
-[ ] Responsive: kiểm tra ở 375px và 1440px
+[ ] Responsive: kiểm tra ở 375 / 768 / 1280 / 1440 (bộ breakpoint chuẩn, xem 09-frontend-conventions.md)
 [ ] Màn hình chỉ có 1 CTA primary
 [ ] Bảng dữ liệu dùng <table> thực, không phải card grid
 [ ] Empty state có icon + text + CTA
 [ ] Thông báo lỗi viết tiếng Việt thân thiện, không phải HTTP status
 [ ] Không có backdrop-blur trên card bình thường
 [ ] Slot grid hiển thị giá tại mỗi block
-[ ] PR có ảnh chụp màn hình 375px (mobile) và 1440px (desktop)
+[ ] PR có ảnh chụp màn hình ở 2 đầu mút: 375px (mobile) và 1440px (desktop)
 ```
 
 ---

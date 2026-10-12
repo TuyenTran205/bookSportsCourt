@@ -47,6 +47,7 @@ body:
         - "Phase 3 – Owner"
         - "Phase 4 – Admin/Payment"
         - "Phase 5 – Finalize"
+        - "Phase 6 – Mobile"
     validations:
       required: true
 

@@ -1,6 +1,6 @@
 ﻿# 10 – Quy ước Backend
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 
 ## Cấu trúc module NestJS
 
@@ -30,10 +30,28 @@ apps/api/src/
 │   ├── realtime/               # RealtimeModule: Socket.IO gateway
 │   ├── reviews/                # ReviewsModule
 │   ├── notifications/          # NotificationsModule
+│   ├── favorites/              # FavoritesModule: yêu thích venue (CUS-11)
+│   ├── owner-applications/     # OwnerApplicationsModule: đăng ký làm chủ sân
+│   ├── catalogs/               # CatalogsModule: areas, sports, amenities (public read + Admin CRUD)
+│   ├── reports/                # ReportsModule: doanh thu, thống kê cho Owner (OWN-11)
+│   ├── uploads/                # UploadsModule: presigned URL cho R2
+│   ├── health/                 # HealthModule: GET /health (không auth) – dùng cho keep-alive
 │   └── admin/                  # AdminModule: duyệt, thống kê, audit
 └── schedules/                  # Cron jobs (@nestjs/schedule)
-    └── expire-holds.schedule.ts
+    ├── expire-holds.schedule.ts            # Mỗi phút  – held quá hạn → expired
+    ├── auto-complete-bookings.schedule.ts  # Mỗi 5 phút – confirmed qua giờ → completed
+    ├── cancel-stale-payments.schedule.ts   # Mỗi 5 phút – pending_payment quá hạn duyệt → cancelled
+    ├── send-reminders.schedule.ts          # Mỗi 15 phút – nhắc lịch trước 24h (CUS-14)
+    └── cleanup-expired-data.schedule.ts    # Hằng ngày 03:00 – dọn auth_tokens/notifications/audit_logs (xem 04)
 ```
+
+> Mọi nhóm endpoint trong [11-api-contract.md](11-api-contract.md) phải có module tương ứng ở đây. `favorites`, `owner-applications`, `catalogs`, `reports`, `uploads`, `health` từng có endpoint trong hợp đồng API nhưng không xuất hiện trong cấu trúc thư mục — thiếu module nghĩa là không ai biết code đó đặt ở đâu.
+>
+> **`catalogs`** gộp ba bảng danh mục (`areas`, `sports`, `amenities`) vào một module vì chúng cùng hình dạng: đọc công khai, chỉ Admin ghi. Tách ba module gần như trùng lặp là thừa.
+>
+> **`health`** phải **không** yêu cầu auth và không chạm DB nặng (chỉ `SELECT 1`) — `keep-alive.yml` gọi nó mỗi 10 phút, và endpoint này cũng là thứ giữ Neon không bị pause.
+>
+> Năm cron này khớp với mục "Cron" trong [05-booking-and-realtime.md](05-booking-and-realtime.md). Thiếu `auto-complete-bookings` thì trạng thái `completed` không bao giờ đạt được, kéo theo CUS-13 (đánh giá) và OWN-09 (no-show) không dùng được.
 
 ## Controller mỏng – Quy tắc vàng
 
