@@ -60,7 +60,7 @@
 | BSC-035 | FE: Dashboard Owner – quản lý venue/court | OWN-02 OWN-03 | `type:feature` `area:web` `prio:P0` `phase:3` | TV4 | M | BSC-034 |
 | BSC-036 | Booking thủ công API (Owner) | OWN-07 | `type:feature` `area:api` `prio:P0` `phase:3` | TV2 | M | BSC-024 |
 | BSC-037 | FE: Tạo booking thủ công qua timeline | OWN-07 | `type:feature` `area:web` `prio:P0` `phase:3` | TV4 | M | BSC-034 BSC-036 |
-| BSC-038 | Blackout Period API + FE | OWN-08 | `type:feature` `area:api` `area:web` `prio:P0` `phase:3` | TV1 TV4 | M | BSC-023 |
+| BSC-038 | Khoá giờ bảo trì & Mở khoá sân (Blackout Period API + FE) | OWN-08 | `type:feature` `area:api` `area:web` `prio:P0` `phase:3` | TV1 TV4 | M | BSC-023 |
 | BSC-039 | Báo cáo doanh thu API + FE chart | OWN-11 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV2 TV4 | L | BSC-024 |
 
 ## Phase 4 – Admin, Payment, Email

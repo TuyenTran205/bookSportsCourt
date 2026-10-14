@@ -107,7 +107,7 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 | 29 | OwnerTimeline component | TV4 | L |
 | 30 | Dashboard Owner: venue/court management | **TV3** | M |
 | 31 | Booking thủ công (Owner) | TV2 | M |
-| 32 | Blackout Period API + UI | TV1 | M |
+| 32 | Khoá giờ bảo trì & Mở khoá sân (Blackout Period API + UI) | TV1 | M |
 | 33 | Báo cáo doanh thu API (P1) | TV2 | M |
 
 > **Cân bằng tải:** trước đây TV4 nhận cùng lúc #29 (L) + #30 (M) + #32 (M) trong một tuần — vượt quá một người làm được. #30 chuyển cho TV3 (đang rảnh hơn ở phase này vì phần booking FE đã xong ở Phase 2), #32 giao trọn cho TV1 thay vì chia đôi. TV4 giữ #29 vì OwnerTimeline là component phức tạp nhất và cần người nắm design system.

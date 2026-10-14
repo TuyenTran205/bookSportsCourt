@@ -53,7 +53,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | OWN-05 | Thiết lập giá theo khung giờ (Pricing Rules) | P0 | Giá khác nhau theo giờ, thứ, ngày đặc biệt; ưu tiên rule cụ thể hơn rule chung |
 | OWN-06 | Xem OwnerTimeline (Resource view) | P0 | Timeline sân × giờ, block 30 phút, màu theo trạng thái, kéo để tạo booking thủ công |
 | OWN-07 | Tạo booking thủ công | P0 | Tạo booking trực tiếp cho khách đến trực tiếp; bỏ qua bước thanh toán online |
-| OWN-08 | Khoá giờ bảo trì (Blackout Period) | P0 | Tạo blackout trên court cho khoảng thời gian cụ thể; không cho khách đặt |
+| OWN-08 | Khoá giờ bảo trì & Mở khoá sân (Blackout Period) | P0 | Tạo khoảng khoá (blackout) trên court theo ngày và giờ cụ thể khiến các block tương ứng chuyển sang trạng thái `blocked` (không cho khách đặt); mở khoá sân (xoá blackout) trực tiếp bằng cách click vào block bị khoá trên OwnerTimeline hoặc qua danh sách blackout trong hộp thoại để hoàn trả block về trạng thái `available`; phát sự kiện realtime cập nhật lịch tức thì |
 | OWN-09 | Duyệt / Từ chối thanh toán, Đánh dấu No-show | P0 | Owner xem ảnh chuyển khoản của booking pending_payment, duyệt (→ confirmed) hoặc từ chối kèm lý do (→ cancelled); quá 2 giờ không xử lý tự huỷ |
 | OWN-10 | Thiết lập chính sách huỷ và cọc | P1 | Cấu hình: huỷ trước X giờ được hoàn Y%; yêu cầu cọc Z% |
 | OWN-11 | Báo cáo doanh thu | P1 | Biểu đồ doanh thu theo ngày/tuần/tháng; lọc theo venue/court |
