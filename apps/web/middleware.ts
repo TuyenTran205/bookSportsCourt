@@ -29,8 +29,26 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Nhóm route Chủ sân: /owner (loại trừ /owner/apply dành cho khách hàng đăng ký làm chủ sân)
-  const isOwnerRoute = pathname.startsWith('/owner') && pathname !== '/owner/apply';
+  // 2. Nộp hồ sơ làm chủ sân: chỉ Customer đã đăng nhập được gửi hồ sơ.
+  if (pathname === '/owner/apply') {
+    if (!session) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    if (role === 'owner')
+      return NextResponse.redirect(new URL('/owner/dashboard', request.url));
+    if (role === 'admin')
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    if (role !== 'customer') {
+      return NextResponse.rewrite(new URL('/not-found', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 3. Nhóm route Chủ sân: /owner
+  const isOwnerRoute =
+    pathname.startsWith('/owner') && pathname !== '/owner/apply';
   if (isOwnerRoute) {
     if (!session) {
       const loginUrl = new URL('/login', request.url);
@@ -45,7 +63,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Nhóm route Khách hàng: /bookings, /favorites, /profile
+  // 4. Nhóm route Khách hàng: /bookings, /favorites, /profile
   const isCustomerRoute =
     pathname.startsWith('/bookings') ||
     pathname.startsWith('/favorites') ||
@@ -60,7 +78,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 4. Nếu đã đăng nhập mà vào lại các trang xác thực (login, register)
+  // 5. Nếu đã đăng nhập mà vào lại các trang xác thực (login, register)
   const isAuthRoute =
     pathname === '/login' ||
     pathname === '/register' ||

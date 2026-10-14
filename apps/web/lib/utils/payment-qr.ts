@@ -30,12 +30,7 @@ export interface TransferQrInput {
   transferCode: string;
 }
 
-export function buildTransferQrPayload({
-  bankBin,
-  accountNo,
-  amount,
-  transferCode,
-}: TransferQrInput): string {
+export function buildTransferQrPayload({ bankBin, accountNo, amount, transferCode }: TransferQrInput): string {
   const beneficiary = tlv('00', bankBin) + tlv('01', accountNo);
   const merchantAccount = tlv('00', 'A000000727') + tlv('01', beneficiary) + tlv('02', 'QRIBFTTA');
 
@@ -64,6 +59,11 @@ const BANK_NAMES: Record<string, string> = {
   '970423': 'TPBank',
   '970403': 'Sacombank',
 };
+
+export const SUPPORTED_BANKS = Object.entries(BANK_NAMES).map(([bin, name]) => ({
+  bin,
+  name,
+}));
 
 export function bankNameFromBin(bin: string): string {
   return BANK_NAMES[bin] ?? `Ngân hàng (BIN ${bin})`;

@@ -1,19 +1,12 @@
 import { http } from 'msw';
+import { ownerApplicationSchema } from '@bsc/shared';
 import type { Booking, OpeningHour, OwnerApplication, OwnerTimelineBooking, Payment, RevenuePoint } from '@bsc/shared';
 import { db, currentUser, persist } from '../db';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { buildSlots, toDateOnly } from '../fixtures/slots';
 import { pricingRules, venues } from '../fixtures/venues';
 import { publish } from '../realtime';
-import {
-  err,
-  newId,
-  ok,
-  okList,
-  paginate,
-  readPaging,
-  simulateLatency,
-} from '../utils';
+import { err, newId, ok, okList, paginate, readPaging, simulateLatency } from '../utils';
 
 /**
  * Handler cho kênh chủ sân.
@@ -27,6 +20,14 @@ function requireOwner() {
   if (!user) return { error: err(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập') };
   if (user.role !== 'owner' && user.role !== 'admin') {
     return { error: err(403, 'FORBIDDEN', 'Khu vực này chỉ dành cho chủ sân') };
+  }
+  return { user };
+}
+
+export function authorizeCustomer(user: ReturnType<typeof currentUser>) {
+  if (!user) return { error: err(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập') };
+  if (user.role !== 'customer') {
+    return { error: err(403, 'FORBIDDEN', 'Chỉ khách hàng mới có thể gửi hồ sơ chủ sân') };
   }
   return { user };
 }
@@ -83,9 +84,7 @@ export const ownerHandlers = [
 
     // Không cho xoá sân còn booking đang hoạt động — docs/11 (409 RESOURCE_IN_USE).
     const busy = db.bookings.some(
-      (b) =>
-        b.booking.courtId === params.id &&
-        ['held', 'pending_payment', 'confirmed'].includes(b.booking.status),
+      (b) => b.booking.courtId === params.id && ['held', 'pending_payment', 'confirmed'].includes(b.booking.status),
     );
     if (busy) {
       return err(409, 'RESOURCE_IN_USE', 'Sân còn đơn đang hoạt động, không thể xoá');
@@ -106,7 +105,21 @@ export const ownerHandlers = [
     const guard = requireOwner();
     if (guard.error) return guard.error;
     const venueId = params.id as string;
-    const body = (await request.json()) as { hours?: Array<Omit<OpeningHour, 'id' | 'venueId'> & { id?: string; venueId?: string }> } | Array<Omit<OpeningHour, 'id' | 'venueId'> & { id?: string; venueId?: string }>;
+    const body = (await request.json()) as
+      | {
+          hours?: Array<
+            Omit<OpeningHour, 'id' | 'venueId'> & {
+              id?: string;
+              venueId?: string;
+            }
+          >;
+        }
+      | Array<
+          Omit<OpeningHour, 'id' | 'venueId'> & {
+            id?: string;
+            venueId?: string;
+          }
+        >;
     const incoming = Array.isArray(body) ? body : (body.hours ?? []);
 
     // Loại bỏ giờ mở cửa cũ của cơ sở này trong db
@@ -154,7 +167,11 @@ export const ownerHandlers = [
     const guard = requireOwner();
     if (guard.error) return guard.error;
 
-    const body = (await request.json()) as { start: string; end: string; reason?: string };
+    const body = (await request.json()) as {
+      start: string;
+      end: string;
+      reason?: string;
+    };
     const created = {
       id: newId(),
       courtId: params.id as string,
@@ -183,9 +200,7 @@ export const ownerHandlers = [
 
     const courtId = params.id as string;
     const blackoutId = params.blackoutId as string;
-    const index = db.blackouts.findIndex(
-      (b) => b.id === blackoutId && (b.courtId === courtId || !courtId),
-    );
+    const index = db.blackouts.findIndex((b) => b.id === blackoutId && (b.courtId === courtId || !courtId));
     if (index === -1) {
       return err(404, 'NOT_FOUND', 'Không tìm thấy khoảng khoá sân');
     }
@@ -268,11 +283,8 @@ export const ownerHandlers = [
         courtName: courtNameByCourtId[r.booking.courtId] ?? 'Sân',
         venueName: venues.find((v) => v.id === (venueIdByCourtId[r.booking.courtId] ?? ''))?.name ?? '',
         customerName:
-          db.users.find((u) => u.id === r.booking.customerId)?.fullName ??
-          r.booking.guestName ??
-          'Khách vãng lai',
-        customerPhone:
-          db.users.find((u) => u.id === r.booking.customerId)?.phone ?? r.booking.guestPhone ?? null,
+          db.users.find((u) => u.id === r.booking.customerId)?.fullName ?? r.booking.guestName ?? 'Khách vãng lai',
+        customerPhone: db.users.find((u) => u.id === r.booking.customerId)?.phone ?? r.booking.guestPhone ?? null,
       },
     }));
 
@@ -294,7 +306,10 @@ export const ownerHandlers = [
     record.payment!.reviewedBy = guard.user!.id;
     record.booking.status = 'confirmed';
     persist();
-    publish({ type: 'booking_confirmed', payload: { bookingId: record.booking.id } });
+    publish({
+      type: 'booking_confirmed',
+      payload: { bookingId: record.booking.id },
+    });
 
     return ok({ booking: record.booking, payment: record.payment });
   }),
@@ -317,7 +332,10 @@ export const ownerHandlers = [
     record.booking.cancelledAt = new Date().toISOString();
     record.booking.cancelReason = body.rejectReason ?? 'Biên lai không hợp lệ';
     persist();
-    publish({ type: 'booking_cancelled', payload: { bookingId: record.booking.id } });
+    publish({
+      type: 'booking_cancelled',
+      payload: { bookingId: record.booking.id },
+    });
 
     return ok({ booking: record.booking, payment: record.payment });
   }),
@@ -333,9 +351,7 @@ export const ownerHandlers = [
     const status = url.searchParams.get('status');
     const myVenueIds = new Set(ownedVenues().map((v) => v.id));
 
-    let list = db.bookings.filter((b) =>
-      myVenueIds.has(venueIdByCourtId[b.booking.courtId] ?? ''),
-    );
+    let list = db.bookings.filter((b) => myVenueIds.has(venueIdByCourtId[b.booking.courtId] ?? ''));
     if (status) list = list.filter((b) => b.booking.status === status);
     list = [...list].sort((a, b) => b.booking.createdAt.localeCompare(a.booking.createdAt));
 
@@ -343,11 +359,8 @@ export const ownerHandlers = [
       ...r.booking,
       courtName: courtNameByCourtId[r.booking.courtId] ?? 'Sân',
       customerName:
-        db.users.find((u) => u.id === r.booking.customerId)?.fullName ??
-        r.booking.guestName ??
-        'Khách vãng lai',
-      customerPhone:
-        db.users.find((u) => u.id === r.booking.customerId)?.phone ?? r.booking.guestPhone ?? null,
+        db.users.find((u) => u.id === r.booking.customerId)?.fullName ?? r.booking.guestName ?? 'Khách vãng lai',
+      customerPhone: db.users.find((u) => u.id === r.booking.customerId)?.phone ?? r.booking.guestPhone ?? null,
       paymentStatus: r.payment?.status ?? null,
     }));
 
@@ -388,8 +401,7 @@ export const ownerHandlers = [
         status: b.booking.status,
         source: b.booking.source,
         guestName: b.booking.guestName,
-        customerName:
-          db.users.find((u) => u.id === b.booking.customerId)?.fullName ?? b.booking.guestName ?? null,
+        customerName: db.users.find((u) => u.id === b.booking.customerId)?.fullName ?? b.booking.guestName ?? null,
         totalPrice: b.booking.totalPrice,
       }));
 
@@ -440,9 +452,7 @@ export const ownerHandlers = [
       currentUserId: db.currentUserId,
     });
 
-    const picked = grid.filter((s) =>
-      body.slots.some((w) => s.start >= w.start && s.end <= w.end),
-    );
+    const picked = grid.filter((s) => body.slots.some((w) => s.start >= w.start && s.end <= w.end));
     if (picked.some((s) => s.status !== 'available')) {
       return err(409, 'SLOT_TAKEN', 'Khung giờ này đã có người đặt');
     }
@@ -454,7 +464,10 @@ export const ownerHandlers = [
       source: 'manual',
       guestName: body.guestName,
       guestPhone: body.guestPhone,
-      during: { start: body.slots[0]!.start, end: body.slots[body.slots.length - 1]!.end },
+      during: {
+        start: body.slots[0]!.start,
+        end: body.slots[body.slots.length - 1]!.end,
+      },
       status: 'confirmed',
       totalPrice: picked.reduce((s, x) => s + x.price, 0),
       depositAmount: 0,
@@ -583,8 +596,9 @@ export const ownerHandlers = [
   // ── Đăng ký làm chủ sân (OWN-01 / BSC-062) ───────────────────────────────
   http.post('/api/v1/owner/apply', async ({ request }) => {
     await simulateLatency(600);
-    const user = currentUser();
-    if (!user) return err(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập');
+    const guard = authorizeCustomer(currentUser());
+    if (guard.error) return guard.error;
+    const { user } = guard;
     const body = (await request.json()) as Record<string, unknown>;
 
     // Kiểm tra hồ sơ pending hiện có
@@ -632,9 +646,17 @@ export const ownerHandlers = [
 
   http.post('/api/v1/owner-applications', async ({ request }) => {
     await simulateLatency(600);
-    const user = currentUser();
-    if (!user) return err(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập');
-    const body = (await request.json()) as Record<string, unknown>;
+    const guard = authorizeCustomer(currentUser());
+    if (guard.error) return guard.error;
+    const { user } = guard;
+    const parsed = ownerApplicationSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      const details = Object.fromEntries(
+        parsed.error.issues.map((issue) => [String(issue.path[0] ?? 'form'), [issue.message]]),
+      );
+      return err(422, 'VALIDATION_ERROR', 'Thông tin hồ sơ chưa hợp lệ', details);
+    }
+    const body = parsed.data;
 
     const pendingApp = db.ownerApplications.find((a) => a.user.id === user.id && a.status === 'pending');
     if (pendingApp) {
@@ -647,15 +669,22 @@ export const ownerHandlers = [
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        phone: (body.phone as string) || user.phone,
+        phone: body.phone,
         avatarUrl: user.avatarUrl,
         role: user.role,
         status: user.status,
         createdAt: user.createdAt,
       },
-      businessName: String(body.businessName || 'Cơ sở kinh doanh'),
-      taxCode: body.taxCode ? String(body.taxCode) : null,
-      idCardUrl: body.idCardUrl ? String(body.idCardUrl) : 'https://picsum.photos/seed/cccd-apply/800/500',
+      businessName: body.businessName,
+      phone: body.phone,
+      address: body.address,
+      taxCode: body.taxCode ?? null,
+      idCardUrl: body.idCardUrl ?? null,
+      bankBin: body.bankBin,
+      bankName: body.bankName,
+      accountNo: body.accountNo,
+      accountName: body.accountName,
+      note: body.note ?? null,
       status: 'pending',
       rejectReason: null,
       reviewedAt: null,

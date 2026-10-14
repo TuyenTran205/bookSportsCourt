@@ -8,6 +8,7 @@ import type {
   Court,
   OpeningHour,
   OwnerApplication,
+  OwnerApplicationInput,
   OwnerTimelineDay,
   Payment,
   PaymentStatus,
@@ -247,23 +248,11 @@ export function updateCancellationPolicy(input: CancellationPolicy) {
 
 // ── Đăng ký làm chủ sân ────────────────────────────────────────────────────
 
-export interface OwnerApplicationInput {
-  businessName: string;
-  phone: string;
-  address: string;
-  taxCode?: string;
-  idCardUrl?: string;
-  bankName?: string;
-  accountNo?: string;
-  accountName?: string;
-  note?: string;
-}
-
 export function submitOwnerApplication(input: OwnerApplicationInput) {
-  return apiFetch<OwnerApplication>('/owner/apply', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<OwnerApplication>('/owner-applications', { method: 'POST', ...jsonBody(input) });
 }
 
 /** `null` khi chưa từng nộp — UI hiện form trống thay vì lỗi. */
 export function getMyOwnerApplication() {
-  return apiFetch<OwnerApplication | null>('/owner/apply');
+  return apiFetch<OwnerApplication | null>('/owner-applications/me');
 }

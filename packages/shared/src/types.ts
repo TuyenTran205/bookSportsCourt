@@ -121,8 +121,15 @@ export interface OwnerApplication {
   id: string;
   user: UserSummary;
   businessName: string;
+  phone?: string;
+  address?: string;
   taxCode: string | null;
   idCardUrl: string | null;
+  bankBin?: string;
+  bankName?: string;
+  accountNo?: string;
+  accountName?: string;
+  note?: string | null;
   status: OwnerApplicationStatus;
   rejectReason: string | null;
   reviewedAt: string | null;

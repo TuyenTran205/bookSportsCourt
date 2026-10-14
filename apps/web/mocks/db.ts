@@ -142,14 +142,14 @@ function buildSeed(): MockDb {
 
 /**
  * Phần state được chia sẻ giữa các tab. Không lưu `users`/`reviews` tĩnh vì
- * chúng không đổi trong lúc demo, chỉ `bookings`, `blackouts`, `openingHours` là
- * thứ thay đổi liên tục.
+ * chúng không đổi trong lúc demo; các hồ sơ Owner mới được lưu cùng bookings,
+ * blackouts và openingHours để mock giữ trạng thái qua reload.
  *
  * LƯU Ý: Không chia sẻ `currentUserId` giữa các tab qua `localStorage` để cho phép
  * kiểm thử đa vai trò (Tab A là Chủ sân, Tab B là Khách đặt sân) mà không bị ghi
  * đè phiên làm việc của nhau.
  */
-type PersistedState = Pick<MockDb, 'bookings' | 'blackouts' | 'openingHours'>;
+type PersistedState = Pick<MockDb, 'bookings' | 'blackouts' | 'openingHours' | 'ownerApplications'>;
 
 function readStorage(): Partial<PersistedState> | null {
   if (typeof window === 'undefined') return null;
@@ -169,6 +169,7 @@ function writeStorage(state: MockDb): void {
       bookings: state.bookings,
       blackouts: state.blackouts,
       openingHours: state.openingHours,
+      ownerApplications: state.ownerApplications,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
@@ -190,6 +191,7 @@ function loadState(): MockDb {
     bookings: saved.bookings ?? seed.bookings,
     blackouts: cleanBlackouts,
     openingHours: saved.openingHours ?? seed.openingHours,
+    ownerApplications: saved.ownerApplications ?? seed.ownerApplications,
     currentUserId,
   };
 }
@@ -208,6 +210,7 @@ export function reloadFromStorage(): void {
   if (saved.bookings) db.bookings = saved.bookings;
   if (saved.blackouts) db.blackouts = saved.blackouts;
   if (saved.openingHours) db.openingHours = saved.openingHours;
+  if (saved.ownerApplications) db.ownerApplications = saved.ownerApplications;
   // CHÚ Ý: Không đồng bộ db.currentUserId ở đây. Mỗi tab giữ nguyên phiên đăng nhập
   // của mình (lưu ở sessionStorage) để hỗ trợ kiểm thử đa vai trò giữa các tab.
 }

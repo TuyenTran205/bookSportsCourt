@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.5.0 | **Cập nhật lần cuối:** 2026-10-14
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -259,6 +259,24 @@ POST   /api/v1/notifications/read-all    Đánh dấu tất cả đã đọc
 POST   /api/v1/owner-applications        [Customer] Gửi hồ sơ làm chủ sân (OWN-01)
 GET    /api/v1/owner-applications/me     [Customer/Owner] Trạng thái hồ sơ của tôi
 ```
+
+`POST /owner-applications` nhận JSON:
+```json
+{
+  "businessName": "Sân thể thao Phú Nhuận",
+  "phone": "0901234567",
+  "address": "12 Nguyễn Văn Trỗi, Phường 8, Phú Nhuận, TP. Hồ Chí Minh",
+  "taxCode": "0312345678",
+  "bankBin": "970436",
+  "bankName": "Vietcombank",
+  "accountNo": "0123456789",
+  "accountName": "NGUYEN VAN A",
+  "note": "Cơ sở có sân cầu lông và bóng đá.",
+  "idCardUrl": "https://example.com/owner-document.jpg"
+}
+```
+`taxCode`, `note` và `idCardUrl` không bắt buộc. `phone` phải là số Việt Nam 10 chữ số; `bankBin` là mã BIN ngân hàng VietQR. Endpoint trả `OwnerApplication` kèm trạng thái hồ sơ. Các trường ngân hàng, mã số thuế và giấy tờ cần được bổ sung vào database bằng migration có version trước khi backend triển khai hợp đồng này; mock FE lưu hồ sơ trong trình duyệt để phục vụ demo.
+Chỉ tài khoản `customer` được gửi hồ sơ; request của Guest trả `401 UNAUTHORIZED`, request của Owner/Admin trả `403 FORBIDDEN`.
 
 > **Schema:** bảng `owner_applications` đã có trong `04-database-schema.md`. Khi Admin duyệt, `users.role` đổi từ `customer` sang `owner` trong cùng transaction.
 
