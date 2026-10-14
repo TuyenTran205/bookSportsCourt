@@ -24,7 +24,12 @@ export function useAuth() {
       try {
         return await apiMe();
       } catch (err: unknown) {
-        // 401 Unauthorized là bình thường khi chưa đăng nhập — trả về null thay vì ném lỗi văng màn hình
+        // 401 Unauthorized là bình thường khi chưa đăng nhập — dọn dẹp cookie phiên rác (nếu có)
+        // để middleware không hiểu nhầm là đã đăng nhập và chặn truy cập /login, /register
+        if (typeof document !== 'undefined') {
+          document.cookie = 'bsc_session=; path=/; max-age=0; samesite=lax';
+          document.cookie = 'bsc_role=; path=/; max-age=0; samesite=lax';
+        }
         return null;
       }
     },
@@ -52,6 +57,10 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: apiLogout,
     onSuccess: () => {
+      if (typeof document !== 'undefined') {
+        document.cookie = 'bsc_session=; path=/; max-age=0; samesite=lax';
+        document.cookie = 'bsc_role=; path=/; max-age=0; samesite=lax';
+      }
       queryClient.setQueryData(authKeys.me(), null);
       queryClient.invalidateQueries();
       toast.success(tAuth('logoutSuccess'));

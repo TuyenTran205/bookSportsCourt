@@ -24,7 +24,10 @@ export function middleware(request: NextRequest) {
   if (isAdminRoute) {
     if (!session || role !== 'admin') {
       // Rewrite sang 404 thay vì 403 để không tiết lộ route nội bộ có tồn tại
-      return NextResponse.rewrite(new URL('/not-found', request.url));
+      const url = request.nextUrl.clone();
+      url.pathname = '/not-found';
+      url.search = '';
+      return NextResponse.rewrite(url);
     }
     return NextResponse.next();
   }
@@ -51,14 +54,18 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/owner') && pathname !== '/owner/apply';
   if (isOwnerRoute) {
     if (!session) {
-      const loginUrl = new URL('/login', request.url);
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
     }
     // Đã đăng nhập nhưng sai vai trò: KHÔNG redirect về /login, vì /login đẩy người đã
     // có session quay lại `next` → vòng lặp vô hạn. Trả 404 giống nhánh admin.
     if (role !== 'owner' && role !== 'admin') {
-      return NextResponse.rewrite(new URL('/not-found', request.url));
+      const url = request.nextUrl.clone();
+      url.pathname = '/not-found';
+      url.search = '';
+      return NextResponse.rewrite(url);
     }
     return NextResponse.next();
   }
@@ -71,7 +78,8 @@ export function middleware(request: NextRequest) {
 
   if (isCustomerRoute) {
     if (!session) {
-      const loginUrl = new URL('/login', request.url);
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = '/login';
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -87,7 +95,10 @@ export function middleware(request: NextRequest) {
 
   if (isAuthRoute && session) {
     const next = request.nextUrl.searchParams.get('next');
-    return NextResponse.redirect(new URL(next ?? '/', request.url));
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = next ?? '/';
+    redirectUrl.search = '';
+    return NextResponse.redirect(redirectUrl);
   }
 
   return NextResponse.next();

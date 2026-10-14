@@ -17,26 +17,26 @@ import { blackouts as initialBlackouts, openingHours as initialOpeningHours } fr
 
 const STORAGE_KEY = 'bsc-mock-db-v1';
 const USER_SESSION_KEY = 'bsc-mock-user-id';
+const GUEST_SENTINEL = '__bsc_guest__';
 
-function readSavedUserId(): string | null {
-  if (typeof window === 'undefined') return null;
+function readSavedUserId(): string | null | undefined {
+  if (typeof window === 'undefined') return undefined;
   try {
-    return window.sessionStorage.getItem(USER_SESSION_KEY) ?? window.localStorage.getItem(USER_SESSION_KEY);
+    const raw = window.sessionStorage.getItem(USER_SESSION_KEY) ?? window.localStorage.getItem(USER_SESSION_KEY);
+    if (raw === null) return undefined; // Chưa từng lưu gì -> dùng seed mặc định
+    if (raw === GUEST_SENTINEL) return null; // Người dùng đã chủ động đăng xuất -> khách vãng lai
+    return raw; // Đang đăng nhập tài khoản id này
   } catch {
-    return null;
+    return undefined;
   }
 }
 
 export function saveCurrentUserId(id: string | null): void {
   if (typeof window === 'undefined') return;
   try {
-    if (id) {
-      window.sessionStorage.setItem(USER_SESSION_KEY, id);
-      window.localStorage.setItem(USER_SESSION_KEY, id);
-    } else {
-      window.sessionStorage.removeItem(USER_SESSION_KEY);
-      window.localStorage.removeItem(USER_SESSION_KEY);
-    }
+    const value = id ?? GUEST_SENTINEL;
+    window.sessionStorage.setItem(USER_SESSION_KEY, value);
+    window.localStorage.setItem(USER_SESSION_KEY, value);
   } catch {
     /* bỏ qua */
   }
@@ -181,7 +181,7 @@ function loadState(): MockDb {
   const seed = buildSeed();
   const saved = readStorage();
   const savedUserId = readSavedUserId();
-  const currentUserId = savedUserId !== null ? savedUserId : seed.currentUserId;
+  const currentUserId = savedUserId !== undefined ? savedUserId : seed.currentUserId;
   if (!saved) return { ...seed, currentUserId };
   const rawBlackouts = saved.blackouts ?? seed.blackouts;
   // Dọn dẹp các blackout mẫu cũ năm 2000 nếu còn lưu trong localStorage
@@ -234,7 +234,7 @@ export function resetMockDb(): void {
  * Trả về hàm huỷ đăng ký.
  */
 export function subscribeToStorage(): () => void {
-  if (typeof window === 'undefined') return () => {};
+  if (typeof window === 'undefined') return () => { };
   const onStorage = (e: StorageEvent) => {
     if (e.key === STORAGE_KEY) {
       reloadFromStorage();
@@ -253,6 +253,9 @@ if (typeof window !== 'undefined') {
       const role = user?.role ?? 'customer';
       document.cookie = `bsc_session=${db.currentUserId}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
       document.cookie = `bsc_role=${role}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
+    } else {
+      document.cookie = `bsc_session=; path=/; max-age=0; samesite=lax`;
+      document.cookie = `bsc_role=; path=/; max-age=0; samesite=lax`;
     }
   });
 }
