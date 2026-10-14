@@ -76,7 +76,7 @@ create_milestone "phase-0-setup"           "Phase 0: Khởi tạo monorepo, CI, 
 create_milestone "phase-1-auth-venue"      "Phase 1: Auth, Venue/Court CRUD, Tìm kiếm"
 create_milestone "phase-2-booking-realtime" "Phase 2: Booking, Hold, EXCLUDE, Realtime"
 create_milestone "phase-3-owner"           "Phase 3: Owner Dashboard, OwnerTimeline"
-create_milestone "phase-4-admin-payment"   "Phase 4: Admin, VietQR Sandbox, Email"
+create_milestone "phase-4-admin-payment"   "Phase 4: Admin, Thanh toán QR ngân hàng chủ sân, Email"
 create_milestone "phase-5-finalize"        "Phase 5: Test, Deploy, Demo, Báo cáo"
 create_milestone "phase-6-mobile"          "Phase 6: Mobile (Tuỳ chọn)"
 
