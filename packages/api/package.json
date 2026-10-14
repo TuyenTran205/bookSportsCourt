@@ -1,0 +1,15 @@
+{
+  "name": "@bsc/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"[@bsc/api] Backend chưa triển khai — xem docs/10-backend-conventions.md\" && exit 0",
+    "build": "echo \"[@bsc/api] Chưa có gì để build\" && exit 0",
+    "lint": "echo \"[@bsc/api] Chưa có source để lint\" && exit 0",
+    "typecheck": "echo \"[@bsc/api] Chưa có source để typecheck\" && exit 0",
+    "test": "echo \"[@bsc/api] Chưa có test\" && exit 0",
+    "db:migrate": "echo \"[@bsc/api] db:migrate: chưa có DB — bỏ qua trong giai đoạn mock UI\" && exit 0",
+    "db:seed": "echo \"[@bsc/api] db:seed: chưa có DB — bỏ qua trong giai đoạn mock UI\" && exit 0"
+  }
+}
