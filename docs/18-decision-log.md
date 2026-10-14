@@ -406,11 +406,11 @@ interface PaymentAdapter {
 
 **Ngày:** 2026-10-12 | **Trạng thái:** Accepted
 
-**Bối cảnh:** Màn hình thanh toán cần hiện mã QR chuyển khoản (VietQR) với số tiền và nội dung điền sẵn.
+**Bối cảnh:** Màn hình thanh toán cần hiện mã QR chuyển khoản ngân hàng của chủ sân với số tiền và nội dung điền sẵn.
 
 **Quyết định:** Sinh ảnh QR **ở client** bằng thư viện JS, từ dữ liệu BE trả về (`bank_code`, `account_number`, `account_name`, `amount`, `transfer_code`).
 
-**Lý do:** Chuỗi VietQR chỉ là văn bản theo chuẩn EMVCo — sinh ở client không cần round-trip, không tốn CPU/ảnh lưu trữ ở BE, và hiển thị ngay khi mở trang. BE chỉ trả dữ liệu, không phải ảnh.
+**Lý do:** Chuỗi mã QR chuyển khoản chỉ là văn bản theo chuẩn EMVCo — sinh ở client không cần round-trip, không tốn CPU/ảnh lưu trữ ở BE, và hiển thị ngay khi mở trang. BE chỉ trả dữ liệu tài khoản chủ sân, không phải ảnh.
 
 **Loại bỏ:**
 - **Sinh ảnh ở BE rồi lưu R2:** tốn storage và thêm một bước không cần thiết.
