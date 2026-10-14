@@ -304,9 +304,12 @@ Mỗi trạng thái phải đủ **toàn bộ** giá trị trong enum tương �
     không tính là `blocked` (blackout là khái niệm khác — xem 01-product-overview.md).
   - Nếu venue không có court nào → không render trục, hiện EmptyState.
 - **Trục Y:** Danh sách Court trong Venue.
-- **Màu block:** Theo trạng thái booking.
-- **Click block:** Mở detail panel (không mở modal riêng).
+- **Màu block:** Theo trạng thái booking (xanh đậm = đã đặt `booked`, sọc xám = khoá bảo trì `blocked`, trắng = trống `free`, xám nhạt = đã qua giờ `past`).
+- **Click block:** Mở detail panel bên phải (không mở modal riêng):
+  - **Block đã đặt (`booked`):** Hiển thị thông tin người đặt, thời gian, nguồn đặt (online/manual), tổng tiền, trạng thái booking.
+  - **Block bị khoá (`blocked` – Blackout):** Hiển thị thông tin khoảng bảo trì (sân, thời gian, lý do khoá) kèm nút hành động **"Mở khoá sân"** (OWN-08). Bấm nút và xác nhận sẽ xoá blackout qua API, giải phóng các block về `available` và cập nhật realtime trên lưới.
 - **Kéo để tạo:** Kéo trên vùng trống tạo booking thủ công.
+- **Quản lý Blackout:** Nút "Khoá sân" trên thanh công cụ mở hộp thoại cho phép tạo khoảng khoá mới, đồng thời duyệt danh sách các khoảng khoá đang hoạt động trong ngày kèm nút "Mở khoá" nhanh từng khoảng.
 - **Desktop-first:** Tối ưu cho màn hình ≥ 1024px.
 
 ### BookingSummary / Checkout

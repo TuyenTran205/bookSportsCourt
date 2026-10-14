@@ -184,7 +184,11 @@ DELETE /api/v1/courts/:id/blackouts/:blackoutId  [Owner] Xoá blackout
 GET    /api/v1/owner/timeline                    [Owner] Dữ liệu OwnerTimeline (OWN-06)
 ```
 
-`GET /owner/timeline?venueId=&date=YYYY-MM-DD` trả mọi court của venue kèm block đã đặt, hold, blackout và giờ mở cửa của ngày đó. Realtime dùng chung room `join_venue`.
+`GET /owner/timeline?venueId=&date=YYYY-MM-DD` trả mọi court của venue kèm block đã đặt, hold, blackout và giờ mở cửa của ngày đó (blackout được lọc theo ngày truy vấn để không ảnh hưởng các ngày khác). Realtime dùng chung room `join_venue`.
+
+Quản lý khoảng khoá sân (Blackout Period – OWN-08):
+- `POST /api/v1/courts/:id/blackouts` (body: `{ start, end, reason? }`): Tạo khoảng khoá bảo trì trên sân. Các block 30 phút tương ứng chuyển sang `blocked`, emit sự kiện Socket.IO `slot_updated` (`status: 'blocked'`) tới room `venue:{venueId}:date:{yyyy-mm-dd}`.
+- `DELETE /api/v1/courts/:id/blackouts/:blackoutId`: Mở khoá sân (xoá blackout). Trả các block trong khoảng về trạng thái `available` (nếu trong giờ mở cửa và chưa qua giờ hiện tại), emit sự kiện Socket.IO `slot_updated` (`status: 'available'`) tới room `venue:{venueId}:date:{yyyy-mm-dd}`.
 
 ### Bookings
 ```

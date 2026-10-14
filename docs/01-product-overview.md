@@ -100,7 +100,7 @@ API trả `status` ∈ **`available | held | booked | blocked | past`** (enum du
 - [ ] Quản lý danh mục khu vực (tỉnh/quận) (ADM-06)
 - [ ] Thiết lập giờ mở cửa theo từng court (OWN-04)
 - [ ] Giá theo khung giờ (Pricing Rule) (OWN-05)
-- [ ] Khoá giờ bảo trì (Blackout Period) (OWN-08)
+- [ ] Khoá giờ bảo trì & Mở khoá sân (Blackout Period) (OWN-08)
 
 **Đặt sân (vòng đời chính)**
 - [ ] Tìm kiếm & xem chi tiết sân (GST-01, GST-03; CUS-04, CUS-06)

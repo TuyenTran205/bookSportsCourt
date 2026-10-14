@@ -40,6 +40,24 @@ EXCLUDE USING gist (
 - Dựa vào SELECT kiểm tra trước (TOCTOU race condition).
 - Thêm kiểm tra ở FE hoặc service thay thế constraint DB.
 
+### 2.1 Khoá giờ bảo trì & Mở khoá sân (Blackout Period – OWN-08)
+
+Chủ sân có quyền tạm dừng nhận khách trên một sân trong một khoảng thời gian nhất định (bảo trì định kỳ, sửa chữa mặt sân, tổ chức sự kiện).
+
+- **Tạo khoá sân (`POST /api/v1/courts/:id/blackouts`):**
+  - **Ràng buộc:** Thời gian khoá phải là bội số của 30 phút, nằm trong ngày cụ thể (không áp dụng lặp qua các ngày khác), và **không được đè** lên booking đang hoạt động (`held`, `pending_payment`, `confirmed`). DB có constraint `excl_blackout_overlap` chống 2 blackout đè nhau trên cùng court.
+  - **Trạng thái slot:** Các block 30 phút nằm trong khoảng khoá chuyển sang trạng thái `blocked`. Khách không thể chọn hoặc giữ chỗ các block này.
+  - **Bảo vệ tầng DB:** Trigger `trg_bookings_no_blackout` (`reject_booking_in_blackout()`) chặn ở tầng PostgreSQL mọi hành vi tạo booking đè lên blackout (trả lỗi `23P01`).
+  - **Realtime:** Server emit sự kiện `slot_updated` vào room `venue:{venueId}:date:{yyyy-mm-dd}` với các slot mang `status: 'blocked'`.
+
+- **Mở khoá sân (`DELETE /api/v1/courts/:id/blackouts/:blackoutId`):**
+  - Xoá bản ghi `blackout_periods`.
+  - **Khôi phục trạng thái:** Các block 30 phút trong khoảng thời gian vừa mở khoá lập tức trở về trạng thái `available` (miễn là nằm trong giờ mở cửa `opening_hours` của sân và chưa qua giờ hiện tại `past`).
+  - **Realtime:** Server emit sự kiện `slot_updated` vào room `venue:{venueId}:date:{yyyy-mm-dd}` với các slot mang `status: 'available'`. Mọi khách đang xem lịch hoặc chủ sân khác đang mở màn hình đều thấy sân khả dụng ngay lập tức mà không cần reload trang.
+  - **Trải nghiệm chủ sân (UX):** Chủ sân có 2 cách mở khoá:
+    1. Click trực tiếp vào bất kỳ block sọc xám `blocked` trên `OwnerTimeline` → mở Detail Panel hiển thị lý do bảo trì và nút **"Mở khoá sân"** (kèm hộp thoại xác nhận).
+    2. Nhấn nút "Khoá sân" trên thanh công cụ → xem danh sách các khoảng khoá đang có hiệu lực trong ngày (`activeBlackouts`) và nhấn nút icon mở khoá từng khoảng.
+
 ## 3. Vòng đời Booking
 
 ```
