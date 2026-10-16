@@ -1,9 +1,18 @@
 import { http } from 'msw';
 import { ownerApplicationSchema } from '@bsc/shared';
-import type { Booking, OpeningHour, OwnerApplication, OwnerTimelineBooking, Payment, RevenuePoint } from '@bsc/shared';
+import type {
+  BankAccountInfo,
+  Booking,
+  OpeningHour,
+  OwnerApplication,
+  OwnerTimelineBooking,
+  Payment,
+  PeakHour,
+  RevenuePoint,
+} from '@bsc/shared';
 import { db, currentUser, persist } from '../db';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
-import { buildSlots, toDateOnly } from '../fixtures/slots';
+import { buildSlots, timeToMinutes, toDateOnly, weekdayOf } from '../fixtures/slots';
 import { pricingRules, venues } from '../fixtures/venues';
 import { publish } from '../realtime';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency } from '../utils';
@@ -38,6 +47,60 @@ function ownedVenues() {
   if (!user) return [];
   if (user.role === 'admin') return venues;
   return venues.filter((v) => v.ownerId === user.id);
+}
+
+function datesInRange(from: string, to: string): string[] | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return null;
+  const first = new Date(`${from}T00:00:00.000Z`);
+  const last = new Date(`${to}T00:00:00.000Z`);
+  if (
+    Number.isNaN(first.getTime()) ||
+    Number.isNaN(last.getTime()) ||
+    first.toISOString().slice(0, 10) !== from ||
+    last.toISOString().slice(0, 10) !== to ||
+    first > last
+  ) {
+    return null;
+  }
+
+  const dates: string[] = [];
+  for (const cursor = first; cursor <= last; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    if (dates.length > 366) return null;
+  }
+  return dates;
+}
+
+function courtCapacityForDate(courtId: string, date: string): number {
+  const venueId = venueIdByCourtId[courtId];
+  if (!venueId) return 0;
+  const weekday = weekdayOf(date);
+  const hours = db.openingHours.filter(
+    (entry) =>
+      entry.venueId === venueId &&
+      entry.weekday === weekday &&
+      (entry.courtId === null || entry.courtId === courtId),
+  );
+  const window = hours.find((entry) => entry.courtId === courtId) ?? hours.find((entry) => !entry.courtId);
+  if (!window || window.isClosed) return 0;
+
+  let count = 0;
+  for (
+    let minutes = timeToMinutes(window.openTime);
+    minutes + 30 <= timeToMinutes(window.closeTime);
+    minutes += 30
+  ) {
+    const start = new Date(`${date}T${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}:00+07:00`).getTime();
+    const end = start + 30 * 60 * 1000;
+    const blocked = db.blackouts.some(
+      (blackout) =>
+        blackout.courtId === courtId &&
+        start < new Date(blackout.end).getTime() &&
+        end > new Date(blackout.start).getTime(),
+    );
+    if (!blocked) count += 1;
+  }
+  return count;
 }
 
 export const ownerHandlers = [
@@ -210,24 +273,37 @@ export const ownerHandlers = [
   }),
 
   // ── Tài khoản ngân hàng & chính sách huỷ ─────────────────────────────────
-  http.get('/api/v1/owner/bank-account', async () => {
+  http.get('/api/v1/owner/venues/:id/payment-account', async ({ params }) => {
     await simulateLatency(250);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    return ok({
-      id: '019273c5-7f17-7000-9000-000000000001',
-      bankBin: '970436',
-      bankName: 'Vietcombank – Chi nhánh TP. Hồ Chí Minh',
-      accountNo: '0071000123456',
-      accountName: 'NGUYEN VAN OWNER',
-    });
+    const venue = ownedVenues().find((item) => item.id === params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    return ok(db.bankAccounts[venue.id] ?? null);
   }),
 
-  http.put('/api/v1/owner/bank-account', async ({ request }) => {
+  http.put('/api/v1/owner/venues/:id/payment-account', async ({ params, request }) => {
     await simulateLatency(400);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    return ok(await request.json());
+    const venue = ownedVenues().find((item) => item.id === params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+
+    const body = (await request.json()) as Partial<BankAccountInfo>;
+    if (
+      typeof body.bankBin !== 'string' ||
+      !/^\d{6}$/.test(body.bankBin) ||
+      typeof body.accountNo !== 'string' ||
+      !/^\d{6,20}$/.test(body.accountNo) ||
+      typeof body.accountName !== 'string' ||
+      body.accountName.trim().length < 2
+    ) {
+      return err(422, 'VALIDATION_ERROR', 'Thông tin tài khoản ngân hàng chưa hợp lệ');
+    }
+    const account = { ...body, accountName: body.accountName.trim() } as BankAccountInfo;
+    db.bankAccounts[venue.id] = account;
+    persist();
+    return ok(account);
   }),
 
   http.put('/api/v1/owner/cancellation-policy', async ({ request }) => {
@@ -349,9 +425,16 @@ export const ownerHandlers = [
     const url = new URL(request.url);
     const { page, limit } = readPaging(url);
     const status = url.searchParams.get('status');
-    const myVenueIds = new Set(ownedVenues().map((v) => v.id));
+    const venueId = url.searchParams.get('venueId');
+    const courtId = url.searchParams.get('courtId');
+    const from = url.searchParams.get('from');
+    const to = url.searchParams.get('to');
+    const myVenueIds = new Set(ownedVenues().filter((v) => !venueId || v.id === venueId).map((v) => v.id));
 
     let list = db.bookings.filter((b) => myVenueIds.has(venueIdByCourtId[b.booking.courtId] ?? ''));
+    if (courtId) list = list.filter((b) => b.booking.courtId === courtId);
+    if (from) list = list.filter((b) => b.booking.during.start.slice(0, 10) >= from);
+    if (to) list = list.filter((b) => b.booking.during.start.slice(0, 10) <= to);
     if (status) list = list.filter((b) => b.booking.status === status);
     list = [...list].sort((a, b) => b.booking.createdAt.localeCompare(a.booking.createdAt));
 
@@ -498,53 +581,154 @@ export const ownerHandlers = [
   }),
 
   // ── Báo cáo doanh thu ────────────────────────────────────────────────────
-  http.get('/api/v1/owner/revenue', async ({ request }) => {
+  http.get('/api/v1/owner/reports/revenue', async ({ request }) => {
     await simulateLatency(400);
     const guard = requireOwner();
     if (guard.error) return guard.error;
 
     const url = new URL(request.url);
-    const days = Number.parseInt(url.searchParams.get('days') ?? '30', 10);
-    const myVenueIds = new Set(ownedVenues().map((v) => v.id));
+    const dates = datesInRange(url.searchParams.get('from') ?? '', url.searchParams.get('to') ?? '');
+    if (!dates) return err(400, 'VALIDATION_ERROR', 'Khoảng ngày báo cáo chưa hợp lệ');
+    const groupBy = url.searchParams.get('groupBy') ?? 'day';
+    if (!['day', 'week', 'month'].includes(groupBy)) {
+      return err(400, 'VALIDATION_ERROR', 'Kiểu nhóm báo cáo chưa hợp lệ');
+    }
+    const venueId = url.searchParams.get('venueId');
+    const courtId = url.searchParams.get('courtId');
+    const myVenueIds = new Set(
+      ownedVenues()
+        .filter((venue) => !venueId || venue.id === venueId)
+        .map((venue) => venue.id),
+    );
 
     const revenueBookings = db.bookings.filter(
       (b) =>
         myVenueIds.has(venueIdByCourtId[b.booking.courtId] ?? '') &&
+        (!courtId || b.booking.courtId === courtId) &&
+        b.booking.during.start.slice(0, 10) >= dates[0]! &&
+        b.booking.during.start.slice(0, 10) <= dates[dates.length - 1]! &&
         ['confirmed', 'completed'].includes(b.booking.status),
     );
 
-    // Chuỗi ngày liên tục, kể cả ngày không có đơn (biểu đồ không bị đứt).
-    const series: RevenuePoint[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = toDateOnly(d);
-      const dayBookings = revenueBookings.filter((b) => b.booking.during.start.slice(0, 10) === key);
-      series.push({
-        date: key,
-        revenue: dayBookings.reduce((s, b) => s + b.booking.totalPrice, 0),
-        bookings: dayBookings.length,
-      });
+    const bucketFor = (date: string) => {
+      if (groupBy === 'month') return `${date.slice(0, 7)}-01`;
+      if (groupBy === 'week') {
+        const monday = new Date(`${date}T00:00:00.000Z`);
+        monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+        return monday.toISOString().slice(0, 10);
+      }
+      return date;
+    };
+    const bucketValues = new Map<string, { revenue: number; bookings: number }>();
+    for (const date of dates) {
+      const key = bucketFor(date);
+      if (!bucketValues.has(key)) bucketValues.set(key, { revenue: 0, bookings: 0 });
     }
+    for (const record of revenueBookings) {
+      const date = record.booking.during.start.slice(0, 10);
+      const key = bucketFor(date);
+      const bucket = bucketValues.get(key);
+      if (bucket) {
+        bucket.revenue += record.booking.totalPrice;
+        bucket.bookings += 1;
+      }
+    }
+    const series: RevenuePoint[] = [...bucketValues.entries()].map(([date, bucket]) => ({
+      date,
+      ...bucket,
+    }));
 
     const totalRevenue = series.reduce((s, p) => s + p.revenue, 0);
     const totalBookings = series.reduce((s, p) => s + p.bookings, 0);
-    const totalCourts = ownedVenues().reduce((s, v) => s + v.courts.length, 0);
-
-    // Tỷ lệ lấp đầy: số block đã bán / tổng block mở cửa (giả định 34 block/ngày/sân).
-    const capacity = days * totalCourts * 34;
-    const soldBlocks = revenueBookings.length * 2;
 
     return ok({
       summary: {
         totalRevenue,
         totalBookings,
-        occupancyRate: capacity > 0 ? Math.min(1, soldBlocks / capacity) : 0,
-        from: series[0]?.date ?? '',
-        to: series[series.length - 1]?.date ?? '',
+        from: dates[0]!,
+        to: dates[dates.length - 1]!,
       },
       series,
-      points: series,
+    });
+  }),
+
+  http.get('/api/v1/owner/reports/occupancy', async ({ request }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+
+    const url = new URL(request.url);
+    const dates = datesInRange(url.searchParams.get('from') ?? '', url.searchParams.get('to') ?? '');
+    if (!dates) return err(400, 'VALIDATION_ERROR', 'Khoảng ngày báo cáo chưa hợp lệ');
+    const venueId = url.searchParams.get('venueId');
+    const courtId = url.searchParams.get('courtId');
+    const selectedVenues = ownedVenues().filter((venue) => !venueId || venue.id === venueId);
+    const courtIds = new Set(
+      selectedVenues.flatMap((venue) =>
+        venue.courts.filter((court) => !courtId || court.id === courtId).map((court) => court.id),
+      ),
+    );
+
+    const ownerBookings = db.bookings.filter(
+      (record) =>
+        courtIds.has(record.booking.courtId) &&
+        record.booking.during.start.slice(0, 10) >= dates[0]! &&
+        record.booking.during.start.slice(0, 10) <= dates[dates.length - 1]! &&
+        ['confirmed', 'completed'].includes(record.booking.status),
+    );
+    const series = dates.map((date) => {
+      const dayBookings = ownerBookings.filter((record) => record.booking.during.start.slice(0, 10) === date);
+      const bookedSlots = dayBookings
+        .reduce((total, record) => {
+          const duration =
+            new Date(record.booking.during.end).getTime() -
+            new Date(record.booking.during.start).getTime();
+          return total + Math.max(0, Math.round(duration / (30 * 60 * 1000)));
+        }, 0);
+      const capacity = [...courtIds].reduce((total, courtId) => total + courtCapacityForDate(courtId, date), 0);
+      const availableSlots = Math.max(0, capacity - bookedSlots);
+      return {
+        date,
+        bookedSlots,
+        availableSlots,
+        occupancyRate: capacity ? Math.min(1, bookedSlots / capacity) : 0,
+      };
+    });
+    const bookedSlots = series.reduce((total, point) => total + point.bookedSlots, 0);
+    const availableSlots = series.reduce((total, point) => total + point.availableSlots, 0);
+    const capacity = bookedSlots + availableSlots;
+    const peakCounts = new Map<number, number>();
+    for (const record of ownerBookings) {
+      const startMinutes = timeToMinutes(record.booking.during.start.slice(11, 16));
+      const duration =
+        new Date(record.booking.during.end).getTime() -
+        new Date(record.booking.during.start).getTime();
+      const slots = Math.max(0, Math.round(duration / (30 * 60 * 1000)));
+      for (let index = 0; index < slots; index += 1) {
+        const slotStart = (startMinutes + index * 30) % (24 * 60);
+        peakCounts.set(slotStart, (peakCounts.get(slotStart) ?? 0) + 1);
+      }
+    }
+    const peakHours: PeakHour[] = [...peakCounts.entries()]
+      .sort(([timeA, countA], [timeB, countB]) => countB - countA || timeA - timeB)
+      .slice(0, 3)
+      .map(([start, booked]) => {
+        const end = (start + 30) % (24 * 60);
+        const toTime = (minutes: number) =>
+          `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+        return { startTime: toTime(start), endTime: toTime(end), bookedSlots: booked };
+      });
+
+    return ok({
+      summary: {
+        occupancyRate: capacity ? bookedSlots / capacity : 0,
+        bookedSlots,
+        availableSlots,
+        from: dates[0]!,
+        to: dates[dates.length - 1]!,
+        peakHours,
+      },
+      series,
     });
   }),
 

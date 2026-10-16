@@ -215,6 +215,8 @@ GET    /api/v1/owner/venues/:id/payment-account  [Owner] Tài khoản nhận ti�
 PUT    /api/v1/owner/venues/:id/payment-account  [Owner] Cập nhật tài khoản nhận tiền (bankBin, accountNo, accountName)
 ```
 
+`GET /owner/venues/:id/payment-account` trả `data: null` nếu venue chưa cấu hình tài khoản; nếu đã cấu hình, trả `{ bankBin, accountNo, accountName }`. `PUT` nhận cùng shape và chỉ áp dụng cho venue thuộc Owner hiện tại.
+
 Quá `OWNER_REVIEW_TIMEOUT` (2 giờ) kể từ lúc khách gửi ảnh mà Owner chưa xử lý, hệ thống tự huỷ booking. Không có webhook ngân hàng ở MVP.
 
 **Hoàn tiền (refund):** MVP **không** có endpoint hoàn tiền tự động và **không** gọi API ngân hàng. Khi booking đã thanh toán (`payments.status = 'completed'`) bị huỷ theo chính sách, Owner chuyển khoản lại cho khách **ngoài hệ thống**, rồi đánh dấu để đóng sổ:
@@ -303,6 +305,26 @@ DELETE /api/v1/areas/:id                 [Admin] Xoá khu vực
 GET    /api/v1/owner/reports/revenue     [Owner] Doanh thu (OWN-11): query from, to, groupBy=day|week|month, venueId, courtId
 GET    /api/v1/owner/reports/occupancy   [Owner] Tỷ lệ lấp đầy và giờ cao điểm (OWN-12): query from, to, venueId, courtId, compareWith=previous
 ```
+
+`from` và `to` là ngày `YYYY-MM-DD` theo múi giờ `Asia/Ho_Chi_Minh`, bao gồm cả hai đầu mút. Báo cáo doanh thu mặc định nhóm theo ngày và trả:
+
+```json
+{
+  "data": {
+    "summary": {
+      "totalRevenue": 1250000,
+      "totalBookings": 8,
+      "from": "2026-10-10",
+      "to": "2026-10-16"
+    },
+    "series": [
+      { "date": "2026-10-10", "revenue": 250000, "bookings": 2 }
+    ]
+  }
+}
+```
+
+`totalRevenue` là VND; `series` bao gồm cả ngày không có đơn. `groupBy=week|month` trả `date` là ngày bắt đầu tuần hoặc tháng. Báo cáo lấp đầy trả `summary.occupancyRate` trong khoảng `0..1`, tổng `bookedSlots` và `availableSlots`, danh sách `peakHours` gồm `{ startTime, endTime, bookedSlots }`, cùng chuỗi theo ngày `{ date, occupancyRate, bookedSlots, availableSlots }`. `availableSlots` là số block 30 phút còn trống trong giờ mở cửa; không bao gồm giờ đóng cửa hoặc giờ bị khoá. Khi không có công suất, `occupancyRate` là `0`.
 
 ### Uploads
 ```

@@ -7,15 +7,15 @@ import type {
   CancellationPolicy,
   Court,
   OpeningHour,
+  OccupancyReport,
   OwnerApplication,
   OwnerApplicationInput,
   OwnerTimelineDay,
   Payment,
   PaymentStatus,
   PricingRule,
+  RevenueReport,
   Review,
-  RevenuePoint,
-  RevenueSummary,
   VenueDetail,
 } from '@bsc/shared';
 
@@ -183,7 +183,15 @@ export interface OwnerBookingItem extends Booking {
 }
 
 export function listOwnerBookings(
-  params: { page?: number; limit?: number; status?: BookingStatus; date?: string } = {},
+  params: {
+    page?: number;
+    limit?: number;
+    status?: BookingStatus;
+    venueId?: string;
+    courtId?: string;
+    from?: string;
+    to?: string;
+  } = {},
 ) {
   return apiFetchWithMeta<OwnerBookingItem[]>('/owner/bookings', { query: { ...params } });
 }
@@ -212,10 +220,26 @@ export function createManualBooking(input: {
 
 // ── Doanh thu & đánh giá ───────────────────────────────────────────────────
 
-export function getRevenue(params: { days?: number; from?: string; to?: string; groupBy?: 'day' | 'month' } = {}) {
-  return apiFetch<{ summary: RevenueSummary; series: RevenuePoint[]; points?: RevenuePoint[] }>('/owner/revenue', {
+export function getRevenue(params: {
+  from: string;
+  to: string;
+  groupBy?: 'day' | 'week' | 'month';
+  venueId?: string;
+  courtId?: string;
+}) {
+  return apiFetch<RevenueReport>('/owner/reports/revenue', {
     query: { ...params },
   });
+}
+
+export function getOccupancy(params: {
+  from: string;
+  to: string;
+  venueId?: string;
+  courtId?: string;
+  compareWith?: 'previous';
+}) {
+  return apiFetch<OccupancyReport>('/owner/reports/occupancy', { query: { ...params } });
 }
 
 export function listOwnerReviews(params: { page?: number; limit?: number; replied?: boolean } = {}) {
@@ -231,12 +255,17 @@ export function replyToReview(id: string, reply: string) {
 
 // ── Tài khoản nhận tiền & chính sách ───────────────────────────────────────
 
-export function getBankAccount() {
-  return apiFetch<BankAccountInfo | null>('/owner/bank-account');
+export function getBankAccount(venueId: string) {
+  return apiFetch<BankAccountInfo | null>(
+    `/owner/venues/${encodeURIComponent(venueId)}/payment-account`,
+  );
 }
 
-export function updateBankAccount(input: BankAccountInfo) {
-  return apiFetch<BankAccountInfo>('/owner/bank-account', { method: 'PUT', ...jsonBody(input) });
+export function updateBankAccount(venueId: string, input: BankAccountInfo) {
+  return apiFetch<BankAccountInfo>(
+    `/owner/venues/${encodeURIComponent(venueId)}/payment-account`,
+    { method: 'PUT', ...jsonBody(input) },
+  );
 }
 
 export function updateCancellationPolicy(input: CancellationPolicy) {

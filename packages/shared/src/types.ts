@@ -389,7 +389,6 @@ export interface HoldBookingResponse {
 export interface RevenueSummary {
   totalRevenue: number;
   totalBookings: number;
-  occupancyRate: number;
   from: string;
   to: string;
 }
@@ -398,6 +397,36 @@ export interface RevenuePoint {
   date: string;
   revenue: number;
   bookings: number;
+}
+
+export interface RevenueReport {
+  summary: RevenueSummary;
+  series: RevenuePoint[];
+}
+
+export interface OccupancyPoint {
+  date: string;
+  occupancyRate: number;
+  bookedSlots: number;
+  availableSlots: number;
+}
+
+export interface PeakHour {
+  startTime: string;
+  endTime: string;
+  bookedSlots: number;
+}
+
+export interface OccupancyReport {
+  summary: {
+    occupancyRate: number;
+    bookedSlots: number;
+    availableSlots: number;
+    from: string;
+    to: string;
+    peakHours: PeakHour[];
+  };
+  series: OccupancyPoint[];
 }
 
 export interface OwnerTimelineBooking {

@@ -1,5 +1,5 @@
 import { http } from 'msw';
-import type { Booking, BookingDetail, Payment, Review, Slot } from '@bsc/shared';
+import type { BankAccountInfo, Booking, BookingDetail, Payment, Review, Slot } from '@bsc/shared';
 import { HOLD_MINUTES } from '@bsc/shared';
 import { db, currentUser, persist } from '../db';
 import {
@@ -42,12 +42,10 @@ function broadcastSlots(courtId: string, date: string): void {
   );
 }
 
-/** Tài khoản nhận tiền của chủ sân – dùng để FE tự dựng mã QR thanh toán từ số tiền và số tài khoản ngân hàng ở màn Checkout. */
-const OWNER_BANK = {
-  bankBin: '970436',
-  accountNo: '1234567890',
-  accountName: 'NGUYEN VAN OWNER',
-};
+function bankAccountForCourt(courtId: string): BankAccountInfo | null {
+  const venueId = venueIdByCourtId[courtId];
+  return venueId ? db.bankAccounts[venueId] ?? null : null;
+}
 
 /** Lắp shape lồng nhau cho `BookingDetail` – docs/11-api-contract.md mục 8.4. */
 function toDetail(record: (typeof db.bookings)[number]): BookingDetail {
@@ -180,13 +178,17 @@ export const bookingHandlers = [
       (b) => b.booking.note === `__idem:${body.idempotencyKey}` && b.booking.status === 'held',
     );
     if (existing) {
+      const bankAccount = bankAccountForCourt(existing.booking.courtId);
+      if (!bankAccount) {
+        return err(422, 'PAYMENT_ACCOUNT_MISSING', 'Cơ sở chưa cấu hình tài khoản nhận tiền.');
+      }
       return ok({
         booking: existing.booking,
         payment: {
           id: existing.payment?.id ?? newId(),
           amount: existing.payment?.amount ?? existing.booking.depositAmount,
           transferCode: transferCode(existing.booking.id),
-          bankAccount: OWNER_BANK,
+          bankAccount,
         },
       });
     }
@@ -211,6 +213,10 @@ export const bookingHandlers = [
 
     const venueId = venueIdByCourtId[body.courtId] ?? '';
     const venue = venues.find((v) => v.id === venueId);
+    const bankAccount = bankAccountForCourt(body.courtId);
+    if (!bankAccount) {
+      return err(422, 'PAYMENT_ACCOUNT_MISSING', 'Cơ sở chưa cấu hình tài khoản nhận tiền.');
+    }
     const depositPercent = venue?.cancellationPolicy?.depositPercent ?? 100;
     const total = priced.total ?? 0;
 
@@ -260,7 +266,7 @@ export const bookingHandlers = [
           id: payment.id,
           amount: payment.amount,
           transferCode: payment.transferCode!,
-          bankAccount: OWNER_BANK,
+          bankAccount,
         },
       },
       201,
@@ -286,6 +292,10 @@ export const bookingHandlers = [
     const remainingMs = record.booking.expiresAt
       ? Math.max(0, new Date(record.booking.expiresAt).getTime() - Date.now())
       : 0;
+    const bankAccount = bankAccountForCourt(record.booking.courtId);
+    if (!bankAccount) {
+      return err(422, 'PAYMENT_ACCOUNT_MISSING', 'Cơ sở chưa cấu hình tài khoản nhận tiền.');
+    }
 
     // Cùng hình dạng với POST /bookings/hold để trang thanh toán tải lại vẫn dựng lại được mã QR.
     return ok({
@@ -295,7 +305,7 @@ export const bookingHandlers = [
         id: record.payment?.id ?? newId(),
         amount: record.payment?.amount ?? record.booking.depositAmount,
         transferCode: record.payment?.transferCode ?? transferCode(record.booking.id),
-        bankAccount: OWNER_BANK,
+        bankAccount,
       },
     });
   }),

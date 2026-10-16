@@ -1,7 +1,11 @@
-import type { AuditLog, Booking, Notification, OpeningHour, Review, User } from '@bsc/shared';
+import type { AuditLog, BankAccountInfo, Booking, Notification, OpeningHour, Review, User } from '@bsc/shared';
 import { cloneBookings, initialBookings, type BookingRecord } from './fixtures/bookings';
 import { ownerApplications, users as initialUsers } from './fixtures/users';
-import { blackouts as initialBlackouts, openingHours as initialOpeningHours } from './fixtures/venues';
+import {
+  blackouts as initialBlackouts,
+  openingHours as initialOpeningHours,
+  venues as initialVenues,
+} from './fixtures/venues';
 
 /**
  * "Cơ sở dữ liệu" trong bộ nhớ của MSW.
@@ -50,6 +54,7 @@ export interface MockDb {
   ownerApplications: typeof ownerApplications;
   blackouts: typeof initialBlackouts;
   openingHours: OpeningHour[];
+  bankAccounts: Record<string, BankAccountInfo>;
   /** Nhật ký kiểm toán (ADM-09) — chỉ ghi thêm, không sửa/xoá. */
   auditLogs: AuditLog[];
   /** Người dùng đang đăng nhập; `null` = khách vãng lai. */
@@ -124,6 +129,20 @@ function seedNotifications(): Notification[] {
   ];
 }
 
+function seedBankAccounts(): Record<string, BankAccountInfo> {
+  const ownersWithAccount = new Set<string>();
+  return Object.fromEntries(
+    initialVenues.flatMap((venue) => {
+      if (ownersWithAccount.has(venue.ownerId)) return [];
+      ownersWithAccount.add(venue.ownerId);
+      return [[
+        venue.id,
+        { bankBin: '970436', accountNo: '0071000123456', accountName: 'NGUYEN VAN OWNER' },
+      ]];
+    }),
+  );
+}
+
 function buildSeed(): MockDb {
   return {
     users: JSON.parse(JSON.stringify(initialUsers)) as User[],
@@ -133,6 +152,7 @@ function buildSeed(): MockDb {
     ownerApplications: JSON.parse(JSON.stringify(ownerApplications)) as typeof ownerApplications,
     blackouts: JSON.parse(JSON.stringify(initialBlackouts)) as typeof initialBlackouts,
     openingHours: JSON.parse(JSON.stringify(initialOpeningHours)) as OpeningHour[],
+    bankAccounts: seedBankAccounts(),
     auditLogs: seedAuditLogs(),
     // Mặc định là khách đã đăng nhập để mở app ra là thấy ngay dữ liệu có hồn
     // (hold của mình, lịch sử đặt sân). Đăng nhập vai trò khác sẽ ghi đè.
@@ -149,7 +169,10 @@ function buildSeed(): MockDb {
  * kiểm thử đa vai trò (Tab A là Chủ sân, Tab B là Khách đặt sân) mà không bị ghi
  * đè phiên làm việc của nhau.
  */
-type PersistedState = Pick<MockDb, 'bookings' | 'blackouts' | 'openingHours' | 'ownerApplications'>;
+type PersistedState = Pick<
+  MockDb,
+  'bookings' | 'blackouts' | 'openingHours' | 'ownerApplications' | 'bankAccounts'
+>;
 
 function readStorage(): Partial<PersistedState> | null {
   if (typeof window === 'undefined') return null;
@@ -170,6 +193,7 @@ function writeStorage(state: MockDb): void {
       blackouts: state.blackouts,
       openingHours: state.openingHours,
       ownerApplications: state.ownerApplications,
+      bankAccounts: state.bankAccounts,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
@@ -192,6 +216,7 @@ function loadState(): MockDb {
     blackouts: cleanBlackouts,
     openingHours: saved.openingHours ?? seed.openingHours,
     ownerApplications: saved.ownerApplications ?? seed.ownerApplications,
+    bankAccounts: saved.bankAccounts ?? seed.bankAccounts,
     currentUserId,
   };
 }
@@ -211,6 +236,7 @@ export function reloadFromStorage(): void {
   if (saved.blackouts) db.blackouts = saved.blackouts;
   if (saved.openingHours) db.openingHours = saved.openingHours;
   if (saved.ownerApplications) db.ownerApplications = saved.ownerApplications;
+  if (saved.bankAccounts) db.bankAccounts = saved.bankAccounts;
   // CHÚ Ý: Không đồng bộ db.currentUserId ở đây. Mỗi tab giữ nguyên phiên đăng nhập
   // của mình (lưu ở sessionStorage) để hỗ trợ kiểm thử đa vai trò giữa các tab.
 }
