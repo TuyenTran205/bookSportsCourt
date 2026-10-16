@@ -6,6 +6,7 @@ export interface UseOwnerBookingsParams {
   page?: number;
   limit?: number;
   status?: BookingStatus;
+  q?: string;
   venueId?: string;
   courtId?: string;
   from?: string;

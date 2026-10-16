@@ -51,6 +51,22 @@ export function formatDateTime(value: string | Date): string {
   return d ? format(d, 'dd/MM/yyyy HH:mm', { locale: vi }) : '—';
 }
 
+/** → "16/10/2026, 19:30" theo múi giờ nghiệp vụ. */
+export function formatDateTimeInVietnam(value: string | Date): string {
+  const d = toDate(value);
+  if (!d) return '—';
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(d);
+}
+
 /** Khoảng ngày giờ theo múi giờ nghiệp vụ, không phụ thuộc múi giờ thiết bị. */
 export function formatDateTimeRangeInVietnam(start: string, end: string): string {
   const startDate = toDate(start);

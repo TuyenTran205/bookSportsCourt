@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { formatDateTimeRangeInVietnam, formatShortDate, getVietnamDateRange } from './format';
+import {
+  formatDateTimeInVietnam,
+  formatDateTimeRangeInVietnam,
+  formatShortDate,
+  getVietnamDateRange,
+} from './format';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -23,5 +28,10 @@ describe('Vietnam dashboard date formatting', () => {
     expect(
       formatDateTimeRangeInVietnam('2026-10-16T18:00:00.000Z', '2026-10-16T19:00:00.000Z'),
     ).toContain('17/10/2026');
+  });
+
+  it('renders booking creation timestamps in Asia/Ho_Chi_Minh', () => {
+    expect(formatDateTimeInVietnam('2026-10-16T18:00:00.000Z')).toContain('17/10/2026');
+    expect(formatDateTimeInVietnam('not-a-date')).toBe('—');
   });
 });

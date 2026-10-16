@@ -429,6 +429,7 @@ export const ownerHandlers = [
     const courtId = url.searchParams.get('courtId');
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
+    const query = url.searchParams.get('q')?.trim().toLocaleLowerCase('vi-VN');
     const myVenueIds = new Set(ownedVenues().filter((v) => !venueId || v.id === venueId).map((v) => v.id));
 
     let list = db.bookings.filter((b) => myVenueIds.has(venueIdByCourtId[b.booking.courtId] ?? ''));
@@ -447,7 +448,20 @@ export const ownerHandlers = [
       paymentStatus: r.payment?.status ?? null,
     }));
 
-    const { data, meta } = paginate(shaped, page, limit);
+    const filtered = query
+      ? shaped.filter((booking) =>
+          [
+            booking.id,
+            booking.customerName,
+            booking.customerPhone,
+            booking.guestName,
+            booking.guestPhone,
+            booking.courtName,
+          ].some((value) => value?.toLocaleLowerCase('vi-VN').includes(query)),
+        )
+      : shaped;
+
+    const { data, meta } = paginate(filtered, page, limit);
     return okList(data, meta);
   }),
 

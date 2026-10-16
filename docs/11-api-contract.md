@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.5.0 | **Cập nhật lần cuối:** 2026-10-14
+> **Phiên bản:** 1.6.0 | **Cập nhật lần cuối:** 2026-10-16
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -198,9 +198,11 @@ POST   /api/v1/bookings/hold             [Customer] Tạo hold (body: courtId, s
 PATCH  /api/v1/bookings/:id/cancel       Huỷ booking (body: reason)
 GET    /api/v1/bookings/:id/cancellation-preview  [Customer] Xem điều kiện huỷ và số tiền hoàn trước khi xác nhận (CUS-11)
 PATCH  /api/v1/bookings/:id/no-show      [Owner] Đánh dấu no-show
-GET    /api/v1/owner/bookings            [Owner] Xem bookings của venue mình (query: venueId, courtId, status, from, to, page, limit)
+GET    /api/v1/owner/bookings            [Owner] Xem bookings của venue mình (query: venueId, courtId, status, from, to, q, page, limit)
 POST   /api/v1/owner/bookings/manual     [Owner] Tạo booking thủ công (body: courtId, start, end, customerId hoặc guestName + guestPhone); tạo thẳng `confirmed`, thanh toán `cash`
 ```
+
+`GET /owner/bookings` nhận `q` tuỳ chọn để tìm không phân biệt hoa/thường theo mã booking, tên/số điện thoại khách và tên court; bộ lọc được áp dụng trước phân trang.
 
 `POST /bookings/hold` trả `booking` ở trạng thái `held` kèm `expiresAt` (FE đếm ngược 10 phút, CUS-08) và `payment` gồm `amount`, `transferCode`, `bankAccount` (`bankBin`, `accountNo`, `accountName`) để FE tự dựng mã QR chuyển khoản của chủ sân phía client (không có endpoint sinh QR, server không lưu ảnh QR). Lúc xác nhận thanh toán, người đặt gửi ảnh đã chuyển khoản lên để chủ sân đối soát xác nhận.
 
