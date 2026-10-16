@@ -17,9 +17,11 @@ import type {
   RevenueReport,
   Review,
   VenueDetail,
+  VenueImage,
 } from '@bsc/shared';
 
 import { apiFetch, apiFetchWithMeta, jsonBody } from '../client';
+import { optimizeVenueImage } from '@/lib/utils/optimize-venue-image';
 
 /**
  * Endpoint module – Kênh chủ sân.
@@ -42,31 +44,46 @@ export function createOwnerVenue(input: {
   districtId: string;
   sportIds: string[];
   description?: string;
-  lat?: number;
-  lng?: number;
+  lat: number;
+  lng: number;
 }) {
-  return apiFetch<VenueDetail>('/owner/venues', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<VenueDetail>('/venues', { method: 'POST', ...jsonBody(input) });
 }
 
-export function updateOwnerVenue(id: string, input: Partial<VenueDetail>) {
-  return apiFetch<VenueDetail>(`/owner/venues/${encodeURIComponent(id)}`, {
+export function updateOwnerVenue(
+  id: string,
+  input: Partial<Pick<VenueDetail, 'name' | 'address' | 'provinceId' | 'districtId' | 'description' | 'lat' | 'lng'>> & {
+    sportIds?: string[];
+  },
+) {
+  return apiFetch<VenueDetail>(`/venues/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     ...jsonBody(input),
   });
+}
+
+export async function uploadVenueImage(venueId: string, image: File) {
+  const optimizedImage = await optimizeVenueImage(image);
+  const formData = new FormData();
+  formData.append('file', optimizedImage);
+  return apiFetch<Pick<VenueImage, 'id' | 'url'>>(
+    `/venues/${encodeURIComponent(venueId)}/images`,
+    { method: 'POST', body: formData },
+  );
 }
 
 export function createCourt(
   venueId: string,
   input: { name: string; sportId: string; description?: string },
 ) {
-  return apiFetch<Court>(`/owner/venues/${encodeURIComponent(venueId)}/courts`, {
+  return apiFetch<Court>(`/venues/${encodeURIComponent(venueId)}/courts`, {
     method: 'POST',
     ...jsonBody(input),
   });
 }
 
 export function deleteCourt(courtId: string) {
-  return apiFetch<{ success: true }>(`/owner/courts/${encodeURIComponent(courtId)}`, {
+  return apiFetch<{ success: true }>(`/courts/${encodeURIComponent(courtId)}`, {
     method: 'DELETE',
   });
 }

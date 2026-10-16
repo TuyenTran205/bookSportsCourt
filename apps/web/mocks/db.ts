@@ -1,10 +1,19 @@
-import type { AuditLog, BankAccountInfo, Booking, Notification, OpeningHour, Review, User } from '@bsc/shared';
+import type {
+  AuditLog,
+  BankAccountInfo,
+  Booking,
+  Notification,
+  OpeningHour,
+  Review,
+  User,
+  VenueDetail,
+} from '@bsc/shared';
 import { cloneBookings, initialBookings, type BookingRecord } from './fixtures/bookings';
 import { ownerApplications, users as initialUsers } from './fixtures/users';
 import {
   blackouts as initialBlackouts,
   openingHours as initialOpeningHours,
-  venues as initialVenues,
+  venues as fixtureVenues,
 } from './fixtures/venues';
 
 /**
@@ -21,13 +30,20 @@ import {
 
 const STORAGE_KEY = 'bsc-mock-db-v1';
 const USER_SESSION_KEY = 'bsc-mock-user-id';
+const seedVenues = JSON.parse(JSON.stringify(fixtureVenues)) as VenueDetail[];
+
+function restoreVenueFixtures(venues: VenueDetail[] = seedVenues): VenueDetail[] {
+  const restored = JSON.parse(JSON.stringify(venues)) as VenueDetail[];
+  fixtureVenues.splice(0, fixtureVenues.length, ...restored);
+  return fixtureVenues;
+}
 
 const seedCourtIdsByBookingId = new Map(
   initialBookings.map(({ booking }) => [booking.id, booking.courtId]),
 );
-const currentCourtIds = new Set(initialVenues.flatMap((venue) => venue.courts.map((court) => court.id)));
+const currentCourtIds = new Set(seedVenues.flatMap((venue) => venue.courts.map((court) => court.id)));
 const legacyCourtsById = new Map(
-  initialVenues.flatMap((venue) =>
+  seedVenues.flatMap((venue) =>
     venue.courts.map((court, index) => [
       `${venue.id.slice(0, 24)}${String(index + 1).padStart(4, '0')}`,
       court,
@@ -74,6 +90,7 @@ export function saveCurrentUserId(id: string | null): void {
 
 export interface MockDb {
   users: User[];
+  venues: VenueDetail[];
   bookings: BookingRecord[];
   reviews: Review[];
   notifications: Notification[];
@@ -158,7 +175,7 @@ function seedNotifications(): Notification[] {
 function seedBankAccounts(): Record<string, BankAccountInfo> {
   const ownersWithAccount = new Set<string>();
   return Object.fromEntries(
-    initialVenues.flatMap((venue) => {
+    seedVenues.flatMap((venue) => {
       if (ownersWithAccount.has(venue.ownerId)) return [];
       ownersWithAccount.add(venue.ownerId);
       return [[
@@ -172,6 +189,7 @@ function seedBankAccounts(): Record<string, BankAccountInfo> {
 function buildSeed(): MockDb {
   return {
     users: JSON.parse(JSON.stringify(initialUsers)) as User[],
+    venues: restoreVenueFixtures(),
     bookings: cloneBookings(),
     reviews: seedReviews(),
     notifications: seedNotifications(),
@@ -197,7 +215,7 @@ function buildSeed(): MockDb {
  */
 type PersistedState = Pick<
   MockDb,
-  'bookings' | 'blackouts' | 'openingHours' | 'ownerApplications' | 'bankAccounts'
+  'venues' | 'bookings' | 'blackouts' | 'openingHours' | 'ownerApplications' | 'bankAccounts'
 >;
 
 function readStorage(): Partial<PersistedState> | null {
@@ -215,6 +233,7 @@ function writeStorage(state: MockDb): void {
   if (typeof window === 'undefined') return;
   try {
     const payload: PersistedState = {
+      venues: state.venues,
       bookings: state.bookings,
       blackouts: state.blackouts,
       openingHours: state.openingHours,
@@ -234,10 +253,12 @@ function loadState(): MockDb {
   const currentUserId = savedUserId !== null ? savedUserId : seed.currentUserId;
   if (!saved) return { ...seed, currentUserId };
   const rawBlackouts = saved.blackouts ?? seed.blackouts;
+  restoreVenueFixtures(saved.venues ?? seed.venues);
   // Dọn dẹp các blackout mẫu cũ năm 2000 nếu còn lưu trong localStorage
   const cleanBlackouts = rawBlackouts.filter((b) => !b.start.startsWith('2000-'));
   return {
     ...seed,
+    venues: fixtureVenues,
     bookings: migrateBookingCourtIds(saved.bookings ?? seed.bookings),
     blackouts: cleanBlackouts,
     openingHours: saved.openingHours ?? seed.openingHours,
@@ -258,6 +279,9 @@ export function persist(): void {
 export function reloadFromStorage(): void {
   const saved = readStorage();
   if (!saved) return;
+  if (saved.venues) {
+    db.venues = restoreVenueFixtures(saved.venues);
+  }
   if (saved.bookings) db.bookings = migrateBookingCourtIds(saved.bookings);
   if (saved.blackouts) db.blackouts = saved.blackouts;
   if (saved.openingHours) db.openingHours = saved.openingHours;

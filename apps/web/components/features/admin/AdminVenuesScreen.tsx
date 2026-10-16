@@ -163,6 +163,7 @@ export function AdminVenuesScreen() {
                                 src={venue.coverUrl}
                                 alt={venue.name}
                                 fill
+                                unoptimized={venue.coverUrl.startsWith('data:')}
                                 sizes="40px"
                                 className="object-cover"
                               />

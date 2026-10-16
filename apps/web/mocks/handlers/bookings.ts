@@ -50,8 +50,10 @@ function bankAccountForCourt(courtId: string): BankAccountInfo | null {
 /** Lắp shape lồng nhau cho `BookingDetail` – docs/11-api-contract.md mục 8.4. */
 function toDetail(record: (typeof db.bookings)[number]): BookingDetail {
   const { booking, payment, review } = record;
-  const venueId = venueIdByCourtId[booking.courtId] ?? '';
-  const venue = venues.find((v) => v.id === venueId);
+  const venue =
+    db.venues.find((v) => v.courts.some((court) => court.id === booking.courtId)) ??
+    venues.find((v) => v.id === venueIdByCourtId[booking.courtId]);
+  const venueId = venue?.id ?? venueIdByCourtId[booking.courtId] ?? '';
 
   return {
     ...booking,
@@ -60,9 +62,9 @@ function toDetail(record: (typeof db.bookings)[number]): BookingDetail {
       name: courtNameByCourtId[booking.courtId] ?? 'Sân',
       venue: {
         id: venueId,
-        name: venueNameById[venueId] ?? venue?.name ?? 'Cơ sở',
-        slug: venueSlugById[venueId] ?? venue?.slug ?? '',
-        address: venueAddressById[venueId] ?? venue?.address ?? '',
+        name: venue?.name ?? venueNameById[venueId] ?? 'Cơ sở',
+        slug: venue?.slug ?? venueSlugById[venueId] ?? '',
+        address: venue?.address ?? venueAddressById[venueId] ?? '',
       },
     },
     customer: booking.customerId

@@ -57,6 +57,7 @@ export function VenueCard({ venue, showStatus = false, href, action, className }
               src={venue.coverUrl}
               alt=""
               fill
+              unoptimized={venue.coverUrl.startsWith('data:')}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="object-cover"
             />
