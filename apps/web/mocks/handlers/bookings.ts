@@ -10,7 +10,7 @@ import {
   venueSlugById,
 } from '../fixtures/bookings';
 import { buildSlots, computeDeposit, mergeAdjacentSlots, toDateOnly } from '../fixtures/slots';
-import { pricingRules, venues } from '../fixtures/venues';
+import { venues } from '../fixtures/venues';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency, transferCode } from '../utils';
 import { publish, publishSlotUpdate } from '../realtime';
 
@@ -28,7 +28,7 @@ function broadcastSlots(courtId: string, date: string): void {
     courtId,
     venueId,
     openingHours: db.openingHours,
-    pricingRules,
+    pricingRules: db.pricingRules,
     blackouts: db.blackouts,
     bookings: db.bookings.map((b) => b.booking),
     currentUserId: db.currentUserId,
@@ -101,7 +101,7 @@ function priceSlots(courtId: string, date: string, wanted: Array<{ start: string
     courtId,
     venueId,
     openingHours: db.openingHours,
-    pricingRules,
+    pricingRules: db.pricingRules,
     blackouts: db.blackouts,
     bookings: db.bookings.map((b) => b.booking),
     currentUserId: db.currentUserId,

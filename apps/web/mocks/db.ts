@@ -7,12 +7,14 @@ import type {
   Review,
   User,
   VenueDetail,
+  PricingRule,
 } from '@bsc/shared';
 import { cloneBookings, initialBookings, type BookingRecord } from './fixtures/bookings';
 import { ownerApplications, users as initialUsers } from './fixtures/users';
 import {
   blackouts as initialBlackouts,
   openingHours as initialOpeningHours,
+  pricingRules as initialPricingRules,
   venues as fixtureVenues,
 } from './fixtures/venues';
 
@@ -97,6 +99,7 @@ export interface MockDb {
   ownerApplications: typeof ownerApplications;
   blackouts: typeof initialBlackouts;
   openingHours: OpeningHour[];
+  pricingRules: PricingRule[];
   bankAccounts: Record<string, BankAccountInfo>;
   /** Nhật ký kiểm toán (ADM-09) — chỉ ghi thêm, không sửa/xoá. */
   auditLogs: AuditLog[];
@@ -196,6 +199,7 @@ function buildSeed(): MockDb {
     ownerApplications: JSON.parse(JSON.stringify(ownerApplications)) as typeof ownerApplications,
     blackouts: JSON.parse(JSON.stringify(initialBlackouts)) as typeof initialBlackouts,
     openingHours: JSON.parse(JSON.stringify(initialOpeningHours)) as OpeningHour[],
+    pricingRules: JSON.parse(JSON.stringify(initialPricingRules)) as PricingRule[],
     bankAccounts: seedBankAccounts(),
     auditLogs: seedAuditLogs(),
     // Mặc định là khách đã đăng nhập để mở app ra là thấy ngay dữ liệu có hồn
@@ -215,7 +219,13 @@ function buildSeed(): MockDb {
  */
 type PersistedState = Pick<
   MockDb,
-  'venues' | 'bookings' | 'blackouts' | 'openingHours' | 'ownerApplications' | 'bankAccounts'
+  | 'venues'
+  | 'bookings'
+  | 'blackouts'
+  | 'openingHours'
+  | 'pricingRules'
+  | 'ownerApplications'
+  | 'bankAccounts'
 >;
 
 function readStorage(): Partial<PersistedState> | null {
@@ -237,6 +247,7 @@ function writeStorage(state: MockDb): void {
       bookings: state.bookings,
       blackouts: state.blackouts,
       openingHours: state.openingHours,
+      pricingRules: state.pricingRules,
       ownerApplications: state.ownerApplications,
       bankAccounts: state.bankAccounts,
     };
@@ -262,6 +273,7 @@ function loadState(): MockDb {
     bookings: migrateBookingCourtIds(saved.bookings ?? seed.bookings),
     blackouts: cleanBlackouts,
     openingHours: saved.openingHours ?? seed.openingHours,
+    pricingRules: saved.pricingRules ?? seed.pricingRules,
     ownerApplications: saved.ownerApplications ?? seed.ownerApplications,
     bankAccounts: saved.bankAccounts ?? seed.bankAccounts,
     currentUserId,
@@ -285,6 +297,7 @@ export function reloadFromStorage(): void {
   if (saved.bookings) db.bookings = migrateBookingCourtIds(saved.bookings);
   if (saved.blackouts) db.blackouts = saved.blackouts;
   if (saved.openingHours) db.openingHours = saved.openingHours;
+  if (saved.pricingRules) db.pricingRules = saved.pricingRules;
   if (saved.ownerApplications) db.ownerApplications = saved.ownerApplications;
   if (saved.bankAccounts) db.bankAccounts = saved.bankAccounts;
   // CHÚ Ý: Không đồng bộ db.currentUserId ở đây. Mỗi tab giữ nguyên phiên đăng nhập

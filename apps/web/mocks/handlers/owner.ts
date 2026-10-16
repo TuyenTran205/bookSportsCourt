@@ -8,6 +8,7 @@ import type {
   OwnerTimelineBooking,
   Payment,
   PeakHour,
+  PricingRule,
   RevenuePoint,
   VenueImage,
 } from '@bsc/shared';
@@ -15,7 +16,6 @@ import { db, currentUser, persist } from '../db';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { buildSlots, timeToMinutes, toDateOnly, weekdayOf } from '../fixtures/slots';
 import { areas, sports } from '../fixtures/catalogs';
-import { pricingRules } from '../fixtures/venues';
 import { publish } from '../realtime';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency } from '../utils';
 
@@ -57,6 +57,51 @@ function venueForCourt(courtId: string) {
 
 export function ownedVenueForCourt(courtId: string) {
   return ownedVenues().find((venue) => venue.courts.some((court) => court.id === courtId));
+}
+
+type OpeningHoursInput = Pick<OpeningHour, 'weekday' | 'openTime' | 'closeTime' | 'isClosed'>;
+
+function isValidClockTime(time: string): boolean {
+  return (
+    /^\d{2}:\d{2}$/.test(time) &&
+    Number(time.slice(0, 2)) < 24 &&
+    Number(time.slice(3)) < 60
+  );
+}
+
+export function isValidOpeningHours(hours: readonly OpeningHoursInput[]): boolean {
+  return (
+    hours.length === 7 &&
+    new Set(hours.map((hour) => hour.weekday)).size === 7 &&
+    hours.every(
+      (hour) =>
+        Number.isInteger(hour.weekday) &&
+        hour.weekday >= 0 &&
+        hour.weekday <= 6 &&
+        isValidClockTime(hour.openTime) &&
+        isValidClockTime(hour.closeTime) &&
+        (hour.isClosed || hour.openTime < hour.closeTime),
+    )
+  );
+}
+
+type PricingRuleScope = Pick<
+  PricingRule,
+  'venueId' | 'courtId' | 'weekdays' | 'startTime' | 'endTime'
+>;
+
+export function hasOverlappingPricingRule(
+  rules: readonly PricingRule[],
+  candidate: PricingRuleScope,
+): boolean {
+  return rules.some((rule) => {
+    const sameScope =
+      rule.venueId === candidate.venueId && rule.courtId === candidate.courtId;
+    const sharesWeekday = rule.weekdays.some((day) => candidate.weekdays.includes(day));
+    const overlapsTime =
+      rule.startTime < candidate.endTime && candidate.startTime < rule.endTime;
+    return sameScope && sharesWeekday && overlapsTime;
+  });
 }
 
 function courtName(courtId: string) {
@@ -398,7 +443,9 @@ export const ownerHandlers = [
     await simulateLatency(250);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    return ok(db.openingHours.filter((o) => o.venueId === params.id));
+    const venue = ownedVenues().find((item) => item.id === params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    return ok(db.openingHours.filter((o) => o.venueId === venue.id));
   }),
 
   http.put('/api/v1/owner/venues/:id/opening-hours', async ({ params, request }) => {
@@ -406,6 +453,9 @@ export const ownerHandlers = [
     const guard = requireOwner();
     if (guard.error) return guard.error;
     const venueId = params.id as string;
+    if (!ownedVenues().some((venue) => venue.id === venueId)) {
+      return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    }
     const body = (await request.json()) as
       | {
           hours?: Array<
@@ -423,8 +473,13 @@ export const ownerHandlers = [
         >;
     const incoming = Array.isArray(body) ? body : (body.hours ?? []);
 
-    // Loại bỏ giờ mở cửa cũ của cơ sở này trong db
-    db.openingHours = db.openingHours.filter((o) => o.venueId !== venueId);
+    if (!isValidOpeningHours(incoming)) {
+      return err(422, 'VALIDATION_ERROR', 'Cần cấu hình hợp lệ đủ 7 ngày trong tuần');
+    }
+
+    db.openingHours = db.openingHours.filter(
+      (hour) => hour.venueId !== venueId || hour.courtId !== null,
+    );
 
     const updated: OpeningHour[] = incoming.map((h, i) => ({
       id: h.id ?? `${venueId.slice(0, 22)}oh${h.weekday ?? i}`,
@@ -445,21 +500,83 @@ export const ownerHandlers = [
     await simulateLatency(250);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    return ok(pricingRules.filter((r) => r.venueId === params.id));
+    const venue = ownedVenues().find((item) => item.id === params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    return ok(db.pricingRules.filter((rule) => rule.venueId === venue.id));
   }),
 
   http.post('/api/v1/owner/venues/:id/pricing-rules', async ({ params, request }) => {
     await simulateLatency(400);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    const body = (await request.json()) as Record<string, unknown>;
-    return ok({ ...body, id: newId(), venueId: params.id }, 201);
+    const venue = ownedVenues().find((item) => item.id === params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    const body = (await request.json()) as Partial<PricingRule>;
+    const weekdays = Array.isArray(body.weekdays) ? body.weekdays : [];
+    const validTime = (time: string | undefined) =>
+      typeof time === 'string' && isValidClockTime(time);
+    if (
+      typeof body.label !== 'string' ||
+      body.label.trim().length === 0 ||
+      body.label.trim().length > 100 ||
+      weekdays.length === 0 ||
+      weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6) ||
+      new Set(weekdays).size !== weekdays.length ||
+      !validTime(body.startTime) ||
+      !validTime(body.endTime) ||
+      body.startTime! >= body.endTime! ||
+      !Number.isInteger(body.pricePerSlot) ||
+      body.pricePerSlot! < 0 ||
+      (body.courtId !== null && !venue.courts.some((court) => court.id === body.courtId))
+    ) {
+      return err(422, 'VALIDATION_ERROR', 'Vui lòng kiểm tra thông tin khung giá');
+    }
+
+    const conflicts = hasOverlappingPricingRule(db.pricingRules, {
+      venueId: venue.id,
+      courtId: body.courtId ?? null,
+      weekdays,
+      startTime: body.startTime!,
+      endTime: body.endTime!,
+    });
+    if (conflicts) {
+      return err(409, 'ALREADY_EXISTS', 'Khung giờ và ngày đã trùng với một quy tắc giá khác');
+    }
+
+    const rule: PricingRule = {
+      id: newId(),
+      venueId: venue.id,
+      courtId: body.courtId ?? null,
+      label: body.label.trim(),
+      weekdays,
+      startTime: body.startTime!,
+      endTime: body.endTime!,
+      pricePerSlot: body.pricePerSlot!,
+    };
+    db.pricingRules.push(rule);
+    const venueRules = db.pricingRules.filter((item) => item.venueId === venue.id);
+    if (venueRules.length > 0) {
+      venue.fromPrice = Math.min(...venueRules.map((item) => item.pricePerSlot));
+    }
+    persist();
+    return ok(rule, 201);
   }),
 
-  http.delete('/api/v1/owner/pricing-rules/:id', async () => {
+  http.delete('/api/v1/owner/pricing-rules/:id', async ({ params }) => {
     await simulateLatency(300);
     const guard = requireOwner();
     if (guard.error) return guard.error;
+    const rule = db.pricingRules.find((item) => item.id === params.id);
+    if (!rule || !ownedVenues().some((venue) => venue.id === rule.venueId)) {
+      return err(404, 'NOT_FOUND', 'Không tìm thấy khung giá');
+    }
+    db.pricingRules = db.pricingRules.filter((item) => item.id !== rule.id);
+    const venue = db.venues.find((item) => item.id === rule.venueId);
+    const remainingRules = db.pricingRules.filter((item) => item.venueId === rule.venueId);
+    if (venue && remainingRules.length > 0) {
+      venue.fromPrice = Math.min(...remainingRules.map((item) => item.pricePerSlot));
+    }
+    persist();
     return ok({ success: true });
   }),
 
@@ -784,7 +901,7 @@ export const ownerHandlers = [
       courtId: body.courtId,
       venueId,
       openingHours: db.openingHours,
-      pricingRules,
+      pricingRules: db.pricingRules,
       blackouts: db.blackouts,
       bookings: db.bookings.map((b) => b.booking),
       currentUserId: db.currentUserId,
