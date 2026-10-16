@@ -22,6 +22,32 @@ import {
 const STORAGE_KEY = 'bsc-mock-db-v1';
 const USER_SESSION_KEY = 'bsc-mock-user-id';
 
+const seedCourtIdsByBookingId = new Map(
+  initialBookings.map(({ booking }) => [booking.id, booking.courtId]),
+);
+const currentCourtIds = new Set(initialVenues.flatMap((venue) => venue.courts.map((court) => court.id)));
+const legacyCourtsById = new Map(
+  initialVenues.flatMap((venue) =>
+    venue.courts.map((court, index) => [
+      `${venue.id.slice(0, 24)}${String(index + 1).padStart(4, '0')}`,
+      court,
+    ] as const),
+  ),
+);
+
+function migrateBookingCourtIds(bookings: BookingRecord[]): BookingRecord[] {
+  return bookings.map((record) => {
+    const seededCourtId = seedCourtIdsByBookingId.get(record.booking.id);
+    const courtId = seededCourtId ??
+      (currentCourtIds.has(record.booking.courtId)
+        ? record.booking.courtId
+        : legacyCourtsById.get(record.booking.courtId)?.id);
+
+    if (!courtId || courtId === record.booking.courtId) return record;
+    return { ...record, booking: { ...record.booking, courtId } };
+  });
+}
+
 function readSavedUserId(): string | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -212,7 +238,7 @@ function loadState(): MockDb {
   const cleanBlackouts = rawBlackouts.filter((b) => !b.start.startsWith('2000-'));
   return {
     ...seed,
-    bookings: saved.bookings ?? seed.bookings,
+    bookings: migrateBookingCourtIds(saved.bookings ?? seed.bookings),
     blackouts: cleanBlackouts,
     openingHours: saved.openingHours ?? seed.openingHours,
     ownerApplications: saved.ownerApplications ?? seed.ownerApplications,
@@ -232,7 +258,7 @@ export function persist(): void {
 export function reloadFromStorage(): void {
   const saved = readStorage();
   if (!saved) return;
-  if (saved.bookings) db.bookings = saved.bookings;
+  if (saved.bookings) db.bookings = migrateBookingCourtIds(saved.bookings);
   if (saved.blackouts) db.blackouts = saved.blackouts;
   if (saved.openingHours) db.openingHours = saved.openingHours;
   if (saved.ownerApplications) db.ownerApplications = saved.ownerApplications;

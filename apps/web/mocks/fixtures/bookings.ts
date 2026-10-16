@@ -1,7 +1,7 @@
 import type { Booking, Payment, Review } from '@bsc/shared';
 import { HOLD_MINUTES } from '@bsc/shared';
 import { toDateOnly, toIso } from './slots';
-import { venues } from './venues';
+import { courtIdForVenue, venues } from './venues';
 
 /**
  * Booking & thanh toán mẫu, phủ đủ 7 trạng thái của `BookingStatus` và 7 trạng
@@ -21,7 +21,7 @@ const V2 = '019273c5-7f12-7001-a1b2-c3d4e5f60002'; // Bóng đá Phú Thọ
 const V3 = '019273c5-7f12-7001-a1b2-c3d4e5f60003'; // Pickleball Sala
 
 /** id sân con – khớp cách sinh id trong fixtures/venues.ts. */
-const courtId = (venueId: string, n: number) => `${venueId.slice(0, 24)}${String(n).padStart(4, '0')}`;
+const courtId = courtIdForVenue;
 
 const dayOffset = (days: number) => {
   const d = new Date();

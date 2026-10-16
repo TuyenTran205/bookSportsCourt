@@ -399,14 +399,14 @@ export const ownerHandlers = [
     const record = db.bookings.find((b) => b.payment?.id === params.id);
     if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy giao dịch');
 
-    const body = (await request.json()) as { rejectReason?: string };
+    const body = (await request.json()) as { reason?: string };
 
     record.payment!.status = 'rejected';
     record.payment!.reviewedBy = guard.user!.id;
-    record.payment!.rejectReason = body.rejectReason ?? 'Biên lai không hợp lệ';
+    record.payment!.rejectReason = body.reason ?? 'Biên lai không hợp lệ';
     record.booking.status = 'cancelled';
     record.booking.cancelledAt = new Date().toISOString();
-    record.booking.cancelReason = body.rejectReason ?? 'Biên lai không hợp lệ';
+    record.booking.cancelReason = body.reason ?? 'Biên lai không hợp lệ';
     persist();
     publish({
       type: 'booking_cancelled',

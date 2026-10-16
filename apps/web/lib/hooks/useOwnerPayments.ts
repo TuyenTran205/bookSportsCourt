@@ -2,10 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 
 import { listOwnerPayments } from '@/lib/api/endpoints/owner';
 
-export function useOwnerPayments() {
+export function useOwnerPayments(
+  status?: string,
+  page = 1,
+  limit = 20,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: ['owner', 'payments'],
-    queryFn: () => listOwnerPayments({ status: 'submitted' }),
-    staleTime: 60 * 1000,
+    queryKey: ['owner', 'payments', { status, page, limit }],
+    queryFn: () => listOwnerPayments({ status, page, limit }),
+    enabled,
+    staleTime: 30 * 1000,
   });
 }
