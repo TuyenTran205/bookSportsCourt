@@ -4,7 +4,9 @@ import { initialBookings, venueIdByCourtId } from '../fixtures/bookings';
 import { allCourts } from '../fixtures/venues';
 import {
   authorizeCustomer,
+  filterOwnerReviews,
   hasOverlappingPricingRule,
+  isReviewInOwnedVenues,
   isValidOpeningHours,
   ownedVenueForCourt,
 } from './owner';
@@ -36,6 +38,18 @@ describe('owner court fixtures', () => {
     expect(new Set(courtIds).size).toBe(courtIds.length);
     expect(Object.keys(venueIdByCourtId)).toHaveLength(courtIds.length);
     expect(initialBookings.every(({ booking }) => venueIdByCourtId[booking.courtId])).toBe(true);
+  });
+
+  it('seeds replied and unreplied reviews with matching booking and venue references', () => {
+    const reviewedBookings = initialBookings.filter((record) => record.review !== null);
+
+    expect(reviewedBookings.some((record) => Boolean(record.review?.ownerReply))).toBe(true);
+    expect(reviewedBookings.some((record) => !record.review?.ownerReply)).toBe(true);
+    expect(reviewedBookings.every((record) =>
+      record.review !== null &&
+      record.review.bookingId === record.booking.id &&
+      record.review.venueId === venueIdByCourtId[record.booking.courtId],
+    )).toBe(true);
   });
 
   it('does not resolve a foreign court as manageable by the current owner', () => {
@@ -117,5 +131,29 @@ describe('owner pricing validation', () => {
       startTime: '16:30',
       endTime: '18:00',
     })).toBe(false);
+  });
+});
+
+describe('owner review filtering and permissions', () => {
+  it('filters reviews by owned venue and reply status', () => {
+    const reviews = [
+      { id: 'review-1', venueId: 'venue-1', ownerReply: null },
+      { id: 'review-2', venueId: 'venue-1', ownerReply: 'Cảm ơn bạn' },
+      { id: 'review-3', venueId: 'venue-2', ownerReply: null },
+    ];
+    const venueIds = new Set(['venue-1']);
+
+    expect(filterOwnerReviews(reviews, venueIds).map((review) => review.id)).toEqual([
+      'review-1',
+      'review-2',
+    ]);
+    expect(filterOwnerReviews(reviews, venueIds, false).map((review) => review.id)).toEqual([
+      'review-1',
+    ]);
+    expect(filterOwnerReviews(reviews, venueIds, true).map((review) => review.id)).toEqual([
+      'review-2',
+    ]);
+    expect(isReviewInOwnedVenues(reviews[0]!, venueIds)).toBe(true);
+    expect(isReviewInOwnedVenues(reviews[2]!, venueIds)).toBe(false);
   });
 });

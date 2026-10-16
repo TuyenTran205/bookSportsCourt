@@ -220,6 +220,37 @@ function completedWithReview(): BookingRecord {
   };
 }
 
+function completedWithUnrepliedReview(): BookingRecord {
+  const record = completedWithReview();
+  const bookingId = bid();
+  const reviewId = rid();
+  const reviewedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
+  return {
+    ...record,
+    booking: {
+      ...record.booking,
+      id: bookingId,
+      customerId: CUSTOMER_1,
+      during: { start: toIso(dayOffset(-2), 19 * 60), end: toIso(dayOffset(-2), 20 * 60) },
+      createdAt: reviewedAt,
+    },
+    review: record.review
+      ? {
+          ...record.review,
+          id: reviewId,
+          bookingId,
+          customerId: CUSTOMER_1,
+          rating: 4,
+          comment: 'Sân đẹp, cỏ mới, nhân viên nhiệt tình. Đèn sáng đủ chơi tối. Sẽ quay lại cùng đội.',
+          ownerReply: null,
+          ownerRepliedAt: null,
+          createdAt: reviewedAt,
+        }
+      : null,
+  };
+}
+
 /** Đã hoàn tất nhưng chưa đánh giá — để màn "Viết đánh giá" có việc làm. */
 function completedNoReview(): BookingRecord {
   const id = bid();
@@ -537,6 +568,7 @@ function buildInitial(): BookingRecord[] {
     pendingReview(),
     confirmed(),
     completedWithReview(),
+    completedWithUnrepliedReview(),
     completedNoReview(),
     paymentRejected(),
     cancelledRefunded(),

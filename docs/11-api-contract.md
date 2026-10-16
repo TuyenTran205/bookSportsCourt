@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.7.0 | **Cập nhật lần cuối:** 2026-10-17
+> **Phiên bản:** 1.8.0 | **Cập nhật lần cuối:** 2026-10-17
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -236,10 +236,12 @@ PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiề
 GET    /api/v1/venues/:id/reviews        Danh sách review (public, chỉ review đang hiển thị)
 POST   /api/v1/reviews                   [Customer] Đánh giá (cần booking completed)
 PATCH  /api/v1/reviews/:id/visibility    [Admin] Ẩn/hiện review
-POST   /api/v1/reviews/:id/reply         [Owner] Phản hồi đánh giá (OWN-13)
-GET    /api/v1/owner/reviews             [Owner] Đánh giá của các venue mình (query: venueId, page, limit)
+GET    /api/v1/owner/reviews             [Owner] Đánh giá tại venue mình (query: venueId, replied, page, limit)
+PATCH  /api/v1/owner/reviews/:id/reply   [Owner] Tạo hoặc sửa phản hồi (body: ownerReply)
 GET    /api/v1/admin/reviews             [Admin] Mọi review kể cả đang ẩn (query: venueId, isVisible, page, limit)
 ```
+
+`replied` lọc theo trạng thái phản hồi (`true` đã phản hồi, `false` chưa phản hồi). Danh sách Owner chỉ trả review thuộc venue của Owner hiện tại; lọc venue và trạng thái phải thực hiện trước phân trang. Phản hồi dài 1–2000 ký tự sau khi trim. API chỉ cho Owner sở hữu venue chứa review tạo/sửa phản hồi; Admin có thể quản lý review trên mọi venue. Venue ngoài quyền hoặc review không tồn tại trả `404 NOT_FOUND`.
 
 > **Schema:** `reviews.owner_reply` và `reviews.owner_replied_at` đã có trong `04-database-schema.md`.
 

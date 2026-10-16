@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ownerApplicationSchema } from './schemas';
+import { ownerApplicationSchema, replyReviewSchema } from './schemas';
 
 const validApplication = {
   businessName: 'Sân thể thao Phú Nhuận',
@@ -17,6 +17,14 @@ describe('ownerApplicationSchema', () => {
       ...validApplication,
       taxCode: '012345678901',
       idCardUrl: 'https://example.com/owner-document.jpg',
+    });
+
+    describe('replyReviewSchema', () => {
+      it('trims the reply and rejects blank or oversized content', () => {
+        expect(replyReviewSchema.parse({ ownerReply: '  Cảm ơn bạn!  ' }).ownerReply).toBe('Cảm ơn bạn!');
+        expect(replyReviewSchema.safeParse({ ownerReply: '   ' }).success).toBe(false);
+        expect(replyReviewSchema.safeParse({ ownerReply: 'a'.repeat(2001) }).success).toBe(false);
+      });
     });
 
     expect(result.success).toBe(true);

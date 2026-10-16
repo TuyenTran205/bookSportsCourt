@@ -1,5 +1,5 @@
 import { http } from 'msw';
-import { ownerApplicationSchema } from '@bsc/shared';
+import { ownerApplicationSchema, replyReviewSchema } from '@bsc/shared';
 import type {
   BankAccountInfo,
   Booking,
@@ -10,6 +10,7 @@ import type {
   PeakHour,
   PricingRule,
   RevenuePoint,
+  Review,
   VenueImage,
 } from '@bsc/shared';
 import { db, currentUser, persist } from '../db';
@@ -102,6 +103,25 @@ export function hasOverlappingPricingRule(
       rule.startTime < candidate.endTime && candidate.startTime < rule.endTime;
     return sameScope && sharesWeekday && overlapsTime;
   });
+}
+
+export function filterOwnerReviews<T extends Pick<Review, 'venueId' | 'ownerReply'>>(
+  reviews: readonly T[],
+  venueIds: ReadonlySet<string>,
+  replied?: boolean,
+): T[] {
+  return reviews.filter(
+    (review) =>
+      isReviewInOwnedVenues(review, venueIds) &&
+      (replied === undefined || Boolean(review.ownerReply) === replied),
+  );
+}
+
+export function isReviewInOwnedVenues(
+  review: Pick<Review, 'venueId'>,
+  venueIds: ReadonlySet<string>,
+): boolean {
+  return venueIds.has(review.venueId);
 }
 
 function courtName(courtId: string) {
@@ -1112,14 +1132,22 @@ export const ownerHandlers = [
 
     const url = new URL(request.url);
     const { page, limit } = readPaging(url);
-    const myVenueIds = new Set(ownedVenues().map((v) => v.id));
+    const venueIds = new Set(
+      ownedVenues()
+        .filter((venue) => !url.searchParams.get('venueId') || venue.id === url.searchParams.get('venueId'))
+        .map((venue) => venue.id),
+    );
+    const repliedParam = url.searchParams.get('replied');
+    const replied = repliedParam === 'true' ? true : repliedParam === 'false' ? false : undefined;
 
-    const list = db.reviews
-      .filter((r) => myVenueIds.has(r.venueId))
+    const list = filterOwnerReviews(db.reviews, venueIds, replied)
       .map((r) => ({
         ...r,
         venueName: db.venues.find((v) => v.id === r.venueId)?.name ?? '',
         customerName: db.users.find((u) => u.id === r.customerId)?.fullName ?? 'Khách',
+        courtName: courtName(
+          db.bookings.find((record) => record.review?.id === r.id)?.booking.courtId ?? '',
+        ),
       }));
 
     const { data, meta } = paginate(list, page, limit);
@@ -1132,10 +1160,16 @@ export const ownerHandlers = [
     if (guard.error) return guard.error;
 
     const review = db.reviews.find((r) => r.id === params.id);
-    if (!review) return err(404, 'NOT_FOUND', 'Không tìm thấy đánh giá');
+    const venueIds = new Set(ownedVenues().map((venue) => venue.id));
+    if (!review || !isReviewInOwnedVenues(review, venueIds)) {
+      return err(404, 'NOT_FOUND', 'Không tìm thấy đánh giá');
+    }
 
-    const body = (await request.json()) as { ownerReply: string };
-    review.ownerReply = body.ownerReply;
+    const parsed = replyReviewSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return err(422, 'VALIDATION_ERROR', 'Nội dung phản hồi chưa hợp lệ');
+    }
+    review.ownerReply = parsed.data.ownerReply.trim();
     review.ownerRepliedAt = new Date().toISOString();
 
     // Đồng bộ vào record booking để màn chi tiết cũng thấy phản hồi.

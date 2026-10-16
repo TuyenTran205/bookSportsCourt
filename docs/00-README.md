@@ -1,6 +1,6 @@
 ﻿# 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.6.0 | **Cập nhật lần cuối:** 2026-10-17 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.7.0 | **Cập nhật lần cuối:** 2026-10-17 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -50,6 +50,7 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-10-17 | Làm rõ API Owner reviews: lọc theo phản hồi, phân trang và giới hạn quyền tạo/sửa phản hồi theo venue sở hữu | `11` |
 | 2026-10-17 | Bổ sung tọa độ venue bắt buộc từ thao tác ghim bản đồ khi Owner tạo cơ sở | `11` |
 | 2026-10-16 | Bổ sung tìm kiếm booking Owner theo mã đơn, khách và số điện thoại trước phân trang | `11` |
 | 2026-10-14 | Làm rõ quyền Customer gửi hồ sơ Owner; bổ sung kiểm tra role tại API mock và test quyền | `11` |

@@ -238,6 +238,12 @@ export function createManualBooking(input: {
 
 // ── Doanh thu & đánh giá ───────────────────────────────────────────────────
 
+export interface OwnerReview extends Review {
+  venueName?: string;
+  courtName?: string;
+  customerName?: string;
+}
+
 export function getRevenue(params: {
   from: string;
   to: string;
@@ -260,14 +266,19 @@ export function getOccupancy(params: {
   return apiFetch<OccupancyReport>('/owner/reports/occupancy', { query: { ...params } });
 }
 
-export function listOwnerReviews(params: { page?: number; limit?: number; replied?: boolean } = {}) {
-  return apiFetchWithMeta<Review[]>('/owner/reviews', { query: { ...params } });
+export function listOwnerReviews(params: {
+  page?: number;
+  limit?: number;
+  replied?: boolean;
+  venueId?: string;
+} = {}) {
+  return apiFetchWithMeta<OwnerReview[]>('/owner/reviews', { query: { ...params } });
 }
 
 export function replyToReview(id: string, reply: string) {
   return apiFetch<Review>(`/owner/reviews/${encodeURIComponent(id)}/reply`, {
     method: 'PATCH',
-    ...jsonBody({ reply }),
+    ...jsonBody({ ownerReply: reply }),
   });
 }
 

@@ -216,7 +216,7 @@ export const createReviewSchema = z.object({
 });
 
 export const replyReviewSchema = z.object({
-  ownerReply: z.string().min(1, 'Vui lòng nhập nội dung trả lời').max(2000, 'Nội dung tối đa 2000 ký tự'),
+  ownerReply: z.string().trim().min(1, 'Vui lòng nhập nội dung trả lời').max(2000, 'Nội dung tối đa 2000 ký tự'),
 });
 
 // ===== Owner: cơ sở, sân con, giá, khoá sân =====
