@@ -17,7 +17,7 @@ import type {
   Review,
   VenueImage,
 } from '@bsc/shared';
-import { db, currentUser, persist } from '../db';
+import { createMockNotification, db, currentUser, persist } from '../db';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { buildSlots, timeToMinutes, toDateOnly, weekdayOf } from '../fixtures/slots';
 import { areas, sports } from '../fixtures/catalogs';
@@ -784,10 +784,21 @@ export const ownerHandlers = [
     record.payment!.reviewedBy = guard.user!.id;
     record.booking.status = 'confirmed';
     persist();
-    publish({
-      type: 'booking_confirmed',
-      payload: { bookingId: record.booking.id },
-    });
+    if (record.booking.customerId) {
+      const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+      const venue = db.venues.find((item) => item.id === venueId);
+      createMockNotification(record.booking.customerId, {
+        type: 'booking_confirmed',
+        title: 'Đơn đặt sân đã được xác nhận',
+        body: `${venue?.name ?? 'Cơ sở'} đã xác nhận thanh toán của bạn.`,
+        payload: { bookingId: record.booking.id, venueId },
+      });
+      publish({
+        type: 'booking_confirmed',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id },
+      });
+    }
 
     return ok({ booking: record.booking, payment: record.payment });
   }),
@@ -808,12 +819,29 @@ export const ownerHandlers = [
     record.payment!.rejectReason = body.reason ?? 'Biên lai không hợp lệ';
     record.booking.status = 'cancelled';
     record.booking.cancelledAt = new Date().toISOString();
-    record.booking.cancelReason = body.reason ?? 'Biên lai không hợp lệ';
+    const reason = body.reason ?? 'Biên lai không hợp lệ';
+    record.booking.cancelReason = reason;
     persist();
-    publish({
-      type: 'booking_cancelled',
-      payload: { bookingId: record.booking.id },
-    });
+    if (record.booking.customerId) {
+      const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+      const venue = db.venues.find((item) => item.id === venueId);
+      createMockNotification(record.booking.customerId, {
+        type: 'payment_rejected',
+        title: 'Biên lai thanh toán chưa được chấp nhận',
+        body: reason,
+        payload: { bookingId: record.booking.id, venueId, reason },
+      });
+      publish({
+        type: 'payment_rejected',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id, reason },
+      });
+      publish({
+        type: 'booking_cancelled',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id, reason },
+      });
+    }
 
     return ok({ booking: record.booking, payment: record.payment });
   }),
@@ -1206,6 +1234,12 @@ export const ownerHandlers = [
       record.review.ownerRepliedAt = review.ownerRepliedAt;
     }
     persist();
+    createMockNotification(review.customerId, {
+      type: 'review_reply',
+      title: 'Chủ sân đã phản hồi đánh giá của bạn',
+      body: review.ownerReply,
+      payload: { reviewId: review.id, venueId: review.venueId },
+    });
 
     return ok(review);
   }),

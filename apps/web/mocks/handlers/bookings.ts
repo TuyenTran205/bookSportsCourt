@@ -1,7 +1,7 @@
 import { http } from 'msw';
 import type { BankAccountInfo, Booking, BookingDetail, Payment, Review, Slot } from '@bsc/shared';
 import { HOLD_MINUTES } from '@bsc/shared';
-import { db, currentUser, persist } from '../db';
+import { createMockNotification, db, currentUser, persist } from '../db';
 import {
   courtNameByCourtId,
   venueAddressById,
@@ -258,6 +258,21 @@ export const bookingHandlers = [
     db.bookings.unshift({ booking, payment, review: null });
     persist();
 
+    const ownerId = db.venues.find((item) => item.id === venueId)?.ownerId;
+    if (ownerId) {
+      createMockNotification(ownerId, {
+        type: 'booking_created',
+        title: 'Có lượt giữ chỗ mới',
+        body: `${user.fullName} vừa giữ chỗ tại ${venue?.name ?? 'cơ sở của bạn'}.`,
+        payload: { bookingId: id, venueId, courtId: body.courtId },
+      });
+      publish({
+        type: 'booking_created',
+        targetUserId: ownerId,
+        payload: { bookingId: id, venueId, courtId: body.courtId },
+      });
+    }
+
     // Cho mọi tab thấy khung giờ vừa bị giữ — nền tảng của Kịch bản B.
     broadcastSlots(body.courtId, date);
 
@@ -288,6 +303,21 @@ export const bookingHandlers = [
         record.booking.status = 'expired';
         if (record.payment) record.payment.status = 'expired';
         persist();
+        const customerId = record.booking.customerId;
+        if (customerId) {
+          createMockNotification(customerId, {
+            type: 'hold_expired',
+            title: 'Lượt giữ chỗ đã hết hạn',
+            body: 'Bạn có thể chọn lại khung giờ nếu sân vẫn còn trống.',
+            payload: { bookingId: record.booking.id },
+          });
+          publish({
+            type: 'hold_expired',
+            targetUserId: customerId,
+            payload: { courtId: record.booking.courtId, bookingId: record.booking.id },
+          });
+        }
+        broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
       }
     }
 
@@ -350,8 +380,25 @@ export const bookingHandlers = [
     }
     persist();
 
-    // Bắn realtime cho chủ sân biết có biên lai mới và cập nhật slot
-    publish({ type: 'payment_submitted', payload: { bookingId: record.booking.id } });
+    const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+    const venue = db.venues.find((item) => item.id === venueId);
+    const ownerId = venue?.ownerId;
+    if (ownerId) {
+      const customer = db.users.find((item) => item.id === record.booking.customerId);
+      createMockNotification(ownerId, {
+        type: 'payment_submitted',
+        title: 'Có biên lai mới cần duyệt',
+        body: `${customer?.fullName ?? 'Khách hàng'} vừa gửi biên lai cho đơn tại ${venue.name}.`,
+        payload: { bookingId: record.booking.id, paymentId: record.payment?.id ?? null },
+      });
+      if (record.payment) {
+        publish({
+          type: 'payment_submitted',
+          targetUserId: ownerId,
+          payload: { paymentId: record.payment.id, bookingId: record.booking.id, venueId },
+        });
+      }
+    }
     broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
 
     return ok({ booking: record.booking, payment: record.payment });
@@ -418,9 +465,25 @@ export const bookingHandlers = [
     }
     persist();
 
+    const ownerId = db.venues.find((item) => item.id === venueId)?.ownerId;
+    if (ownerId) {
+      createMockNotification(ownerId, {
+        type: 'booking_cancelled',
+        title: 'Khách đã huỷ đơn đặt sân',
+        body: `Đơn tại ${venue?.name ?? 'cơ sở của bạn'} đã được huỷ.`,
+        payload: { bookingId: record.booking.id },
+      });
+    }
+
     // Slot được trả về trống — các tab khác phải thấy ngay.
     broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
-    publish({ type: 'booking_cancelled', payload: { bookingId: record.booking.id } });
+    if (record.booking.customerId) {
+      publish({
+        type: 'booking_cancelled',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id, reason: record.booking.cancelReason ?? '' },
+      });
+    }
 
     return ok({ booking: record.booking, refundAmount });
   }),

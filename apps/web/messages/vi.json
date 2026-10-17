@@ -916,7 +916,10 @@
     "ariaWithCount": "Thông báo, {count} chưa đọc",
     "markAll": "Đánh dấu đã đọc",
     "emptyTitle": "Chưa có thông báo",
-    "emptyDesc": "Thông báo về đơn đặt sân và thanh toán sẽ hiện ở đây."
+    "emptyDesc": "Thông báo về đơn đặt sân và thanh toán sẽ hiện ở đây.",
+    "loadFailed": "Không tải được thông báo.",
+    "retry": "Thử lại",
+    "updateFailed": "Không cập nhật được thông báo. Vui lòng thử lại."
   },
   "shell": {
     "ownerArea": "Kênh chủ sân",

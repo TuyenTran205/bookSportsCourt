@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,6 +109,7 @@ export function Header() {
 
         {/* User Account / Auth Actions (Desktop) */}
         <div className="hidden items-center gap-3 md:flex">
+          {isAuthenticated && <NotificationBell />}
           {isLoading ? (
             <div className="flex items-center gap-2">
               <Skeleton className="size-9 rounded-full" />
@@ -213,6 +215,7 @@ export function Header() {
 
         {/* Mobile Menu Button (touch target ≥ 44px theo WCAG AA & Quy tắc A7) */}
         <div className="flex items-center md:hidden">
+          {isAuthenticated && <NotificationBell />}
           <button
             type="button"
             className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-btn text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"

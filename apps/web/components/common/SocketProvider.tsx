@@ -1,9 +1,11 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { RealtimeEvent } from '@/mocks/realtime';
 import { subscribe } from '@/mocks/realtime';
+import { db } from '@/mocks/db';
 
 interface SocketContextValue {
   connected: boolean;
@@ -29,11 +31,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [lastEvent, setLastEvent] = useState<RealtimeEvent | null>(null);
   const queryClient = useQueryClient();
 
+  const subscribeToEvents = useCallback((listener: (event: RealtimeEvent) => void) => {
+    return subscribe((event) => {
+      if (event.targetUserId && event.targetUserId !== db.currentUserId) return;
+      listener(event);
+    });
+  }, []);
+
   useEffect(() => {
     setConnected(true);
-    const unsubscribe = subscribe((event) => {
+    const unsubscribe = subscribeToEvents((event) => {
       setLastEvent(event);
-      if (event.type === 'slot_updated') {
+      if (event.type === 'notification_created') {
+        void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        toast.info(event.payload.title);
+      } else if (event.type === 'slot_updated') {
         void queryClient.invalidateQueries({ queryKey: ['venues'] });
         void queryClient.invalidateQueries({ queryKey: ['owner', 'timeline'] });
       } else if (event.type === 'booking_confirmed' || event.type === 'booking_cancelled') {
@@ -41,10 +53,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         void queryClient.invalidateQueries({ queryKey: ['owner', 'bookings'] });
         void queryClient.invalidateQueries({ queryKey: ['owner', 'timeline'] });
         void queryClient.invalidateQueries({ queryKey: ['venues'] });
-      } else if (event.type === 'payment_submitted') {
+      } else if (event.type === 'payment_submitted' || event.type === 'booking_created') {
         void queryClient.invalidateQueries({ queryKey: ['owner', 'payments'] });
         void queryClient.invalidateQueries({ queryKey: ['owner', 'bookings'] });
         void queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      } else if (event.type === 'payment_rejected') {
+        void queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        void queryClient.invalidateQueries({ queryKey: ['owner', 'bookings'] });
+        void queryClient.invalidateQueries({ queryKey: ['owner', 'timeline'] });
+        void queryClient.invalidateQueries({ queryKey: ['venues'] });
+      } else if (event.type === 'hold_expired') {
+        void queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        void queryClient.invalidateQueries({ queryKey: ['venues'] });
+        void queryClient.invalidateQueries({ queryKey: ['owner', 'timeline'] });
       }
     });
 
@@ -53,19 +74,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: ['venues'] });
       void queryClient.invalidateQueries({ queryKey: ['owner'] });
       void queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    };
+    const onWindowFocus = () => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     };
     window.addEventListener('bsc-mock-db-updated', onStorageSync);
+    window.addEventListener('focus', onWindowFocus);
 
     return () => {
       unsubscribe();
       window.removeEventListener('bsc-mock-db-updated', onStorageSync);
+      window.removeEventListener('focus', onWindowFocus);
       setConnected(false);
     };
-  }, [queryClient]);
+  }, [queryClient, subscribeToEvents]);
 
   return (
     <SocketContext.Provider
-      value={{ connected, lastEvent, subscribeToEvents: subscribe }}
+      value={{ connected, lastEvent, subscribeToEvents }}
     >
       {children}
     </SocketContext.Provider>

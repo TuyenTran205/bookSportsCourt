@@ -1,6 +1,6 @@
 import { http } from 'msw';
 import type { AuditLog } from '@bsc/shared';
-import { db, currentUser, persist } from '../db';
+import { createMockNotification, db, currentUser, persist } from '../db';
 import { areas, sports } from '../fixtures/catalogs';
 import { venueIdByCourtId } from '../fixtures/bookings';
 import { venues } from '../fixtures/venues';
@@ -127,6 +127,18 @@ export const adminHandlers = [
       applicant: app.user.fullName,
     });
     persist();
+    createMockNotification(app.user.id, {
+      type: body.status === 'approved' ? 'owner_application_approved' : 'owner_application_rejected',
+      title:
+        body.status === 'approved'
+          ? 'Hồ sơ chủ sân đã được duyệt'
+          : 'Hồ sơ chủ sân chưa được duyệt',
+      body:
+        body.status === 'approved'
+          ? 'Bạn có thể bắt đầu thêm cơ sở và sân con.'
+          : body.reviewNote?.trim() ?? 'Vui lòng cập nhật hồ sơ và gửi lại.',
+      payload: { applicationId: app.id },
+    });
 
     return ok(app);
   }),
@@ -179,6 +191,20 @@ export const adminHandlers = [
       venueName: venue.name,
     });
     persist();
+    if (body.status === 'approved' || body.status === 'rejected') {
+      createMockNotification(venue.ownerId, {
+        type: body.status === 'approved' ? 'venue_approved' : 'venue_rejected',
+        title:
+          body.status === 'approved'
+            ? 'Cơ sở đã được duyệt'
+            : 'Cơ sở chưa được duyệt',
+        body:
+          body.status === 'approved'
+            ? `${venue.name} đã hiển thị với khách hàng.`
+            : body.reviewNote?.trim() ?? `Vui lòng cập nhật thông tin của ${venue.name}.`,
+        payload: { venueId: venue.id },
+      });
+    }
 
     return ok(venue);
   }),

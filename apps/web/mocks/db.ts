@@ -11,6 +11,8 @@ import type {
 } from '@bsc/shared';
 import { cloneBookings, initialBookings, type BookingRecord } from './fixtures/bookings';
 import { ownerApplications, users as initialUsers } from './fixtures/users';
+import { newId } from './utils';
+import { publish } from './realtime';
 import {
   blackouts as initialBlackouts,
   openingHours as initialOpeningHours,
@@ -38,6 +40,10 @@ function restoreVenueFixtures(venues: VenueDetail[] = seedVenues): VenueDetail[]
   const restored = JSON.parse(JSON.stringify(venues)) as VenueDetail[];
   fixtureVenues.splice(0, fixtureVenues.length, ...restored);
   return fixtureVenues;
+}
+
+export interface MockNotification extends Notification {
+  userId: string;
 }
 
 const seedCourtIdsByBookingId = new Map(
@@ -95,7 +101,7 @@ export interface MockDb {
   venues: VenueDetail[];
   bookings: BookingRecord[];
   reviews: Review[];
-  notifications: Notification[];
+  notifications: MockNotification[];
   ownerApplications: typeof ownerApplications;
   blackouts: typeof initialBlackouts;
   openingHours: OpeningHour[];
@@ -142,11 +148,12 @@ function seedReviews(): Review[] {
   return initialBookings.map((r) => r.review).filter((r): r is Review => r !== null);
 }
 
-function seedNotifications(): Notification[] {
+function seedNotifications(): MockNotification[] {
   const now = Date.now();
   return [
     {
       id: '019273c5-7f16-7000-9000-000000000001',
+      userId: '019273c5-7f12-7000-8000-000000000001',
       type: 'payment_submitted',
       title: 'Có biên lai mới cần duyệt',
       body: 'Nguyễn Thị Linh vừa gửi biên lai cho đơn tại Sân Cầu Lông Thăng Long.',
@@ -156,20 +163,12 @@ function seedNotifications(): Notification[] {
     },
     {
       id: '019273c5-7f16-7000-9000-000000000002',
+      userId: '019273c5-7f12-7000-8000-000000000002',
       type: 'booking_confirmed',
       title: 'Đơn đặt sân đã được xác nhận',
       body: 'Pickleball Club Sala – 08:00 ngày mai.',
-      readAt: new Date(now - 20 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
-      payload: null,
-    },
-    {
-      id: '019273c5-7f16-7000-9000-000000000003',
-      type: 'owner_application_approved',
-      title: 'Hồ sơ chủ sân đã được duyệt',
-      body: 'Bạn có thể bắt đầu thêm cơ sở và sân con.',
       readAt: null,
-      createdAt: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
       payload: null,
     },
   ];
@@ -210,8 +209,8 @@ function buildSeed(): MockDb {
 
 /**
  * Phần state được chia sẻ giữa các tab. Không lưu `users`/`reviews` tĩnh vì
- * chúng không đổi trong lúc demo; các hồ sơ Owner mới được lưu cùng bookings,
- * blackouts và openingHours để mock giữ trạng thái qua reload.
+ * chúng không đổi trong lúc demo; bookings, hộp thư thông báo, hồ sơ Owner,
+ * blackouts và openingHours được lưu để mock giữ trạng thái qua reload.
  *
  * LƯU Ý: Không chia sẻ `currentUserId` giữa các tab qua `localStorage` để cho phép
  * kiểm thử đa vai trò (Tab A là Chủ sân, Tab B là Khách đặt sân) mà không bị ghi
@@ -226,6 +225,7 @@ type PersistedState = Pick<
   | 'pricingRules'
   | 'ownerApplications'
   | 'bankAccounts'
+  | 'notifications'
 >;
 
 function readStorage(): Partial<PersistedState> | null {
@@ -250,6 +250,7 @@ function writeStorage(state: MockDb): void {
       pricingRules: state.pricingRules,
       ownerApplications: state.ownerApplications,
       bankAccounts: state.bankAccounts,
+      notifications: state.notifications,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
@@ -276,6 +277,13 @@ function loadState(): MockDb {
     pricingRules: saved.pricingRules ?? seed.pricingRules,
     ownerApplications: saved.ownerApplications ?? seed.ownerApplications,
     bankAccounts: saved.bankAccounts ?? seed.bankAccounts,
+    // Bỏ qua dữ liệu thông báo mock cũ chưa có người nhận để không lộ hộp thư dùng chung.
+    notifications: Array.isArray(saved.notifications)
+      ? saved.notifications.filter(
+          (notification): notification is MockNotification =>
+            typeof notification.userId === 'string',
+        )
+      : seed.notifications,
     currentUserId,
   };
 }
@@ -285,6 +293,31 @@ export const db: MockDb = loadState();
 /** Gọi sau MỌI thay đổi để các tab khác nhìn thấy. */
 export function persist(): void {
   writeStorage(db);
+}
+
+export function createMockNotification(
+  userId: string,
+  notification: Pick<Notification, 'type' | 'title'> &
+    Partial<Pick<Notification, 'body' | 'payload'>>,
+): MockNotification {
+  const created: MockNotification = {
+    id: newId(),
+    userId,
+    type: notification.type,
+    title: notification.title,
+    body: notification.body ?? null,
+    readAt: null,
+    createdAt: new Date().toISOString(),
+    payload: notification.payload ?? null,
+  };
+  db.notifications.unshift(created);
+  persist();
+  publish({
+    type: 'notification_created',
+    targetUserId: userId,
+    payload: { id: created.id, type: created.type, title: created.title },
+  });
+  return created;
 }
 
 /** Nạp lại từ localStorage — dùng khi tab khác vừa ghi. */
@@ -300,6 +333,12 @@ export function reloadFromStorage(): void {
   if (saved.pricingRules) db.pricingRules = saved.pricingRules;
   if (saved.ownerApplications) db.ownerApplications = saved.ownerApplications;
   if (saved.bankAccounts) db.bankAccounts = saved.bankAccounts;
+  if (Array.isArray(saved.notifications)) {
+    db.notifications = saved.notifications.filter(
+      (notification): notification is MockNotification =>
+        typeof notification.userId === 'string',
+    );
+  }
   // CHÚ Ý: Không đồng bộ db.currentUserId ở đây. Mỗi tab giữ nguyên phiên đăng nhập
   // của mình (lưu ở sessionStorage) để hỗ trợ kiểm thử đa vai trò giữa các tab.
 }
