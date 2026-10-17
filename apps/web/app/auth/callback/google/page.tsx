@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 
+import { PageLoader } from '@/components/ui/page-loader';
 import { useAuth } from '@/lib/hooks/useAuth';
 
 /**
@@ -23,9 +23,8 @@ export default function GoogleAuthCallbackPage() {
   }, [refetchMe, router]);
 
   return (
-    <main className="container flex min-h-[calc(100vh-4rem-12rem)] flex-col items-center justify-center py-16 text-center">
-      <Loader2 className="size-8 animate-spin text-primary-700" aria-hidden="true" />
-      <p className="mt-4 text-sm text-neutral-600">Đang xác thực tài khoản Google…</p>
+    <main className="container py-16">
+      <PageLoader label="Đang xác thực tài khoản Google…" description="Vui lòng chờ trong giây lát." />
     </main>
   );
 }

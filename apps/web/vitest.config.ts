@@ -7,14 +7,18 @@ import { resolve } from 'node:path';
  * Alias `@/` phải khớp `tsconfig.json` để import trong test giống hệt trong
  * component — nếu lệch, test sẽ xanh trên một đường dẫn mà app không dùng.
  *
- * Chưa cần `@vitejs/plugin-react`: hiện chỉ có test logic thuần. Khi viết test
- * render component thì thêm plugin đó vào devDependencies.
+ * Chưa cần `@vitejs/plugin-react`: test render dùng `esbuild.jsx: 'automatic'`
+ * là đủ cho các component thuần (không Fast Refresh trong test). File test nào
+ * cần DOM thì khai báo `// @vitest-environment jsdom` ở đầu file.
  */
 export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './'),
     },
+  },
+  esbuild: {
+    jsx: 'automatic',
   },
   test: {
     environment: 'node',

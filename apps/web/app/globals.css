@@ -153,4 +153,39 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
+
+  /**
+   * Spinner – docs/specs/loading-states-spec.md (SPEC-FE-LOADING-01).
+   * Xoay đều, không nảy, không gradient.
+   */
+  @keyframes bsc-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .bsc-spinner {
+    animation: bsc-spin 800ms linear infinite;
+    transform-origin: center;
+  }
+
+  /**
+   * Quy tắc giảm chuyển động toàn cục ở trên ép mọi animation về 0.01ms, khiến
+   * vòng xoay đứng hình ở một góc tuỳ ý. Thay bằng nhịp thở chậm, tĩnh và dễ chịu.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    @keyframes bsc-spin-breathe {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.45;
+      }
+    }
+
+    .bsc-spinner {
+      animation: bsc-spin-breathe 1.6s ease-in-out infinite !important;
+    }
+  }
 }

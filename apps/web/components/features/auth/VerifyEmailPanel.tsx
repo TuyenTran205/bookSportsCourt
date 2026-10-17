@@ -4,11 +4,12 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
-import { CheckCircle2, Loader2, MailCheck, XCircle } from 'lucide-react';
+import { CheckCircle2, MailCheck, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { verifyEmail } from '@/lib/api/endpoints/auth';
 
 /**
@@ -49,7 +50,7 @@ export function VerifyEmailPanel() {
     title = t('verifyDoneTitle');
     desc = t('verifyDoneDesc');
   } else {
-    icon = <Loader2 className="size-6 animate-spin" aria-hidden="true" />;
+    icon = <Spinner size="md" variant="current" label="" />;
     title = t('verifying');
     desc = t('verifyingDesc');
   }

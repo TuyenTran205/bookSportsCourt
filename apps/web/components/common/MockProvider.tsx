@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { Spinner } from '@/components/ui/spinner';
+
 /**
  * Khởi động MSW trước khi render ứng dụng.
  *
@@ -33,11 +35,12 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg">
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-200 border-t-primary-600"
-            aria-hidden="true"
-          />
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-col items-center gap-3 text-center"
+        >
+          <Spinner size="lg" label="" />
           <p className="text-sm text-text-secondary">Đang chuẩn bị dữ liệu mẫu…</p>
         </div>
       </div>
