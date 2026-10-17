@@ -160,6 +160,7 @@ export function VenueMap({
                         src={venue.coverUrl}
                         alt={venue.name}
                         fill
+                        unoptimized={venue.coverUrl.startsWith('data:')}
                         sizes="240px"
                         className="object-cover"
                       />

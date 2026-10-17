@@ -49,6 +49,7 @@ export function VenueReviewDrawer({ venue, open, onClose }: VenueReviewDrawerPro
                 src={venue.coverUrl}
                 alt={venue.name}
                 fill
+                unoptimized={venue.coverUrl.startsWith('data:')}
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover"
               />

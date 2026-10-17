@@ -1,4 +1,5 @@
 import type { SlotUpdatedPayload } from '@bsc/shared';
+import type { NotificationType } from '@bsc/shared';
 
 /**
  * Kênh realtime giả lập.
@@ -15,11 +16,43 @@ import type { SlotUpdatedPayload } from '@bsc/shared';
  */
 
 export type RealtimeEvent =
-  | { type: 'slot_updated'; payload: SlotUpdatedPayload }
-  | { type: 'booking_confirmed'; payload: { bookingId: string } }
-  | { type: 'booking_cancelled'; payload: { bookingId: string } }
-  | { type: 'payment_submitted'; payload: { bookingId: string } }
-  | { type: 'notification_created'; payload: { title: string } };
+  | { type: 'slot_updated'; targetUserId?: string; payload: SlotUpdatedPayload }
+  | {
+      type: 'booking_created';
+      targetUserId?: string;
+      payload: { bookingId: string; venueId: string; courtId: string };
+    }
+  | {
+      type: 'booking_confirmed';
+      targetUserId?: string;
+      payload: { bookingId: string };
+    }
+  | {
+      type: 'hold_expired';
+      targetUserId?: string;
+      payload: { courtId: string; bookingId: string };
+    }
+  | {
+      type: 'booking_cancelled';
+      targetUserId?: string;
+      payload: { bookingId: string; reason: string };
+    }
+  | {
+      type: 'payment_submitted';
+      targetUserId?: string;
+      payload: { paymentId: string; bookingId: string; venueId: string };
+    }
+  | {
+      type: 'payment_rejected';
+      targetUserId?: string;
+      payload: { bookingId: string; reason: string };
+    }
+  | {
+      type: 'notification_created';
+      /** Mock-only routing metadata; Socket.IO scopes this event by user room. */
+      targetUserId?: string;
+      payload: { id: string; type: NotificationType; title: string };
+    };
 
 const CHANNEL_NAME = 'bsc-realtime';
 const LOCAL_EVENT = 'bsc-realtime-local';

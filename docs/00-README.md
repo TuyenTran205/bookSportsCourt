@@ -1,6 +1,6 @@
 ﻿# 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-10-14 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.8.0 | **Cập nhật lần cuối:** 2026-10-17 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -50,6 +50,10 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-10-17 | Màn Owner Cài đặt & Chính sách dùng API tài khoản ngân hàng và chính sách huỷ theo venue; quy định giới hạn đầu vào của chính sách | `11` |
+| 2026-10-17 | Làm rõ API Owner reviews: lọc theo phản hồi, phân trang và giới hạn quyền tạo/sửa phản hồi theo venue sở hữu | `11` |
+| 2026-10-17 | Bổ sung tọa độ venue bắt buộc từ thao tác ghim bản đồ khi Owner tạo cơ sở | `11` |
+| 2026-10-16 | Bổ sung tìm kiếm booking Owner theo mã đơn, khách và số điện thoại trước phân trang | `11` |
 | 2026-10-14 | Làm rõ quyền Customer gửi hồ sơ Owner; bổ sung kiểm tra role tại API mock và test quyền | `11` |
 | 2026-10-14 | Mở rộng hợp đồng hồ sơ Owner theo form đăng ký: thông tin cơ sở, tài khoản ngân hàng, giới thiệu và URL giấy tờ; nêu rõ migration DB cần có trước khi triển khai backend | `11` |
 | 2026-10-12 | **Sửa theo báo cáo rà soát tài liệu.** Máy trạng thái booking: `completed` thành terminal, bỏ `completed → cancelled`, thêm `confirmed → no_show`; bổ sung cron `autoCompleteBookings` (nếu không `completed` không thể đạt được) và cron nhắc lịch CUS-14 | `01` `03` `05` `10` |

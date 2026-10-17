@@ -3,7 +3,7 @@ import type { CourtSlots, Review, VenueListItem } from '@bsc/shared';
 import { db } from '../db';
 import { amenities as allAmenities, sports as allSports } from '../fixtures/catalogs';
 import { buildSlots, toDateOnly } from '../fixtures/slots';
-import { pricingRules, venues } from '../fixtures/venues';
+import { venues } from '../fixtures/venues';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { err, ok, okList, paginate, readArray, readPaging, simulateLatency } from '../utils';
 
@@ -118,7 +118,7 @@ export const venueHandlers = [
         courtId: court.id,
         venueId: venue.id,
         openingHours: db.openingHours,
-        pricingRules,
+        pricingRules: db.pricingRules,
         blackouts: db.blackouts,
         bookings: db.bookings.map((b) => b.booking),
         currentUserId: db.currentUserId,

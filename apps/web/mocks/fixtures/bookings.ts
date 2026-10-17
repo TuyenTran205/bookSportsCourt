@@ -1,7 +1,7 @@
 import type { Booking, Payment, Review } from '@bsc/shared';
 import { HOLD_MINUTES } from '@bsc/shared';
 import { toDateOnly, toIso } from './slots';
-import { venues } from './venues';
+import { courtIdForVenue, venues } from './venues';
 
 /**
  * Booking & thanh toán mẫu, phủ đủ 7 trạng thái của `BookingStatus` và 7 trạng
@@ -21,7 +21,7 @@ const V2 = '019273c5-7f12-7001-a1b2-c3d4e5f60002'; // Bóng đá Phú Thọ
 const V3 = '019273c5-7f12-7001-a1b2-c3d4e5f60003'; // Pickleball Sala
 
 /** id sân con – khớp cách sinh id trong fixtures/venues.ts. */
-const courtId = (venueId: string, n: number) => `${venueId.slice(0, 24)}${String(n).padStart(4, '0')}`;
+const courtId = courtIdForVenue;
 
 const dayOffset = (days: number) => {
   const d = new Date();
@@ -217,6 +217,37 @@ function completedWithReview(): BookingRecord {
       ownerRepliedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
     },
+  };
+}
+
+function completedWithUnrepliedReview(): BookingRecord {
+  const record = completedWithReview();
+  const bookingId = bid();
+  const reviewId = rid();
+  const reviewedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
+  return {
+    ...record,
+    booking: {
+      ...record.booking,
+      id: bookingId,
+      customerId: CUSTOMER_1,
+      during: { start: toIso(dayOffset(-2), 19 * 60), end: toIso(dayOffset(-2), 20 * 60) },
+      createdAt: reviewedAt,
+    },
+    review: record.review
+      ? {
+          ...record.review,
+          id: reviewId,
+          bookingId,
+          customerId: CUSTOMER_1,
+          rating: 4,
+          comment: 'Sân đẹp, cỏ mới, nhân viên nhiệt tình. Đèn sáng đủ chơi tối. Sẽ quay lại cùng đội.',
+          ownerReply: null,
+          ownerRepliedAt: null,
+          createdAt: reviewedAt,
+        }
+      : null,
   };
 }
 
@@ -537,6 +568,7 @@ function buildInitial(): BookingRecord[] {
     pendingReview(),
     confirmed(),
     completedWithReview(),
+    completedWithUnrepliedReview(),
     completedNoReview(),
     paymentRejected(),
     cancelledRefunded(),

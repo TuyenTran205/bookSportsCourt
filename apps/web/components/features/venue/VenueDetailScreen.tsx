@@ -4,7 +4,7 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { Clock, ImageOff, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { Clock, ImageOff, MapPin, Navigation, ShieldCheck, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Pagination } from '@/components/common/Pagination';
 import { SlotGrid } from '@/components/features/booking/SlotGrid';
+import { VenueLocationMapWrapper } from '@/components/features/venue/VenueLocationMapWrapper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -168,7 +169,7 @@ export function VenueDetailScreen() {
         <span className="text-neutral-900">{venue.name}</span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
         {/* ===== Cột trái: thông tin ===== */}
         <div className="min-w-0 space-y-8">
           <section aria-label={t('gallery')}>
@@ -179,6 +180,7 @@ export function VenueDetailScreen() {
                   alt={venue.name}
                   fill
                   priority
+                  unoptimized={hero.url.startsWith('data:')}
                   sizes="(min-width: 1024px) 60vw, 100vw"
                   className="object-cover"
                 />
@@ -202,7 +204,14 @@ export function VenueDetailScreen() {
                         i === activeImage ? 'border-primary-600' : 'border-transparent',
                       )}
                     >
-                      <Image src={img.url} alt="" fill sizes="96px" className="object-cover" />
+                      <Image
+                        src={img.url}
+                        alt=""
+                        fill
+                        unoptimized={img.url.startsWith('data:')}
+                        sizes="96px"
+                        className="object-cover"
+                      />
                     </button>
                   </li>
                 ))}
@@ -250,6 +259,36 @@ export function VenueDetailScreen() {
             {venue.description && <p className="leading-relaxed text-neutral-700">{venue.description}</p>}
           </section>
 
+          {Number.isFinite(venue.lat) &&
+            Number.isFinite(venue.lng) &&
+            (venue.lat !== 0 || venue.lng !== 0) && (
+              <section aria-labelledby="venue-location-heading" className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 id="venue-location-heading" className="text-xl font-semibold text-neutral-900">
+                      {t('locationTitle')}
+                    </h2>
+                    <p className="mt-1 text-sm text-neutral-600">{t('locationAddress')}</p>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${venue.lat},${venue.lng}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Navigation aria-hidden="true" />
+                      {t('getDirections')}
+                    </a>
+                  </Button>
+                </div>
+                <VenueLocationMapWrapper
+                  center={[venue.lat, venue.lng]}
+                  marker={[venue.lat, venue.lng]}
+                  className="h-72 overflow-hidden rounded-card border border-neutral-200"
+                />
+              </section>
+            )}
+
           {venue.amenities.length > 0 && (
             <section aria-labelledby="amenities-h" className="space-y-3">
               <h2 id="amenities-h" className="text-xl font-semibold text-neutral-900">
@@ -296,14 +335,15 @@ export function VenueDetailScreen() {
         </div>
 
         {/* ===== Cột phải: chọn lịch ===== */}
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start" aria-label={t('bookingPanel')}>
+        <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start" aria-label={t('bookingPanel')}>
           <Card className="space-y-4 p-4">
             <h2 className="text-lg font-semibold text-neutral-900">{t('pickSlot')}</h2>
 
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
                 disabled={date <= today}
                 onClick={() => {
                   setDate(addDays(date, -1));
@@ -314,6 +354,7 @@ export function VenueDetailScreen() {
               </Button>
               <Input
                 type="date"
+                className="min-w-0 flex-1"
                 value={date}
                 min={today}
                 aria-label={t('date')}
@@ -326,6 +367,7 @@ export function VenueDetailScreen() {
               <Button
                 variant="outline"
                 size="sm"
+                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
                 onClick={() => {
                   setDate(addDays(date, 1));
                   resetSelection();

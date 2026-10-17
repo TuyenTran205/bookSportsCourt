@@ -7,19 +7,21 @@ import type {
   CancellationPolicy,
   Court,
   OpeningHour,
+  OccupancyReport,
   OwnerApplication,
   OwnerApplicationInput,
   OwnerTimelineDay,
   Payment,
   PaymentStatus,
   PricingRule,
+  RevenueReport,
   Review,
-  RevenuePoint,
-  RevenueSummary,
   VenueDetail,
+  VenueImage,
 } from '@bsc/shared';
 
 import { apiFetch, apiFetchWithMeta, jsonBody } from '../client';
+import { optimizeVenueImage } from '@/lib/utils/optimize-venue-image';
 
 /**
  * Endpoint module – Kênh chủ sân.
@@ -42,31 +44,46 @@ export function createOwnerVenue(input: {
   districtId: string;
   sportIds: string[];
   description?: string;
-  lat?: number;
-  lng?: number;
+  lat: number;
+  lng: number;
 }) {
-  return apiFetch<VenueDetail>('/owner/venues', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<VenueDetail>('/venues', { method: 'POST', ...jsonBody(input) });
 }
 
-export function updateOwnerVenue(id: string, input: Partial<VenueDetail>) {
-  return apiFetch<VenueDetail>(`/owner/venues/${encodeURIComponent(id)}`, {
+export function updateOwnerVenue(
+  id: string,
+  input: Partial<Pick<VenueDetail, 'name' | 'address' | 'provinceId' | 'districtId' | 'description' | 'lat' | 'lng'>> & {
+    sportIds?: string[];
+  },
+) {
+  return apiFetch<VenueDetail>(`/venues/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     ...jsonBody(input),
   });
+}
+
+export async function uploadVenueImage(venueId: string, image: File) {
+  const optimizedImage = await optimizeVenueImage(image);
+  const formData = new FormData();
+  formData.append('file', optimizedImage);
+  return apiFetch<Pick<VenueImage, 'id' | 'url'>>(
+    `/venues/${encodeURIComponent(venueId)}/images`,
+    { method: 'POST', body: formData },
+  );
 }
 
 export function createCourt(
   venueId: string,
   input: { name: string; sportId: string; description?: string },
 ) {
-  return apiFetch<Court>(`/owner/venues/${encodeURIComponent(venueId)}/courts`, {
+  return apiFetch<Court>(`/venues/${encodeURIComponent(venueId)}/courts`, {
     method: 'POST',
     ...jsonBody(input),
   });
 }
 
 export function deleteCourt(courtId: string) {
-  return apiFetch<{ success: true }>(`/owner/courts/${encodeURIComponent(courtId)}`, {
+  return apiFetch<{ success: true }>(`/courts/${encodeURIComponent(courtId)}`, {
     method: 'DELETE',
   });
 }
@@ -183,7 +200,16 @@ export interface OwnerBookingItem extends Booking {
 }
 
 export function listOwnerBookings(
-  params: { page?: number; limit?: number; status?: BookingStatus; date?: string } = {},
+  params: {
+    page?: number;
+    limit?: number;
+    status?: BookingStatus;
+    q?: string;
+    venueId?: string;
+    courtId?: string;
+    from?: string;
+    to?: string;
+  } = {},
 ) {
   return apiFetchWithMeta<OwnerBookingItem[]>('/owner/bookings', { query: { ...params } });
 }
@@ -212,38 +238,76 @@ export function createManualBooking(input: {
 
 // ── Doanh thu & đánh giá ───────────────────────────────────────────────────
 
-export function getRevenue(params: { days?: number; from?: string; to?: string; groupBy?: 'day' | 'month' } = {}) {
-  return apiFetch<{ summary: RevenueSummary; series: RevenuePoint[]; points?: RevenuePoint[] }>('/owner/revenue', {
+export interface OwnerReview extends Review {
+  venueName?: string;
+  courtName?: string;
+  customerName?: string;
+}
+
+export function getRevenue(params: {
+  from: string;
+  to: string;
+  groupBy?: 'day' | 'week' | 'month';
+  venueId?: string;
+  courtId?: string;
+}) {
+  return apiFetch<RevenueReport>('/owner/reports/revenue', {
     query: { ...params },
   });
 }
 
-export function listOwnerReviews(params: { page?: number; limit?: number; replied?: boolean } = {}) {
-  return apiFetchWithMeta<Review[]>('/owner/reviews', { query: { ...params } });
+export function getOccupancy(params: {
+  from: string;
+  to: string;
+  venueId?: string;
+  courtId?: string;
+  compareWith?: 'previous';
+}) {
+  return apiFetch<OccupancyReport>('/owner/reports/occupancy', { query: { ...params } });
+}
+
+export function listOwnerReviews(params: {
+  page?: number;
+  limit?: number;
+  replied?: boolean;
+  venueId?: string;
+} = {}) {
+  return apiFetchWithMeta<OwnerReview[]>('/owner/reviews', { query: { ...params } });
 }
 
 export function replyToReview(id: string, reply: string) {
   return apiFetch<Review>(`/owner/reviews/${encodeURIComponent(id)}/reply`, {
     method: 'PATCH',
-    ...jsonBody({ reply }),
+    ...jsonBody({ ownerReply: reply }),
   });
 }
 
 // ── Tài khoản nhận tiền & chính sách ───────────────────────────────────────
 
-export function getBankAccount() {
-  return apiFetch<BankAccountInfo | null>('/owner/bank-account');
+export function getBankAccount(venueId: string) {
+  return apiFetch<BankAccountInfo | null>(
+    `/owner/venues/${encodeURIComponent(venueId)}/payment-account`,
+  );
 }
 
-export function updateBankAccount(input: BankAccountInfo) {
-  return apiFetch<BankAccountInfo>('/owner/bank-account', { method: 'PUT', ...jsonBody(input) });
+export function updateBankAccount(venueId: string, input: BankAccountInfo) {
+  return apiFetch<BankAccountInfo>(
+    `/owner/venues/${encodeURIComponent(venueId)}/payment-account`,
+    { method: 'PUT', ...jsonBody(input) },
+  );
 }
 
-export function updateCancellationPolicy(input: CancellationPolicy) {
-  return apiFetch<CancellationPolicy>('/owner/cancellation-policy', {
-    method: 'PUT',
-    ...jsonBody(input),
-  });
+export function getCancellationPolicy(venueId: string) {
+  return apiFetch<CancellationPolicy | null>(
+    `/owner/venues/${encodeURIComponent(venueId)}/cancellation-policy`,
+  );
+}
+
+export function updateCancellationPolicy(venueId: string, input: CancellationPolicy) {
+  return apiFetch<CancellationPolicy>(
+    `/owner/venues/${encodeURIComponent(venueId)}/cancellation-policy`,
+    { method: 'PUT', ...jsonBody(input) },
+  );
 }
 
 // ── Đăng ký làm chủ sân ────────────────────────────────────────────────────

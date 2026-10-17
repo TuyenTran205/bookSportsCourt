@@ -69,6 +69,17 @@ export function NotificationBell() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
+          ) : list.isError ? (
+            <div className="p-4 text-sm text-danger" role="alert">
+              <p>{t('loadFailed')}</p>
+              <button
+                type="button"
+                onClick={() => void list.refetch()}
+                className="mt-2 font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              >
+                {t('retry')}
+              </button>
+            </div>
           ) : !list.data || list.data.length === 0 ? (
             <EmptyState icon={Bell} title={t('emptyTitle')} description={t('emptyDesc')} />
           ) : (
@@ -109,6 +120,29 @@ export function NotificationBell() {
             </ul>
           )}
         </div>
+        {unread.isError && (
+          <div
+            className="flex items-center justify-between gap-3 border-t border-danger/20 bg-danger/5 px-4 py-2 text-xs text-danger"
+            role="alert"
+          >
+            <span>{t('updateFailed')}</span>
+            <button
+              type="button"
+              onClick={() => void unread.refetch()}
+              className="shrink-0 font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            >
+              {t('retry')}
+            </button>
+          </div>
+        )}
+        {(markRead.isError || markAll.isError) && (
+          <p
+            className="border-t border-danger/20 bg-danger/5 px-4 py-2 text-xs text-danger"
+            role="alert"
+          >
+            {t('updateFailed')}
+          </p>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -51,6 +51,58 @@ export function formatDateTime(value: string | Date): string {
   return d ? format(d, 'dd/MM/yyyy HH:mm', { locale: vi }) : '—';
 }
 
+/** → "16/10/2026, 19:30" theo múi giờ nghiệp vụ. */
+export function formatDateTimeInVietnam(value: string | Date): string {
+  const d = toDate(value);
+  if (!d) return '—';
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(d);
+}
+
+/** Khoảng ngày giờ theo múi giờ nghiệp vụ, không phụ thuộc múi giờ thiết bị. */
+export function formatDateTimeRangeInVietnam(start: string, end: string): string {
+  const startDate = toDate(start);
+  const endDate = toDate(end);
+  if (!startDate || !endDate) return '—';
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  };
+  const fullFormatter = new Intl.DateTimeFormat('vi-VN', options);
+  const timeFormatter = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const endText =
+    dateFormatter.format(startDate) === dateFormatter.format(endDate)
+      ? timeFormatter.format(endDate)
+      : fullFormatter.format(endDate);
+
+  return `${fullFormatter.format(startDate)} – ${endText}`;
+}
+
 /** → "19:30" */
 export function formatTime(value: string | Date): string {
   const d = toDate(value);
@@ -97,6 +149,36 @@ export function timeAgo(value: string | Date): string {
 /** Tỷ lệ 0..1 → "72%" */
 export function formatPercent(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
+}
+
+/** Ngày bắt đầu/kết thúc theo múi giờ nghiệp vụ Asia/Ho_Chi_Minh. */
+export function getVietnamDateRange(days: number): { from: string; to: string } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  const to = `${values.year}-${values.month}-${values.day}`;
+  const fromDate = new Date(`${to}T00:00:00.000Z`);
+  fromDate.setUTCDate(fromDate.getUTCDate() - Math.max(0, Math.floor(days) - 1));
+
+  return { from: fromDate.toISOString().slice(0, 10), to };
+}
+
+/** Ngày-only từ API → nhãn ngắn dd/MM, không bị lệch ngày theo múi giờ thiết bị. */
+export function formatShortDate(value: string): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: '2-digit',
+  }).formatToParts(date);
+  const day = parts.find((part) => part.type === 'day')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  return day && month ? `${day}/${month}` : '—';
 }
 
 /** Số điện thoại đã che: "0912***456" */

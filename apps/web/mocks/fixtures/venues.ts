@@ -31,9 +31,12 @@ function pick<T extends { id: string }>(list: T[], id: string): T {
   return found;
 }
 
+export const courtIdForVenue = (venueId: string, number: number) =>
+  `${venueId.slice(0, 24)}${venueId.slice(-4)}${String(number).padStart(4, '0')}`;
+
 function courtsOf(venueId: string, names: string[], sportId: string): Court[] {
   return names.map((name, i) => ({
-    id: `${venueId.slice(0, 24)}${String(i + 1).padStart(4, '0')}`,
+    id: courtIdForVenue(venueId, i + 1),
     name,
     description: null,
     sportId,

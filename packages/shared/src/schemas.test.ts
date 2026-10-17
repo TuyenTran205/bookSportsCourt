@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ownerApplicationSchema } from './schemas';
+import {
+  cancellationPolicySchema,
+  ownerApplicationSchema,
+  replyReviewSchema,
+} from './schemas';
 
 const validApplication = {
   businessName: 'Sân thể thao Phú Nhuận',
@@ -36,5 +40,53 @@ describe('ownerApplicationSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('replyReviewSchema', () => {
+  it('trims the reply and rejects blank or oversized content', () => {
+    expect(replyReviewSchema.parse({ ownerReply: '  Cảm ơn bạn!  ' }).ownerReply).toBe('Cảm ơn bạn!');
+    expect(replyReviewSchema.safeParse({ ownerReply: '   ' }).success).toBe(false);
+    expect(replyReviewSchema.safeParse({ ownerReply: 'a'.repeat(2001) }).success).toBe(false);
+  });
+});
+
+describe('cancellationPolicySchema', () => {
+  it('accepts supported values and rejects invalid ranges, fractions, and blank values', () => {
+    expect(cancellationPolicySchema.safeParse({
+      cancelBeforeHours: 24,
+      refundPercent: 100,
+      depositPercent: 30,
+    }).success).toBe(true);
+    expect(cancellationPolicySchema.parse({
+      cancelBeforeHours: '24',
+      refundPercent: '100',
+      depositPercent: '30',
+    }).depositPercent).toBe(30);
+    expect(cancellationPolicySchema.safeParse({
+      cancelBeforeHours: 721,
+      refundPercent: 100,
+      depositPercent: 30,
+    }).success).toBe(false);
+    expect(cancellationPolicySchema.safeParse({
+      cancelBeforeHours: 24,
+      refundPercent: 101,
+      depositPercent: 30,
+    }).success).toBe(false);
+    expect(cancellationPolicySchema.safeParse({
+      cancelBeforeHours: 24.5,
+      refundPercent: 50,
+      depositPercent: 30,
+    }).success).toBe(false);
+    expect(cancellationPolicySchema.safeParse({
+      cancelBeforeHours: '',
+      refundPercent: 50,
+      depositPercent: 30,
+    }).success).toBe(false);
+    expect(cancellationPolicySchema.safeParse({
+      cancelBeforeHours: null,
+      refundPercent: 50,
+      depositPercent: 30,
+    }).success).toBe(false);
   });
 });

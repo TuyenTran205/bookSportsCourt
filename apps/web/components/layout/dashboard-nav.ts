@@ -3,6 +3,7 @@ import {
   Building2,
   CalendarDays,
   ClipboardList,
+  CreditCard,
   FileClock,
   LayoutDashboard,
   type LucideIcon,
@@ -28,7 +29,7 @@ export type DashboardArea = 'owner' | 'admin';
 export const OWNER_NAV: DashboardNavItem[] = [
   { href: '/owner/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
   { href: '/owner/timeline', labelKey: 'timeline', icon: CalendarDays },
-  { href: '/owner/payments', labelKey: 'payments', icon: Wallet },
+  { href: '/owner/payments', labelKey: 'payments', icon: CreditCard },
   { href: '/owner/bookings', labelKey: 'bookings', icon: ClipboardList },
   { href: '/owner/venues', labelKey: 'venues', icon: Building2 },
   { href: '/owner/pricing', labelKey: 'pricing', icon: Clock },

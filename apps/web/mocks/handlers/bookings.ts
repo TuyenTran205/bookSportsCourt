@@ -1,7 +1,7 @@
 import { http } from 'msw';
-import type { Booking, BookingDetail, Payment, Review, Slot } from '@bsc/shared';
+import type { BankAccountInfo, Booking, BookingDetail, Payment, Review, Slot } from '@bsc/shared';
 import { HOLD_MINUTES } from '@bsc/shared';
-import { db, currentUser, persist } from '../db';
+import { createMockNotification, db, currentUser, persist } from '../db';
 import {
   courtNameByCourtId,
   venueAddressById,
@@ -10,7 +10,7 @@ import {
   venueSlugById,
 } from '../fixtures/bookings';
 import { buildSlots, computeDeposit, mergeAdjacentSlots, toDateOnly } from '../fixtures/slots';
-import { pricingRules, venues } from '../fixtures/venues';
+import { venues } from '../fixtures/venues';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency, transferCode } from '../utils';
 import { publish, publishSlotUpdate } from '../realtime';
 
@@ -28,7 +28,7 @@ function broadcastSlots(courtId: string, date: string): void {
     courtId,
     venueId,
     openingHours: db.openingHours,
-    pricingRules,
+    pricingRules: db.pricingRules,
     blackouts: db.blackouts,
     bookings: db.bookings.map((b) => b.booking),
     currentUserId: db.currentUserId,
@@ -42,18 +42,18 @@ function broadcastSlots(courtId: string, date: string): void {
   );
 }
 
-/** Tài khoản nhận tiền của chủ sân – dùng để FE tự dựng mã QR thanh toán từ số tiền và số tài khoản ngân hàng ở màn Checkout. */
-const OWNER_BANK = {
-  bankBin: '970436',
-  accountNo: '1234567890',
-  accountName: 'NGUYEN VAN OWNER',
-};
+function bankAccountForCourt(courtId: string): BankAccountInfo | null {
+  const venueId = venueIdByCourtId[courtId];
+  return venueId ? db.bankAccounts[venueId] ?? null : null;
+}
 
 /** Lắp shape lồng nhau cho `BookingDetail` – docs/11-api-contract.md mục 8.4. */
 function toDetail(record: (typeof db.bookings)[number]): BookingDetail {
   const { booking, payment, review } = record;
-  const venueId = venueIdByCourtId[booking.courtId] ?? '';
-  const venue = venues.find((v) => v.id === venueId);
+  const venue =
+    db.venues.find((v) => v.courts.some((court) => court.id === booking.courtId)) ??
+    venues.find((v) => v.id === venueIdByCourtId[booking.courtId]);
+  const venueId = venue?.id ?? venueIdByCourtId[booking.courtId] ?? '';
 
   return {
     ...booking,
@@ -62,9 +62,9 @@ function toDetail(record: (typeof db.bookings)[number]): BookingDetail {
       name: courtNameByCourtId[booking.courtId] ?? 'Sân',
       venue: {
         id: venueId,
-        name: venueNameById[venueId] ?? venue?.name ?? 'Cơ sở',
-        slug: venueSlugById[venueId] ?? venue?.slug ?? '',
-        address: venueAddressById[venueId] ?? venue?.address ?? '',
+        name: venue?.name ?? venueNameById[venueId] ?? 'Cơ sở',
+        slug: venue?.slug ?? venueSlugById[venueId] ?? '',
+        address: venue?.address ?? venueAddressById[venueId] ?? '',
       },
     },
     customer: booking.customerId
@@ -101,7 +101,7 @@ function priceSlots(courtId: string, date: string, wanted: Array<{ start: string
     courtId,
     venueId,
     openingHours: db.openingHours,
-    pricingRules,
+    pricingRules: db.pricingRules,
     blackouts: db.blackouts,
     bookings: db.bookings.map((b) => b.booking),
     currentUserId: db.currentUserId,
@@ -180,13 +180,17 @@ export const bookingHandlers = [
       (b) => b.booking.note === `__idem:${body.idempotencyKey}` && b.booking.status === 'held',
     );
     if (existing) {
+      const bankAccount = bankAccountForCourt(existing.booking.courtId);
+      if (!bankAccount) {
+        return err(422, 'PAYMENT_ACCOUNT_MISSING', 'Cơ sở chưa cấu hình tài khoản nhận tiền.');
+      }
       return ok({
         booking: existing.booking,
         payment: {
           id: existing.payment?.id ?? newId(),
           amount: existing.payment?.amount ?? existing.booking.depositAmount,
           transferCode: transferCode(existing.booking.id),
-          bankAccount: OWNER_BANK,
+          bankAccount,
         },
       });
     }
@@ -211,6 +215,10 @@ export const bookingHandlers = [
 
     const venueId = venueIdByCourtId[body.courtId] ?? '';
     const venue = venues.find((v) => v.id === venueId);
+    const bankAccount = bankAccountForCourt(body.courtId);
+    if (!bankAccount) {
+      return err(422, 'PAYMENT_ACCOUNT_MISSING', 'Cơ sở chưa cấu hình tài khoản nhận tiền.');
+    }
     const depositPercent = venue?.cancellationPolicy?.depositPercent ?? 100;
     const total = priced.total ?? 0;
 
@@ -250,6 +258,21 @@ export const bookingHandlers = [
     db.bookings.unshift({ booking, payment, review: null });
     persist();
 
+    const ownerId = db.venues.find((item) => item.id === venueId)?.ownerId;
+    if (ownerId) {
+      createMockNotification(ownerId, {
+        type: 'booking_created',
+        title: 'Có lượt giữ chỗ mới',
+        body: `${user.fullName} vừa giữ chỗ tại ${venue?.name ?? 'cơ sở của bạn'}.`,
+        payload: { bookingId: id, venueId, courtId: body.courtId },
+      });
+      publish({
+        type: 'booking_created',
+        targetUserId: ownerId,
+        payload: { bookingId: id, venueId, courtId: body.courtId },
+      });
+    }
+
     // Cho mọi tab thấy khung giờ vừa bị giữ — nền tảng của Kịch bản B.
     broadcastSlots(body.courtId, date);
 
@@ -260,7 +283,7 @@ export const bookingHandlers = [
           id: payment.id,
           amount: payment.amount,
           transferCode: payment.transferCode!,
-          bankAccount: OWNER_BANK,
+          bankAccount,
         },
       },
       201,
@@ -280,12 +303,31 @@ export const bookingHandlers = [
         record.booking.status = 'expired';
         if (record.payment) record.payment.status = 'expired';
         persist();
+        const customerId = record.booking.customerId;
+        if (customerId) {
+          createMockNotification(customerId, {
+            type: 'hold_expired',
+            title: 'Lượt giữ chỗ đã hết hạn',
+            body: 'Bạn có thể chọn lại khung giờ nếu sân vẫn còn trống.',
+            payload: { bookingId: record.booking.id },
+          });
+          publish({
+            type: 'hold_expired',
+            targetUserId: customerId,
+            payload: { courtId: record.booking.courtId, bookingId: record.booking.id },
+          });
+        }
+        broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
       }
     }
 
     const remainingMs = record.booking.expiresAt
       ? Math.max(0, new Date(record.booking.expiresAt).getTime() - Date.now())
       : 0;
+    const bankAccount = bankAccountForCourt(record.booking.courtId);
+    if (!bankAccount) {
+      return err(422, 'PAYMENT_ACCOUNT_MISSING', 'Cơ sở chưa cấu hình tài khoản nhận tiền.');
+    }
 
     // Cùng hình dạng với POST /bookings/hold để trang thanh toán tải lại vẫn dựng lại được mã QR.
     return ok({
@@ -295,7 +337,7 @@ export const bookingHandlers = [
         id: record.payment?.id ?? newId(),
         amount: record.payment?.amount ?? record.booking.depositAmount,
         transferCode: record.payment?.transferCode ?? transferCode(record.booking.id),
-        bankAccount: OWNER_BANK,
+        bankAccount,
       },
     });
   }),
@@ -338,8 +380,25 @@ export const bookingHandlers = [
     }
     persist();
 
-    // Bắn realtime cho chủ sân biết có biên lai mới và cập nhật slot
-    publish({ type: 'payment_submitted', payload: { bookingId: record.booking.id } });
+    const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+    const venue = db.venues.find((item) => item.id === venueId);
+    const ownerId = venue?.ownerId;
+    if (ownerId) {
+      const customer = db.users.find((item) => item.id === record.booking.customerId);
+      createMockNotification(ownerId, {
+        type: 'payment_submitted',
+        title: 'Có biên lai mới cần duyệt',
+        body: `${customer?.fullName ?? 'Khách hàng'} vừa gửi biên lai cho đơn tại ${venue.name}.`,
+        payload: { bookingId: record.booking.id, paymentId: record.payment?.id ?? null },
+      });
+      if (record.payment) {
+        publish({
+          type: 'payment_submitted',
+          targetUserId: ownerId,
+          payload: { paymentId: record.payment.id, bookingId: record.booking.id, venueId },
+        });
+      }
+    }
     broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
 
     return ok({ booking: record.booking, payment: record.payment });
@@ -406,9 +465,25 @@ export const bookingHandlers = [
     }
     persist();
 
+    const ownerId = db.venues.find((item) => item.id === venueId)?.ownerId;
+    if (ownerId) {
+      createMockNotification(ownerId, {
+        type: 'booking_cancelled',
+        title: 'Khách đã huỷ đơn đặt sân',
+        body: `Đơn tại ${venue?.name ?? 'cơ sở của bạn'} đã được huỷ.`,
+        payload: { bookingId: record.booking.id },
+      });
+    }
+
     // Slot được trả về trống — các tab khác phải thấy ngay.
     broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
-    publish({ type: 'booking_cancelled', payload: { bookingId: record.booking.id } });
+    if (record.booking.customerId) {
+      publish({
+        type: 'booking_cancelled',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id, reason: record.booking.cancelReason ?? '' },
+      });
+    }
 
     return ok({ booking: record.booking, refundAmount });
   }),
