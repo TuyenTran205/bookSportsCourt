@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.8.0 | **Cập nhật lần cuối:** 2026-10-17
+> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-10-17
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -137,6 +137,8 @@ PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính
 ```
 
 `GET /venues` nhận query: `provinceId`, `districtId`, `sportId`, `amenityIds` (CSV), `maxPrice`, `q`, `page`, `limit`, `sort` (`rating|price|created_at`). `POST/PATCH /venues` nhận `provinceId` và `districtId` (400 nếu quận không thuộc tỉnh). `POST /venues` bắt buộc có `lat` và `lng` do Owner ghim trên bản đồ; `PATCH /venues/:id` nhận cặp tọa độ này khi cập nhật vị trí.
+
+`GET /owner/venues/:id/cancellation-policy` trả `data: null` nếu venue chưa cấu hình chính sách; `PUT` nhận `{ cancelBeforeHours, refundPercent, depositPercent }`. `cancelBeforeHours` là số nguyên từ 0 đến 720; hai tỷ lệ là số nguyên từ 0 đến 100. Owner chỉ được đọc/cập nhật chính sách của venue mình; Admin có quyền trên mọi venue.
 
 `GET /venues/:id/slots?date=YYYY-MM-DD` trả về theo từng court:
 

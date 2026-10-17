@@ -297,11 +297,17 @@ export function updateBankAccount(venueId: string, input: BankAccountInfo) {
   );
 }
 
-export function updateCancellationPolicy(input: CancellationPolicy) {
-  return apiFetch<CancellationPolicy>('/owner/cancellation-policy', {
-    method: 'PUT',
-    ...jsonBody(input),
-  });
+export function getCancellationPolicy(venueId: string) {
+  return apiFetch<CancellationPolicy | null>(
+    `/owner/venues/${encodeURIComponent(venueId)}/cancellation-policy`,
+  );
+}
+
+export function updateCancellationPolicy(venueId: string, input: CancellationPolicy) {
+  return apiFetch<CancellationPolicy>(
+    `/owner/venues/${encodeURIComponent(venueId)}/cancellation-policy`,
+    { method: 'PUT', ...jsonBody(input) },
+  );
 }
 
 // ── Đăng ký làm chủ sân ────────────────────────────────────────────────────

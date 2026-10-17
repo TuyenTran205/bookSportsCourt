@@ -1,5 +1,9 @@
 import { http } from 'msw';
-import { ownerApplicationSchema, replyReviewSchema } from '@bsc/shared';
+import {
+  cancellationPolicySchema,
+  ownerApplicationSchema,
+  replyReviewSchema,
+} from '@bsc/shared';
 import type {
   BankAccountInfo,
   Booking,
@@ -50,6 +54,11 @@ function ownedVenues() {
   if (!user) return [];
   if (user.role === 'admin') return db.venues;
   return db.venues.filter((v) => v.ownerId === user.id);
+}
+
+export function ownedVenueById(venueId: string | readonly string[] | undefined) {
+  if (typeof venueId !== 'string') return undefined;
+  return ownedVenues().find((venue) => venue.id === venueId);
 }
 
 function venueForCourt(courtId: string) {
@@ -290,7 +299,7 @@ export const ownerHandlers = [
     await simulateLatency(400);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    const venue = ownedVenues().find((item) => item.id === params.id);
+    const venue = ownedVenueById(params.id);
     if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
     const body = (await request.json()) as {
       name?: string;
@@ -385,7 +394,7 @@ export const ownerHandlers = [
     await simulateLatency(500);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    const venue = ownedVenues().find((item) => item.id === params.id);
+    const venue = ownedVenueById(params.id);
     if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
 
     const form = await request.formData();
@@ -681,11 +690,29 @@ export const ownerHandlers = [
     return ok(account);
   }),
 
-  http.put('/api/v1/owner/cancellation-policy', async ({ request }) => {
+  http.get('/api/v1/owner/venues/:id/cancellation-policy', async ({ params }) => {
+    await simulateLatency(250);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+    const venue = ownedVenueById(params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    return ok(venue.cancellationPolicy);
+  }),
+
+  http.put('/api/v1/owner/venues/:id/cancellation-policy', async ({ params, request }) => {
     await simulateLatency(400);
     const guard = requireOwner();
     if (guard.error) return guard.error;
-    return ok(await request.json());
+    const venue = ownedVenueById(params.id);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+
+    const parsed = cancellationPolicySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return err(422, 'VALIDATION_ERROR', 'Chính sách huỷ và đặt cọc chưa hợp lệ');
+    }
+    venue.cancellationPolicy = parsed.data;
+    persist();
+    return ok(venue.cancellationPolicy);
   }),
 
   // ── Duyệt thanh toán ─────────────────────────────────────────────────────

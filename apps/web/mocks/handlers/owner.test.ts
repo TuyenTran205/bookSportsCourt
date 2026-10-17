@@ -8,6 +8,7 @@ import {
   hasOverlappingPricingRule,
   isReviewInOwnedVenues,
   isValidOpeningHours,
+  ownedVenueById,
   ownedVenueForCourt,
 } from './owner';
 
@@ -66,6 +67,19 @@ describe('owner court fixtures', () => {
     expect(db.venues.find((venue) => venue.id === foreignVenue.id)?.courts).toContainEqual(
       foreignCourt,
     );
+  });
+
+  it('allows cancellation-policy access only to the venue owner or an admin', () => {
+    const owner = db.users.find((user) => user.role === 'owner');
+    const admin = db.users.find((user) => user.role === 'admin');
+    const foreignVenue = db.venues.find((venue) => venue.ownerId !== owner?.id);
+    if (!owner || !admin || !foreignVenue) throw new Error('Missing venue permission fixtures');
+
+    db.currentUserId = owner.id;
+    expect(ownedVenueById(foreignVenue.id)).toBeUndefined();
+
+    db.currentUserId = admin.id;
+    expect(ownedVenueById(foreignVenue.id)).toBe(foreignVenue);
   });
 });
 

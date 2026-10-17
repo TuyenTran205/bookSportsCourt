@@ -288,16 +288,24 @@ export const bankAccountSchema = z.object({
   accountName: z.string().min(2, 'Vui lòng nhập tên chủ tài khoản').max(200).trim(),
 });
 
-export const cancellationPolicySchema = z
-  .object({
-    cancelBeforeHours: z.coerce.number().int().min(0).max(720),
-    refundPercent: z.coerce.number().int().min(0).max(100),
-    depositPercent: z.coerce.number().int().min(0).max(100),
-  })
-  .refine((d) => d.refundPercent <= 100, {
-    message: 'Phần trăm hoàn tối đa 100%',
-    path: ['refundPercent'],
-  });
+const policyNumber = (max: number, maxMessage: string) =>
+  z.preprocess(
+    (value) =>
+      typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')
+        ? value
+        : Number.NaN,
+    z.coerce
+      .number({ invalid_type_error: 'Vui lòng nhập số hợp lệ.' })
+      .int('Vui lòng nhập số nguyên.')
+      .min(0, 'Giá trị tối thiểu là 0.')
+      .max(max, maxMessage),
+  );
+
+export const cancellationPolicySchema = z.object({
+  cancelBeforeHours: policyNumber(720, 'Số giờ không thể vượt quá 720.'),
+  refundPercent: policyNumber(100, 'Tỷ lệ hoàn tiền không thể vượt quá 100%.'),
+  depositPercent: policyNumber(100, 'Tỷ lệ đặt cọc không thể vượt quá 100%.'),
+});
 
 // ===== Owner: đăng ký làm chủ sân =====
 
