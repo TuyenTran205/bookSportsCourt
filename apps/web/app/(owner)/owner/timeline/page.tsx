@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function OwnerTimelinePage() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
+    <div className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
       <OwnerTimeline />
     </div>
   );

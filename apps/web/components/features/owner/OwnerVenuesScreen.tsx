@@ -146,7 +146,7 @@ export function OwnerVenuesScreen() {
   const isVenueSaving = createVenueMutation.isPending || updateVenueMutation.isPending;
 
   return (
-    <div className="max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{t('venuesTitle')}</h1>

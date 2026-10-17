@@ -65,7 +65,7 @@ export function OwnerDashboardScreen() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl">
+    <div className="w-full min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
       {/* 1. Header trang */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
@@ -173,7 +173,7 @@ export function OwnerDashboardScreen() {
               {t('shortcutsTitle')}
             </h2>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
               {/* Shortcut 1: Lịch sân ngày */}
               <Link href="/owner/timeline" className="group block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
                 <Card className="flex flex-col items-center justify-center border border-neutral-200 p-5 text-center transition-shadow hover:border-primary-300 hover:shadow-sm">
@@ -268,7 +268,7 @@ export function OwnerDashboardScreen() {
 
             <Card className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-none">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-collapse">
+                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                   <thead>
                     <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase tracking-wider text-neutral-500">
                       <th className="px-4 py-3.5 font-semibold text-left">{t('colBookingCode')}</th>

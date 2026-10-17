@@ -128,7 +128,7 @@ export function DashboardShell({
   const areaTitle = area === 'owner' ? t('ownerArea') : t('adminArea');
 
   return (
-    <div className="flex min-h-screen bg-neutral-50">
+    <div className="flex min-h-screen w-full min-w-0 bg-neutral-50">
       <a
         href="#dashboard-main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-btn focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-700 focus:shadow-md"
@@ -211,7 +211,7 @@ export function DashboardShell({
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-40 flex h-16 items-center gap-2 border-b border-neutral-200 bg-white px-4 lg:px-6">
           <button
             type="button"
@@ -255,9 +255,13 @@ export function DashboardShell({
           </div>
         </header>
 
-        <div id="dashboard-main" tabIndex={-1} className="flex-1 focus:outline-none">
+        <main
+          id="dashboard-main"
+          tabIndex={-1}
+          className="w-full min-w-0 max-w-full flex-1 focus:outline-none"
+        >
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

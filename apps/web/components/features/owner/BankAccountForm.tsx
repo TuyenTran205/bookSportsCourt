@@ -64,7 +64,7 @@ export function BankAccountForm() {
   }, [venueId, venues]);
 
   return (
-    <main className="max-w-7xl space-y-5">
+    <main className="w-full min-w-0 space-y-5">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
           {t('settingsTitle')}

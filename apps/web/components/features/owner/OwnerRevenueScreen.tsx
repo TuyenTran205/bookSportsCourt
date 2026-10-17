@@ -79,7 +79,7 @@ export function OwnerRevenueScreen() {
   }));
 
   return (
-    <main className="max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
+    <main className="w-full min-w-0 space-y-5 p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">

@@ -168,7 +168,7 @@ export function OwnerPricingScreen() {
 
   if (venuesQuery.isLoading) {
     return (
-      <main className="max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <main className="w-full min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <Skeleton className="h-7 w-64" />
@@ -184,7 +184,7 @@ export function OwnerPricingScreen() {
 
   if (venuesQuery.isError) {
     return (
-      <main className="max-w-7xl p-4 sm:p-6 lg:p-8">
+      <main className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
         <ErrorState error={venuesQuery.error} onRetry={() => void venuesQuery.refetch()} />
       </main>
     );
@@ -192,7 +192,7 @@ export function OwnerPricingScreen() {
 
   if (venues.length === 0) {
     return (
-      <main className="max-w-7xl p-4 sm:p-6 lg:p-8">
+      <main className="w-full min-w-0 p-4 sm:p-6 lg:p-8">
         <EmptyState
           icon={Clock3}
           title={t('noVenuesForPricingTitle')}
@@ -208,7 +208,7 @@ export function OwnerPricingScreen() {
   }
 
   return (
-    <main className="max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <main className="w-full min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{t('pricingTitle')}</h1>

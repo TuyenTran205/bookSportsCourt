@@ -55,7 +55,7 @@ export function ReviewsManagement() {
   };
 
   return (
-    <main className="max-w-7xl space-y-4 p-4 sm:p-6 lg:p-8">
+    <main className="w-full min-w-0 space-y-4 p-4 sm:p-6 lg:p-8">
       <header>
         <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
           {t('reviewsTitle')}
