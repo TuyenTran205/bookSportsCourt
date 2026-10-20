@@ -92,4 +92,14 @@ describe('Spinner', () => {
     expect(svg.classList.contains('mr-2')).toBe(true);
     expect(svg.getAttribute('data-testid')).toBe('ring');
   });
+
+  it('luôn có thuộc tính width, height và inline style để tránh vỡ giao diện khi mất CSS', () => {
+    const { container } = render(<Spinner size="lg" />);
+    const svg = container.querySelector('svg')!;
+
+    expect(svg.getAttribute('width')).toBe('32');
+    expect(svg.getAttribute('height')).toBe('32');
+    expect(svg.style.width).toBe('32px');
+    expect(svg.style.height).toBe('32px');
+  });
 });

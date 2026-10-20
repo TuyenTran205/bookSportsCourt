@@ -39,6 +39,19 @@ const spinnerVariants = cva('block shrink-0', {
   },
 });
 
+/**
+ * Kích thước pixel dự phòng cứng cho SVG.
+ * Đảm bảo ngay cả khi CSS của Next.js chưa tải, bị trễ, hoặc gặp lỗi 404,
+ * thẻ <svg> không bao giờ bị trình duyệt tự phóng to 100% chiều rộng màn hình.
+ */
+const SPINNER_PIXEL_SIZES: Record<NonNullable<VariantProps<typeof spinnerVariants>['size']>, number> = {
+  xs: 14,
+  sm: 16,
+  md: 24,
+  lg: 32,
+  xl: 44,
+};
+
 export interface SpinnerProps
   extends Omit<React.SVGAttributes<SVGSVGElement>, 'children'>,
     VariantProps<typeof spinnerVariants> {
@@ -46,8 +59,10 @@ export interface SpinnerProps
   label?: string;
 }
 
-export function Spinner({ size, variant, label = 'Đang tải dữ liệu', className, ...props }: SpinnerProps) {
+export function Spinner({ size, variant, label = 'Đang tải dữ liệu', className, style, ...props }: SpinnerProps) {
   const decorative = label.length === 0;
+  const resolvedSize = size ?? 'md';
+  const pixelSize = SPINNER_PIXEL_SIZES[resolvedSize] ?? 24;
 
   return (
     <span
@@ -57,11 +72,20 @@ export function Spinner({ size, variant, label = 'Đang tải dữ liệu', clas
       aria-label={decorative ? undefined : label}
     >
       <svg
+        width={pixelSize}
+        height={pixelSize}
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
         focusable="false"
         className={cn(spinnerVariants({ size, variant }), 'bsc-spinner', className)}
+        style={{
+          width: `${pixelSize}px`,
+          height: `${pixelSize}px`,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          ...style,
+        }}
         {...props}
       >
         <circle

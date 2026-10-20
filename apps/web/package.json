@@ -9,7 +9,7 @@
     "lint": "next lint --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:e2e": "playwright test"
+    "test:e2e": "echo \"[@bsc/web] E2E Playwright test sẽ triển khai ở Phase 5 — xem docs/14-github-workflow.md\" && exit 0"
   },
   "dependencies": {
     "@bsc/shared": "workspace:*",

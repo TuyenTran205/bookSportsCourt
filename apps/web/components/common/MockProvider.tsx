@@ -22,9 +22,18 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     void (async () => {
-      const { startMocking } = await import('@/mocks/browser');
-      await startMocking();
-      if (!cancelled) setReady(true);
+      try {
+        const { startMocking } = await import('@/mocks/browser');
+        // Timeout 3.5s để không bao giờ bị kẹt vĩnh viễn ở màn hình chờ nếu ServiceWorker gặp sự cố
+        await Promise.race([
+          startMocking(),
+          new Promise((resolve) => setTimeout(resolve, 3500)),
+        ]);
+      } catch (err) {
+        console.warn('MSW start failed, continuing anyway:', err);
+      } finally {
+        if (!cancelled) setReady(true);
+      }
     })();
 
     return () => {
@@ -34,14 +43,36 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg">
+      <div
+        style={{
+          display: 'flex',
+          minHeight: '100vh',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f8fafc',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        }}
+        className="flex min-h-screen items-center justify-center bg-bg"
+      >
         <div
           role="status"
           aria-live="polite"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px',
+            textAlign: 'center',
+          }}
           className="flex flex-col items-center gap-3 text-center"
         >
           <Spinner size="lg" label="" />
-          <p className="text-sm text-text-secondary">Đang chuẩn bị dữ liệu mẫu…</p>
+          <p
+            style={{ fontSize: '14px', color: '#64748b', margin: 0 }}
+            className="text-sm text-text-secondary"
+          >
+            Đang chuẩn bị dữ liệu mẫu…
+          </p>
         </div>
       </div>
     );
