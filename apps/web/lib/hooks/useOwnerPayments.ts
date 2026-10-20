@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { listOwnerPayments } from '@/lib/api/endpoints/owner';
 
@@ -13,5 +13,6 @@ export function useOwnerPayments(
     queryFn: () => listOwnerPayments({ status, page, limit }),
     enabled,
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }

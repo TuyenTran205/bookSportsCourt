@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { UserRole, UserStatus } from '@bsc/shared';
 import { listAdminUsers, setUserRole, setUserStatus } from '@/lib/api/endpoints/admin';
 import { adminQueryKeys } from './useAdminDashboard';
@@ -18,6 +18,7 @@ export function useAdminUsers(
     queryKey: adminUsersQueryKeys.list(params),
     queryFn: () => listAdminUsers(params),
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -1,6 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 /** Chi tiết cơ sở – /venues/[slug]. */
 export default function VenueDetailLoading() {
-  return <PageLoader label="Đang tải thông tin sân…" />;
+  return <PageSkeleton variant="detail" />;
 }

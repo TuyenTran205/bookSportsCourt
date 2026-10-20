@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listAdminVenues, reviewVenue } from '@/lib/api/endpoints/admin';
 import { adminQueryKeys } from './useAdminDashboard';
 
@@ -15,6 +15,7 @@ export function useAdminVenues(params: { status?: string; page?: number; limit?:
     queryKey: adminVenuesQueryKeys.list(params),
     queryFn: () => listAdminVenues(params),
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

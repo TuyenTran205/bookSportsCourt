@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation/navigate';
 
 import { PageLoader } from '@/components/ui/page-loader';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
  * Nằm ngoài mọi route group để middleware không chặn khi chưa có session cookie.
  */
 export default function GoogleAuthCallbackPage() {
-  const router = useRouter();
+  const router = useAppRouter();
   const { refetchMe } = useAuth();
 
   React.useEffect(() => {

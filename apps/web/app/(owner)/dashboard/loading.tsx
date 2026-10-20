@@ -1,10 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
+/** Tổng quan vận hành – /owner/dashboard. */
 export default function OwnerDashboardLoading() {
-  return (
-    <PageLoader
-      label="Đang tải tổng quan vận hành…"
-      description="Đang tổng hợp đơn đặt và doanh thu hôm nay."
-    />
-  );
+  return <PageSkeleton variant="dashboard" />;
 }

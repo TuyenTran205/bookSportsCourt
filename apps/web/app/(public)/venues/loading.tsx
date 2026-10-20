@@ -1,6 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 /** Danh sách sân – /venues. */
 export default function VenuesLoading() {
-  return <PageLoader label="Đang tải danh sách sân…" />;
+  return <PageSkeleton variant="list" />;
 }

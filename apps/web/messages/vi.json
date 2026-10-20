@@ -41,13 +41,16 @@
     "notifications": "Thông báo"
   },
   "home": {
+    "heroBadge": "Nền tảng đặt sân thể thao xác thực toàn quốc",
     "heroTitle": "Đặt sân thể thao trong 30 giây",
     "heroSubtitle": "Hơn 500 sân cầu lông, bóng đá, pickleball trên toàn quốc. Xem lịch trống theo thời gian thực, giữ chỗ ngay, không cần gọi điện.",
     "searchPlaceholder": "Tìm sân theo tên, địa chỉ hoặc môn thể thao…",
     "searchButton": "Tìm sân ngay",
     "popularSports": "Môn thể thao phổ biến",
+    "popularSportsLabel": "Môn thể thao phổ biến",
     "featuredVenues": "Sân nổi bật",
     "whyTitle": "Vì sao chọn BookSportsCourt",
+    "whySubtitle": "Hạ tầng kỹ thuật số hiện đại giúp người chơi giữ chỗ tức thì và chủ sân vận hành minh bạch tuyệt đối.",
     "whyRealtimeTitle": "Lịch trống thời gian thực",
     "whyRealtimeDesc": "Slot cập nhật tức thì qua WebSocket — không còn cảnh đến sân mới biết đã có người đặt.",
     "whyHoldTitle": "Giữ chỗ 10 phút",
@@ -56,7 +59,18 @@
     "whyVerifiedDesc": "Mọi cơ sở đều qua xét duyệt của ban quản trị trước khi hiển thị.",
     "statsVenues": "Cơ sở",
     "statsBookings": "Lượt đặt",
-    "statsCustomers": "Khách hàng"
+    "statsCustomers": "Khách hàng",
+    "ctaTitle": "Bạn là chủ sân thể thao?",
+    "ctaDesc": "Gia nhập mạng lưới BookSportsCourt để tiếp cận hàng ngàn người chơi thể thao mỗi ngày, tối ưu công suất lấp đầy và quản lý lịch tự động với chi phí 0đ.",
+    "ctaRegisterOwner": "Đăng ký mở cơ sở ngay",
+    "ctaExploreOwner": "Xem thử kênh quản lý",
+    "heroPreviewTitle": "Lịch sân thời gian thực",
+  "heroPreviewVenueName": "Sân Cầu Lông Thăng Long",
+    "heroPreviewStatus": "Đang mở đặt sân trực tuyến",
+    "heroPreviewHold": "Giữ chỗ tự động 10 phút",
+    "heroPreviewSlot1": "Sân 01 · 18:00 - 18:30",
+    "heroPreviewSlot2": "Sân 02 · 18:30 - 19:00",
+    "heroPreviewSlot3": "Sân 01 · 19:00 - 19:30"
   },
   "venue": {
     "searchTitle": "Tìm sân thể thao",
@@ -932,7 +946,10 @@
     "backToSite": "Về trang khách",
     "account": "Tài khoản",
     "logout": "Đăng xuất",
-    "home": "Trang chủ"
+    "home": "Trang chủ",
+    "navigating": "Đang chuyển trang…",
+    "navigatingSlow": "Kết nối chậm, đang tải…",
+    "navigationComplete": "Đã chuyển trang"
   },
   "errors": {
     "generic": "Có lỗi xảy ra, vui lòng thử lại.",
@@ -941,6 +958,19 @@
     "holdExpired": "Thời gian giữ chỗ đã hết. Vui lòng chọn lại khung giờ.",
     "unauthorized": "Vui lòng đăng nhập để tiếp tục.",
     "forbidden": "Bạn không có quyền truy cập khu vực này.",
-    "notFound": "Không tìm thấy dữ liệu."
+    "notFound": "Không tìm thấy dữ liệu.",
+    "networkOffline": "Mất kết nối mạng. Kiểm tra lại đường truyền."
+  },
+  "map": {
+    "mapLoading": "Đang tải bản đồ…",
+    "mapDegraded": "Đang tối ưu nguồn bản đồ…",
+    "mapFailed": "Không thể tải bản đồ. Kiểm tra lại kết nối mạng.",
+    "mapRetry": "Thử lại",
+    "mapProviderLabel": "Nguồn: {name}",
+    "reconnecting": "Đang kết nối lại nguồn bản đồ…",
+    "providerSwitched": "Đang chuyển sang nguồn bản đồ dự phòng…",
+    "loadError": "Lỗi khi tải bản đồ",
+    "retryAction": "Thử lại",
+    "allProvidersFailed": "Không thể tải bản đồ từ các nguồn khả dụng."
   }
 }

@@ -3,8 +3,11 @@
 import * as React from 'react';
 import L from 'leaflet';
 import type { LeafletMouseEvent } from 'leaflet';
-import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { cn } from '@/lib/utils/cn';
+import { TileResilienceProvider } from './map/TileResilienceContext';
+import { ResilientTileLayer } from './map/ResilientTileLayer';
+import { MapResilienceControl } from './map/MapResilienceControl';
 
 export type MapCoordinates = [number, number];
 
@@ -66,27 +69,29 @@ export function VenueLocationMap({
   className,
 }: VenueLocationMapProps) {
   return (
-    <div
-      className={cn(
-        'size-full overflow-hidden rounded-btn',
-        placingPin && 'cursor-crosshair',
-        className,
-      )}
-    >
-      <MapContainer
-        center={marker ?? center}
-        zoom={marker ? 16 : 13}
-        scrollWheelZoom={false}
-        className="size-full"
+    <TileResilienceProvider>
+      <div
+        className={cn(
+          'relative isolate z-0 size-full overflow-hidden rounded-btn',
+          placingPin && 'cursor-crosshair',
+          className,
+        )}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <MapViewport center={center} marker={marker} />
-        <MapClickHandler placingPin={placingPin} onPlacePin={onPlacePin} />
-        {marker && <Marker position={marker} icon={locationPinIcon} />}
-      </MapContainer>
-    </div>
+        <MapContainer
+          center={marker ?? center}
+          zoom={marker ? 16 : 13}
+          maxZoom={19}
+          scrollWheelZoom={false}
+          className="size-full"
+        >
+          <ResilientTileLayer />
+          <MapViewport center={center} marker={marker} />
+          <MapClickHandler placingPin={placingPin} onPlacePin={onPlacePin} />
+          {marker && <Marker position={marker} icon={locationPinIcon} />}
+        </MapContainer>
+
+        <MapResilienceControl />
+      </div>
+    </TileResilienceProvider>
   );
 }

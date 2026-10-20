@@ -1,12 +1,12 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
 import type { LoginInput, RegisterInput, User, OwnerProfile } from '@bsc/shared';
 import { login as apiLogin, logout as apiLogout, me as apiMe, register as apiRegister } from '@/lib/api/endpoints/auth';
+import { useAppRouter } from '@/lib/navigation/navigate';
 
 export const authKeys = {
   all: ['auth'] as const,
@@ -15,7 +15,7 @@ export const authKeys = {
 
 export function useAuth() {
   const queryClient = useQueryClient();
-  const router = useRouter();
+  const router = useAppRouter();
   const tAuth = useTranslations('auth');
 
   const meQuery = useQuery({

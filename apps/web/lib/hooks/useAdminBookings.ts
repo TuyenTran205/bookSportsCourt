@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BookingStatus } from '@bsc/shared';
 import { forceCancelBooking, listAdminBookings } from '@/lib/api/endpoints/admin';
 import { adminQueryKeys } from './useAdminDashboard';
@@ -18,6 +18,7 @@ export function useAdminBookings(
     queryKey: adminBookingsQueryKeys.list(params),
     queryFn: () => listAdminBookings(params),
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

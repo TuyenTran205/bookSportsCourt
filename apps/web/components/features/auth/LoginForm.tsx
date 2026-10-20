@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, LogIn, Sparkles } from 'lucide-react';
@@ -36,7 +37,7 @@ const DEMO_ACCOUNTS = [
 export function LoginForm() {
   const tAuth = useTranslations('auth');
   const tCommon = useTranslations('common');
-  const router = useRouter();
+  const router = useAppRouter();
   const searchParams = useSearchParams();
   const nextUrl = searchParams.get('next');
 

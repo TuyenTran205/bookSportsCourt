@@ -1,6 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 /** Chi tiết đơn đặt – /bookings/[id]. */
 export default function BookingDetailLoading() {
-  return <PageLoader label="Đang tải chi tiết đơn đặt…" />;
+  return <PageSkeleton variant="detail" />;
 }

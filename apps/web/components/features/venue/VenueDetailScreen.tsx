@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { Clock, ImageOff, MapPin, Navigation, ShieldCheck, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -27,6 +27,7 @@ import {
   useVenueReviews,
   useVenueSlots,
 } from '@/lib/hooks/useVenue';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { cn } from '@/lib/utils/cn';
 import {
   addDays,
@@ -49,7 +50,7 @@ export function VenueDetailScreen() {
   const t = useTranslations('venueDetail');
   const tSlot = useTranslations('slot');
   const { slug } = useParams<{ slug: string }>();
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
   const hold = useCreateHold();

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Heart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { ApiError } from '@/lib/api/errors';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useFavorites, useToggleFavorite } from '@/lib/hooks/useBookings';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -17,7 +18,7 @@ import { cn } from '@/lib/utils/cn';
  */
 export function FavoriteButton({ venueId }: { venueId: string }) {
   const t = useTranslations('favorites');
-  const router = useRouter();
+  const router = useAppRouter();
   const pathname = usePathname();
   const { isAuthenticated } = useAuth();
 

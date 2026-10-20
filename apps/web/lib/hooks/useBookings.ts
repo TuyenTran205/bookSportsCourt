@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BookingStatus } from '@bsc/shared';
 
 import {
@@ -33,7 +33,7 @@ export function useMyBookings(status: BookingStatus | undefined, page: number, l
   return useQuery({
     queryKey: bookingKeys.list(status, page),
     queryFn: () => listMyBookings({ status, page, limit }),
-    placeholderData: (previous) => previous,
+    placeholderData: keepPreviousData,
   });
 }
 

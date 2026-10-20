@@ -1,6 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 /** Hồ sơ cá nhân – /profile. */
 export default function ProfileLoading() {
-  return <PageLoader label="Đang tải hồ sơ…" />;
+  return <PageSkeleton variant="form" />;
 }

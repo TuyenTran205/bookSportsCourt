@@ -1,9 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
-/**
- * Fallback tải dùng chung cho khu khách (Header/Footer đã do root layout render).
- * docs/specs/loading-states-spec.md – SPEC-FE-LOADING-01.
- */
+/** Fallback tải dùng chung cho khu khách (Header/Footer đã do root layout render). */
 export default function PublicLoading() {
-  return <PageLoader label="Đang tải trang…" />;
+  return <PageSkeleton variant="list" />;
 }

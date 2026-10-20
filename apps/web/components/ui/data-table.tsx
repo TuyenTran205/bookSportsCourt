@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Inbox } from 'lucide-rea
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -42,6 +43,11 @@ export interface DataTableProps<T> {
   /** Khoá duy nhất của mỗi dòng. */
   getRowId: (row: T) => string;
   loading?: boolean;
+  /**
+   * Đang tải lại dữ liệu nhưng vẫn còn dữ liệu cũ để hiển thị (đổi filter/phân trang).
+   * Giữ nguyên các dòng cũ, chỉ làm mờ thân bảng — không quay về skeleton.
+   */
+  isFetching?: boolean;
   /** Trạng thái rỗng tuỳ biến; mặc định dùng `EmptyState` chuẩn. */
   emptyTitle?: string;
   emptyDescription?: string;
@@ -69,6 +75,7 @@ export function DataTable<T>({
   rows,
   getRowId,
   loading = false,
+  isFetching = false,
   emptyTitle = 'Không có dữ liệu',
   emptyDescription,
   emptyAction,
@@ -119,7 +126,14 @@ export function DataTable<T>({
 
       {/* Cuộn ngang trên mobile — bảng rộng không được phá vỡ layout trang. */}
       <div className="overflow-x-auto rounded-card border border-neutral-200 bg-white">
-        <table className="w-full border-collapse text-sm">
+        <table
+          className={cn(
+            'w-full border-collapse text-sm transition-opacity duration-150',
+            // Đang tải lại trang/filter mới: giữ dữ liệu cũ, chỉ giảm độ đậm (spec §2.2).
+            isFetching && !loading && 'opacity-60',
+          )}
+          aria-busy={isFetching || loading || undefined}
+        >
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50">
               {selectable && (
@@ -192,7 +206,7 @@ export function DataTable<T>({
                   ))}
                 </tr>
               ))
-            ) : rows.length === 0 ? (
+            ) : rows.length === 0 && !isFetching ? (
               <tr>
                 <td colSpan={colSpan} className="p-0">
                   <EmptyState
@@ -255,7 +269,14 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {pagination && <div className="flex justify-center sm:justify-end">{pagination}</div>}
+      {pagination && (
+        <div className="flex items-center justify-center gap-2 sm:justify-end">
+          {isFetching && !loading && (
+            <Spinner size="xs" variant="neutral" label="Đang tải dữ liệu" />
+          )}
+          {pagination}
+        </div>
+      )}
     </div>
   );
 }

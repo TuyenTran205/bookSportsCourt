@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
@@ -31,7 +31,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
  */
 export function RegisterForm() {
   const tAuth = useTranslations('auth');
-  const router = useRouter();
+  const router = useAppRouter();
   const { register: authRegister, isRegistering } = useAuth();
 
   const [showPassword, setShowPassword] = React.useState(false);

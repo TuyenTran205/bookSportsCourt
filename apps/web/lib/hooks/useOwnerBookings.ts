@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { BookingStatus } from '@bsc/shared';
 import { listOwnerBookings } from '@/lib/api/endpoints/owner';
 
@@ -18,5 +18,6 @@ export function useOwnerBookings(params: UseOwnerBookingsParams = {}) {
     queryKey: ['owner', 'bookings', params],
     queryFn: () => listOwnerBookings(params),
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }

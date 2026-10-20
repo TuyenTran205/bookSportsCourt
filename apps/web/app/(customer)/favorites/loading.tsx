@@ -1,6 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 /** Sân yêu thích – /favorites. */
 export default function FavoritesLoading() {
-  return <PageLoader label="Đang tải sân yêu thích…" />;
+  return <PageSkeleton variant="list" />;
 }

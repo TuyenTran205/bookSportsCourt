@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { listOwnerReviews } from '@/lib/api/endpoints/owner';
 
 export interface OwnerReviewFilters {
@@ -16,5 +16,6 @@ export function useOwnerReviews(
     queryFn: () => listOwnerReviews(filters),
     enabled,
     staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }

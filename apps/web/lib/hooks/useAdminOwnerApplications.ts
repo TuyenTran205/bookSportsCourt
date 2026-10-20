@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { OwnerApplication, OwnerApplicationStatus } from '@bsc/shared';
 import {
   listOwnerApplications,
@@ -21,6 +21,7 @@ export function useOwnerApplications(
     queryKey: ownerApplicationsQueryKeys.list(params),
     queryFn: () => listOwnerApplications(params),
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

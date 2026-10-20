@@ -29,7 +29,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useNavigation } from '@/lib/navigation/navigate';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -42,6 +44,7 @@ export function Header() {
   const tCommon = useTranslations('common');
   const pathname = usePathname();
   const { user, role, isAuthenticated, isLoading, logout } = useAuth();
+  const { phase, target } = useNavigation();
 
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
@@ -49,6 +52,9 @@ export function Header() {
   React.useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  // Đóng drawer ngay khi click, không đợi route mới render (spec §5.2).
+  const closeDrawer = React.useCallback(() => setMobileMenuOpen(false), []);
 
   const navLinks = React.useMemo(() => {
     const links = [{ href: '/venues', label: tNav('venues'), icon: MapPin }];
@@ -87,11 +93,14 @@ export function Header() {
           <nav className="hidden md:flex md:items-center md:gap-1">
             {navLinks.map((link) => {
               const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+              const pending = phase === 'pending' && target === link.href;
               const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={active ? 'page' : undefined}
+                  aria-busy={pending || undefined}
                   className={cn(
                     'flex items-center gap-1.5 rounded-btn px-3 py-2 text-sm font-medium transition-colors',
                     active
@@ -99,7 +108,14 @@ export function Header() {
                       : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
                   )}
                 >
-                  <Icon className="size-4" aria-hidden="true" />
+                  {/* Ô icon giữ đúng kích thước khi pending để CLS = 0 (spec §7.2). */}
+                  <span className="flex size-4 shrink-0 items-center justify-center">
+                    {pending ? (
+                      <Spinner size="xs" variant="current" label="" />
+                    ) : (
+                      <Icon className="size-4" aria-hidden="true" />
+                    )}
+                  </span>
                   <span>{link.label}</span>
                 </Link>
               );
@@ -234,11 +250,15 @@ export function Header() {
           <nav className="flex flex-col gap-1">
             {navLinks.map((link) => {
               const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+              const pending = phase === 'pending' && target === link.href;
               const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={closeDrawer}
+                  aria-current={active ? 'page' : undefined}
+                  aria-busy={pending || undefined}
                   className={cn(
                     'flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-base font-medium transition-colors',
                     active
@@ -246,7 +266,13 @@ export function Header() {
                       : 'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900',
                   )}
                 >
-                  <Icon className="size-5" aria-hidden="true" />
+                  <span className="flex size-5 shrink-0 items-center justify-center">
+                    {pending ? (
+                      <Spinner size="xs" variant="current" label="" />
+                    ) : (
+                      <Icon className="size-5" aria-hidden="true" />
+                    )}
+                  </span>
                   <span>{link.label}</span>
                 </Link>
               );
@@ -267,6 +293,7 @@ export function Header() {
                 </div>
                 <Link
                   href="/profile"
+                  onClick={closeDrawer}
                   className="flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-sm text-neutral-700 hover:bg-neutral-100"
                 >
                   <UserIcon className="size-4" />
@@ -275,6 +302,7 @@ export function Header() {
                 {role === 'customer' && (
                   <Link
                     href="/owner/apply"
+                    onClick={closeDrawer}
                     className="flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-sm font-medium text-primary-700 hover:bg-primary-50"
                   >
                     <Building2 className="size-4" />
@@ -294,10 +322,14 @@ export function Header() {
             ) : (
               <div className="flex flex-col gap-2">
                 <Button variant="outline" size="md" asChild className="w-full">
-                  <Link href="/login">{tNav('login')}</Link>
+                  <Link href="/login" onClick={closeDrawer}>
+                    {tNav('login')}
+                  </Link>
                 </Button>
                 <Button variant="primary" size="md" asChild className="w-full">
-                  <Link href="/register">{tNav('register')}</Link>
+                  <Link href="/register" onClick={closeDrawer}>
+                    {tNav('register')}
+                  </Link>
                 </Button>
               </div>
             )}

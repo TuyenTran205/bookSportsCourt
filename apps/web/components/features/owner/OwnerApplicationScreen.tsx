@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
@@ -81,7 +81,7 @@ function ApplicationSection({
 
 export function OwnerApplicationScreen() {
   const t = useTranslations('ownerApplication');
-  const router = useRouter();
+  const router = useAppRouter();
   const { user, role, isLoading: isAuthLoading } = useAuth();
   const applicationQuery = useMyOwnerApplication(Boolean(user) && role === 'customer');
   const submitMutation = useSubmitOwnerApplication();

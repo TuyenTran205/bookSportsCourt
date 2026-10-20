@@ -2,12 +2,12 @@ import * as React from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { Building2, Plus } from 'lucide-react';
 
 export function VenueManagement() {
   const t = useTranslations('owner');
-  const router = useRouter();
+  const router = useAppRouter();
 
   return (
     <Card className="p-4">

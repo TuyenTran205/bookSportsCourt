@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { listAuditLogs } from '@/lib/api/endpoints/admin';
 
 export const adminAuditLogsQueryKeys = {
@@ -14,5 +14,6 @@ export function useAdminAuditLogs(params: { page?: number; limit?: number } = {}
     queryKey: adminAuditLogsQueryKeys.list(params),
     queryFn: () => listAuditLogs(params),
     staleTime: 30 * 1000,
+    placeholderData: keepPreviousData,
   });
 }

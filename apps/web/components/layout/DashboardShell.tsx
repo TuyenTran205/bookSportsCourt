@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronsLeft, ChevronsRight, LogOut, Menu, Store, X } from 'lucide-react';
 
@@ -16,7 +16,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { NAV_TIMING } from '@/lib/navigation/constants';
+import { useNavigation } from '@/lib/navigation/navigate';
 import { cn } from '@/lib/utils/cn';
 
 const COLLAPSE_KEY = 'bsc.dashboard.sidebarCollapsed';
@@ -46,28 +49,67 @@ interface NavListProps {
 function NavList({ area, collapsed, onNavigate }: NavListProps) {
   const pathname = usePathname();
   const t = useTranslations(area);
+  const router = useRouter();
+  const { phase, target } = useNavigation();
+
+  // Prefetch sau 80ms hover/focus: đủ lâu để lướt chuột ngang sidebar không
+  // bắn request, đủ sớm để RSC payload về trước cú click. (spec §3.4)
+  const prefetchTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const schedulePrefetch = React.useCallback(
+    (href: string) => {
+      if (prefetchTimer.current !== null) clearTimeout(prefetchTimer.current);
+      prefetchTimer.current = setTimeout(() => {
+        prefetchTimer.current = null;
+        router.prefetch(href);
+      }, NAV_TIMING.PREFETCH_HOVER_MS);
+    },
+    [router],
+  );
+
+  const cancelPrefetch = React.useCallback(() => {
+    if (prefetchTimer.current !== null) {
+      clearTimeout(prefetchTimer.current);
+      prefetchTimer.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => cancelPrefetch, [cancelPrefetch]);
 
   return (
     <nav aria-label={area} className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-thin">
       {DASHBOARD_NAV[area].map(({ href, labelKey, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
+        const pending = phase === 'pending' && target === href;
         const label = t(labelKey);
         return (
           <Link
             key={href}
             href={href}
             onClick={onNavigate}
+            onMouseEnter={() => schedulePrefetch(href)}
+            onMouseLeave={cancelPrefetch}
+            onFocus={() => schedulePrefetch(href)}
+            onBlur={cancelPrefetch}
             aria-current={active ? 'page' : undefined}
+            aria-busy={pending || undefined}
             title={collapsed ? label : undefined}
             className={cn(
-              'flex h-10 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
+              'flex h-11 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 lg:h-10',
               active
                 ? 'bg-primary-50 text-primary-700'
                 : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
               collapsed && 'justify-center px-0',
             )}
           >
-            <Icon className="size-5 shrink-0" aria-hidden="true" />
+            {/* Ô icon giữ đúng 20×20 khi pending để CLS = 0 (spec §7.2). */}
+            <span className="flex size-5 shrink-0 items-center justify-center">
+              {pending ? (
+                <Spinner size="xs" variant="current" label="" />
+              ) : (
+                <Icon className="size-5" aria-hidden="true" />
+              )}
+            </span>
             <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
           </Link>
         );

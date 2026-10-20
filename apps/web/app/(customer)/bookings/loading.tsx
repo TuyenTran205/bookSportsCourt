@@ -1,6 +1,6 @@
-import { PageLoader } from '@/components/ui/page-loader';
+import { PageSkeleton } from '@/components/ui/page-skeleton';
 
 /** Lịch đặt sân – /bookings. */
 export default function BookingsLoading() {
-  return <PageLoader label="Đang tải lịch đặt sân…" />;
+  return <PageSkeleton variant="list" />;
 }

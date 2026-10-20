@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
+import { useAppRouter } from '@/lib/navigation/navigate';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertTriangle, ArrowLeft, CheckCircle2, KeyRound } from 'lucide-react';
@@ -24,7 +25,7 @@ import { ApiError } from '@/lib/api/errors';
  */
 export function ResetPasswordForm() {
   const t = useTranslations('auth');
-  const router = useRouter();
+  const router = useAppRouter();
   const token = useSearchParams().get('token') ?? '';
 
   const [submitError, setSubmitError] = React.useState<string | null>(null);
