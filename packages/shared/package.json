@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint \"src/**/*.ts\" --max-warnings=0",
+    "lint": "eslint src --max-warnings=0",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

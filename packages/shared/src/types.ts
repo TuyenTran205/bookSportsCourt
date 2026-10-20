@@ -121,15 +121,8 @@ export interface OwnerApplication {
   id: string;
   user: UserSummary;
   businessName: string;
-  phone?: string;
-  address?: string;
   taxCode: string | null;
   idCardUrl: string | null;
-  bankBin?: string;
-  bankName?: string;
-  accountNo?: string;
-  accountName?: string;
-  note?: string | null;
   status: OwnerApplicationStatus;
   rejectReason: string | null;
   reviewedAt: string | null;
@@ -389,6 +382,7 @@ export interface HoldBookingResponse {
 export interface RevenueSummary {
   totalRevenue: number;
   totalBookings: number;
+  occupancyRate: number;
   from: string;
   to: string;
 }
@@ -397,36 +391,6 @@ export interface RevenuePoint {
   date: string;
   revenue: number;
   bookings: number;
-}
-
-export interface RevenueReport {
-  summary: RevenueSummary;
-  series: RevenuePoint[];
-}
-
-export interface OccupancyPoint {
-  date: string;
-  occupancyRate: number;
-  bookedSlots: number;
-  availableSlots: number;
-}
-
-export interface PeakHour {
-  startTime: string;
-  endTime: string;
-  bookedSlots: number;
-}
-
-export interface OccupancyReport {
-  summary: {
-    occupancyRate: number;
-    bookedSlots: number;
-    availableSlots: number;
-    from: string;
-    to: string;
-    peakHours: PeakHour[];
-  };
-  series: OccupancyPoint[];
 }
 
 export interface OwnerTimelineBooking {

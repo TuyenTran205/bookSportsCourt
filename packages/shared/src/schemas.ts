@@ -53,9 +53,14 @@ export const optionalPhoneSchema = z
  * LƯU Ý: tài liệu chưa chốt độ dài tối thiểu (docs/06 chỉ nói băm Argon2id).
  * 8 ký tự là mặc định an toàn; nếu chốt khác, sửa DUY NHẤT ở đây.
  */
-export const passwordSchema = z.string().min(8, 'Mật khẩu phải có ít nhất 8 ký tự').max(72, 'Mật khẩu tối đa 72 ký tự');
+export const passwordSchema = z
+  .string()
+  .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+  .max(72, 'Mật khẩu tối đa 72 ký tự');
 
-export const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải theo định dạng YYYY-MM-DD');
+export const dateOnlySchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải theo định dạng YYYY-MM-DD');
 
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
 
@@ -200,10 +205,11 @@ function isBrowserFile(value: unknown): value is BrowserFile {
  */
 export const proofUploadSchema = z.object({
   file: z
-    .custom<BrowserFile>(isBrowserFile, {
-      message: 'Vui lòng chọn ảnh biên lai',
-    })
-    .refine((f) => (UPLOAD_ACCEPTED_TYPES as readonly string[]).includes(f.type), 'Chỉ nhận ảnh JPG, PNG hoặc WebP')
+    .custom<BrowserFile>(isBrowserFile, { message: 'Vui lòng chọn ảnh biên lai' })
+    .refine(
+      (f) => (UPLOAD_ACCEPTED_TYPES as readonly string[]).includes(f.type),
+      'Chỉ nhận ảnh JPG, PNG hoặc WebP',
+    )
     .refine((f) => f.size <= UPLOAD_MAX_BYTES, 'Ảnh tối đa 5MB'),
 });
 
@@ -216,7 +222,10 @@ export const createReviewSchema = z.object({
 });
 
 export const replyReviewSchema = z.object({
-  ownerReply: z.string().trim().min(1, 'Vui lòng nhập nội dung trả lời').max(2000, 'Nội dung tối đa 2000 ký tự'),
+  ownerReply: z
+    .string()
+    .min(1, 'Vui lòng nhập nội dung trả lời')
+    .max(2000, 'Nội dung tối đa 2000 ký tự'),
 });
 
 // ===== Owner: cơ sở, sân con, giá, khoá sân =====
@@ -288,49 +297,32 @@ export const bankAccountSchema = z.object({
   accountName: z.string().min(2, 'Vui lòng nhập tên chủ tài khoản').max(200).trim(),
 });
 
-const policyNumber = (max: number, maxMessage: string) =>
-  z.preprocess(
-    (value) =>
-      typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')
-        ? value
-        : Number.NaN,
-    z.coerce
-      .number({ invalid_type_error: 'Vui lòng nhập số hợp lệ.' })
-      .int('Vui lòng nhập số nguyên.')
-      .min(0, 'Giá trị tối thiểu là 0.')
-      .max(max, maxMessage),
-  );
-
-export const cancellationPolicySchema = z.object({
-  cancelBeforeHours: policyNumber(720, 'Số giờ không thể vượt quá 720.'),
-  refundPercent: policyNumber(100, 'Tỷ lệ hoàn tiền không thể vượt quá 100%.'),
-  depositPercent: policyNumber(100, 'Tỷ lệ đặt cọc không thể vượt quá 100%.'),
-});
+export const cancellationPolicySchema = z
+  .object({
+    cancelBeforeHours: z.coerce.number().int().min(0).max(720),
+    refundPercent: z.coerce.number().int().min(0).max(100),
+    depositPercent: z.coerce.number().int().min(0).max(100),
+  })
+  .refine((d) => d.refundPercent <= 100, {
+    message: 'Phần trăm hoàn tối đa 100%',
+    path: ['refundPercent'],
+  });
 
 // ===== Owner: đăng ký làm chủ sân =====
 
 export const ownerApplicationSchema = z.object({
   businessName: z.string().min(2, 'Vui lòng nhập tên cơ sở kinh doanh').max(200).trim(),
-  phone: phoneSchema,
-  address: z.string().min(5, 'Vui lòng nhập địa chỉ cơ sở').max(500).trim(),
   taxCode: z
     .string()
-    .regex(/^(?:\d{10}|\d{12}|\d{13})$/, 'MST gồm 10 hoặc 13 chữ số, CCCD gồm 12 chữ số')
+    .regex(/^\d{10}(\d{3})?$/, 'Mã số thuế gồm 10 hoặc 13 chữ số')
     .optional(),
-  bankBin: z.string().min(6, 'Vui lòng chọn ngân hàng').max(20),
-  bankName: z.string().min(1, 'Vui lòng chọn ngân hàng').max(200).trim(),
-  accountNo: z
-    .string()
-    .min(6, 'Số tài khoản quá ngắn')
-    .max(30, 'Số tài khoản quá dài')
-    .regex(/^\d+$/, 'Số tài khoản chỉ gồm chữ số'),
-  accountName: z.string().min(2, 'Vui lòng nhập tên chủ tài khoản').max(200).trim(),
-  note: z.string().max(2000, 'Giới thiệu tối đa 2.000 ký tự').optional(),
-  idCardUrl: z.string().url('Đường dẫn giấy tờ không hợp lệ').optional(),
 });
 
 export const rejectSchema = z.object({
-  rejectReason: z.string().min(5, 'Vui lòng nhập lý do từ chối (ít nhất 5 ký tự)').max(500, 'Lý do tối đa 500 ký tự'),
+  rejectReason: z
+    .string()
+    .min(5, 'Vui lòng nhập lý do từ chối (ít nhất 5 ký tự)')
+    .max(500, 'Lý do tối đa 500 ký tự'),
 });
 
 // ===== Admin: danh mục =====
