@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-10-17
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -136,7 +136,9 @@ GET    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Chính sách huỷ 
 PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính sách huỷ và cọc
 ```
 
-`GET /venues` nhận query: `provinceId`, `districtId`, `sportId`, `amenityIds` (CSV), `maxPrice`, `q`, `page`, `limit`, `sort` (`rating|price|created_at`). `POST/PATCH /venues` nhận `provinceId` và `districtId` (400 nếu quận không thuộc tỉnh).
+`GET /venues` nhận query: `provinceId`, `districtId`, `sportId`, `amenityIds` (CSV), `maxPrice`, `q`, `page`, `limit`, `sort` (`rating|price|created_at`). `POST/PATCH /venues` nhận `provinceId` và `districtId` (400 nếu quận không thuộc tỉnh). `POST /venues` bắt buộc có `lat` và `lng` do Owner ghim trên bản đồ; `PATCH /venues/:id` nhận cặp tọa độ này khi cập nhật vị trí.
+
+`GET /owner/venues/:id/cancellation-policy` trả `data: null` nếu venue chưa cấu hình chính sách; `PUT` nhận `{ cancelBeforeHours, refundPercent, depositPercent }`. `cancelBeforeHours` là số nguyên từ 0 đến 720; hai tỷ lệ là số nguyên từ 0 đến 100. Owner chỉ được đọc/cập nhật chính sách của venue mình; Admin có quyền trên mọi venue.
 
 `GET /venues/:id/slots?date=YYYY-MM-DD` trả về theo từng court:
 
@@ -198,9 +200,11 @@ POST   /api/v1/bookings/hold             [Customer] Tạo hold (body: courtId, s
 PATCH  /api/v1/bookings/:id/cancel       Huỷ booking (body: reason)
 GET    /api/v1/bookings/:id/cancellation-preview  [Customer] Xem điều kiện huỷ và số tiền hoàn trước khi xác nhận (CUS-11)
 PATCH  /api/v1/bookings/:id/no-show      [Owner] Đánh dấu no-show
-GET    /api/v1/owner/bookings            [Owner] Xem bookings của venue mình (query: venueId, courtId, status, from, to, page, limit)
+GET    /api/v1/owner/bookings            [Owner] Xem bookings của venue mình (query: venueId, courtId, status, from, to, q, page, limit)
 POST   /api/v1/owner/bookings/manual     [Owner] Tạo booking thủ công (body: courtId, start, end, customerId hoặc guestName + guestPhone); tạo thẳng `confirmed`, thanh toán `cash`
 ```
+
+`GET /owner/bookings` nhận `q` tuỳ chọn để tìm không phân biệt hoa/thường theo mã booking, tên/số điện thoại khách và tên court; bộ lọc được áp dụng trước phân trang.
 
 `POST /bookings/hold` trả `booking` ở trạng thái `held` kèm `expiresAt` (FE đếm ngược 10 phút, CUS-08) và `payment` gồm `amount`, `transferCode`, `bankAccount` (`bankBin`, `accountNo`, `accountName`) để FE tự dựng mã QR chuyển khoản của chủ sân phía client (không có endpoint sinh QR, server không lưu ảnh QR). Lúc xác nhận thanh toán, người đặt gửi ảnh đã chuyển khoản lên để chủ sân đối soát xác nhận.
 
@@ -214,6 +218,8 @@ PATCH  /api/v1/owner/payments/:id/reject    [Owner] Từ chối (body: reason); 
 GET    /api/v1/owner/venues/:id/payment-account  [Owner] Tài khoản nhận tiền của venue
 PUT    /api/v1/owner/venues/:id/payment-account  [Owner] Cập nhật tài khoản nhận tiền (bankBin, accountNo, accountName)
 ```
+
+`GET /owner/venues/:id/payment-account` trả `data: null` nếu venue chưa cấu hình tài khoản; nếu đã cấu hình, trả `{ bankBin, accountNo, accountName }`. `PUT` nhận cùng shape và chỉ áp dụng cho venue thuộc Owner hiện tại.
 
 Quá `OWNER_REVIEW_TIMEOUT` (2 giờ) kể từ lúc khách gửi ảnh mà Owner chưa xử lý, hệ thống tự huỷ booking. Không có webhook ngân hàng ở MVP.
 
@@ -232,10 +238,12 @@ PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiề
 GET    /api/v1/venues/:id/reviews        Danh sách review (public, chỉ review đang hiển thị)
 POST   /api/v1/reviews                   [Customer] Đánh giá (cần booking completed)
 PATCH  /api/v1/reviews/:id/visibility    [Admin] Ẩn/hiện review
-POST   /api/v1/reviews/:id/reply         [Owner] Phản hồi đánh giá (OWN-13)
-GET    /api/v1/owner/reviews             [Owner] Đánh giá của các venue mình (query: venueId, page, limit)
+GET    /api/v1/owner/reviews             [Owner] Đánh giá tại venue mình (query: venueId, replied, page, limit)
+PATCH  /api/v1/owner/reviews/:id/reply   [Owner] Tạo hoặc sửa phản hồi (body: ownerReply)
 GET    /api/v1/admin/reviews             [Admin] Mọi review kể cả đang ẩn (query: venueId, isVisible, page, limit)
 ```
+
+`replied` lọc theo trạng thái phản hồi (`true` đã phản hồi, `false` chưa phản hồi). Danh sách Owner chỉ trả review thuộc venue của Owner hiện tại; lọc venue và trạng thái phải thực hiện trước phân trang. Phản hồi dài 1–2000 ký tự sau khi trim. API chỉ cho Owner sở hữu venue chứa review tạo/sửa phản hồi; Admin có thể quản lý review trên mọi venue. Venue ngoài quyền hoặc review không tồn tại trả `404 NOT_FOUND`.
 
 > **Schema:** `reviews.owner_reply` và `reviews.owner_replied_at` đã có trong `04-database-schema.md`.
 
@@ -259,6 +267,24 @@ POST   /api/v1/notifications/read-all    Đánh dấu tất cả đã đọc
 POST   /api/v1/owner-applications        [Customer] Gửi hồ sơ làm chủ sân (OWN-01)
 GET    /api/v1/owner-applications/me     [Customer/Owner] Trạng thái hồ sơ của tôi
 ```
+
+`POST /owner-applications` nhận JSON:
+```json
+{
+  "businessName": "Sân thể thao Phú Nhuận",
+  "phone": "0901234567",
+  "address": "12 Nguyễn Văn Trỗi, Phường 8, Phú Nhuận, TP. Hồ Chí Minh",
+  "taxCode": "0312345678",
+  "bankBin": "970436",
+  "bankName": "Vietcombank",
+  "accountNo": "0123456789",
+  "accountName": "NGUYEN VAN A",
+  "note": "Cơ sở có sân cầu lông và bóng đá.",
+  "idCardUrl": "https://example.com/owner-document.jpg"
+}
+```
+`taxCode`, `note` và `idCardUrl` không bắt buộc. `phone` phải là số Việt Nam 10 chữ số; `bankBin` là mã BIN ngân hàng VietQR. Endpoint trả `OwnerApplication` kèm trạng thái hồ sơ. Các trường ngân hàng, mã số thuế và giấy tờ cần được bổ sung vào database bằng migration có version trước khi backend triển khai hợp đồng này; mock FE lưu hồ sơ trong trình duyệt để phục vụ demo.
+Chỉ tài khoản `customer` được gửi hồ sơ; request của Guest trả `401 UNAUTHORIZED`, request của Owner/Admin trả `403 FORBIDDEN`.
 
 > **Schema:** bảng `owner_applications` đã có trong `04-database-schema.md`. Khi Admin duyệt, `users.role` đổi từ `customer` sang `owner` trong cùng transaction.
 
@@ -285,6 +311,26 @@ DELETE /api/v1/areas/:id                 [Admin] Xoá khu vực
 GET    /api/v1/owner/reports/revenue     [Owner] Doanh thu (OWN-11): query from, to, groupBy=day|week|month, venueId, courtId
 GET    /api/v1/owner/reports/occupancy   [Owner] Tỷ lệ lấp đầy và giờ cao điểm (OWN-12): query from, to, venueId, courtId, compareWith=previous
 ```
+
+`from` và `to` là ngày `YYYY-MM-DD` theo múi giờ `Asia/Ho_Chi_Minh`, bao gồm cả hai đầu mút. Báo cáo doanh thu mặc định nhóm theo ngày và trả:
+
+```json
+{
+  "data": {
+    "summary": {
+      "totalRevenue": 1250000,
+      "totalBookings": 8,
+      "from": "2026-10-10",
+      "to": "2026-10-16"
+    },
+    "series": [
+      { "date": "2026-10-10", "revenue": 250000, "bookings": 2 }
+    ]
+  }
+}
+```
+
+`totalRevenue` là VND; `series` bao gồm cả ngày không có đơn. `groupBy=week|month` trả `date` là ngày bắt đầu tuần hoặc tháng. Báo cáo lấp đầy trả `summary.occupancyRate` trong khoảng `0..1`, tổng `bookedSlots` và `availableSlots`, danh sách `peakHours` gồm `{ startTime, endTime, bookedSlots }`, cùng chuỗi theo ngày `{ date, occupancyRate, bookedSlots, availableSlots }`. `availableSlots` là số block 30 phút còn trống trong giờ mở cửa; không bao gồm giờ đóng cửa hoặc giờ bị khoá. Khi không có công suất, `occupancyRate` là `0`.
 
 ### Uploads
 ```
