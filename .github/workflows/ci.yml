@@ -105,9 +105,7 @@ jobs:
         run: pnpm --filter @bsc/api db:migrate
 
       - name: Test
-        # `--` bắt buộc: nếu thiếu, pnpm hiểu `--passWithNoTests` là cờ của chính pnpm
-        # và không chuyển tiếp xuống script test → Jest/Vitest báo lỗi khi chưa có test.
-        run: pnpm test -- --passWithNoTests
+        run: pnpm test
 
   build:
     name: build
