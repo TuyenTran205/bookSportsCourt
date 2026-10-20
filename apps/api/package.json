@@ -1,0 +1,46 @@
+{
+	"name": "@bsc/api",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "node --loader ts-node/esm --no-warnings src/main.ts",
+		"typecheck": "tsc --noEmit",
+		"test:auth": "node --loader ts-node/esm --no-warnings --test scripts/auth-api.test.ts scripts/auth-secrets.test.ts scripts/http-security.test.ts",
+		"test:http-security": "node --loader ts-node/esm --no-warnings --test scripts/http-security.test.ts",
+		"db:generate": "drizzle-kit generate --config ../../drizzle.config.ts",
+		"db:migrate": "node --loader ts-node/esm --no-warnings scripts/migrate.ts",
+		"db:seed": "node --loader ts-node/esm --no-warnings scripts/seed.ts",
+		"db:studio": "drizzle-kit studio --config ../../drizzle.config.ts"
+	},
+	"dependencies": {
+		"@nestjs/common": "^10",
+		"@nestjs/config": "^3",
+		"@nestjs/core": "^10",
+		"@nestjs/platform-express": "^10",
+		"@nestjs/platform-socket.io": "^10",
+		"@nestjs/schedule": "^4",
+		"@nestjs/swagger": "^7",
+		"@nestjs/websockets": "^10",
+		"argon2": "^0.31.2",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.15.1",
+		"drizzle-orm": "^0.36.4",
+		"jose": "^5.9.6",
+		"pg": "^8.13.1",
+		"reflect-metadata": "^0.2.2",
+		"rxjs": "^7.8.2",
+		"socket.io": "^4",
+		"uuid": "^11.0.3",
+		"zod": "^3.23.8"
+	},
+	"devDependencies": {
+		"@nestjs/cli": "^10",
+		"@nestjs/schematics": "^10",
+		"@nestjs/testing": "^10",
+		"@types/pg": "^8.11.10",
+		"drizzle-kit": "^0.27.2",
+		"ts-node": "^10.9.2",
+		"tsconfig-paths": "^4.2.0",
+		"typescript": "^5.6.3"
+	}
+}
