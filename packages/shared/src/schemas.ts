@@ -17,7 +17,7 @@ import {
   USER_ROLES,
   USER_STATUSES,
   VENUE_STATUSES,
-} from './constants';
+} from './constants.js';
 
 // ===== Nguyên thuỷ dùng lại nhiều nơi =====
 
@@ -92,6 +92,9 @@ export const loginSchema = z.object({
 });
 
 export const forgotPasswordSchema = z.object({ email: emailSchema });
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Thiếu token xác thực email'),
+});
 
 export const resetPasswordSchema = z
   .object({
