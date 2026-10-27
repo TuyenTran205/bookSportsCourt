@@ -19,7 +19,7 @@ import type {
   UserRole,
   UserStatus,
   VenueStatus,
-} from './constants';
+} from './constants.js';
 
 // ===== Envelope chung =====
 
@@ -94,7 +94,10 @@ export interface User {
   status: UserStatus;
   createdAt: string;
 }
-
+export interface AuthenticatedUser extends User {
+  emailVerifiedAt: string | null;
+  updatedAt: string;
+}
 /** Rút gọn, dùng trong danh sách admin. */
 export interface UserSummary {
   id: string;
