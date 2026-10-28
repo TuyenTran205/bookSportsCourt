@@ -5,7 +5,10 @@
 	"scripts": {
 		"dev": "node --loader ts-node/esm --no-warnings src/main.ts",
 		"typecheck": "tsc --noEmit",
-		"test:auth": "node --loader ts-node/esm --no-warnings --test scripts/auth-api.test.ts scripts/auth-secrets.test.ts scripts/http-security.test.ts",
+		"test:auth": "node --loader ts-node/esm --no-warnings --test scripts/auth-api.test.ts scripts/auth-secrets.test.ts scripts/http-security.test.ts scripts/permissions-decorators.test.ts scripts/jwt-auth-guard.test.ts scripts/roles-guard.test.ts",
+		"test:roles-guard": "node --loader ts-node/esm --no-warnings --test scripts/roles-guard.test.ts",
+		"test:jwt-auth-guard": "node --loader ts-node/esm --no-warnings --test scripts/jwt-auth-guard.test.ts",
+		"test:permissions-decorators": "node --loader ts-node/esm --no-warnings --test scripts/permissions-decorators.test.ts",
 		"test:http-security": "node --loader ts-node/esm --no-warnings --test scripts/http-security.test.ts",
 		"db:generate": "drizzle-kit generate --config ../../drizzle.config.ts",
 		"db:migrate": "node --loader ts-node/esm --no-warnings scripts/migrate.ts",

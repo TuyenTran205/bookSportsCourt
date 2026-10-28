@@ -83,6 +83,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://bsc_user:bsc_password@localhost:5432/booksports_test
+      AUTH_TEST_DATABASE_URL: postgresql://bsc_user:bsc_password@localhost:5432/booksports_test
       JWT_ACCESS_SECRET: test-access-secret-at-least-32-chars
       JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars
       NODE_ENV: test
@@ -104,6 +105,8 @@ jobs:
       - name: Run migrations
         run: pnpm --filter @bsc/api db:migrate
 
+      - name: Test auth and permissions with PostgreSQL
+        run: pnpm --filter @bsc/api test:auth
       - name: Test
         # `--` bắt buộc: nếu thiếu, pnpm hiểu `--passWithNoTests` là cờ của chính pnpm
         # và không chuyển tiếp xuống script test → Jest/Vitest báo lỗi khi chưa có test.
