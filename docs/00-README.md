@@ -1,6 +1,6 @@
 ﻿# 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-12 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.3.3 | **Cập nhật lần cuối:** 2026-10-29 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -26,6 +26,8 @@
 | `16-backlog.md` | Backlog issue | Khi planning |
 | `17-report-outline.md` | Dàn ý báo cáo | Khi viết báo cáo |
 | `18-decision-log.md` | Nhật ký quyết định | Khi thêm dep/thay đổi lớn |
+| `implemented-apis.md` | Tổng hợp API thực tế đã triển khai | Khi tích hợp và tra cứu API hiện có |
+| `backend-roadmap.md` | Các giai đoạn BE và bước tiếp theo sau auth/phân quyền | Khi chọn issue và theo dõi phạm vi BE |
 
 ## Nguyên tắc cập nhật tài liệu
 
@@ -50,6 +52,9 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-10-29 | Thêm checklist tiến độ BE theo Phase; đánh dấu auth/refresh/phân quyền theo xác nhận, tách API contract chưa có issue riêng | `backend-roadmap.md`, `00` |
+| 2026-10-29 | Chuẩn hoá roadmap BE theo Phase/nhãn backlog gốc, làm rõ bước BSC-014 sau phân quyền và ghi nhận các điểm tài liệu chưa thống nhất | `backend-roadmap.md`, `00` |
+| 2026-10-29 | Tổng hợp 9 endpoint hiện có và lộ trình BE theo Phase, phụ thuộc, backlog và tiêu chí hoàn thành | `implemented-apis.md`, `backend-roadmap.md`, `00` |
 | 2026-10-12 | **Sửa theo báo cáo rà soát tài liệu.** Máy trạng thái booking: `completed` thành terminal, bỏ `completed → cancelled`, thêm `confirmed → no_show`; bổ sung cron `autoCompleteBookings` (nếu không `completed` không thể đạt được) và cron nhắc lịch CUS-14 | `01` `03` `05` `10` |
 | 2026-10-12 | Cron cập nhật cả `payments` khi đổi trạng thái booking (trước đây chỉ đổi `bookings` → lệch hai bảng); làm rõ chỉ endpoint Owner mới đặt `payments.status = 'refunded'` | `05` `11` |
 | 2026-10-12 | Định nghĩa 3 loại room realtime (`venue:`/`user:`/`owner:`) và quy tắc join; bảng sự kiện WebSocket thêm cột room nhận | `05` `11` |
