@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { ConfigModule } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { eq } from "drizzle-orm";
 import { Pool } from "pg";
 import { DATABASE, DatabaseModule } from "../src/database/database.module.js";
 import * as schema from "../src/database/schema/index.js";
@@ -27,10 +28,13 @@ import { SignJWT } from "jose";
 import { configureHttpSecurity } from "../src/config/http-security.js";
 import {
   Controller,
+  Module,
   Get,
   Param,
   UseGuards,
   UnauthorizedException,
+  ForbiddenException,
+  HttpException,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { AuthenticatedRequest } from "../src/common/guards/jwt-auth.guard.js";
@@ -99,7 +103,40 @@ class GuardTestController {
   missingPolicy() {
     return { allowed: true };
   }
+
+  @Get("wrong-param/:id")
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership("court", "courtId")
+  wrongParam() {
+    throw new Error("Ownership must reject a missing route parameter");
+  }
+
+  @Get("empty-roles/:id")
+  @Roles()
+  @UseGuards(OwnershipGuard)
+  @CheckOwnership("venue")
+  emptyRoles() {
+    throw new Error("Empty roles must deny access");
+  }
 }
+
+// No class or method role metadata: ownership must fail closed on its own.
+@Controller("ownership-config-test")
+@UseGuards(JwtAuthGuard, OwnershipGuard)
+class OwnershipConfigTestController {
+  @Get("missing-roles/:id")
+  @CheckOwnership("venue")
+  missingRoles() {
+    throw new Error("Ownership must reject missing role metadata");
+  }
+}
+
+// Model a business module consuming AuthModule exports without redeclaring providers.
+@Module({
+  imports: [AuthModule],
+  controllers: [GuardTestController, OwnershipConfigTestController],
+})
+class PermissionsConsumerTestModule {}
 
 test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
   const connectionString = process.env.AUTH_TEST_DATABASE_URL;
@@ -135,7 +172,6 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
       ),
     );
     const module = await Test.createTestingModule({
-      controllers: [GuardTestController],
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
@@ -143,7 +179,7 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
           load: [() => config],
         }),
         DatabaseModule,
-        AuthModule,
+        PermissionsConsumerTestModule,
       ],
     })
       .overrideProvider(DATABASE)
@@ -541,6 +577,7 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
       }
       const ownerId = randomUUID(),
         otherId = randomUUID(),
+        customerId = randomUUID(),
         adminId = randomUUID();
       const provinceId = randomUUID(),
         districtId = randomUUID(),
@@ -549,6 +586,7 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
       for (const [id, role] of [
         [ownerId, "owner"],
         [otherId, "owner"],
+        [customerId, "customer"],
         [adminId, "admin"],
       ]) {
         await pool.query(
@@ -575,6 +613,33 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
       const ownerCookie = `access_token=${await app.get(AuthJwtService).sign(ownerId, "access", true)}`;
       const otherCookie = `access_token=${await app.get(AuthJwtService).sign(otherId, "access", true)}`;
       const adminCookie = `access_token=${await app.get(AuthJwtService).sign(adminId, "access", true)}`;
+
+      await t.test(
+        "users/me returns only the authenticated account for every role",
+        async () => {
+          for (const [id, role] of [
+            [customerId, "customer"],
+            [ownerId, "owner"],
+            [adminId, "admin"],
+          ] as const) {
+            const token = await app
+              .get(AuthJwtService)
+              .sign(id, "access", false);
+            const response = await request(
+              `/users/me?id=${otherId}&userId=${otherId}&role=admin`,
+              undefined,
+              `access_token=${token}`,
+            );
+            assert.equal(response.status, 200);
+            const body = (await response.json()) as { data: AuthenticatedUser };
+            assert.equal(body.data.id, id);
+            assert.equal(body.data.role, role);
+            assert.equal("passwordHash" in body.data, false);
+            assert.equal("accessToken" in body.data, false);
+            assert.equal("refreshToken" in body.data, false);
+          }
+        },
+      );
 
       await t.test(
         "roles use live database role, handler metadata overrides class and admin has no implicit access",
@@ -681,6 +746,95 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
             ).status,
             403,
           );
+        },
+      );
+
+      await t.test(
+        "ownership rejects missing roles, empty roles and mismatched route parameters",
+        async () => {
+          for (const path of [
+            `/ownership-config-test/missing-roles/${venueId}`,
+            `/guard-test/empty-roles/${venueId}`,
+          ]) {
+            assert.equal(
+              (await request(path, undefined, ownerCookie)).status,
+              403,
+            );
+          }
+          const response = await request(
+            `/guard-test/wrong-param/${courtId}`,
+            undefined,
+            ownerCookie,
+          );
+          assert.equal(response.status, 400);
+          assert.equal(
+            ((await response.json()) as { error: { code: string } }).error.code,
+            "VALIDATION_ERROR",
+          );
+          // The role check runs before resource validation, so Customer cannot probe IDs.
+          const customerToken = await app
+            .get(AuthJwtService)
+            .sign(customerId, "access", false);
+          assert.equal(
+            (
+              await request(
+                "/guard-test/courts/invalid",
+                undefined,
+                `access_token=${customerToken}`,
+              )
+            ).status,
+            403,
+          );
+        },
+      );
+
+      await t.test(
+        "ownership validates court IDs and returns 404 for missing courts",
+        async () => {
+          const invalid = await request(
+            "/guard-test/courts/invalid",
+            undefined,
+            ownerCookie,
+          );
+          assert.equal(invalid.status, 400);
+          assert.equal(
+            ((await invalid.json()) as { error: { code: string } }).error.code,
+            "VALIDATION_ERROR",
+          );
+          assert.equal(
+            (
+              await request(
+                `/guard-test/courts/${randomUUID()}`,
+                undefined,
+                ownerCookie,
+              )
+            ).status,
+            404,
+          );
+        },
+      );
+
+      await t.test(
+        "ownership service checks live roles before resource validation",
+        async () => {
+          const ownership = app.get(OwnershipService);
+          const policy = {
+            resource: "venue" as const,
+            param: "id",
+            allowAdmin: true,
+          };
+          for (const [id, roles] of [
+            [customerId, ["customer"]],
+            [ownerId, []],
+            [adminId, ["owner"]],
+          ] as const) {
+            await assert.rejects(
+              ownership.assertOwnership(id, "invalid", policy, roles),
+              (error: unknown) =>
+                error instanceof ForbiddenException &&
+                error.getStatus() === 403,
+            );
+          }
         },
       );
 
@@ -874,6 +1028,243 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
           await pool.query("UPDATE users SET status = 'active' WHERE id = $1", [
             ownerId,
           ]);
+        },
+      );
+      await t.test(
+        "transaction recheck prevents writes after a successful guard when permissions change",
+        async (t) => {
+          const ownership = app.get(OwnershipService);
+          const db = drizzle(pool, { schema });
+          const policy = {
+            resource: "court" as const,
+            param: "courtId",
+            allowAdmin: false,
+          };
+          for (const scenario of [
+            {
+              name: "venue transferred",
+              change: "UPDATE venues SET owner_id = $1 WHERE id = $2",
+              values: [otherId, venueId],
+              restore: "UPDATE venues SET owner_id = $1 WHERE id = $2",
+              restored: [ownerId, venueId],
+              status: 403,
+            },
+            {
+              name: "role revoked",
+              change: "UPDATE users SET role = 'customer' WHERE id = $1",
+              values: [ownerId],
+              restore: "UPDATE users SET role = 'owner' WHERE id = $1",
+              restored: [ownerId],
+              status: 403,
+            },
+            {
+              name: "account suspended",
+              change: "UPDATE users SET status = 'suspended' WHERE id = $1",
+              values: [ownerId],
+              restore: "UPDATE users SET status = 'active' WHERE id = $1",
+              restored: [ownerId],
+              status: 403,
+            },
+            {
+              name: "account deleted",
+              change: "UPDATE users SET deleted_at = now() WHERE id = $1",
+              values: [ownerId],
+              restore: "UPDATE users SET deleted_at = NULL WHERE id = $1",
+              restored: [ownerId],
+              status: 401,
+            },
+            {
+              name: "court deleted",
+              change: "UPDATE courts SET deleted_at = now() WHERE id = $1",
+              values: [courtId],
+              restore: "UPDATE courts SET deleted_at = NULL WHERE id = $1",
+              restored: [courtId],
+              status: 404,
+            },
+            {
+              name: "parent venue deleted",
+              change: "UPDATE venues SET deleted_at = now() WHERE id = $1",
+              values: [venueId],
+              restore: "UPDATE venues SET deleted_at = NULL WHERE id = $1",
+              restored: [venueId],
+              status: 404,
+            },
+          ])
+            await t.test(scenario.name, async () => {
+              assert.equal(
+                (
+                  await request(
+                    `/guard-test/courts/${courtId}`,
+                    undefined,
+                    ownerCookie,
+                  )
+                ).status,
+                200,
+              );
+              const before = await pool.query<{ name: string }>(
+                "SELECT name FROM courts WHERE id = $1",
+                [courtId],
+              );
+              await pool.query(scenario.change, scenario.values);
+              try {
+                await assert.rejects(
+                  db.transaction(async (tx) => {
+                    await ownership.assertOwnership(
+                      ownerId,
+                      courtId,
+                      policy,
+                      ["owner"],
+                      tx,
+                    );
+                    const changed = await tx
+                      .update(schema.courts)
+                      .set({ name: "Unauthorized change" })
+                      .where(eq(schema.courts.id, courtId))
+                      .returning({ id: schema.courts.id });
+                    assert.equal(changed.length, 1);
+                  }),
+                  (error: unknown) =>
+                    error instanceof HttpException &&
+                    error.getStatus() === scenario.status,
+                );
+                const after = await pool.query<{ name: string }>(
+                  "SELECT name FROM courts WHERE id = $1",
+                  [courtId],
+                );
+                assert.deepEqual(after.rows, before.rows);
+              } finally {
+                await pool.query(scenario.restore, scenario.restored);
+              }
+            });
+        },
+      );
+
+      await t.test(
+        "authorized mutation commits and later failure rolls back writes on the same transaction",
+        async () => {
+          const ownership = app.get(OwnershipService);
+          const db = drizzle(pool, { schema });
+          const policy = {
+            resource: "court" as const,
+            param: "courtId",
+            allowAdmin: false,
+          };
+          const rename = async (name: string, fail: boolean) =>
+            db.transaction(async (tx) => {
+              await ownership.assertOwnership(
+                ownerId,
+                courtId,
+                policy,
+                ["owner"],
+                tx,
+              );
+              const changed = await tx
+                .update(schema.courts)
+                .set({ name })
+                .where(eq(schema.courts.id, courtId))
+                .returning({ id: schema.courts.id });
+              assert.deepEqual(changed, [{ id: courtId }]);
+              if (fail) throw new Error("Simulated failure after write");
+            });
+          try {
+            await rename("Authorized change", false);
+            assert.equal(
+              (
+                await pool.query<{ name: string }>(
+                  "SELECT name FROM courts WHERE id = $1",
+                  [courtId],
+                )
+              ).rows[0]?.name,
+              "Authorized change",
+            );
+            await assert.rejects(
+              rename("Must roll back", true),
+              /Simulated failure after write/,
+            );
+            assert.equal(
+              (
+                await pool.query<{ name: string }>(
+                  "SELECT name FROM courts WHERE id = $1",
+                  [courtId],
+                )
+              ).rows[0]?.name,
+              "Authorized change",
+            );
+          } finally {
+            await pool.query("UPDATE courts SET name = 'Test' WHERE id = $1", [
+              courtId,
+            ]);
+          }
+        },
+      );
+
+      await t.test(
+        "transaction holds user and court locks until the authorized write completes",
+        async () => {
+          const ownership = app.get(OwnershipService);
+          const db = drizzle(pool, { schema });
+          const policy = {
+            resource: "court" as const,
+            param: "courtId",
+            allowAdmin: false,
+          };
+          try {
+            await db.transaction(async (tx) => {
+              await ownership.assertOwnership(
+                ownerId,
+                courtId,
+                policy,
+                ["owner"],
+                tx,
+              );
+              const concurrent = await pool.connect();
+              try {
+                for (const [statement, id] of [
+                  ["UPDATE users SET role = 'customer' WHERE id = $1", ownerId],
+                  [
+                    "UPDATE courts SET deleted_at = now() WHERE id = $1",
+                    courtId,
+                  ],
+                ] as const) {
+                  await concurrent.query("BEGIN");
+                  try {
+                    await concurrent.query("SET LOCAL lock_timeout = '100ms'");
+                    await assert.rejects(
+                      concurrent.query(statement, [id]),
+                      (error: unknown) =>
+                        typeof error === "object" &&
+                        error !== null &&
+                        "code" in error &&
+                        error.code === "55P03",
+                    );
+                  } finally {
+                    await concurrent.query("ROLLBACK");
+                  }
+                }
+              } finally {
+                concurrent.release();
+              }
+              const changed = await tx
+                .update(schema.courts)
+                .set({ name: "Written under lock" })
+                .where(eq(schema.courts.id, courtId))
+                .returning({ id: schema.courts.id });
+              assert.deepEqual(changed, [{ id: courtId }]);
+            });
+            assert.equal(
+              (
+                await pool.query<{ name: string }>(
+                  "SELECT name FROM courts WHERE id = $1",
+                  [courtId],
+                )
+              ).rows[0]?.name,
+              "Written under lock",
+            );
+          } finally {
+            await pool.query("UPDATE courts SET name = 'Test' WHERE id = $1", [
+              courtId,
+            ]);
+          }
         },
       );
     } finally {
