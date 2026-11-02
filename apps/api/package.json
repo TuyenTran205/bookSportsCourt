@@ -5,6 +5,7 @@
 	"scripts": {
 		"dev": "node --loader ts-node/esm --no-warnings src/main.ts",
 		"typecheck": "tsc --noEmit",
+		"test:group1": "node --loader ts-node/esm --no-warnings --test scripts/group1-api.test.ts",
 		"test:auth": "node --loader ts-node/esm --no-warnings --test scripts/auth-api.test.ts scripts/auth-secrets.test.ts scripts/http-security.test.ts scripts/permissions-decorators.test.ts scripts/jwt-auth-guard.test.ts scripts/roles-guard.test.ts",
 		"test:roles-guard": "node --loader ts-node/esm --no-warnings --test scripts/roles-guard.test.ts",
 		"test:jwt-auth-guard": "node --loader ts-node/esm --no-warnings --test scripts/jwt-auth-guard.test.ts",
@@ -33,6 +34,7 @@
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",
 		"socket.io": "^4",
+		"swagger-ui-express": "^5.0.1",
 		"uuid": "^11.0.3",
 		"zod": "^3.23.8"
 	},
@@ -41,6 +43,7 @@
 		"@nestjs/schematics": "^10",
 		"@nestjs/testing": "^10",
 		"@types/pg": "^8.11.10",
+		"@types/swagger-ui-express": "^4.1.8",
 		"drizzle-kit": "^0.27.2",
 		"ts-node": "^10.9.2",
 		"tsconfig-paths": "^4.2.0",

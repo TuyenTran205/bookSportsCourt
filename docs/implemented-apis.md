@@ -14,8 +14,9 @@ Hiện có **9 endpoint HTTP** trong controller được đăng ký qua AppModul
 
 ## Danh sách đầy đủ
 
-Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Các endpoint hiện tại không yêu cầu path parameter hay query parameter.
+Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`.
 
+### 1. Auth & Users (11 endpoints)
 | Method | Endpoint | Xác thực / quyền | Input | Thành công |
 |---|---|---|---|---|
 | POST | `/api/v1/auth/register` | Công khai | `fullName`, `email`, `phone`, `password`, `confirmPassword` | 201, hồ sơ Customer; không tự đăng nhập |
@@ -25,8 +26,67 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Các endpoin
 | POST | `/api/v1/auth/forgot-password` | Công khai | `email` | 204, xử lý gửi email nền |
 | POST | `/api/v1/auth/reset-password` | Token đặt lại mật khẩu | `token`, `password`, `confirmPassword` | 204, đổi mật khẩu và xoá cookie |
 | POST | `/api/v1/auth/verify-email` | Token xác thực email | `token` | 204, cập nhật thời điểm xác thực email |
-| GET | `/api/v1/users/me` | Cookie `access_token`; tài khoản active, cả ba role | Không có | 200, hồ sơ hiện tại từ DB |
+| GET | `/api/v1/users/me` | Cookie `access_token`; tài khoản active | Không có | 200, hồ sơ hiện tại từ DB |
+| PATCH | `/api/v1/users/me` | Cookie `access_token`; tài khoản active | `fullName`, `phone?`, `avatarUrl?` | 200, hồ sơ user sau cập nhật |
+| PATCH | `/api/v1/users/me/password` | Cookie `access_token`; tài khoản active | `currentPassword`, `newPassword`, `confirmPassword` | 204, đổi mật khẩu và xoá cookie |
 | GET | `/api/v1/health` | Công khai | Không có | 200, trạng thái API và kết nối DB |
+
+### 2. Catalogs (9 endpoints)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| GET | `/api/v1/sports` | Công khai | Không có | 200, danh sách môn thể thao |
+| POST | `/api/v1/sports` | Admin | `name`, `slug`, `icon?` | 201, môn thể thao mới tạo |
+| PATCH | `/api/v1/sports/:id` | Admin | Partial `SportInput` | 200, môn thể thao sau khi sửa |
+| DELETE | `/api/v1/sports/:id` | Admin | Không có | 204, xoá môn thể thao (409 nếu đang dùng) |
+| GET | `/api/v1/amenities` | Công khai | Không có | 200, danh sách tiện ích |
+| POST | `/api/v1/amenities` | Admin | `name`, `slug`, `icon?` | 201, tiện ích mới tạo |
+| PATCH | `/api/v1/amenities/:id` | Admin | Partial `AmenityInput` | 200, tiện ích sau khi sửa |
+| DELETE | `/api/v1/amenities/:id` | Admin | Không có | 204, xoá tiện ích (409 nếu đang dùng) |
+| GET | `/api/v1/areas` | Công khai | Query `type?`, `parentId?` | 200, danh sách khu vực |
+| POST | `/api/v1/areas` | Admin | `name`, `slug`, `type`, `parentId?` | 201, khu vực mới tạo |
+| PATCH | `/api/v1/areas/:id` | Admin | Partial `AreaInput` | 200, khu vực sau khi sửa |
+| DELETE | `/api/v1/areas/:id` | Admin | Không có | 204, xoá khu vực (409 nếu đang dùng) |
+
+### 3. Owner Applications (4 endpoints)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| POST | `/api/v1/owner-applications` | Customer | `businessName`, `phone`, `address`, `note?` | 201, hồ sơ đăng ký chủ sân |
+| GET | `/api/v1/owner-applications/me` | Customer / Owner | Không có | 200, hồ sơ mới nhất của tài khoản |
+| GET | `/api/v1/admin/owner-applications` | Admin | Query `status?`, `page`, `limit` | 200, danh sách hồ sơ kèm phân trang |
+| PATCH | `/api/v1/admin/owner-applications/:id` | Admin | `status: 'approved'|'rejected'`, `reviewNote?` | 200, hồ sơ sau duyệt (tự động nâng role lên owner) |
+
+### 4. Venues (14 endpoints)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| GET | `/api/v1/venues` | Công khai | Query lọc & phân trang | 200, danh sách sân kèm phân trang |
+| GET | `/api/v1/venues/map` | Công khai | Query lọc theo toạ độ bbox | 200, danh sách sân nhẹ cho bản đồ |
+| GET | `/api/v1/venues/:slug` | Công khai | Param `slug` hoặc `uuid` | 200, chi tiết sân, ảnh, môn, tiện ích |
+| POST | `/api/v1/venues` | Owner | `CreateVenueInput` | 201, cơ sở mới tạo (status: pending) |
+| PATCH | `/api/v1/venues/:id` | Owner (chính chủ) | `UpdateVenueInput` | 200, cơ sở sau cập nhật |
+| DELETE | `/api/v1/venues/:id` | Owner (chính chủ) | Không có | 204, xoá mềm cơ sở |
+| PATCH | `/api/v1/venues/:id/status` | Admin | `status`, `reason?` | 200, duyệt/từ chối cơ sở |
+| POST | `/api/v1/venues/:id/images` | Owner (chính chủ) | `url`, `sortOrder?` | 201, thêm ảnh cơ sở |
+| PATCH | `/api/v1/venues/:id/images/order` | Owner (chính chủ) | `imageIds: string[]` | 200, danh sách ảnh sau sắp xếp |
+| DELETE | `/api/v1/venues/:id/images/:imageId` | Owner (chính chủ) | Không có | 204, xoá ảnh |
+| GET | `/api/v1/owner/venues` | Owner | Không có | 200, danh sách mọi cơ sở của chủ sân |
+| GET | `/api/v1/owner/venues/:id/cancellation-policy` | Owner (chính chủ) | Không có | 200, chính sách huỷ và cọc |
+| PUT | `/api/v1/owner/venues/:id/cancellation-policy` | Owner (chính chủ) | `CancellationPolicyInput` | 200, cập nhật chính sách huỷ |
+| GET | `/api/v1/owner/venues/:id/payment-account` | Owner (chính chủ) | Không có | 200, thông tin tài khoản nhận tiền |
+| PUT | `/api/v1/owner/venues/:id/payment-account` | Owner (chính chủ) | `BankAccountInput` | 200, cập nhật tài khoản nhận tiền |
+
+### 5. Courts (9 endpoints)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| GET | `/api/v1/venues/:id/courts` | Công khai | Param `id` của cơ sở | 200, danh sách sân con |
+| POST | `/api/v1/venues/:id/courts` | Owner (chủ cơ sở) | `name`, `description?`, `sportId?` | 201, tạo sân con + giờ mở cửa mặc định |
+| PATCH | `/api/v1/courts/:id` | Owner (chủ sân) | `UpdateCourtInput` | 200, cập nhật sân con |
+| DELETE | `/api/v1/courts/:id` | Owner (chủ sân) | Không có | 204, xoá mềm sân con |
+| GET | `/api/v1/courts/:id/opening-hours` | Công khai | Không có | 200, giờ mở cửa 7 ngày |
+| PUT | `/api/v1/courts/:id/opening-hours` | Owner (chủ sân) | Array `OpeningHourInput` | 200, cập nhật giờ mở cửa |
+| GET | `/api/v1/courts/:id/pricing-rules` | Công khai/Owner | Không có | 200, danh sách bảng giá |
+| POST | `/api/v1/courts/:id/pricing-rules` | Owner (chủ sân) | `PricingRuleInput` | 201, tạo khung giá theo block 30 phút |
+| PATCH | `/api/v1/courts/:id/pricing-rules/:ruleId` | Owner (chủ sân) | Partial `PricingRuleInput` | 200, cập nhật khung giá |
+| DELETE | `/api/v1/courts/:id/pricing-rules/:ruleId` | Owner (chủ sân) | Không có | 204, xoá khung giá |
 
 ## Input và hành vi từng API
 

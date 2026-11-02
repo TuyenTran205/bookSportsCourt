@@ -239,15 +239,32 @@ export const createVenueSchema = z.object({
   address: z.string().min(5, 'Vui lòng nhập địa chỉ').max(500).trim(),
   provinceId: uuidSchema,
   districtId: uuidSchema,
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+  sportIds: z.array(uuidSchema).default([]),
   amenityIds: z.array(uuidSchema).default([]),
+});
+
+export const updateVenueSchema = createVenueSchema.partial();
+
+export const addVenueImageSchema = z.object({
+  url: z.string().url('URL ảnh không hợp lệ'),
+  sortOrder: z.coerce.number().int().default(0),
+});
+
+export const reorderVenueImagesSchema = z.object({
+  imageIds: z.array(uuidSchema).min(1, 'Danh sách ảnh không được rỗng'),
 });
 
 export const createCourtSchema = z.object({
   name: z.string().min(1, 'Vui lòng nhập tên sân').max(100).trim(),
   description: z.string().max(1000).optional(),
   sportId: uuidSchema.nullish(),
+});
+
+export const updateCourtSchema = createCourtSchema.partial().extend({
+  status: z.enum(['active', 'inactive', 'maintenance']).optional(),
+  sortOrder: z.coerce.number().int().optional(),
 });
 
 export const openingHourSchema = z
@@ -263,20 +280,24 @@ export const openingHourSchema = z
     path: ['closeTime'],
   });
 
-export const pricingRuleSchema = z
-  .object({
-    label: z.string().min(1, 'Vui lòng nhập tên khung giá').max(100).trim(),
-    /** 0 = Chủ nhật … 6 = Thứ bảy. */
-    weekdays: z.array(z.coerce.number().int().min(0).max(6)).min(1, 'Chọn ít nhất một ngày'),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
-    /** VND cho mỗi block SLOT_MINUTES. */
-    pricePerSlot: z.coerce.number().int().nonnegative('Giá không được âm'),
-  })
-  .refine((d) => d.startTime < d.endTime, {
-    message: 'Giờ kết thúc phải sau giờ bắt đầu',
-    path: ['endTime'],
-  });
+export const updateOpeningHoursSchema = z.array(openingHourSchema);
+
+export const pricingRuleBaseSchema = z.object({
+  label: z.string().min(1, 'Vui lòng nhập tên khung giá').max(100).trim(),
+  /** 0 = Chủ nhật … 6 = Thứ bảy. */
+  weekdays: z.array(z.coerce.number().int().min(0).max(6)).min(1, 'Chọn ít nhất một ngày'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
+  /** VND cho mỗi block SLOT_MINUTES. */
+  pricePerSlot: z.coerce.number().int().nonnegative('Giá không được âm'),
+});
+
+export const pricingRuleSchema = pricingRuleBaseSchema.refine((d) => d.startTime < d.endTime, {
+  message: 'Giờ kết thúc phải sau giờ bắt đầu',
+  path: ['endTime'],
+});
+
+export const updatePricingRuleSchema = pricingRuleBaseSchema.partial();
 
 export const blackoutSchema = z
   .object({
@@ -315,10 +336,18 @@ export const cancellationPolicySchema = z
 
 export const ownerApplicationSchema = z.object({
   businessName: z.string().min(2, 'Vui lòng nhập tên cơ sở kinh doanh').max(200).trim(),
+  phone: phoneSchema,
+  address: z.string().min(5, 'Vui lòng nhập địa chỉ').max(500).trim(),
+  note: z.string().max(1000).optional(),
   taxCode: z
     .string()
     .regex(/^\d{10}(\d{3})?$/, 'Mã số thuế gồm 10 hoặc 13 chữ số')
     .optional(),
+});
+
+export const updateOwnerApplicationStatusSchema = z.object({
+  status: z.enum(['approved', 'rejected']),
+  reviewNote: z.string().max(500).optional(),
 });
 
 export const rejectSchema = z.object({
@@ -394,13 +423,21 @@ export type CreateManualBookingInput = z.infer<typeof createManualBookingSchema>
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type ReplyReviewInput = z.infer<typeof replyReviewSchema>;
 export type CreateVenueInput = z.infer<typeof createVenueSchema>;
+export type UpdateVenueInput = z.infer<typeof updateVenueSchema>;
+export type AddVenueImageInput = z.infer<typeof addVenueImageSchema>;
+export type ReorderVenueImagesInput = z.infer<typeof reorderVenueImagesSchema>;
 export type CreateCourtInput = z.infer<typeof createCourtSchema>;
+export type UpdateCourtInput = z.infer<typeof updateCourtSchema>;
 export type OpeningHourInput = z.infer<typeof openingHourSchema>;
+export type UpdateOpeningHoursInput = z.infer<typeof updateOpeningHoursSchema>;
 export type PricingRuleInput = z.infer<typeof pricingRuleSchema>;
+export type UpdatePricingRuleInput = z.infer<typeof updatePricingRuleSchema>;
 export type BlackoutInput = z.infer<typeof blackoutSchema>;
 export type BankAccountInput = z.infer<typeof bankAccountSchema>;
 export type CancellationPolicyInput = z.infer<typeof cancellationPolicySchema>;
 export type OwnerApplicationInput = z.infer<typeof ownerApplicationSchema>;
+export type UpdateOwnerApplicationStatusInput = z.infer<typeof updateOwnerApplicationStatusSchema>;
+export type VenueModerationInput = z.infer<typeof venueModerationSchema>;
 export type SportInput = z.infer<typeof sportSchema>;
 export type AreaInput = z.infer<typeof areaSchema>;
 export type TableQueryInput = z.infer<typeof tableQuerySchema>;
