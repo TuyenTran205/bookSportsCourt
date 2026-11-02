@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { Pagination } from '@/components/common/Pagination';
 import { SlotGrid } from '@/components/features/booking/SlotGrid';
 import { VenueLocationMapWrapper } from '@/components/features/venue/VenueLocationMapWrapper';
+import { VenueOpeningHours } from '@/components/features/venue/VenueOpeningHours';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -308,6 +309,8 @@ export function VenueDetailScreen() {
               </ul>
             </section>
           )}
+
+          <VenueOpeningHours openingHours={venue.openingHours ?? []} />
 
           {venue.cancellationPolicy && (
             <section aria-labelledby="policy-h" className="space-y-3">

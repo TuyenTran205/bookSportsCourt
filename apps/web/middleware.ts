@@ -77,11 +77,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 4. Nhóm route Khách hàng: /bookings, /favorites, /profile
+  // 4. Nhóm route Khách hàng: /bookings, /favorites, /profile, /notifications
   const isCustomerRoute =
     pathname.startsWith('/bookings') ||
     pathname.startsWith('/favorites') ||
-    pathname.startsWith('/profile');
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/notifications');
 
   if (isCustomerRoute) {
     if (!session) {

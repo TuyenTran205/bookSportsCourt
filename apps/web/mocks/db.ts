@@ -143,30 +143,101 @@ function seedAuditLogs(): AuditLog[] {
 }
 
 function seedReviews(): Review[] {
-    return initialBookings.map((r) => r.review).filter((r): r is Review => r !== null);
+    return initialBookings
+        .map((r) => r.review)
+        .filter((r): r is Review => r !== null)
+        .map((r) => ({
+            ...r,
+            isVisible: r.isVisible ?? true,
+        }));
 }
 
 function seedNotifications(): MockNotification[] {
     const now = Date.now();
+    const customerId = "019273c5-7f12-7000-8000-000000000002"; // Trần Văn Khách
+    const ownerId = "019273c5-7f12-7000-8000-000000000001"; // Nguyễn Văn Owner
+
     return [
+        // ── Thông báo của Khách hàng ──────────────────────────────────────────
         {
             id: "019273c5-7f16-7000-9000-000000000001",
-            userId: "019273c5-7f12-7000-8000-000000000001",
-            type: "payment_submitted",
-            title: "Có biên lai mới cần duyệt",
-            body: "Nguyễn Thị Linh vừa gửi biên lai cho đơn tại Sân Cầu Lông Thăng Long.",
+            userId: customerId,
+            type: "booking_confirmed",
+            title: "Đơn đặt sân đã được xác nhận",
+            body: "Đơn đặt tại Sân Cầu Lông Thăng Long vào 08:00 sáng mai đã được xác nhận.",
             readAt: null,
-            createdAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-            payload: null,
+            createdAt: new Date(now - 30 * 60 * 1000).toISOString(),
+            payload: { bookingId: "019273c5-7f13-7000-9000-000000000003" },
         },
         {
             id: "019273c5-7f16-7000-9000-000000000002",
-            userId: "019273c5-7f12-7000-8000-000000000002",
-            type: "booking_confirmed",
-            title: "Đơn đặt sân đã được xác nhận",
-            body: "Pickleball Club Sala – 08:00 ngày mai.",
+            userId: customerId,
+            type: "payment_submitted",
+            title: "Biên lai thanh toán đã được tiếp nhận",
+            body: "Hệ thống đã ghi nhận biên lai chuyển khoản 450.000đ của bạn. Chủ sân đang kiểm tra.",
+            readAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+            payload: { bookingId: "019273c5-7f13-7000-9000-000000000003" },
+        },
+        {
+            id: "019273c5-7f16-7000-9000-000000000003",
+            userId: customerId,
+            type: "booking_created",
+            title: "Giữ chỗ thành công",
+            body: "Bạn đã giữ chỗ thành công 2 khung giờ tại Pickleball Club Sala. Vui lòng thanh toán trong 10 phút.",
+            readAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date(now - 25 * 60 * 60 * 1000).toISOString(),
+            payload: { bookingId: "019273c5-7f13-7000-9000-000000000001" },
+        },
+        {
+            id: "019273c5-7f16-7000-9000-000000000004",
+            userId: customerId,
+            type: "review_reply",
+            title: "Chủ sân đã phản hồi đánh giá",
+            body: "Chủ sân Sân Bóng Đá Phú Thọ đã phản hồi bình luận của bạn: 'Cảm ơn bạn đã tin tưởng!'",
             readAt: null,
-            createdAt: new Date(now - 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            payload: { venueId: "019273c5-7f12-7001-a1b2-c3d4e5f60002" },
+        },
+        {
+            id: "019273c5-7f16-7000-9000-000000000005",
+            userId: customerId,
+            type: "booking_cancelled",
+            title: "Lượt giữ chỗ đã hết hạn",
+            body: "Đơn đặt sân của bạn đã tự động hủy do quá thời gian thanh toán quy định.",
+            readAt: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            payload: null,
+        },
+        // ── Thông báo của Chủ sân ─────────────────────────────────────────────
+        {
+            id: "019273c5-7f16-7000-9000-000000000006",
+            userId: ownerId,
+            type: "payment_submitted",
+            title: "Có biên lai mới cần duyệt",
+            body: "Khách hàng Nguyễn Thị Linh vừa tải lên ảnh biên lai 224.000đ cho đơn đặt sân.",
+            readAt: null,
+            createdAt: new Date(now - 15 * 60 * 1000).toISOString(),
+            payload: { bookingId: "019273c5-7f13-7000-9000-000000000002" },
+        },
+        {
+            id: "019273c5-7f16-7000-9000-000000000007",
+            userId: ownerId,
+            type: "booking_created",
+            title: "Lượt đặt sân mới",
+            body: "Khách hàng Trần Văn Khách đã đặt sân Cầu Lông Sân 1 ngày mai lúc 08:00.",
+            readAt: null,
+            createdAt: new Date(now - 45 * 60 * 1000).toISOString(),
+            payload: { bookingId: "019273c5-7f13-7000-9000-000000000003" },
+        },
+        {
+            id: "019273c5-7f16-7000-9000-000000000008",
+            userId: ownerId,
+            type: "owner_application_approved",
+            title: "Hồ sơ đối tác chủ sân đã được duyệt",
+            body: "Chúc mừng bạn! Hồ sơ đăng ký chủ cơ sở kinh doanh thể thao đã được Quản trị viên phê duyệt.",
+            readAt: new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString(),
             payload: null,
         },
     ];
@@ -221,6 +292,7 @@ type PersistedState = Pick<
     | "ownerApplications"
     | "bankAccounts"
     | "notifications"
+    | "reviews"
 >;
 
 function readStorage(): Partial<PersistedState> | null {
@@ -246,6 +318,7 @@ function writeStorage(state: MockDb): void {
             ownerApplications: state.ownerApplications,
             bankAccounts: state.bankAccounts,
             notifications: state.notifications,
+            reviews: state.reviews,
         };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
@@ -267,6 +340,7 @@ function loadState(): MockDb {
         ...seed,
         venues: fixtureVenues,
         bookings: migrateBookingCourtIds(saved.bookings ?? seed.bookings),
+        reviews: saved.reviews ?? seed.reviews,
         blackouts: cleanBlackouts,
         openingHours: saved.openingHours ?? seed.openingHours,
         pricingRules: saved.pricingRules ?? seed.pricingRules,

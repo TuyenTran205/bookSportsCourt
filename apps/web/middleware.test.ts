@@ -66,4 +66,25 @@ describe('Middleware security & route guard (TC-SEC)', () => {
     expect(adminRes.headers.get('location')).toBeNull();
     expect(adminRes.headers.get('x-middleware-rewrite')).toBeNull();
   });
+
+  it('TC-MID-01: truy cập /notifications khi chưa đăng nhập bị chuyển hướng sang /login', () => {
+    const req = createRequest('/notifications');
+    const res = middleware(req);
+
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toContain('/login');
+    expect(location).toContain('next=%2Fnotifications');
+  });
+
+  it('TC-MID-02: truy cập /notifications khi đã đăng nhập được phép đi tiếp', () => {
+    const req = createRequest('/notifications', {
+      session: 'sess-cust',
+      role: 'customer',
+    });
+    const res = middleware(req);
+
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull();
+  });
 });

@@ -43,6 +43,7 @@ export const ADMIN_NAV: DashboardNavItem[] = [
   { href: '/admin/owner-applications', labelKey: 'ownerApplications', icon: ShieldCheck },
   { href: '/admin/venues', labelKey: 'venues', icon: Building2 },
   { href: '/admin/users', labelKey: 'users', icon: Users },
+  { href: '/admin/reviews', labelKey: 'reviews', icon: Star },
   { href: '/admin/catalogs', labelKey: 'catalogs', icon: Tags },
   { href: '/admin/bookings', labelKey: 'bookings', icon: ClipboardList },
   { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3 },

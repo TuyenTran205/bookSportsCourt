@@ -7,10 +7,13 @@ import { apiFetch, apiFetchWithMeta } from '../client';
  * Khớp `docs/11-api-contract.md` mục Notifications.
  */
 
-export function listNotifications(params: { unreadOnly?: boolean; page?: number; limit?: number } = {}) {
+export function listNotifications(
+  params: { unreadOnly?: boolean; type?: string; page?: number; limit?: number } = {},
+) {
   return apiFetchWithMeta<Notification[]>('/notifications', {
     query: {
       unreadOnly: params.unreadOnly ? 'true' : undefined,
+      type: params.type,
       page: params.page,
       limit: params.limit,
     },

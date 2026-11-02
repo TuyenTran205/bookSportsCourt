@@ -161,17 +161,32 @@ export function createArea(input: { name: string; type: 'province' | 'district';
   return apiFetch<Area>('/admin/areas', { method: 'POST', ...jsonBody(input) });
 }
 
-// ── Đánh giá (ADM-06) ──────────────────────────────────────────────────────
+// ── Đánh giá (ADM-06, ADM-10) ──────────────────────────────────────────────
+
+export interface AdminReviewRow extends Review {
+  venueName: string;
+  venueSlug?: string;
+  customerName: string;
+  customerEmail?: string;
+  isVisible: boolean;
+}
 
 export function listAdminReviews(
-  params: { venueId?: string; isVisible?: boolean; page?: number; limit?: number } = {},
+  params: {
+    venueId?: string;
+    isVisible?: boolean;
+    rating?: number;
+    q?: string;
+    page?: number;
+    limit?: number;
+  } = {},
 ) {
-  return apiFetchWithMeta<Review[]>('/admin/reviews', { query: { ...params } });
+  return apiFetchWithMeta<AdminReviewRow[]>('/admin/reviews', { query: { ...params } });
 }
 
 /** Ẩn/hiện một đánh giá. */
 export function setReviewVisibility(id: string, isVisible: boolean) {
-  return apiFetch<Review>(`/admin/reviews/${encodeURIComponent(id)}/visibility`, {
+  return apiFetch<AdminReviewRow>(`/admin/reviews/${encodeURIComponent(id)}/visibility`, {
     method: 'PATCH',
     ...jsonBody({ isVisible }),
   });

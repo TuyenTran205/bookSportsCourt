@@ -91,7 +91,8 @@ export const venueHandlers = [
     await simulateLatency(300);
     const v = venues.find((x) => x.slug === params.slug || x.id === params.slug);
     if (!v) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở này');
-    return ok(v);
+    const openingHours = db.openingHours.filter((oh) => oh.venueId === v.id);
+    return ok({ ...v, openingHours });
   }),
 
   /**

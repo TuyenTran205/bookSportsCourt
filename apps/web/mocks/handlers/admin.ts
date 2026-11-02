@@ -413,6 +413,126 @@ export const adminHandlers = [
     return ok(record.booking);
   }),
 
+  // ── Đánh giá hệ thống (ADM-06, ADM-10) ──────────────────────────────────
+  http.get('/api/v1/admin/reviews', async ({ request }) => {
+    await simulateLatency(350);
+    const guard = requireAdmin();
+    if (guard.error) return guard.error;
+
+    const url = new URL(request.url);
+    const { page, limit } = readPaging(url);
+    const venueId = url.searchParams.get('venueId');
+    const isVisibleParam = url.searchParams.get('isVisible');
+    const ratingParam = url.searchParams.get('rating');
+    const q = url.searchParams.get('q')?.toLowerCase().trim();
+
+    let list = db.reviews.map((r) => {
+      const venue = venues.find((v) => v.id === r.venueId);
+      const customer = db.users.find((u) => u.id === r.customerId);
+      return {
+        ...r,
+        venueName: venue?.name ?? 'Cơ sở thể thao',
+        venueSlug: venue?.slug,
+        customerName: customer?.fullName ?? 'Khách hàng',
+        customerEmail: customer?.email,
+        isVisible: r.isVisible ?? true,
+      };
+    });
+
+    if (venueId) {
+      list = list.filter((r) => r.venueId === venueId);
+    }
+    if (isVisibleParam !== null && isVisibleParam !== undefined && isVisibleParam !== '') {
+      const isVisible = isVisibleParam === 'true';
+      list = list.filter((r) => r.isVisible === isVisible);
+    }
+    if (ratingParam) {
+      const rating = Number(ratingParam);
+      if (!Number.isNaN(rating)) {
+        list = list.filter((r) => r.rating === rating);
+      }
+    }
+    if (q) {
+      list = list.filter(
+        (r) =>
+          r.customerName.toLowerCase().includes(q) ||
+          r.venueName.toLowerCase().includes(q) ||
+          (r.comment?.toLowerCase().includes(q) ?? false) ||
+          (r.ownerReply?.toLowerCase().includes(q) ?? false),
+      );
+    }
+
+    list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const { data, meta } = paginate(list, page, limit);
+    return okList(data, meta);
+  }),
+
+  http.patch('/api/v1/admin/reviews/:id/visibility', async ({ params, request }) => {
+    await simulateLatency(350);
+    const guard = requireAdmin();
+    if (guard.error) return guard.error;
+
+    const review = db.reviews.find((r) => r.id === params.id);
+    if (!review) return err(404, 'NOT_FOUND', 'Không tìm thấy đánh giá');
+
+    const body = (await request.json().catch(() => ({}))) as { isVisible?: boolean };
+    if (typeof body.isVisible !== 'boolean') {
+      return err(422, 'VALIDATION_ERROR', 'Trường isVisible không hợp lệ');
+    }
+
+    review.isVisible = body.isVisible;
+    writeAudit('review.toggle_visibility', 'review', review.id, {
+      isVisible: body.isVisible,
+      venueId: review.venueId,
+    });
+    persist();
+
+    const venue = venues.find((v) => v.id === review.venueId);
+    const customer = db.users.find((u) => u.id === review.customerId);
+    const resultRow = {
+      ...review,
+      venueName: venue?.name ?? 'Cơ sở thể thao',
+      venueSlug: venue?.slug,
+      customerName: customer?.fullName ?? 'Khách hàng',
+      customerEmail: customer?.email,
+      isVisible: review.isVisible,
+    };
+    return ok(resultRow);
+  }),
+
+  http.patch('/api/v1/reviews/:id/visibility', async ({ params, request }) => {
+    await simulateLatency(350);
+    const guard = requireAdmin();
+    if (guard.error) return guard.error;
+
+    const review = db.reviews.find((r) => r.id === params.id);
+    if (!review) return err(404, 'NOT_FOUND', 'Không tìm thấy đánh giá');
+
+    const body = (await request.json().catch(() => ({}))) as { isVisible?: boolean };
+    if (typeof body.isVisible !== 'boolean') {
+      return err(422, 'VALIDATION_ERROR', 'Trường isVisible không hợp lệ');
+    }
+
+    review.isVisible = body.isVisible;
+    writeAudit('review.toggle_visibility', 'review', review.id, {
+      isVisible: body.isVisible,
+      venueId: review.venueId,
+    });
+    persist();
+
+    const venue = venues.find((v) => v.id === review.venueId);
+    const customer = db.users.find((u) => u.id === review.customerId);
+    const resultRow = {
+      ...review,
+      venueName: venue?.name ?? 'Cơ sở thể thao',
+      venueSlug: venue?.slug,
+      customerName: customer?.fullName ?? 'Khách hàng',
+      customerEmail: customer?.email,
+      isVisible: review.isVisible,
+    };
+    return ok(resultRow);
+  }),
+
   // ── Thống kê toàn hệ thống (A-05) ────────────────────────────────────────
   http.get('/api/v1/admin/analytics', async () => {
     await simulateLatency(450);

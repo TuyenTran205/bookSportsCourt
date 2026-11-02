@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   getUnreadCount,
@@ -10,12 +10,21 @@ import {
 } from '@/lib/api/endpoints/notifications';
 import { useAuth } from '@/lib/hooks/useAuth';
 
+export interface PaginatedNotificationParams {
+  page?: number;
+  limit?: number;
+  unreadOnly?: boolean;
+  type?: string;
+}
+
 export const notificationKeys = {
   all: ['notifications'] as const,
   unreadCount: (userId: string | null) =>
     [...notificationKeys.all, userId, 'unread-count'] as const,
   list: (userId: string | null, limit: number) =>
     [...notificationKeys.all, userId, 'list', limit] as const,
+  paginated: (userId: string | null, params: PaginatedNotificationParams) =>
+    [...notificationKeys.all, 'paginated', userId, params] as const,
 };
 
 /** Số thông báo chưa đọc cho badge ở topbar. */
@@ -37,6 +46,18 @@ export function useNotificationList(limit = 8, enabled = true) {
     queryFn: async () => (await listNotifications({ limit })).data,
     enabled: enabled && Boolean(user),
     staleTime: 15 * 1000,
+  });
+}
+
+/** Danh sách thông báo đầy đủ có phân trang và lọc theo phân loại. */
+export function usePaginatedNotifications(params: PaginatedNotificationParams = {}) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: notificationKeys.paginated(user?.id ?? null, params),
+    queryFn: () => listNotifications(params),
+    enabled: Boolean(user),
+    staleTime: 15 * 1000,
+    placeholderData: keepPreviousData,
   });
 }
 

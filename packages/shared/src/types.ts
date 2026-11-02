@@ -197,6 +197,7 @@ export interface VenueDetail extends VenueListItem {
   amenities: Amenity[];
   courts: Court[];
   cancellationPolicy: CancellationPolicy | null;
+  openingHours?: OpeningHour[];
 }
 
 /** Giờ mở cửa theo thứ trong tuần. `courtId = null` nghĩa là áp cho cả cơ sở. */
@@ -336,6 +337,7 @@ export interface Review {
   comment: string | null;
   ownerReply: string | null;
   ownerRepliedAt: string | null;
+  isVisible?: boolean;
   createdAt: string;
   customer?: Pick<UserSummary, 'id' | 'fullName' | 'avatarUrl'>;
 }
