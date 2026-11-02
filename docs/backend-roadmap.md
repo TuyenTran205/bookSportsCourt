@@ -20,7 +20,7 @@
 - [x] BSC-011 — Auth đăng ký, đăng nhập, đăng xuất.
 - [x] BSC-012 — Refresh token xoay vòng, revoke và xử lý reuse.
 - [x] BSC-013 — JWT Guard, RolesGuard, OwnershipGuard và kiểm tra quyền sở hữu.
-- [ ] BSC-014 — Venue CRUD và Admin duyệt Venue.
+- [x] BSC-014 — Venue CRUD và Admin duyệt Venue.
 - [ ] BSC-015 — Court CRUD, giờ mở cửa và quy tắc giá.
 - [ ] BSC-016 — Sports, Amenities, Areas: public read và Admin CRUD.
 - [ ] BSC-017 — Tìm kiếm/lọc/phân trang Venue.
