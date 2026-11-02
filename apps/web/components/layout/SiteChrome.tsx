@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 import { Footer } from '@/components/common/Footer';
 import { Header } from '@/components/common/Header';
+import { VenueCompareFloatingBar } from '@/components/features/venue/VenueCompareFloatingBar';
 
 /** Khu dashboard có khung riêng (sidebar + topbar) nên không dùng Header/Footer của trang khách. */
 const DASHBOARD_PREFIXES = ['/owner', '/admin'];
@@ -27,6 +28,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     <>
       <Header />
       <div className="flex-1">{children}</div>
+      <VenueCompareFloatingBar />
       <Footer />
     </>
   );

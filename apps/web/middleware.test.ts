@@ -87,4 +87,33 @@ describe('Middleware security & route guard (TC-SEC)', () => {
     expect(res.headers.get('location')).toBeNull();
     expect(res.headers.get('x-middleware-rewrite')).toBeNull();
   });
+
+  it('TC-MID-03: truy cập /checkout/b-123 khi chưa đăng nhập bị chuyển hướng sang /login', () => {
+    const req = createRequest('/checkout/b-123');
+    const res = middleware(req);
+
+    expect(res.status).toBe(307);
+    const location = res.headers.get('location');
+    expect(location).toContain('/login');
+    expect(location).toContain('next=%2Fcheckout%2Fb-123');
+  });
+
+  it('TC-MID-04: truy cập /checkout/b-123 khi đã đăng nhập được phép đi tiếp', () => {
+    const req = createRequest('/checkout/b-123', {
+      session: 'sess-cust',
+      role: 'customer',
+    });
+    const res = middleware(req);
+
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull();
+  });
+
+  it('TC-MID-05: truy cập /venues/compare công khai không bị chặn khi chưa đăng nhập', () => {
+    const req = createRequest('/venues/compare');
+    const res = middleware(req);
+
+    expect(res.headers.get('location')).toBeNull();
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull();
+  });
 });

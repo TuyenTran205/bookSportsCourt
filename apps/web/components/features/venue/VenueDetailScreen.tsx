@@ -15,6 +15,7 @@ import { SlotGrid } from '@/components/features/booking/SlotGrid';
 import { VenueLocationMapWrapper } from '@/components/features/venue/VenueLocationMapWrapper';
 import { VenueOpeningHours } from '@/components/features/venue/VenueOpeningHours';
 import { VenueJsonLd } from '@/components/features/venue/VenueJsonLd';
+import { VenueCompareButton } from '@/components/features/venue/VenueCompareButton';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -152,7 +153,7 @@ export function VenueDetailScreen() {
         slots,
         idempotencyKey: idempotencyKey.current,
       });
-      router.push(`/bookings/${result.booking.id}`);
+      router.push(`/checkout/${result.booking.id}`);
     } catch (err) {
       // Lần thử sau là một ý định mới (vd. slot vừa bị người khác giữ) nên cần khoá mới.
       idempotencyKey.current = null;
@@ -224,7 +225,12 @@ export function VenueDetailScreen() {
           </section>
 
           <section className="space-y-3">
-            <h1 className="text-3xl font-bold text-neutral-900">{venue.name}</h1>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h1 className="text-3xl font-bold text-neutral-900">{venue.name}</h1>
+              <div className="flex items-center gap-2">
+                <VenueCompareButton venue={venue} variant="button" showText />
+              </div>
+            </div>
             <p className="flex items-start gap-1.5 text-neutral-600">
               <MapPin className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
               <span>

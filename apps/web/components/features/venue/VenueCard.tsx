@@ -5,6 +5,7 @@ import { ImageOff, MapPin, Star } from 'lucide-react';
 
 import type { VenueListItem } from '@bsc/shared';
 
+import { VenueCompareButton } from '@/components/features/venue/VenueCompareButton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils/cn';
 import { formatCurrency, formatNumber } from '@/lib/utils/format';
@@ -34,22 +35,39 @@ export interface VenueCardProps {
    * Component; nút phải nằm ngoài `<Link>` nên không thể lồng trong phần dưới.
    */
   action?: React.ReactNode;
+  /**
+   * Hiển thị nút so sánh cơ sở. Mặc định tự bật ở trang khách/công khai.
+   */
+  showCompare?: boolean;
   className?: string;
 }
 
-export function VenueCard({ venue, showStatus = false, href, action, className }: VenueCardProps) {
+export function VenueCard({
+  venue,
+  showStatus = false,
+  href,
+  action,
+  showCompare = true,
+  className,
+}: VenueCardProps) {
   const location = venue.district?.name ?? venue.province?.name ?? venue.address;
   const detailHref = href ?? `/venues/${venue.slug}`;
+  const displayCompare = showCompare && !showStatus;
 
   return (
     <article
       className={cn(
         'group relative overflow-hidden rounded-card border border-neutral-200 bg-white',
-        'transition-shadow duration-150 hover:shadow-md',
+        'transition-shadow duration-150 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900',
         className,
       )}
     >
-      {action && <div className="absolute left-2 top-2 z-10">{action}</div>}
+      {(action || displayCompare) && (
+        <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
+          {action}
+          {displayCompare && <VenueCompareButton venue={venue} />}
+        </div>
+      )}
       <Link href={detailHref} className="block focus-visible:outline-none">
         <div className="relative aspect-video bg-neutral-100">
           {venue.coverUrl ? (
