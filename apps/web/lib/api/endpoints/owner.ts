@@ -236,6 +236,16 @@ export function createManualBooking(input: {
   return apiFetch<BookingDetail>('/owner/bookings/manual', { method: 'POST', ...jsonBody(input) });
 }
 
+/**
+ * Đánh dấu khách không đến nhận sân (OWN-09).
+ * Chuyển trạng thái đơn từ `confirmed` sang `no_show`.
+ */
+export function markBookingNoShow(bookingId: string) {
+  return apiFetch<Booking>(`/owner/bookings/${encodeURIComponent(bookingId)}/no-show`, {
+    method: 'POST',
+  });
+}
+
 // ── Doanh thu & đánh giá ───────────────────────────────────────────────────
 
 export interface OwnerReview extends Review {

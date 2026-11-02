@@ -1027,6 +1027,51 @@ export const ownerHandlers = [
     return ok(booking, 201);
   }),
 
+  /** Đánh dấu khách không đến (OWN-09 No-Show). */
+  http.post('/api/v1/owner/bookings/:id/no-show', async ({ params }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+
+    const record = db.bookings.find((b) => b.booking.id === params.id);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+
+    const venueId = venueIdForCourt(record.booking.courtId);
+    if (!ownedVenues().some((v) => v.id === venueId)) {
+      return err(403, 'FORBIDDEN', 'Bạn không có quyền quản lý đơn đặt sân này');
+    }
+
+    if (record.booking.status !== 'confirmed') {
+      return err(422, 'INVALID_STATUS', 'Chỉ có thể đánh dấu vắng mặt cho đơn đã xác nhận');
+    }
+
+    const now = new Date();
+    const startTime = new Date(record.booking.during.start);
+    if (now <= startTime) {
+      return err(422, 'BOOKING_NOT_STARTED', 'Chưa đến giờ diễn ra trận đấu, không thể đánh dấu vắng mặt');
+    }
+
+    record.booking.status = 'no_show';
+    persist();
+
+    if (record.booking.customerId) {
+      const timeStr = `${String(startTime.getHours()).padStart(2, '0')}:${String(startTime.getMinutes()).padStart(2, '0')}`;
+      createMockNotification(record.booking.customerId, {
+        type: 'booking_cancelled',
+        title: 'Đơn đặt sân ghi nhận vắng mặt',
+        body: `Bạn đã không đến nhận sân vào lúc ${timeStr}.`,
+        payload: { bookingId: record.booking.id, reason: 'no_show' },
+      });
+      publish({
+        type: 'booking_cancelled',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id, reason: 'no_show' },
+      });
+    }
+
+    return ok(record.booking);
+  }),
+
   // ── Báo cáo doanh thu ────────────────────────────────────────────────────
   http.get('/api/v1/owner/reports/revenue', async ({ request }) => {
     await simulateLatency(400);

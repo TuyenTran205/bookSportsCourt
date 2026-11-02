@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -139,9 +140,20 @@ export function Header() {
                   className="flex items-center gap-2 rounded-btn border border-neutral-200 p-1.5 pl-2 text-left text-sm transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   aria-label={tNav('profile')}
                 >
-                  <div className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-                    {user.fullName.slice(0, 1).toUpperCase()}
-                  </div>
+                  {user.avatarUrl ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      width={32}
+                      height={32}
+                      unoptimized
+                      className="size-8 rounded-full object-cover border border-neutral-200"
+                    />
+                  ) : (
+                    <div className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                      {user.fullName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
                   <div className="flex flex-col pr-1">
                     <span className="max-w-[120px] truncate text-xs font-medium text-neutral-900">
                       {user.fullName}
@@ -283,9 +295,20 @@ export function Header() {
             {isAuthenticated && user ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
-                    {user.fullName.slice(0, 1).toUpperCase()}
-                  </div>
+                  {user.avatarUrl ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      width={36}
+                      height={36}
+                      unoptimized
+                      className="size-9 rounded-full object-cover border border-neutral-200"
+                    />
+                  ) : (
+                    <div className="flex size-9 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                      {user.fullName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold text-neutral-900">{user.fullName}</span>
                     <span className="text-xs text-neutral-500">{user.email}</span>

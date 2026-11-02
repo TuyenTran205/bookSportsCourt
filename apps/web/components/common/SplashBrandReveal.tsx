@@ -281,7 +281,7 @@ export function SplashBrandReveal({
                     </span>
                 </div>
                 <span className="text-[11px] sm:text-xs text-neutral-400 font-normal">
-                    Phiên bản 2.2.0 • Pioneering In Technology
+                    Phiên bản 2.2.0 • Web & Mobile Synchronized
                 </span>
 
                 {/* Thanh chỉ báo nạp mảnh khi app chưa hoàn tất chuẩn bị ngầm */}

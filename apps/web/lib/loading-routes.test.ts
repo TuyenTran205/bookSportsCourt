@@ -89,7 +89,6 @@ describe('Route coverage – mọi màn hình đều có loading.tsx', () => {
         '(customer)/favorites/loading.tsx',
         '(customer)/profile/loading.tsx',
         '(owner)/loading.tsx',
-        '(owner)/dashboard/loading.tsx',
         '(owner)/owner/loading.tsx',
         '(admin)/loading.tsx',
         '(admin)/admin/loading.tsx',

@@ -16,6 +16,13 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // 0. Chuẩn hoá đường dẫn dashboard cũ về route chính thức /owner/dashboard
+  if (pathname === '/dashboard') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/owner/dashboard';
+    return NextResponse.redirect(url, 308);
+  }
+
   const session = request.cookies.get('bsc_session')?.value;
   const role = request.cookies.get('bsc_role')?.value;
 
