@@ -2,12 +2,47 @@
 
 import * as React from 'react';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils/cn';
+
+/**
+ * Hook an toàn đọc translation cho DataTable, fallback chuỗi mặc định
+ * nếu component được render ngoài NextIntlClientProvider (ví dụ trong unit test).
+ */
+function useSafeTableTranslations() {
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useTranslations('table');
+  } catch {
+    return (key: string, values?: Record<string, unknown>) => {
+      switch (key) {
+        case 'noData':
+          return 'Không có dữ liệu';
+        case 'selectAll':
+          return 'Chọn tất cả dòng';
+        case 'selectRow':
+          return 'Chọn dòng';
+        case 'loadingData':
+          return 'Đang tải dữ liệu';
+        case 'pagination':
+          return 'Phân trang';
+        case 'previousPage':
+          return 'Trang trước';
+        case 'nextPage':
+          return 'Trang sau';
+        case 'pageIndicator':
+          return `Trang ${values?.page}/${values?.totalPages}`;
+        default:
+          return key;
+      }
+    };
+  }
+}
 
 /**
  * DataTable – docs/07-design-system.md mục 9.
@@ -76,7 +111,7 @@ export function DataTable<T>({
   getRowId,
   loading = false,
   isFetching = false,
-  emptyTitle = 'Không có dữ liệu',
+  emptyTitle,
   emptyDescription,
   emptyAction,
   sort,
@@ -90,6 +125,9 @@ export function DataTable<T>({
   skeletonRows = 5,
   className,
 }: DataTableProps<T>) {
+  const t = useSafeTableTranslations();
+  const resolvedEmptyTitle = emptyTitle ?? t('noData');
+
   const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(getRowId(r)));
   const someSelected = rows.some((r) => selectedSet.has(getRowId(r))) && !allSelected;
@@ -147,7 +185,7 @@ export function DataTable<T>({
                       if (el) el.indeterminate = someSelected;
                     }}
                     onChange={toggleAll}
-                    aria-label="Chọn tất cả dòng"
+                    aria-label={t('selectAll')}
                   />
                 </th>
               )}
@@ -211,7 +249,7 @@ export function DataTable<T>({
                 <td colSpan={colSpan} className="p-0">
                   <EmptyState
                     icon={Inbox}
-                    title={emptyTitle}
+                    title={resolvedEmptyTitle}
                     description={emptyDescription}
                     action={emptyAction}
                     className="rounded-none border-0"
@@ -240,7 +278,7 @@ export function DataTable<T>({
                           className="size-4 rounded border-neutral-300 accent-primary-700"
                           checked={isSelected}
                           onChange={() => toggleOne(id)}
-                          aria-label="Chọn dòng"
+                          aria-label={t('selectRow')}
                         />
                       </td>
                     )}
@@ -272,7 +310,7 @@ export function DataTable<T>({
       {pagination && (
         <div className="flex items-center justify-center gap-2 sm:justify-end">
           {isFetching && !loading && (
-            <Spinner size="xs" variant="neutral" label="Đang tải dữ liệu" />
+            <Spinner size="xs" variant="neutral" label={t('loadingData')} />
           )}
           {pagination}
         </div>
@@ -297,31 +335,32 @@ export function DataTablePagination({
   onPageChange: (page: number) => void;
   disabled?: boolean;
 }) {
+  const t = useSafeTableTranslations();
   if (totalPages <= 1) return null;
 
   return (
-    <nav className="flex items-center gap-2" aria-label="Phân trang">
+    <nav className="flex items-center gap-2" aria-label={t('pagination')}>
       <Button
         variant="outline"
         size="sm"
         disabled={disabled || page <= 1}
         onClick={() => onPageChange(page - 1)}
-        aria-label="Trang trước"
+        aria-label={t('previousPage')}
       >
         <ChevronLeft aria-hidden="true" />
-        <span className="hidden sm:inline">Trang trước</span>
+        <span className="hidden sm:inline">{t('previousPage')}</span>
       </Button>
       <span className="text-sm text-neutral-600" aria-live="polite">
-        Trang {page}/{totalPages}
+        {t('pageIndicator', { page, totalPages })}
       </span>
       <Button
         variant="outline"
         size="sm"
         disabled={disabled || page >= totalPages}
         onClick={() => onPageChange(page + 1)}
-        aria-label="Trang sau"
+        aria-label={t('nextPage')}
       >
-        <span className="hidden sm:inline">Trang sau</span>
+        <span className="hidden sm:inline">{t('nextPage')}</span>
         <ChevronRight aria-hidden="true" />
       </Button>
     </nav>

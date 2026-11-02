@@ -1018,5 +1018,45 @@
     "loadError": "Lỗi khi tải bản đồ",
     "retryAction": "Thử lại",
     "allProvidersFailed": "Không thể tải bản đồ từ các nguồn khả dụng."
+  },
+  "footer": {
+    "brandDescription": "Nền tảng đặt sân thể thao trực tuyến hàng đầu Việt Nam. Kết nối người chơi với hơn 500+ cơ sở thể thao toàn quốc. Cập nhật lịch trống thời gian thực, giữ chỗ 10 phút.",
+    "location": "Hà Nội, Việt Nam",
+    "hotline": "Hotline: 1900 xxxx (08:00 – 22:00)",
+    "support": "Hỗ trợ: support@booksportscourt.vn",
+    "customerHeading": "Người chơi",
+    "findVenues": "Tìm sân thể thao",
+    "myBookings": "Lịch đặt của tôi",
+    "favorites": "Sân yêu thích",
+    "bookingGuide": "Hướng dẫn đặt sân",
+    "ownerHeading": "Dành cho chủ sân",
+    "ownerTimeline": "Kênh quản lý lịch sân",
+    "ownerApply": "Đăng ký mở cơ sở",
+    "paymentProcess": "Quy trình duyệt thanh toán",
+    "partnerPolicy": "Chính sách phí đối tác (0đ)",
+    "policyHeading": "Quy định & Chính sách",
+    "terms": "Điều khoản dịch vụ",
+    "privacy": "Chính sách bảo mật",
+    "cancellationPolicy": "Chính sách huỷ & hoàn cọc",
+    "operatingRegulations": "Quy chế hoạt động",
+    "copyright": "© 2026 BookSportsCourt. Mọi quyền được bảo lưu.",
+    "currencyInfo": "Tiền tệ: VND (₫)",
+    "timezoneInfo": "Múi giờ: Asia/Ho_Chi_Minh (GMT+7)"
+  },
+  "table": {
+    "noData": "Không có dữ liệu",
+    "selectAll": "Chọn tất cả dòng",
+    "selectRow": "Chọn dòng",
+    "loadingData": "Đang tải dữ liệu",
+    "pagination": "Phân trang",
+    "previousPage": "Trang trước",
+    "nextPage": "Trang sau",
+    "pageIndicator": "Trang {page}/{totalPages}"
+  },
+  "theme": {
+    "toggle": "Chuyển chế độ giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống"
   }
 }

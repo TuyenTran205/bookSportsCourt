@@ -38,6 +38,7 @@ import {
   listOwnerVenues,
 } from '@/lib/api/endpoints/owner';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useOwnerRealtime } from '@/lib/hooks/useOwnerRealtime';
 import { formatCurrency, formatTimeRange } from '@/lib/utils/format';
 
 type TimelineSlot = Pick<Slot, 'start' | 'end'> & { time: string; endTime: string };
@@ -146,6 +147,8 @@ export function OwnerTimeline() {
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = React.useState(vietnamToday);
   const [selectedVenueId, setSelectedVenueId] = React.useState('');
+
+  useOwnerRealtime({ venueId: selectedVenueId });
   const [selectedBooking, setSelectedBooking] = React.useState<OwnerTimelineBooking | null>(null);
   const [selectedBlackout, setSelectedBlackout] = React.useState<Blackout | null>(null);
   const [manualDialogOpen, setManualDialogOpen] = React.useState(false);

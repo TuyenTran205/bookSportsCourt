@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronsLeft, ChevronsRight, LogOut, Menu, Store, X } from 'lucide-react';
 
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { DASHBOARD_NAV, type DashboardArea } from '@/components/layout/dashboard-nav';
 import {
   DropdownMenu,
@@ -266,6 +267,7 @@ export function DashboardShell({
           <p className="truncate text-base font-semibold lg:hidden">{areaTitle}</p>
 
           <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

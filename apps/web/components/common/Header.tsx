@@ -21,6 +21,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -126,6 +127,7 @@ export function Header() {
 
         {/* User Account / Auth Actions (Desktop) */}
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           {isAuthenticated && <NotificationBell />}
           {isLoading ? (
             <div className="flex items-center gap-2">
@@ -242,7 +244,8 @@ export function Header() {
         </div>
 
         {/* Mobile Menu Button (touch target ≥ 44px theo WCAG AA & Quy tắc A7) */}
-        <div className="flex items-center md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
           {isAuthenticated && <NotificationBell />}
           <button
             type="button"

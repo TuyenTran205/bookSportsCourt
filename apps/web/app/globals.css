@@ -96,6 +96,40 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
 }
 
+.dark {
+  /* === SURFACES (Chế độ tối dịu mắt, độ tương phản cao chuẩn Linear) === */
+  --color-bg: #090d16;          /* Nền chính slate sâu */
+  --color-bg-card: #0f172a;     /* Nền card neutral-900 */
+  --color-bg-subtle: #1e293b;   /* Nền phụ neutral-800 */
+  --color-border: #334155;      /* Viền 1px neutral-700 */
+  --color-border-focus: #22c55e;/* Viền focus primary-500 */
+
+  /* === TEXT === */
+  --color-text-primary: #f8fafc;   /* neutral-50 */
+  --color-text-secondary: #94a3b8; /* neutral-400 */
+  --color-text-disabled: #64748b;  /* neutral-500 */
+  --color-text-inverse: #0f172a;   /* neutral-900 */
+
+  /* === SLOT STATUS (Tương phản AA trên nền tối) === */
+  --color-slot-available: #14532d;
+  --color-slot-available-text: #4ade80;
+  --color-slot-held: #713f12;
+  --color-slot-held-text: #fde047;
+  --color-slot-booked: #1e3a8a;
+  --color-slot-booked-text: #93c5fd;
+  --color-slot-my-hold: #4c1d95;
+  --color-slot-my-hold-text: #c4b5fd;
+  --color-slot-blocked: #334155;
+  --color-slot-blocked-text: #94a3b8;
+  --color-slot-past: #0f172a;
+  --color-slot-past-text: #475569;
+
+  /* === SHADOWS (Tăng độ đậm trên nền tối) === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
+
 @layer base {
   * {
     @apply border-border;

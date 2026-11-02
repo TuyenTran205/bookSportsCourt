@@ -36,6 +36,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { markBookingNoShow, type OwnerBookingItem } from '@/lib/api/endpoints/owner';
 import { ApiError } from '@/lib/api/errors';
 import { useOwnerBookings } from '@/lib/hooks/useOwnerBookings';
+import { useOwnerRealtime } from '@/lib/hooks/useOwnerRealtime';
 import {
   formatCurrency,
   formatDateTimeInVietnam,
@@ -133,6 +134,8 @@ function BookingDetails({
 export function OwnerBookingsScreen() {
   const t = useTranslations('owner');
   const queryClient = useQueryClient();
+
+  useOwnerRealtime();
 
   const [statusFilter, setStatusFilter] = React.useState<'all' | BookingStatus>('all');
   const [searchQuery, setSearchQuery] = React.useState('');

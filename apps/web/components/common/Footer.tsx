@@ -1,11 +1,17 @@
+'use client';
+
 import Link from 'next/link';
 import { Calendar, Mail, MapPin, Phone } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 /**
  * Footer – Chân trang chuẩn dùng chung toàn hệ thống (docs/07-design-system.md).
  * Trình bày thông tin doanh nghiệp, chính sách, hỗ trợ và thông tin tiền tệ/múi giờ.
  */
 export function Footer() {
+  const t = useTranslations('footer');
+  const tCommon = useTranslations('common');
+
   return (
     <footer className="border-t border-neutral-200 bg-neutral-50 text-neutral-600">
       <div className="container py-12 md:py-16">
@@ -19,91 +25,90 @@ export function Footer() {
               <div className="flex size-9 items-center justify-center rounded-lg bg-primary-700 text-white">
                 <Calendar className="size-5" />
               </div>
-              <span>BookSportsCourt</span>
+              <span>{tCommon('appName')}</span>
             </Link>
             <p className="max-w-sm text-sm text-neutral-500">
-              Nền tảng đặt sân thể thao trực tuyến hàng đầu Việt Nam. Kết nối người chơi với hơn 500+ cơ sở thể thao
-              toàn quốc. Cập nhật lịch trống thời gian thực, giữ chỗ 10 phút.
+              {t('brandDescription')}
             </p>
             <div className="flex flex-col gap-2 pt-2 text-xs text-neutral-500">
               <div className="flex items-center gap-2">
                 <MapPin className="size-3.5 text-neutral-400" />
-                <span>Hà Nội, Việt Nam</span>
+                <span>{t('location')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="size-3.5 text-neutral-400" />
-                <span>Hotline: 1900 xxxx (08:00 – 22:00)</span>
+                <span>{t('hotline')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="size-3.5 text-neutral-400" />
-                <span>Hỗ trợ: support@booksportscourt.vn</span>
+                <span>{t('support')}</span>
               </div>
             </div>
           </div>
 
           {/* Cột 3: Dành cho người chơi */}
           <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-neutral-900">Người chơi</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{t('customerHeading')}</h3>
             <ul className="flex flex-col gap-2 text-sm text-neutral-500">
               <li>
                 <Link href="/venues" className="transition-colors hover:text-primary-700">
-                  Tìm sân thể thao
+                  {t('findVenues')}
                 </Link>
               </li>
               <li>
                 <Link href="/bookings" className="transition-colors hover:text-primary-700">
-                  Lịch đặt của tôi
+                  {t('myBookings')}
                 </Link>
               </li>
               <li>
                 <Link href="/favorites" className="transition-colors hover:text-primary-700">
-                  Sân yêu thích
+                  {t('favorites')}
                 </Link>
               </li>
               <li>
-                <span className="text-neutral-400">Hướng dẫn đặt sân</span>
+                <span className="text-neutral-400">{t('bookingGuide')}</span>
               </li>
             </ul>
           </div>
 
           {/* Cột 4: Dành cho chủ sân */}
           <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-neutral-900">Dành cho chủ sân</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{t('ownerHeading')}</h3>
             <ul className="flex flex-col gap-2 text-sm text-neutral-500">
               <li>
                 <Link href="/owner/timeline" className="transition-colors hover:text-primary-700">
-                  Kênh quản lý lịch sân
+                  {t('ownerTimeline')}
                 </Link>
               </li>
               <li>
                 <Link href="/owner/apply" className="transition-colors hover:text-primary-700">
-                  Đăng ký mở cơ sở
+                  {t('ownerApply')}
                 </Link>
               </li>
               <li>
-                <span className="text-neutral-400">Quy trình duyệt thanh toán</span>
+                <span className="text-neutral-400">{t('paymentProcess')}</span>
               </li>
               <li>
-                <span className="text-neutral-400">Chính sách phí đối tác (0đ)</span>
+                <span className="text-neutral-400">{t('partnerPolicy')}</span>
               </li>
             </ul>
           </div>
 
           {/* Cột 5: Quy định & Chính sách */}
           <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-semibold text-neutral-900">Quy định & Chính sách</h3>
+            <h3 className="text-sm font-semibold text-neutral-900">{t('policyHeading')}</h3>
             <ul className="flex flex-col gap-2 text-sm text-neutral-500">
               <li>
-                <span className="text-neutral-400">Điều khoản dịch vụ</span>
+                <span className="text-neutral-400">{t('terms')}</span>
               </li>
               <li>
-                <span className="text-neutral-400">Chính sách bảo mật</span>
+                <span className="text-neutral-400">{t('privacy')}</span>
               </li>
               <li>
-                <span className="text-neutral-400">Chính sách huỷ & hoàn cọc</span>
+                <span className="text-neutral-400">{t('cancellationPolicy')}</span>
               </li>
               <li>
-                <span className="text-neutral-400">Quy chế hoạt động</span>
+                <span className="text-neutral-400">{t('operatingRegulations')}</span>
               </li>
             </ul>
           </div>
@@ -111,11 +116,11 @@ export function Footer() {
 
         {/* Dòng chân trang */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-neutral-200 pt-6 text-xs text-neutral-400 sm:flex-row">
-          <p>© 2026 BookSportsCourt. Mọi quyền được bảo lưu.</p>
+          <p>{t('copyright')}</p>
           <div className="flex items-center gap-4">
-            <span>Tiền tệ: VND (₫)</span>
+            <span>{t('currencyInfo')}</span>
             <span>•</span>
-            <span>Múi giờ: Asia/Ho_Chi_Minh (GMT+7)</span>
+            <span>{t('timezoneInfo')}</span>
           </div>
         </div>
       </div>

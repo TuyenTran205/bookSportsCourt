@@ -14,6 +14,7 @@ import { Pagination } from '@/components/common/Pagination';
 import { SlotGrid } from '@/components/features/booking/SlotGrid';
 import { VenueLocationMapWrapper } from '@/components/features/venue/VenueLocationMapWrapper';
 import { VenueOpeningHours } from '@/components/features/venue/VenueOpeningHours';
+import { VenueJsonLd } from '@/components/features/venue/VenueJsonLd';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -163,6 +164,7 @@ export function VenueDetailScreen() {
 
   return (
     <main className="container pb-32 pt-6 lg:pb-12">
+      <VenueJsonLd venue={venue} />
       <nav aria-label="breadcrumb" className="mb-4 text-sm text-neutral-600">
         <Link href="/venues" className="hover:text-primary-700 hover:underline">
           {t('allVenues')}
