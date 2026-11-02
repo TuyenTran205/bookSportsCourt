@@ -1,6 +1,6 @@
 # Lộ trình triển khai Backend BookSportsCourt
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-29
+> **Phiên bản:** 1.10.0 | **Cập nhật lần cuối:** 2026-11-01
 
 ## Checklist theo dõi tiến độ BE
 

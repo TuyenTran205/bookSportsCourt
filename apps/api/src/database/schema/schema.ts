@@ -198,6 +198,7 @@ export const venues = pgTable(
     lng: numeric({ precision: 10, scale: 7 }),
     status: text().notNull().default('pending'),
     coverUrl: text('cover_url'),
+    rejectionReason: text('rejection_reason'),
     ratingAvg: numeric('rating_avg', { precision: 2, scale: 1 })
       .notNull()
       .default('0'),

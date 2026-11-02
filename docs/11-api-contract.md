@@ -1,6 +1,6 @@
 ﻿# 11 – Hợp đồng API
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-10-31
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -48,7 +48,7 @@
 |------|------|-------|
 | 400 | `VALIDATION_ERROR` | Input không hợp lệ |
 | 400 | `INVALID_TIME_RANGE` | Block không phải bội số 30 phút |
-| 400 | `INVALID_STATUS_TRANSITION` | Chuyển trạng thái booking không hợp lệ |
+| 400 | `INVALID_STATUS_TRANSITION` | Chuyển trạng thái booking hoặc Venue không hợp lệ |
 | 400 | `UNSUPPORTED_FILE_TYPE` | Định dạng file upload không được hỗ trợ |
 | 401 | `UNAUTHORIZED` | Chưa đăng nhập |
 | 401 | `TOKEN_EXPIRED` | Access token hết hạn |
@@ -62,8 +62,8 @@
 | 409 | `BOOKING_CONFLICT` | Slot đã được giữ/đặt |
 | 409 | `EMAIL_ALREADY_EXISTS` | Email đã được đăng ký |
 | 409 | `CONFLICT_WITH_EXISTING_BOOKING` | Blackout trùng booking đã confirmed |
-| 409 | `ALREADY_EXISTS` | Trùng giá trị duy nhất (slug môn, tiện ích, khu vực, đánh giá của một booking, hồ sơ chủ sân đang chờ duyệt) |
-| 409 | `RESOURCE_IN_USE` | Không xoá được vì còn được tham chiếu (môn, tiện ích, khu vực đang dùng) |
+| 409 | `ALREADY_EXISTS` | Trùng giá trị duy nhất (ID/slug Venue, slug danh mục, đánh giá của một booking, hồ sơ chủ sân đang chờ duyệt) |
+| 409 | `RESOURCE_IN_USE` | Danh mục đang dùng hoặc Venue còn booking held/pending_payment/confirmed |
 | 413 | `FILE_TOO_LARGE` | File upload vượt dung lượng cho phép |
 | 422 | `HOLD_LIMIT_EXCEEDED` | Quá giới hạn hold đồng thời: mỗi khách tối đa **3** booking ở trạng thái `held` (hằng số `HOLD_LIMIT`, cấu hình qua env). Chi tiết quy tắc ở [06-security-and-permissions.md](06-security-and-permissions.md) |
 | 422 | `CANCELLATION_NOT_ALLOWED` | Booking không còn được huỷ theo chính sách huỷ |
@@ -126,7 +126,7 @@ GET    /api/v1/venues/:slug           Chi tiết venue (public, URL SEO — nh�
 POST   /api/v1/venues                 [Owner] Tạo venue
 PATCH  /api/v1/venues/:id             [Owner] Cập nhật venue (gồm sportIds, amenityIds)
 DELETE /api/v1/venues/:id             [Owner] Xoá venue
-PATCH  /api/v1/venues/:id/status      [Admin] Duyệt/từ chối venue (body: status, reason)
+PATCH  /api/v1/venues/:id/status      [Admin] Duyệt/từ chối/đình chỉ/đưa lại hàng đợi (body: status, reason?)
 GET    /api/v1/venues/:id/slots       Lấy trạng thái slots theo ngày
 POST   /api/v1/venues/:id/images      [Owner] Upload ảnh venue (multipart, xem mục Uploads)
 PATCH  /api/v1/venues/:id/images/order  [Owner] Sắp xếp lại ảnh (body: imageIds theo thứ tự)
@@ -165,6 +165,86 @@ PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính
 > - **`:slug`** – chỉ dùng ở `GET /venues/:slug`, URL SEO công khai (chấp nhận cả slug lẫn UUID). Response trả kèm `id` để FE dùng UUID cho các lời gọi tiếp theo.
 >
 > Trước đây tài liệu trộn `:slug`, `:id` và `:venueId` cho cùng một tài nguyên venue.
+
+#### Quy tắc Venue đã chốt — BSC-014 (2026-10-30)
+
+Đây là hợp đồng cho bảy endpoint đã có handler và kiểm thử HTTP/PostgreSQL ngày 2026-10-31. OpenAPI riêng: [bsc-014.openapi.json](openapi/bsc-014.openapi.json). Giải thích quyết định: [Bước 2](bsc-014-step-02-business-rules.md); POST: [Bước 5](bsc-014-step-05-create-venue.md); đọc: [Bước 6](bsc-014-step-06-read-venues.md); sửa/xoá: [Bước 7](bsc-014-step-07-update-and-delete.md); Admin status: [Bước 8](bsc-014-step-08-admin-moderation.md). Chưa xác nhận deploy/CI/PR.
+
+**Quyền và thứ tự kiểm tra**
+
+- Create/update/delete và owner list chỉ Owner; duyệt và admin list chỉ Admin. Admin không bypass route Owner.
+- Role lấy từ user đang hoạt động trong DB. Customer có hồ sơ Owner pending vẫn là Customer → 403 FORBIDDEN; không thêm cờ owner-approved. OWNER_NOT_APPROVED không phát sinh ở bảy route này.
+- Mutation kiểm tra theo thứ tự: auth/role → UUID và tài nguyên chưa xoá/ownership → body → nghiệp vụ; kiểm tra lại tài khoản/quyền trong transaction. Route public không xác thực để mở rộng phạm vi.
+- Venue đã xoá hoặc không tồn tại → 404 NOT_FOUND (kể cả DELETE lặp, Admin duyệt và PATCH). DELETE lặp bởi Owner khác cũng 404; Venue còn sống khác chủ → 403 NOT_VENUE_OWNER.
+
+**Input, output và pagination**
+
+- DTO aliases, query schema Owner/Admin, ZodValidationPipe và metadata Swagger trong `apps/api/src/modules/venues/dto` đã gắn vào controller/service thật ở Bước 5–7. Bước 4 có test contract riêng; các bước sau bổ sung HTTP/PostgreSQL thật.
+- Query page/limit nhận JSON number nguyên dương an toàn hoặc chuỗi chỉ chứa chữ số 0–9; không nhận chuỗi rỗng, khoảng trắng, số mũ, số thập phân, boolean, array/object (kể cả query lặp). page tối đa Number.MAX_SAFE_INTEGER; limit tối đa 100. Schema query strict, status chỉ có ở Admin. q sau trim rỗng giữ "" và repository hiểu là không lọc. Đây là quy tắc parse chung dùng khi viết DTO/Swagger/test.
+
+- POST: name trim 2–200, address trim 5–500, description tùy chọn tối đa 5000, provinceId/districtId UUID bắt buộc, lat/lng JSON number hữu hạn bắt buộc trong [-90,90]/[-180,180]; sportIds/amenityIds mặc định [].
+- PATCH: chỉ các trường POST, tất cả tùy chọn; object phải có ít nhất một field. Mảng không gửi giữ nguyên, [] xoá liên kết; loại ID trùng trước ghi. Field ngoài allowlist (ownerId/status/slug/cache/deletedAt/coverUrl...) → 400 VALIDATION_ERROR. Không nhận null cho field input; description="" bỏ nội dung.
+- Tỉnh/quận và danh mục phải tồn tại; quận thuộc tỉnh, đúng type; PATCH validate cặp cuối sau ghép dữ liệu. Toạ độ chuẩn hoá 7 chữ số thập phân trước so sánh/lưu; không ép null hoặc chuỗi rỗng thành 0.
+- POST trả 201; PATCH/update-status và các GET trả 200; DELETE đầu tiên thành công trả 204 không body.
+- Owner list: page/limit. Admin list: status/q/page/limit, status mặc định pending, q trim tối đa 200 ký tự tìm chuỗi con trong name không phân biệt hoa thường (không bỏ dấu), rỗng = không lọc. Không hỗ trợ status=all. Hai danh sách chỉ lấy deleted_at IS NULL; page mặc định 1, limit 20, tối đa 100; số nguyên dương; query lạ/sai → 400. Sort created_at DESC, id DESC.
+- Response danh sách { data: [], meta: { page, limit, total, totalPages } }; totalPages=ceil(total/limit), total=0 thì totalPages=0. Trang vượt cuối trả [] nhưng giữ total/totalPages thực tế.
+
+**Lý do từ chối**
+
+- Body status chỉ nhận { status, reason? }. status thuộc approved/rejected/suspended/pending; phép chuyển phụ thuộc bảng bên dưới.
+- reason bắt buộc chỉ khi đích rejected: trim, 1–500 ký tự; status khác không được gửi reason (kể cả null).
+- Lưu venues.rejection_reason nullable, response riêng trả rejectionReason. Khi rời rejected qua gửi lại → pending, xoá reason. Approve cũng đặt null. Từ chối lặp chỉ 200 khi reason đã chuẩn hoá trùng reason đang lưu; reason khác → 400 INVALID_STATUS_TRANSITION.
+- Dữ liệu rejected cũ chưa có lý do giữ null, không bịa lý do bằng migration. Khi Admin gửi rejected có reason cho hàng legacy rejected/null, cho phép bổ sung reason một lần và updatedAt thay đổi.
+- Cột chỉ lưu lý do hiện tại, không phải lịch sử kiểm duyệt. Public tuyệt đối không trả rejectionReason.
+- Audit BSC-014: thay đổi thực tế của Admin status (kể cả bổ sung legacy reason) ghi một `venue.status_changed` vào audit_logs cùng transaction. oldData/newData chỉ có status/hasRejectionReason; không lưu nội dung reason hoặc token/PII. No-op/thất bại không tạo log; lỗi audit rollback cả mutation. Middleware audit chung, API xem và retention thuộc phạm vi sau; xem AC-13/Bước 8.
+
+**Máy trạng thái và gọi lại**
+
+| Người gọi / thao tác | Trạng thái trước | Trạng thái sau | Kết quả |
+|---|---|---|---|
+| Owner tạo | Chưa có | pending | 201 |
+| Admin status=approved | pending | approved | 200, reason=null |
+| Admin status=rejected | pending | rejected | 200, lưu reason |
+| Admin status=suspended | approved | suspended | 200, ngừng nhận đặt mới |
+| Admin status=pending | suspended | pending | 200, đưa lại hàng đợi; cần duyệt lại mới công khai |
+| Admin gửi đúng trạng thái hiện tại | approved/rejected/suspended/pending | Không đổi | 200 no-op; riêng rejected theo quy tắc reason phía trên |
+| Owner PATCH có thay đổi thực tế | rejected/approved | pending | 200, reason=null |
+| Owner PATCH có thay đổi thực tế | pending | pending | 200 |
+| Owner PATCH có thay đổi thực tế | suspended | suspended | 200; Owner không tự gỡ đình chỉ |
+| Owner PATCH không thay đổi thực tế | Bất kỳ trạng thái còn sống | Giữ nguyên | 200, không đổi updatedAt/reason |
+| Mọi chuyển tiếp Admin khác | Bất kỳ | Không đổi | 400 INVALID_STATUS_TRANSITION |
+
+- Owner gửi lại hồ sơ rejected bằng PATCH sửa ít nhất một giá trị thực tế, không nhận status trong PATCH và không có endpoint resubmit riêng.
+- Mọi thay đổi thực tế ở name, description, address, provinceId, districtId, lat, lng, tập sportIds/amenityIds trên approved đều về pending. So sánh sau trim/chuẩn hoá toạ độ; so sánh mảng như tập hợp đã loại trùng (đổi thứ tự không tính thay đổi). PATCH description="" lưu chuỗi rỗng; null legacy khác chuỗi rỗng.
+- Thay đổi do hệ thống ở ratingAvg/reviewCount/fromPrice không làm duyệt lại. Ảnh ngoài BSC-014: khi triển khai ghi ảnh phải áp dụng cùng nguyên tắc duyệt lại nếu nội dung ảnh thực sự thay đổi; không cho bypass kiểm duyệt qua coverUrl.
+- Venue pending/rejected/suspended không công khai và không nhận hold/manual booking mới. Booking/payment có sẵn tiếp tục vòng đời bình thường; không tự huỷ, đổi giá hoặc hoàn tiền khi cơ sở bị sửa/đình chỉ. Đây là yêu cầu tích hợp Phase 2/3, chưa phải code đã có.
+
+**Slug**
+
+- Sinh một lần: base + "-" + toàn bộ UUID v7 của Venue dạng lowercase, giữ dấu gạch UUID. Base: trim, lowercase, NFD, bỏ combining marks, đổi đ→d, thay mỗi nhóm ký tự ngoài a-z0-9 bằng "-", bỏ "-" ở hai đầu, lấy tối đa 80 ký tự và bỏ "-" cuối; rỗng dùng "venue".
+- Hai Venue cùng tên có UUID khác nên slug khác. Đổi tên không đổi slug; client không gửi slug. UUID public lookup ưu tiên khi path là UUID hợp lệ; nếu không thì tra exact slug.
+- UNIQUE DB vẫn bảo vệ cuối cùng; vi phạm unique slug/ID trả 409 ALREADY_EXISTS, rollback toàn bộ; không dùng SELECT-trước-INSERT để chứng minh không trùng, không retry vô hạn.
+- Slug của Venue đã xoá không tái sử dụng.
+
+**Xoá mềm và cạnh tranh**
+
+- Đúng Owner có thể xoá ở mọi trạng thái nếu không còn booking thuộc các Court của Venue ở held/pending_payment/confirmed, kể cả Court đã xoá mềm hoặc hold đã quá giờ nhưng cron chưa đổi trạng thái. Không tự expire booking trong DELETE.
+- Có bất kỳ booking ở ba trạng thái đó → 409 RESOURCE_IN_USE. Không phụ thuộc start/end; booking đã hết giờ nhưng còn confirmed vẫn chặn cho tới khi vòng đời hoàn tất.
+- Court active mà không còn booking chặn thì không cản xoá. Chỉ đặt venues.deleted_at/updated_at; giữ Court, liên kết, booking/payment và status/reason hiện tại, không cascade, không restore API.
+- API public/ghi mới dưới Venue phải kiểm tra cha chưa xoá. Lịch sử booking của Customer/Owner và xử lý payment vẫn truy cập theo quyền booking qua JOIN không loại bỏ lịch sử chỉ vì Venue bị xoá.
+- Transaction ghi Venue: khoá user để kiểm tra quyền, khoá Venue FOR UPDATE trước khi dùng assertOwnership(..., tx), rồi kiểm tra trạng thái/booking và ghi. Không nâng từ FOR SHARE của OwnershipService lên FOR UPDATE sau khi nhiều request cùng giữ SHARE (tránh deadlock nâng khoá).
+- Luồng tạo hold/manual booking tương lai phải khoá user rồi Venue FOR SHARE, kiểm tra approved/chưa xoá trước khi ghi booking; luồng xoá/duyệt dùng FOR UPDATE trên cùng hàng. Như vậy nếu booking commit trước DELETE sẽ thấy và chặn; DELETE commit trước thì booking bị từ chối. EXCLUDE chống trùng lịch vẫn giữ nguyên.
+- Hai Admin approve/reject cạnh tranh: khoá Venue tuần tự; request sau đọc trạng thái mới, kết quả theo bảng (khác đích bị 400, cùng đích hợp lệ 200 no-op). Mọi lỗi phải rollback, không emit trước commit.
+
+**Projection và nullability**
+
+- Public list/detail/map chỉ approved chưa xoá. Không có quyền đặc biệt cho Owner/Admin trên route public.
+- VenueListItem: id, name, slug, address, province, district, lat, lng, status, coverUrl, ratingAvg, reviewCount, fromPrice, sports.
+- VenueDetail thêm ownerId (ID công khai theo shared hiện tại, không hồ sơ user), description, provinceId, districtId, images, amenities, courts, cancellationPolicy. Không trả rejectionReason/createdAt/updatedAt/deletedAt, email, điện thoại chủ sân, tài khoản ngân hàng. Courts chỉ chưa xoá; images sắp sortOrder rồi id; mảng rỗng hợp lệ.
+- OwnerVenueResponse và AdminVenueResponse có cùng allowlist: id, ownerId, slug, name, description, address, provinceId, districtId, lat, lng, sportIds, amenityIds, status, rejectionReason, createdAt, updatedAt. Admin list trả đầy đủ trường này để duyệt pending; không gọi public detail để xem pending.
+- description/rejectionReason/lat/lng/coverUrl/fromPrice nullable theo schema DB; provinceId/districtId trong detail là UUID không null. ratingAvg/reviewCount luôn number, mặc định 0. Phản hồi numeric DB dưới dạng number, giữ null trước khi Number(...).
+- VenueMapPoint bỏ Venue thiếu lat hoặc lng (không đặt ghim 0,0); lat/lng của point không null, fromPrice vẫn nullable. Đây là yêu cầu BSC-017/map.
+- Request không nhận null cho toạ độ nhưng response có thể null cho dữ liệu legacy; không backfill dữ liệu giả.
 
 ### Courts
 ```

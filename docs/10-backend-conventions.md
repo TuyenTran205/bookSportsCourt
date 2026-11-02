@@ -1,6 +1,6 @@
 ﻿# 10 – Quy ước Backend
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
 
 ## Cấu trúc module NestJS
 
@@ -186,5 +186,6 @@ const AppConfigSchema = z.object({
 
 - Thêm `@ApiTags()`, `@ApiOperation()`, `@ApiResponse()` đầy đủ vào mọi endpoint.
 - Dùng `@ApiProperty()` trên mọi DTO field.
+- Với DTO type alias suy ra từ Zod (Venue), type bị xoá ở runtime: dùng `@ApiBody({ schema })`, `@ApiQuery({ schema })`, `@ApiResponse({ schema })` tường minh thay `@ApiProperty`. Schema Swagger chỉ là metadata; validation luôn dùng shared Zod qua `ZodValidationPipe`. Test phải đối chiếu metadata với OpenAPI thiết kế để tránh lệch, không viết thêm class-validator rule trùng Zod.
 - Swagger UI tại `/api/docs` (chỉ bật ở dev/staging).
 - **Quy tắc:** Cập nhật OpenAPI TRƯỚC khi chia việc FE/BE.

@@ -1,6 +1,6 @@
 # 02 – Tính năng theo vai trò
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
 
@@ -68,7 +68,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | Mã | Tính năng | Ưu tiên | Tiêu chí chấp nhận |
 |----|-----------|---------|---------------------|
 | ADM-01 | Duyệt / Từ chối Owner đăng ký | P0 | Xem hồ sơ, approve/reject với ghi chú; Owner nhận email thông báo |
-| ADM-02 | Duyệt / Từ chối Venue | P0 | Xem thông tin venue, approve/reject; Venue chỉ hiển thị cho khách sau khi được duyệt |
+| ADM-02 | Kiểm duyệt Venue | P0 | Xem thông tin, approve/reject; đình chỉ approved và đưa suspended về pending để duyệt lại theo docs/11. Venue chỉ hiển thị khi approved và chưa xoá; không tự huỷ booking cũ |
 | ADM-03 | Khoá / Mở khoá tài khoản | P0 | Khoá tài khoản Customer hoặc Owner; tài khoản bị khoá không thể đăng nhập |
 | ADM-04 | Quản lý danh mục môn thể thao | P0 | CRUD sport: tên, icon, slug |
 | ADM-05 | Quản lý danh mục tiện ích (Amenity) | P0 | CRUD amenity: tên, icon |
