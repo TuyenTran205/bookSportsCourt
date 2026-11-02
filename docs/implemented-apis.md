@@ -1,10 +1,10 @@
 # Tổng hợp API đã triển khai
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-10-29
+> **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-11-01
 
 ## Phạm vi
 
-Hiện có **9 endpoint HTTP** trong controller được đăng ký qua AppModule: 7 Auth, 1 Users, 1 Health. Danh sách được đối chiếu mã nguồn; không phải xác nhận đã deploy hoặc kết quả chạy test mới.
+Hiện có **16 endpoint HTTP** trong controller được đăng ký qua AppModule: 7 Auth, 1 Users, 1 Health, 7 Venues. Đủ bảy Venue API, gồm Admin status; đã có kiểm thử HTTP/PostgreSQL. Không phải xác nhận deploy/CI/PR.
 
 - Base URL local mặc định: `http://localhost:3001/api/v1` (port theo cấu hình).
 - Body JSON; tên trường camelCase. Xác thực bằng cookie httpOnly, không bằng Bearer header.
@@ -14,7 +14,7 @@ Hiện có **9 endpoint HTTP** trong controller được đăng ký qua AppModul
 
 ## Danh sách đầy đủ
 
-Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Các endpoint hiện tại không yêu cầu path parameter hay query parameter.
+Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sách Venue nhận query phân trang; public detail nhận slug/UUID.
 
 | Method | Endpoint | Xác thực / quyền | Input | Thành công |
 |---|---|---|---|---|
@@ -27,6 +27,15 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Các endpoin
 | POST | `/api/v1/auth/verify-email` | Token xác thực email | `token` | 204, cập nhật thời điểm xác thực email |
 | GET | `/api/v1/users/me` | Cookie `access_token`; tài khoản active, cả ba role | Không có | 200, hồ sơ hiện tại từ DB |
 | GET | `/api/v1/health` | Công khai | Không có | 200, trạng thái API và kết nối DB |
+| POST | `/api/v1/venues` | Cookie `access_token`; Owner active | `name`, `address`, `provinceId`, `districtId`, `lat`, `lng`, `description?`, `sportIds?`, `amenityIds?` | 201, OwnerVenueResponse với status pending |
+| GET | `/api/v1/owner/venues` | Cookie; Owner active | Query page/limit | 200, danh sách của mình và meta; có trạng thái/reason |
+| GET | `/api/v1/admin/venues` | Cookie; Admin active | Query status/q/page/limit, mặc định pending | 200, private projection đủ duyệt và meta |
+| GET | `/api/v1/venues/:slug` | Công khai | Exact slug hoặc UUID | 200 VenueDetail approved/chưa xoá; còn lại 404 |
+| PATCH | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ | UUID, body updateVenueSchema strict không rỗng | 200 OwnerVenueResponse; thay đổi approved/rejected về pending |
+| DELETE | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ | UUID | 204 không body; 409 nếu còn booking chặn, gọi lại 404 |
+| PATCH | `/api/v1/venues/:id/status` | Cookie; Admin active | UUID, status và reason chỉ khi rejected | 200 AdminVenueResponse; transition sai 400; audit thay đổi cùng transaction |
+
+POST Venue dùng strict allowlist; ownerId/status/slug do server quyết định. Kiểm tra địa lý và danh mục, tạo Venue cùng liên kết trong một transaction; lỗi 400 VALIDATION_ERROR, 401 UNAUTHORIZED/TOKEN_EXPIRED, 403 FORBIDDEN/ACCOUNT_SUSPENDED, 409 ALREADY_EXISTS. Giải thích: [Bước 5](bsc-014-step-05-create-venue.md), [Bước 6](bsc-014-step-06-read-venues.md), [Bước 7](bsc-014-step-07-update-and-delete.md), [Bước 8](bsc-014-step-08-admin-moderation.md). Public search/map chưa triển khai.
 
 ## Input và hành vi từng API
 
@@ -135,7 +144,7 @@ DB không sẵn sàng: HTTP 503 với code `DATABASE_UNAVAILABLE`.
 
 ## Phần chưa có endpoint thực tế
 
-Google OAuth, cập nhật hồ sơ/đổi mật khẩu khi đang đăng nhập, danh mục, Owner applications, Venue/Court, giá, slots, booking, thanh toán, upload, notifications, reviews, favorites, reports và Admin vẫn cần triển khai controller/module nghiệp vụ. Socket.IO cũng chưa có gateway nghiệp vụ trong AppModule.
+Google OAuth, cập nhật hồ sơ/đổi mật khẩu khi đang đăng nhập, danh mục, Owner applications, public search/map, Court, giá, slots, booking, thanh toán, upload, notifications, reviews, favorites, reports và các API Admin khác vẫn cần triển khai controller/module nghiệp vụ. Socket.IO cũng chưa có gateway nghiệp vụ trong AppModule.
 
 Guards và OwnershipService đã có là nền tảng phân quyền, không phải các endpoint độc lập. Các route kiểm thử trong `scripts/` không nằm trong danh sách API chạy thật.
 

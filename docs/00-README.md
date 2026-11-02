@@ -1,6 +1,6 @@
 ﻿# 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.3.3 | **Cập nhật lần cuối:** 2026-10-29 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.4.8 | **Cập nhật lần cuối:** 2026-11-01 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -28,6 +28,18 @@
 | `18-decision-log.md` | Nhật ký quyết định | Khi thêm dep/thay đổi lớn |
 | `implemented-apis.md` | Tổng hợp API thực tế đã triển khai | Khi tích hợp và tra cứu API hiện có |
 | `backend-roadmap.md` | Các giai đoạn BE và bước tiếp theo sau auth/phân quyền | Khi chọn issue và theo dõi phạm vi BE |
+| `bsc-014-implementation-plan.md` | Lộ trình từng bước cho Venue CRUD và Admin duyệt | Khi triển khai BSC-014 |
+| `bsc-014-progress.md` | Tiến độ BSC-014, bằng chứng kiểm tra và công việc còn lại | Khi theo dõi BSC-014 |
+| `bsc-014-step-01-scope-and-ac.md` | Đầu ra Bước 1: phạm vi, input/output, quyền/lỗi, AC và giải thích code | Khi chốt phạm vi BSC-014 |
+| `bsc-014-step-02-business-rules.md` | Kết quả Bước 2: quy tắc nghiệp vụ, giải thích code và tiến độ | Trước khi triển khai Venue service |
+| `bsc-014-step-03-schema-and-fixtures.md` | Kết quả Bước 3: fixture, kiểm chứng migration, cách chạy và giải thích code | Khi chuẩn bị test Venue |
+| `bsc-014-step-04-dto-and-response.md` | Kết quả Bước 4: query schema, DTO, pipe, Swagger và response | Khi triển khai controller Venue |
+| `openapi/bsc-014.openapi.json` | OpenAPI thiết kế bảy endpoint BSC-014 (chưa phải runtime) | Khi viết test/đối chiếu Swagger Venue |
+| `bsc-014-step-05-create-venue.md` | Module và POST Venue: giải thích controller/service/repository, transaction và test | Khi triển khai/kiểm tra Bước 5 |
+| `bsc-014-step-06-read-venues.md` | Ba API đọc: phân quyền, public projection, snapshot/phân trang và kiểm thử | Khi triển khai/kiểm tra Bước 6 |
+| `bsc-014-step-07-update-and-delete.md` | PATCH/DELETE: ownership trong transaction, duyệt lại/no-op, xoá mềm và booking chặn xoá | Khi triển khai/kiểm tra Bước 7 |
+| `bsc-014-step-08-admin-moderation.md` | Admin status: state machine, retry/legacy, audit nguyên tử và concurrency | Khi triển khai/kiểm tra Bước 8 |
+| `bsc-014-step-09-test-acceptance.md` | Ma trận nghiệm thu, test bổ sung, sửa precedence và kết quả chạy thật | Khi nghiệm thu Bước 9 |
 
 ## Nguyên tắc cập nhật tài liệu
 
@@ -52,6 +64,18 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-11-01 | Hoàn thành Bước 9 BSC-014: đối chiếu ma trận, 5 nhóm acceptance mới, sửa thứ tự resource/body ở moderation, script test:venues; 70/70 API/DB/unit + 7/7 shared đạt. Chốt AC-13 và API thực tế còn dang dở Bước 8 | API test/service/controller/package, Bước 1/8/9, kế hoạch/tiến độ, roadmap, API thực tế, `00` |
+| 2026-10-31 | Hoàn thành Bước 8 BSC-014: Admin status, state machine/retry/legacy reason, audit tối thiểu cùng transaction; 36/36 test đạt, đủ 7 endpoint local; còn rà soát Bước 9–10/PR | API moderation/audit/test, AC-13, kế hoạch/tiến độ/Bước 8, API thực tế, `11`, OpenAPI, roadmap, `00` |
+| 2026-10-31 | Hoàn thành Bước 7 BSC-014: PATCH/DELETE, ownership trong tx, khoá user→Venue, duyệt lại/no-op, soft delete kiểm tra booking; suite Venue/contract 29/29 đạt; còn Admin status | API/controller/service/repository/test, kế hoạch/tiến độ/Bước 7, API thực tế, `11`, OpenAPI, roadmap, `00` |
+| 2026-10-31 | Hoàn thành Bước 6 BSC-014: ba GET Owner/Admin/public, phân quyền, projection/null, count/page cùng snapshot; 18/18 test POST/đọc/contract đạt; còn ba mutation | API read controller/service/repository/Swagger/test, kế hoạch/tiến độ/Bước 6, API thực tế, `11`, OpenAPI, roadmap, `00` |
+| 2026-10-31 | Hoàn thành Bước 5 BSC-014: đăng ký POST Venue, Owner active, transaction/lock, địa lý/danh mục, UUID v7/slug, lỗi an toàn; 10/10 test tạo Venue đạt, gồm rollback và concurrency; còn sáu endpoint | API module/service/repository/controller/test, kế hoạch/tiến độ/Bước 5, `implemented-apis.md`, `11`, OpenAPI, roadmap, `00` |
+| 2026-10-30 | Hoàn thành Bước 4 BSC-014: query Owner/Admin, DTO alias, Zod pipe, Swagger metadata và envelope; bổ sung httpStatus vào type lỗi; 7 test shared + 2 test Nest contract đạt; chưa đăng ký Venue API | shared, API DTO/pipe/test, OpenAPI, `10`, `11`, kế hoạch/tiến độ/Bước 4, `backend-roadmap.md`, `00` |
+| 2026-10-30 | Hoàn thành Bước 3 BSC-014: fixture 5 user/8 Venue, payload lỗi, helper schema tạm, 4 test PostgreSQL mới/nâng cấp/constraint/cleanup; cập nhật tiến độ, không sửa migration cũ | scripts API, package API, `bsc-014-step-03-schema-and-fixtures.md`, kế hoạch/tiến độ BSC-014, `backend-roadmap.md`, `00` |
+| 2026-10-30 | Thêm bảng tiến độ riêng BSC-014: trạng thái từng bước, checklist Bước 3/API và bằng chứng kiểm thử hiện có | `bsc-014-progress.md`, `00` |
+| 2026-10-30 | Chốt Bước 2 BSC-014: quyền, reason, transition, duyệt lại, slug, soft delete và projection/nullability; ADR-022, migration 0007, shared schema/types/test, OpenAPI thiết kế; cập nhật tiến độ, chưa triển khai Venue API | `02`, `04`, `05`, `06`, `11`, `18`, tài liệu BSC-014, `backend-roadmap.md`, shared, DB |
+| 2026-10-30 | Tạo file riêng ghi kết quả Bước 1 BSC-014, phân phạm vi, đặc tả endpoint và giải thích code phân quyền | `bsc-014-step-01-scope-and-ac.md`, `00` |
+| 2026-10-30 | Bổ sung hướng dẫn Bước 1 BSC-014: phạm vi, input/output, quyền/lỗi, acceptance criteria và giải thích code minh hoạ | `bsc-014-implementation-plan.md`, `00` |
+| 2026-10-29 | Thêm kế hoạch BSC-014 theo từng bước, phạm vi endpoint, điểm cần chốt và checklist kiểm thử | `bsc-014-implementation-plan.md`, `00` |
 | 2026-10-29 | Thêm checklist tiến độ BE theo Phase; đánh dấu auth/refresh/phân quyền theo xác nhận, tách API contract chưa có issue riêng | `backend-roadmap.md`, `00` |
 | 2026-10-29 | Chuẩn hoá roadmap BE theo Phase/nhãn backlog gốc, làm rõ bước BSC-014 sau phân quyền và ghi nhận các điểm tài liệu chưa thống nhất | `backend-roadmap.md`, `00` |
 | 2026-10-29 | Tổng hợp 9 endpoint hiện có và lộ trình BE theo Phase, phụ thuộc, backlog và tiêu chí hoàn thành | `implemented-apis.md`, `backend-roadmap.md`, `00` |

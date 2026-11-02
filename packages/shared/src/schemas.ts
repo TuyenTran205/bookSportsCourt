@@ -233,16 +233,75 @@ export const replyReviewSchema = z.object({
 
 // ===== Owner: cơ sở, sân con, giá, khoá sân =====
 
-export const createVenueSchema = z.object({
-  name: z.string().min(2, 'Vui lòng nhập tên cơ sở').max(200).trim(),
+const venueEditableFields = {
+  name: z.string().trim().min(2, "Vui lòng nhập tên cơ sở").max(200),
   description: z.string().max(5000).optional(),
-  address: z.string().min(5, 'Vui lòng nhập địa chỉ').max(500).trim(),
+  address: z.string().trim().min(5, "Vui lòng nhập địa chỉ").max(500),
   provinceId: uuidSchema,
   districtId: uuidSchema,
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
-  amenityIds: z.array(uuidSchema).default([]),
-});
+  lat: z.number().finite().min(-90).max(90),
+  lng: z.number().finite().min(-180).max(180),
+  sportIds: z.array(uuidSchema),
+  amenityIds: z.array(uuidSchema),
+};
+
+export const createVenueSchema = z
+  .object({
+    ...venueEditableFields,
+    sportIds: venueEditableFields.sportIds.default([]),
+    amenityIds: venueEditableFields.amenityIds.default([]),
+  })
+  .strict();
+
+// PATCH must not inherit POST array defaults: omission means preserve links.
+export const updateVenueSchema = z
+  .object(venueEditableFields)
+  .partial()
+  .strict()
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    {
+      message: "Cần ít nhất một trường cập nhật",
+    },
+  );
+
+// This validates the payload only; state transitions belong in apps/api.
+export const venueStatusUpdateSchema = z
+  .object({
+    status: z.enum(VENUE_STATUSES),
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if ((value.status === "rejected") !== (value.reason !== undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["reason"],
+        message: "Chỉ trạng thái rejected yêu cầu lý do từ chối",
+      });
+    }
+  });
+
+export type UpdateVenueInput = z.infer<typeof updateVenueSchema>;
+export type VenueStatusUpdateInput = z.infer<typeof venueStatusUpdateSchema>;
+
+// HTTP query strings may be strings; reject arrays, blanks, booleans and exponents.
+const venueQueryInteger = z.union([
+  z.number().int().positive().safe(),
+  z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().positive().safe()),
+]);
+const venuePageFields = {
+  page: venueQueryInteger.default(1),
+  limit: venueQueryInteger.refine((value) => value <= 100, 'Tối đa 100 mục').default(20),
+};
+export const ownerVenueQuerySchema = z.object(venuePageFields).strict();
+export const adminVenueQuerySchema = z.object({
+  ...venuePageFields,
+  status: z.enum(VENUE_STATUSES).default('pending'),
+  q: z.string().trim().max(200).optional(),
+}).strict();
+export type OwnerVenueQueryInput = z.infer<typeof ownerVenueQuerySchema>;
+export type AdminVenueQueryInput = z.infer<typeof adminVenueQuerySchema>;
 
 export const createCourtSchema = z.object({
   name: z.string().min(1, 'Vui lòng nhập tên sân').max(100).trim(),

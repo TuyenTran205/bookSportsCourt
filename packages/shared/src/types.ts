@@ -31,7 +31,7 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
-/** Envelope thành công: mọi response 2xx đều bọc trong `data`. */
+/** Envelope thành công có body; HTTP 204 không có body. */
 export interface ApiSuccess<T> {
   data: T;
   meta?: PaginationMeta;
@@ -42,6 +42,7 @@ export interface ApiErrorBody {
   error: {
     code: string;
     message: string;
+    httpStatus: number;
     /** Lỗi theo từng trường, dùng để hiển thị dưới input trong form. */
     details?: Record<string, string[]> | undefined;
   };
@@ -173,13 +174,13 @@ export interface VenueListItem {
   address: string;
   province: Province | null;
   district: District | null;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   status: VenueStatus;
   coverUrl: string | null;
   ratingAvg: number;
   reviewCount: number;
-  fromPrice: number;
+  fromPrice: number | null;
   sports: Sport[];
 }
 
@@ -187,13 +188,36 @@ export interface VenueListItem {
 export interface VenueDetail extends VenueListItem {
   ownerId: string;
   description: string | null;
-  provinceId: string | null;
-  districtId: string | null;
+  provinceId: string;
+  districtId: string;
   images: VenueImage[];
   amenities: Amenity[];
   courts: Court[];
   cancellationPolicy: CancellationPolicy | null;
 }
+
+/** Private projection for owner mutations/list; never expose on public routes. */
+export interface OwnerVenueResponse {
+  id: string;
+  ownerId: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  address: string;
+  provinceId: string;
+  districtId: string;
+  lat: number | null;
+  lng: number | null;
+  sportIds: string[];
+  amenityIds: string[];
+  status: VenueStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Same fields, separately authorized by the Admin-only endpoint. */
+export type AdminVenueResponse = OwnerVenueResponse;
 
 /** Giờ mở cửa theo thứ trong tuần. `courtId = null` nghĩa là áp cho cả cơ sở. */
 export interface OpeningHour {
@@ -239,7 +263,7 @@ export interface VenueMapPoint {
   name: string;
   lat: number;
   lng: number;
-  fromPrice: number;
+  fromPrice: number | null;
   ratingAvg: number;
 }
 
