@@ -136,7 +136,7 @@ GET    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Chính sách huỷ 
 PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính sách huỷ và cọc
 ```
 
-`GET /venues` nhận query: `provinceId`, `districtId`, `sportId`, `amenityIds` (CSV), `maxPrice`, `q`, `page`, `limit`, `sort` (`rating|price|created_at`). `POST/PATCH /venues` nhận `provinceId` và `districtId` (400 nếu quận không thuộc tỉnh). `POST /venues` bắt buộc có `lat` và `lng` do Owner ghim trên bản đồ; `PATCH /venues/:id` nhận cặp tọa độ này khi cập nhật vị trí.
+`GET /venues` nhận query: `provinceId`, `provinceCode`, `wardId`, `wardCode`, `districtId` (legacy), `sportIds`, `amenityIds`, `minPrice`, `maxPrice`, `minRating`, `q`, `page`, `limit`, `sort` (`rating_desc|price_asc|price_desc|newest`). `POST/PATCH /venues` nhận `provinceId`, `wardId` (bắt buộc cho venue mới; 422 nếu xã không thuộc tỉnh) và `districtId` (nullable legacy). `POST /venues` bắt buộc có `lat` và `lng` do Owner ghim trên bản đồ; `PATCH /venues/:id` nhận cặp tọa độ này khi cập nhật vị trí.
 
 `GET /owner/venues/:id/cancellation-policy` trả `data: null` nếu venue chưa cấu hình chính sách; `PUT` nhận `{ cancelBeforeHours, refundPercent, depositPercent }`. `cancelBeforeHours` là số nguyên từ 0 đến 720; hai tỷ lệ là số nguyên từ 0 đến 100. Owner chỉ được đọc/cập nhật chính sách của venue mình; Admin có quyền trên mọi venue.
 
@@ -292,19 +292,23 @@ Chỉ tài khoản `customer` được gửi hồ sơ; request của Guest trả
 ```
 GET    /api/v1/sports                    Danh sách môn (public)
 GET    /api/v1/amenities                 Danh sách tiện ích (public)
-GET    /api/v1/areas                     Tỉnh/thành và quận/huyện (public)
+GET    /api/v1/areas                     Danh mục khu vực cây (public)
+GET    /api/v1/provinces                 Danh sách 34 Tỉnh/Thành phố trực thuộc TW (public)
+GET    /api/v1/provinces/:code/wards     Danh sách Xã/Phường theo mã hoặc id tỉnh (query: q)
+GET    /api/v1/wards/search              Tìm kiếm autocomplete xã/phường (query: q, provinceCode, limit)
+GET    /api/v1/provinces/:id/districts   [Legacy] Danh sách quận/huyện cũ của tỉnh
 POST   /api/v1/sports                    [Admin] Tạo môn
 PATCH  /api/v1/sports/:id                [Admin] Sửa môn
 DELETE /api/v1/sports/:id                [Admin] Xoá môn (409 RESOURCE_IN_USE nếu đang dùng)
 POST   /api/v1/amenities                 [Admin] Tạo tiện ích
 PATCH  /api/v1/amenities/:id             [Admin] Sửa tiện ích
 DELETE /api/v1/amenities/:id             [Admin] Xoá tiện ích
-POST   /api/v1/areas                     [Admin] Tạo khu vực
+POST   /api/v1/areas                     [Admin] Tạo khu vực (type: 'province' | 'ward' | 'district')
 PATCH  /api/v1/areas/:id                 [Admin] Sửa khu vực
 DELETE /api/v1/areas/:id                 [Admin] Xoá khu vực
 ```
 
-> **Schema:** bảng `areas` (tỉnh/quận hai cấp) đã có, `venues` dùng `province_id` và `district_id` (ADR-009). `GET /areas?type=province` hoặc `?parentId=` để lọc; `POST /areas` với `type=district` bắt buộc `parentId`.
+> **Schema & ĐVHC 2 cấp (ADR-022, ADR-023):** Hệ thống phân định 34 Tỉnh/Thành phố và 3.321 Xã/Phường/Đặc khu (mốc 03/11/2026). `venues` sử dụng `province_id` và `ward_id` (cột `district_id` giữ nullable cho legacy). `GET /areas?type=province` hoặc `?parentId=` để lọc; `POST /areas` với `type=ward` hoặc `type=district` bắt buộc `parentId`.
 
 ### Owner Reports
 ```

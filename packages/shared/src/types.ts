@@ -7,10 +7,12 @@
  */
 
 import type {
+  AllAreaType,
   AreaType,
   BookingSource,
   BookingStatus,
   CourtStatus,
+  LegacyAreaType,
   NotificationType,
   OwnerApplicationStatus,
   PaymentProvider,
@@ -19,6 +21,7 @@ import type {
   UserRole,
   UserStatus,
   VenueStatus,
+  WardType,
 } from './constants';
 
 // ===== Envelope chung =====
@@ -50,21 +53,50 @@ export interface ApiErrorBody {
 // ===== Danh mục =====
 
 export interface Province {
-  id: string;
-  name: string;
-  slug: string;
+  id: string;              // UUID
+  code?: string;           // '01'..'92' (chuỗi 2 chữ số bảo toàn số 0)
+  name: string;            // 'Thành phố Hà Nội'
+  slug: string;            // 'ha-noi'
+  unaccentName?: string;   // 'thanh pho ha noi'
+  isMunicipality?: boolean;// true cho 6 Thành phố trực thuộc TW
+  sortOrder?: number;
 }
 
+export interface Ward {
+  id: string;              // UUID
+  code: string;            // '00001'..'33210' (chuỗi 5 chữ số bảo toàn số 0)
+  name: string;            // 'Phường Phúc Xá', 'Xã Tân Triều', 'Đặc khu Vân Đồn'
+  slug: string;            // 'phuc-xa'
+  provinceCode: string;    // '01' (mã tỉnh trực thuộc)
+  provinceId?: string;     // UUID của tỉnh
+  provinceName?: string;   // Tên tỉnh (khi trả về từ search)
+  type: WardType;          // 'ward' | 'commune' | 'special_zone'
+  unaccentName?: string;   // 'phuong phuc xa'
+}
+
+/** @deprecated Sử dụng Ward theo mô hình ĐVHC 2 cấp mốc 03/11/2026 */
 export interface District extends Province {
   provinceId: string;
 }
 
+export type LegacyDistrict = District;
+
 export interface Area {
   id: string;
+  code?: string;
   name: string;
   slug: string;
-  type: AreaType;
+  type: AllAreaType;
   parentId: string | null;
+  unaccentName?: string;
+}
+
+export interface AdminUnitDataset {
+  version: string;
+  updatedAt: string;
+  provincesCount: number;
+  wardsCount: number;
+  source: string;
 }
 
 export interface Sport {
@@ -176,6 +208,7 @@ export interface VenueListItem {
   slug: string;
   address: string;
   province: Province | null;
+  ward?: Ward | null;
   district: District | null;
   lat: number;
   lng: number;
@@ -192,6 +225,7 @@ export interface VenueDetail extends VenueListItem {
   ownerId: string;
   description: string | null;
   provinceId: string | null;
+  wardId?: string | null;
   districtId: string | null;
   images: VenueImage[];
   amenities: Amenity[];

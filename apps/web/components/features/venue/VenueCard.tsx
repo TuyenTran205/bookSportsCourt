@@ -50,7 +50,9 @@ export function VenueCard({
   showCompare = true,
   className,
 }: VenueCardProps) {
-  const location = venue.district?.name ?? venue.province?.name ?? venue.address;
+  const location = venue.ward?.name
+    ? `${venue.ward.name}, ${venue.province?.name ?? ''}`.trim()
+    : (venue.district?.name ?? venue.province?.name ?? venue.address);
   const detailHref = href ?? `/venues/${venue.slug}`;
   const displayCompare = showCompare && !showStatus;
 

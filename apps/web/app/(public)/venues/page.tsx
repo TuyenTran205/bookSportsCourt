@@ -39,6 +39,9 @@ function parseFiltersFromSearchParams(sp: URLSearchParams): VenueFilterValues {
   return {
     q: sp.get('q')?.trim() || undefined,
     provinceId: sp.get('provinceId') || undefined,
+    provinceCode: sp.get('provinceCode') || undefined,
+    wardId: sp.get('wardId') || undefined,
+    wardCode: sp.get('wardCode') || undefined,
     districtId: sp.get('districtId') || undefined,
     sportIds: sportIds.length > 0 ? sportIds : undefined,
     amenityIds: amenityIds.length > 0 ? amenityIds : undefined,
@@ -83,6 +86,9 @@ export default function VenuesPage() {
 
       if (next.q) sp.set('q', next.q);
       if (next.provinceId) sp.set('provinceId', next.provinceId);
+      if (next.provinceCode) sp.set('provinceCode', next.provinceCode);
+      if (next.wardId) sp.set('wardId', next.wardId);
+      if (next.wardCode) sp.set('wardCode', next.wardCode);
       if (next.districtId) sp.set('districtId', next.districtId);
       if (next.sportIds && next.sportIds.length > 0) {
         next.sportIds.forEach((id) => sp.append('sportIds', id));
@@ -125,6 +131,9 @@ export default function VenuesPage() {
       'list',
       filterValues.q,
       filterValues.provinceId,
+      filterValues.provinceCode,
+      filterValues.wardId,
+      filterValues.wardCode,
       filterValues.districtId,
       filterValues.sportIds,
       filterValues.amenityIds,
@@ -137,6 +146,9 @@ export default function VenuesPage() {
       listVenues({
         q: filterValues.q,
         provinceId: filterValues.provinceId,
+        provinceCode: filterValues.provinceCode,
+        wardId: filterValues.wardId,
+        wardCode: filterValues.wardCode,
         districtId: filterValues.districtId,
         sportIds: filterValues.sportIds,
         amenityIds: filterValues.amenityIds,

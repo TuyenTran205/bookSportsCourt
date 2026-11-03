@@ -2,11 +2,12 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import type { Area, Sport, VenueDetail } from '@bsc/shared';
+import type { Area, Province, Sport, VenueDetail, Ward } from '@bsc/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { ImagePlus, MapPin, X } from 'lucide-react';
-import { listAreas, listSports } from '@/lib/api/endpoints/venues';
+import { listSports } from '@/lib/api/endpoints/venues';
+import { LocationSelector } from '@/components/common/LocationSelector';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,7 +19,6 @@ import {
 } from '@/components/ui/dialog';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -30,7 +30,10 @@ export interface VenueFormInput {
   name: string;
   address: string;
   provinceId: string;
-  districtId: string;
+  provinceCode?: string;
+  wardId?: string;
+  wardCode?: string;
+  districtId?: string;
   sportIds: string[];
   lat: number;
   lng: number;
@@ -54,12 +57,6 @@ export function VenueFormDialog({
   onSubmit,
 }: VenueFormDialogProps) {
   const t = useTranslations('owner');
-  const provincesQuery = useQuery({
-    queryKey: ['areas', 'province'],
-    queryFn: () => listAreas({ type: 'province' }),
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
-  });
   const sportsQuery = useQuery({
     queryKey: ['sports'],
     queryFn: listSports,
@@ -69,6 +66,9 @@ export function VenueFormDialog({
   const [name, setName] = React.useState('');
   const [address, setAddress] = React.useState('');
   const [provinceId, setProvinceId] = React.useState('');
+  const [provinceCode, setProvinceCode] = React.useState('');
+  const [wardId, setWardId] = React.useState('');
+  const [wardCode, setWardCode] = React.useState('');
   const [districtId, setDistrictId] = React.useState('');
   const [sportIds, setSportIds] = React.useState<string[]>([]);
   const [description, setDescription] = React.useState('');
@@ -84,6 +84,9 @@ export function VenueFormDialog({
     setName(venue?.name ?? '');
     setAddress(venue?.address ?? '');
     setProvinceId(venue?.provinceId ?? '');
+    setProvinceCode(venue?.province?.code ?? '');
+    setWardId(venue?.wardId ?? venue?.ward?.id ?? '');
+    setWardCode(venue?.ward?.code ?? '');
     setDistrictId(venue?.districtId ?? '');
     setSportIds(venue?.sports.map((sport) => sport.id) ?? []);
     setDescription(venue?.description ?? '');
@@ -105,24 +108,17 @@ export function VenueFormDialog({
     };
   }, [imagePreviewUrl]);
 
-  const districtsQuery = useQuery({
-    queryKey: ['areas', 'district', provinceId],
-    queryFn: () => listAreas({ parentId: provinceId }),
-    enabled: open && Boolean(provinceId),
-    staleTime: 5 * 60 * 1000,
-  });
-  const provinces = provincesQuery.data ?? [];
-  const districts = districtsQuery.data ?? [];
   const sports = sportsQuery.data ?? [];
-  const selectedProvince = provinces.find((province) => province.id === provinceId);
   const mapCenter = React.useMemo<MapCoordinates>(() => {
-    const name = selectedProvince?.name.toLocaleLowerCase('vi');
-    if (name?.includes('hà nội')) return [21.0285, 105.8542];
-    if (name?.includes('đà nẵng')) return [16.0471, 108.2068];
-    if (name?.includes('cần thơ')) return [10.0452, 105.7469];
-    if (name?.includes('bình dương')) return [11.3254, 106.477];
+    if (provinceCode === '01') return [21.0285, 105.8542];
+    if (provinceCode === '79') return [10.7769, 106.7008];
+    if (provinceCode === '48') return [16.0471, 108.2068];
+    if (provinceCode === '46') return [16.4637, 107.5909];
+    if (provinceCode === '31') return [20.8449, 106.6881];
+    if (provinceCode === '92') return [10.0452, 105.7469];
+    if (provinceCode === '74') return [11.3254, 106.477];
     return [10.7769, 106.7008];
-  }, [selectedProvince]);
+  }, [provinceCode]);
 
   const toggleSport = (sportId: string) => {
     setSportIds((current) =>
@@ -134,7 +130,7 @@ export function VenueFormDialog({
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (name.trim().length < 2 || address.trim().length < 5 || !provinceId || !districtId) {
+    if (name.trim().length < 2 || address.trim().length < 5 || !provinceId || (!wardId && !districtId)) {
       setValidationError(t('venueRequiredFields'));
       return;
     }
@@ -152,7 +148,10 @@ export function VenueFormDialog({
       name: name.trim(),
       address: address.trim(),
       provinceId,
-      districtId,
+      provinceCode: provinceCode || undefined,
+      wardId: wardId || undefined,
+      wardCode: wardCode || undefined,
+      districtId: districtId || undefined,
       sportIds,
       lat: location[0],
       lng: location[1],
@@ -177,7 +176,7 @@ export function VenueFormDialog({
     setImagePreviewUrl(URL.createObjectURL(file));
   };
 
-  const catalogError = provincesQuery.error ?? sportsQuery.error ?? districtsQuery.error;
+  const catalogError = sportsQuery.error;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,12 +189,10 @@ export function VenueFormDialog({
           <ErrorState
             error={catalogError}
             onRetry={() => {
-              void provincesQuery.refetch();
               void sportsQuery.refetch();
-              if (provinceId) void districtsQuery.refetch();
             }}
           />
-        ) : provincesQuery.isLoading || sportsQuery.isLoading ? (
+        ) : sportsQuery.isLoading ? (
           <div className="space-y-3" aria-label={t('venueCatalogLoading')}>
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
@@ -229,42 +226,26 @@ export function VenueFormDialog({
               />
             </label>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="block space-y-1.5 text-xs font-medium text-neutral-700">
-                <span>{t('provinceLabel')} <span className="text-danger">*</span></span>
-                <NativeSelect
-                  value={provinceId}
-                  onChange={(event) => {
-                    setProvinceId(event.target.value);
-                    setDistrictId('');
-                    setLocation(null);
-                  }}
-                  required
-                >
-                  <option value="">{t('selectProvincePlaceholder')}</option>
-                  {provinces.map((province: Area) => (
-                    <option key={province.id} value={province.id}>{province.name}</option>
-                  ))}
-                </NativeSelect>
-              </label>
-              <label className="block space-y-1.5 text-xs font-medium text-neutral-700">
-                <span>{t('districtLabel')} <span className="text-danger">*</span></span>
-                <NativeSelect
-                  value={districtId}
-                  onChange={(event) => {
-                    setDistrictId(event.target.value);
-                    setLocation(null);
-                  }}
-                  disabled={!provinceId || districtsQuery.isLoading}
-                  required
-                >
-                  <option value="">{t('selectDistrictPlaceholder')}</option>
-                  {districts.map((district: Area) => (
-                    <option key={district.id} value={district.id}>{district.name}</option>
-                  ))}
-                </NativeSelect>
-              </label>
-            </div>
+            <LocationSelector
+              provinceId={provinceId}
+              provinceCode={provinceCode}
+              wardId={wardId}
+              wardCode={wardCode}
+              onProvinceChange={(p) => {
+                setProvinceId(p?.id ?? '');
+                setProvinceCode(p?.code ?? '');
+                setWardId('');
+                setWardCode('');
+                setDistrictId('');
+                setLocation(null);
+              }}
+              onWardChange={(w) => {
+                setWardId(w?.id ?? '');
+                setWardCode(w?.code ?? '');
+                setLocation(null);
+              }}
+              layout="horizontal"
+            />
 
             <fieldset className="space-y-1.5">
               <legend className="text-xs font-medium text-neutral-700">

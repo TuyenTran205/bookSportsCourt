@@ -2,14 +2,13 @@
 
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Filter, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { RotateCcw, SlidersHorizontal } from 'lucide-react';
+import type { Province, Ward } from '@bsc/shared';
 
-import { Button } from '@/components/ui/button';
+import { LocationSelector } from '@/components/common/LocationSelector';
 import { NativeSelect } from '@/components/ui/select';
 import {
   listAmenities,
-  listDistricts,
-  listProvinces,
   listSports,
   type VenueSort,
 } from '@/lib/api/endpoints/venues';
@@ -18,6 +17,9 @@ import { cn } from '@/lib/utils/cn';
 export interface VenueFilterValues {
   q?: string;
   provinceId?: string;
+  provinceCode?: string;
+  wardId?: string;
+  wardCode?: string;
   districtId?: string;
   sportIds?: string[];
   amenityIds?: string[];
@@ -68,21 +70,6 @@ export function VenueFilters({
 }: VenueFiltersProps) {
   const [isAdvancedOpen, setIsAdvancedOpen] = React.useState(false);
 
-  // Danh mục Tỉnh/Thành
-  const provincesQuery = useQuery({
-    queryKey: ['catalogs', 'provinces'],
-    queryFn: listProvinces,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  // Danh mục Quận/Huyện theo Tỉnh đã chọn
-  const districtsQuery = useQuery({
-    queryKey: ['catalogs', 'districts', values.provinceId],
-    queryFn: () => listDistricts(values.provinceId!),
-    enabled: Boolean(values.provinceId),
-    staleTime: 5 * 60 * 1000,
-  });
-
   // Danh mục Môn thể thao
   const sportsQuery = useQuery({
     queryKey: ['catalogs', 'sports'],
@@ -97,16 +84,14 @@ export function VenueFilters({
     staleTime: 10 * 60 * 1000,
   });
 
-  const provinces = provincesQuery.data ?? [];
-  const districts = districtsQuery.data ?? [];
   const sports = sportsQuery.data ?? [];
   const amenities = amenitiesQuery.data ?? [];
 
-  // Đếm số lượng bộ lọc nâng cao đang áp dụng
+  // Đếm số lượng bộ lọc đang áp dụng
   const activeFiltersCount = React.useMemo(() => {
     let count = 0;
-    if (values.provinceId) count++;
-    if (values.districtId) count++;
+    if (values.provinceId || values.provinceCode) count++;
+    if (values.wardId || values.wardCode || values.districtId) count++;
     if (values.sportIds && values.sportIds.length > 0) count += values.sportIds.length;
     if (values.amenityIds && values.amenityIds.length > 0) count += values.amenityIds.length;
     if (values.maxPrice) count++;
@@ -115,20 +100,23 @@ export function VenueFilters({
     return count;
   }, [values]);
 
-  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextProvinceId = e.target.value || undefined;
+  const handleProvinceChange = (province: Province | null) => {
     onChange({
       ...values,
-      provinceId: nextProvinceId,
-      districtId: undefined, // Reset quận khi đổi tỉnh
+      provinceId: province?.id,
+      provinceCode: province?.code,
+      wardId: undefined,
+      wardCode: undefined,
+      districtId: undefined, // Reset cấp xã/quận khi đổi tỉnh
       page: 1,
     });
   };
 
-  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleWardChange = (ward: Ward | null) => {
     onChange({
       ...values,
-      districtId: e.target.value || undefined,
+      wardId: ward?.id,
+      wardCode: ward?.code,
       page: 1,
     });
   };
@@ -185,59 +173,27 @@ export function VenueFilters({
   return (
     <section
       aria-label="Bộ lọc tìm kiếm sân"
-      className={cn('rounded-card border border-neutral-200 bg-white p-4 shadow-xs', className)}
+      className={cn('rounded-card border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900', className)}
     >
       {/* Hàng lọc nhanh cơ bản */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Tỉnh/Thành phố */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="filter-province" className="text-xs font-semibold text-neutral-700">
-            Tỉnh / Thành phố
-          </label>
-          <NativeSelect
-            id="filter-province"
-            aria-label="Tỉnh / Thành phố"
-            value={values.provinceId ?? ''}
-            onChange={handleProvinceChange}
+        {/* Tỉnh/Thành phố & Xã/Phường qua LocationSelector */}
+        <div className="sm:col-span-2">
+          <LocationSelector
+            provinceId={values.provinceId}
+            provinceCode={values.provinceCode}
+            wardId={values.wardId}
+            wardCode={values.wardCode}
+            onProvinceChange={handleProvinceChange}
+            onWardChange={handleWardChange}
             disabled={isLoading}
-            className="min-h-11"
-          >
-            <option value="">Tất cả Tỉnh/Thành</option>
-            {provinces.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
-
-        {/* Quận/Huyện */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="filter-district" className="text-xs font-semibold text-neutral-700">
-            Quận / Huyện
-          </label>
-          <NativeSelect
-            id="filter-district"
-            aria-label="Quận / Huyện"
-            value={values.districtId ?? ''}
-            onChange={handleDistrictChange}
-            disabled={isLoading || !values.provinceId}
-            className="min-h-11"
-          >
-            <option value="">
-              {values.provinceId ? 'Tất cả Quận/Huyện' : 'Chọn Tỉnh/Thành trước'}
-            </option>
-            {districts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </NativeSelect>
+            layout="horizontal"
+          />
         </div>
 
         {/* Mức giá trần */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="filter-price" className="text-xs font-semibold text-neutral-700">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="filter-price" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
             Mức giá
           </label>
           <NativeSelect
@@ -257,8 +213,8 @@ export function VenueFilters({
         </div>
 
         {/* Tiêu chí sắp xếp */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="filter-sort" className="text-xs font-semibold text-neutral-700">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="filter-sort" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
             Sắp xếp theo
           </label>
           <NativeSelect
@@ -279,18 +235,18 @@ export function VenueFilters({
       </div>
 
       {/* Thanh công cụ phụ: Nút Mở rộng bộ lọc & Đặt lại */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setIsAdvancedOpen((prev) => !prev)}
             aria-expanded={isAdvancedOpen}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             <SlidersHorizontal className="size-3.5 text-neutral-500" aria-hidden="true" />
             <span>{isAdvancedOpen ? 'Thu gọn bộ lọc' : 'Bộ lọc nâng cao'}</span>
             {activeFiltersCount > 0 && (
-              <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
+              <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300">
                 {activeFiltersCount}
               </span>
             )}
@@ -300,7 +256,7 @@ export function VenueFilters({
             <button
               type="button"
               onClick={onReset}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
             >
               <RotateCcw className="size-3.5 text-neutral-400" aria-hidden="true" />
               <span>Xóa bộ lọc</span>
@@ -309,18 +265,18 @@ export function VenueFilters({
         </div>
 
         {totalResults !== undefined && (
-          <span className="text-xs text-neutral-500">
-            Tìm thấy <strong className="font-semibold text-neutral-900">{totalResults}</strong> cơ sở
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+            Tìm thấy <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{totalResults}</strong> cơ sở
           </span>
         )}
       </div>
 
       {/* Vùng bộ lọc nâng cao */}
       {isAdvancedOpen && (
-        <div className="mt-4 flex flex-col gap-4 border-t border-neutral-100 pt-4">
+        <div className="mt-4 flex flex-col gap-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
           {/* Môn thể thao (chọn nhiều) */}
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-neutral-700">Môn thể thao</span>
+            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Môn thể thao</span>
             <div className="flex flex-wrap gap-2">
               {sports.map((sport) => {
                 const isSelected = values.sportIds?.includes(sport.id) ?? false;
@@ -333,8 +289,8 @@ export function VenueFilters({
                     className={cn(
                       'inline-flex min-h-11 items-center rounded-btn px-3 py-1.5 text-xs font-medium transition-colors',
                       isSelected
-                        ? 'bg-primary-700 text-white font-semibold'
-                        : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50',
+                        ? 'bg-primary-700 text-white font-semibold dark:bg-primary-600'
+                        : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
                     )}
                   >
                     {sport.name}
@@ -346,7 +302,7 @@ export function VenueFilters({
 
           {/* Đánh giá tối thiểu */}
           <div className="flex flex-col gap-1.5 sm:max-w-xs">
-            <label htmlFor="filter-rating" className="text-xs font-semibold text-neutral-700">
+            <label htmlFor="filter-rating" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
               Đánh giá sao tối thiểu
             </label>
             <NativeSelect
@@ -368,7 +324,7 @@ export function VenueFilters({
           {/* Tiện ích sân */}
           {amenities.length > 0 && (
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold text-neutral-700">Tiện ích đi kèm</span>
+              <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Tiện ích đi kèm</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                 {amenities.map((amenity) => {
                   const isChecked = values.amenityIds?.includes(amenity.id) ?? false;
@@ -378,8 +334,8 @@ export function VenueFilters({
                       className={cn(
                         'flex min-h-11 cursor-pointer items-center gap-2 rounded-btn border p-2 text-xs transition-colors',
                         isChecked
-                          ? 'border-primary-600 bg-primary-50 text-primary-900 font-medium'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50',
+                          ? 'border-primary-600 bg-primary-50 text-primary-900 font-medium dark:bg-primary-950/40 dark:text-primary-200 dark:border-primary-500'
+                          : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
                       )}
                     >
                       <input
@@ -397,6 +353,13 @@ export function VenueFilters({
           )}
         </div>
       )}
+
+      {/* Dòng ghi chú bản quyền & mốc dữ liệu ĐVHC */}
+      <div className="mt-3 border-t border-neutral-100 pt-2 text-right dark:border-neutral-800">
+        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          Dữ liệu hành chính cập nhật đến 03/11/2026 — Nguồn: Tổng cục Thống kê &amp; CSDL Quốc gia về Đơn vị Hành chính
+        </p>
+      </div>
     </section>
   );
 }

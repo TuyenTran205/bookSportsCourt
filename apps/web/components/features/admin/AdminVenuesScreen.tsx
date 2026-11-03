@@ -183,7 +183,7 @@ export function AdminVenuesScreen() {
                         <p className="font-medium text-neutral-800">{venue.ownerName}</p>
                       </td>
                       <td className="py-3 px-4 text-xs text-neutral-600">
-                        {venue.district?.name ?? ''}
+                        {venue.ward?.name ?? venue.district?.name ?? ''}
                         {venue.province ? `, ${venue.province.name}` : ''}
                       </td>
                       <td className="py-3 px-4">

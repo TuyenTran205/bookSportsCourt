@@ -27,8 +27,28 @@ export type OwnerApplicationStatus = (typeof OWNER_APPLICATION_STATUSES)[number]
 
 // ===== Danh mục =====
 
-export const AREA_TYPES = ['province', 'district'] as const;
+export const AREA_TYPES = ['province', 'ward'] as const;
 export type AreaType = (typeof AREA_TYPES)[number];
+
+export const LEGACY_AREA_TYPES = ['district'] as const;
+export type LegacyAreaType = (typeof LEGACY_AREA_TYPES)[number];
+
+export const ALL_AREA_TYPES = ['province', 'ward', 'district'] as const;
+export type AllAreaType = (typeof ALL_AREA_TYPES)[number];
+
+export const WARD_TYPES = ['ward', 'commune', 'special_zone'] as const;
+export type WardType = (typeof WARD_TYPES)[number];
+
+/** Phiên bản bộ dữ liệu ĐVHC cập nhật hệ thống */
+export const ADMIN_UNITS_VERSION = '2026-11-03' as const;
+
+/** Tên nguồn dữ liệu hiển thị trên giao diện người dùng */
+export const ADMIN_UNITS_SOURCE_NAME =
+  'Tổng cục Thống kê & CSDL Quốc gia về Đơn vị Hành chính' as const;
+
+/** Số lượng đơn vị hành chính chuẩn hóa */
+export const ADMIN_UNITS_PROVINCES_COUNT = 34 as const;
+export const ADMIN_UNITS_WARDS_COUNT = 3321 as const;
 
 // ===== Cơ sở & sân con =====
 

@@ -126,6 +126,18 @@ export const updateUserStatusSchema = z.object({
   status: z.enum(USER_STATUSES),
 });
 
+// ===== Đơn vị Hành chính =====
+
+export const provinceCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{2}$/, 'Mã tỉnh/thành phố phải gồm đúng 2 chữ số (ví dụ: 01, 79)');
+
+export const wardCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{5}$/, 'Mã xã/phường/đặc khu phải gồm đúng 5 chữ số (ví dụ: 00001, 26734)');
+
 // ===== Tìm kiếm sân =====
 
 export const venueSortSchema = z.enum(['price_asc', 'price_desc', 'rating_desc', 'newest']);
@@ -133,7 +145,10 @@ export const venueSortSchema = z.enum(['price_asc', 'price_desc', 'rating_desc',
 export const venueSearchSchema = z.object({
   q: z.string().trim().max(100).optional(),
   provinceId: uuidSchema.optional(),
-  districtId: uuidSchema.optional(),
+  provinceCode: provinceCodeSchema.optional(),
+  wardId: uuidSchema.optional(),
+  wardCode: wardCodeSchema.optional(),
+  districtId: uuidSchema.optional(), // legacy compatibility
   sportIds: z.array(uuidSchema).optional(),
   amenityIds: z.array(uuidSchema).optional(),
   minPrice: z.coerce.number().int().nonnegative().optional(),
@@ -221,16 +236,39 @@ export const replyReviewSchema = z.object({
 
 // ===== Owner: cơ sở, sân con, giá, khoá sân =====
 
-export const createVenueSchema = z.object({
-  name: z.string().min(2, 'Vui lòng nhập tên cơ sở').max(200).trim(),
-  description: z.string().max(5000).optional(),
-  address: z.string().min(5, 'Vui lòng nhập địa chỉ').max(500).trim(),
-  provinceId: uuidSchema,
-  districtId: uuidSchema,
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
-  amenityIds: z.array(uuidSchema).default([]),
-});
+export const createVenueSchema = z
+  .object({
+    name: z.string().min(2, 'Vui lòng nhập tên cơ sở').max(200).trim(),
+    description: z.string().max(5000).optional(),
+    address: z.string().min(5, 'Vui lòng nhập địa chỉ cụ thể (số nhà, tên đường)').max(500).trim(),
+    provinceId: uuidSchema,
+    provinceCode: provinceCodeSchema.optional(),
+    wardId: uuidSchema.optional(),
+    wardCode: wardCodeSchema.optional(),
+    districtId: uuidSchema.optional(), // legacy compatibility
+    lat: z.coerce.number().min(-90).max(90),
+    lng: z.coerce.number().min(-180).max(180),
+    amenityIds: z.array(uuidSchema).default([]),
+  })
+  .refine((d) => Boolean(d.wardId || d.districtId), {
+    message: 'Vui lòng chọn xã/phường',
+    path: ['wardId'],
+  });
+
+export const updateVenueSchema = z
+  .object({
+    name: z.string().min(2, 'Vui lòng nhập tên cơ sở').max(200).trim().optional(),
+    description: z.string().max(5000).optional(),
+    address: z.string().min(5, 'Vui lòng nhập địa chỉ cụ thể (số nhà, tên đường)').max(500).trim().optional(),
+    provinceId: uuidSchema.optional(),
+    provinceCode: provinceCodeSchema.optional(),
+    wardId: uuidSchema.optional(),
+    wardCode: wardCodeSchema.optional(),
+    districtId: uuidSchema.optional(),
+    lat: z.coerce.number().min(-90).max(90).optional(),
+    lng: z.coerce.number().min(-180).max(180).optional(),
+    amenityIds: z.array(uuidSchema).optional(),
+  });
 
 export const createCourtSchema = z.object({
   name: z.string().min(1, 'Vui lòng nhập tên sân').max(100).trim(),
@@ -347,16 +385,30 @@ export const sportSchema = z.object({
 
 export const amenitySchema = sportSchema;
 
-export const areaSchema = z.object({
-  name: z.string().min(1, 'Vui lòng nhập tên khu vực').max(100).trim(),
-  slug: z
-    .string()
-    .min(1, 'Vui lòng nhập slug')
-    .max(100)
-    .regex(/^[a-z0-9-]+$/, 'Slug chỉ gồm chữ thường, số và dấu gạch nối'),
-  type: z.enum(['province', 'district']),
-  parentId: uuidSchema.nullish(),
-});
+export const areaSchema = z
+  .object({
+    name: z.string().min(1, 'Vui lòng nhập tên khu vực').max(100).trim(),
+    code: z.string().regex(/^\d{2,5}$/, 'Mã khu vực gồm 2 đến 5 chữ số').optional(),
+    slug: z
+      .string()
+      .min(1, 'Vui lòng nhập slug')
+      .max(100)
+      .regex(/^[a-z0-9-]+$/, 'Slug chỉ gồm chữ thường, số và dấu gạch nối'),
+    type: z.enum(['province', 'ward', 'district']),
+    parentId: uuidSchema.nullish(),
+  })
+  .refine(
+    (d) => {
+      if ((d.type === 'ward' || d.type === 'district') && !d.parentId) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Đơn vị hành chính trực thuộc phải chọn địa bàn cấp trên',
+      path: ['parentId'],
+    },
+  );
 
 export const venueModerationSchema = z.object({
   status: z.enum(VENUE_STATUSES),
@@ -399,6 +451,7 @@ export type CreateManualBookingInput = z.infer<typeof createManualBookingSchema>
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type ReplyReviewInput = z.infer<typeof replyReviewSchema>;
 export type CreateVenueInput = z.infer<typeof createVenueSchema>;
+export type UpdateVenueInput = z.infer<typeof updateVenueSchema>;
 export type CreateCourtInput = z.infer<typeof createCourtSchema>;
 export type OpeningHourInput = z.infer<typeof openingHourSchema>;
 export type PricingRuleInput = z.infer<typeof pricingRuleSchema>;

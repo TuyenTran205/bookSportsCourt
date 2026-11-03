@@ -28,22 +28,24 @@ import {
 import { ApiError } from '@/lib/api/errors';
 import { useCreateArea, useProvincesList } from '@/lib/hooks/useAdminCatalogs';
 
-const areaFormSchema = z.object({
-  name: z.string().min(2, 'Tên khu vực ít nhất 2 ký tự').max(100),
-  type: z.enum(['province', 'district']),
-  parentId: z.string().optional(),
-}).refine(
-  (data) => {
-    if (data.type === 'district' && !data.parentId) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: 'Vui lòng chọn tỉnh/thành phố trực thuộc',
-    path: ['parentId'],
-  },
-);
+const areaFormSchema = z
+  .object({
+    name: z.string().min(2, 'Tên khu vực ít nhất 2 ký tự').max(100),
+    type: z.enum(['province', 'ward', 'district']),
+    parentId: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if ((data.type === 'ward' || data.type === 'district') && !data.parentId) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Vui lòng chọn tỉnh/thành phố trực thuộc',
+      path: ['parentId'],
+    },
+  );
 
 type AreaFormData = z.infer<typeof areaFormSchema>;
 
@@ -70,7 +72,7 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
     resolver: zodResolver(areaFormSchema),
     defaultValues: {
       name: '',
-      type: 'district',
+      type: 'ward',
       parentId: '',
     },
   });
@@ -80,7 +82,7 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
 
   React.useEffect(() => {
     if (open) {
-      reset({ name: '', type: 'district', parentId: provinces[0]?.id ?? '' });
+      reset({ name: '', type: 'ward', parentId: provinces[0]?.id ?? '' });
     }
   }, [open, reset, provinces]);
 
@@ -89,7 +91,7 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
       await createMutation.mutateAsync({
         name: values.name.trim(),
         type: values.type,
-        parentId: values.type === 'district' ? values.parentId : undefined,
+        parentId: values.type !== 'province' ? values.parentId : undefined,
       });
       toast.success(`Đã thêm khu vực "${values.name}"`);
       onClose();
@@ -104,7 +106,7 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
         <DialogHeader>
           <DialogTitle>Thêm địa bàn / khu vực</DialogTitle>
           <DialogDescription>
-            Định nghĩa tỉnh/thành hoặc quận/huyện mới cho hệ thống định vị tìm kiếm.
+            Định nghĩa tỉnh/thành hoặc xã/phường mới theo mô hình 2 cấp (mốc 03/11/2026).
           </DialogDescription>
         </DialogHeader>
 
@@ -114,9 +116,11 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
             <Select
               value={selectedType}
               onValueChange={(val) => {
-                setValue('type', val as 'province' | 'district');
+                setValue('type', val as 'province' | 'ward' | 'district');
                 if (val === 'province') {
                   setValue('parentId', undefined);
+                } else if (!selectedParentId && provinces[0]) {
+                  setValue('parentId', provinces[0].id);
                 }
               }}
             >
@@ -124,13 +128,14 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
                 <SelectValue placeholder="Chọn loại địa bàn" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="district">Quận / Huyện</SelectItem>
+                <SelectItem value="ward">Xã / Phường / Đặc khu (Cấp cơ sở)</SelectItem>
                 <SelectItem value="province">Tỉnh / Thành phố trực thuộc Trung ương</SelectItem>
+                <SelectItem value="district">[Legacy] Quận / Huyện (cũ)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {selectedType === 'district' && (
+          {(selectedType === 'ward' || selectedType === 'district') && (
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-neutral-700">Tỉnh / Thành phố trực thuộc</label>
               <Select
@@ -162,7 +167,13 @@ export function AreaFormDialog({ open, onClose }: AreaFormDialogProps) {
           >
             <Input
               id="area-name"
-              placeholder={selectedType === 'province' ? 'Ví dụ: Hải Phòng, Cần Thơ...' : 'Ví dụ: Quận 3, Quận Đống Đa...'}
+              placeholder={
+                selectedType === 'province'
+                  ? 'Ví dụ: Hải Phòng, Cần Thơ...'
+                  : selectedType === 'ward'
+                    ? 'Ví dụ: Phường Bến Nghé, Xã Tân Triều...'
+                    : 'Ví dụ: Quận Cầu Giấy...'
+              }
               {...register('name')}
             />
           </FormField>

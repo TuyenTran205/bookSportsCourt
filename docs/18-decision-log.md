@@ -420,6 +420,69 @@ interface PaymentAdapter {
 
 ---
 
+## ADR-022: Chọn Nguồn Bộ Dữ Liệu Đơn Vị Hành Chính Việt Nam Mốc 03/11/2026
+
+**Ngày:** 2026-11-03 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Dữ liệu hành chính cũ hard-code 5 tỉnh, 9 quận, không phản ánh thực tế địa bàn hoạt động của các cụm sân thể thao trên toàn quốc. Cần nguồn dữ liệu chuẩn hóa, có mã định danh hành chính chính thức (GSO codes), tên gọi tiếng Việt có dấu, slug chuẩn URL, và tên không dấu (unaccent) cho tìm kiếm.
+
+**Quyết định:**
+- Sử dụng Bộ dữ liệu mở Đơn vị Hành chính Việt Nam được chuẩn hóa từ Tổng cục Thống kê và CSDL Quốc gia về ĐVHC, cập nhật mốc 03/11/2026.
+- Phân tách cấu trúc lưu trữ:
+  1. `packages/shared/src/data/provinces.ts`: Chứa 34 tỉnh/thành phố (dưới 5KB), xuất khẩu dạng mảng TypeScript định kiểu chặt chẽ, được phép import cả ở FE và BE.
+  2. `packages/shared/src/data/wards.json`: Chứa 3.321 xã/phường/đặc khu (~320KB). **Chỉ dùng cho BE, Seed DB, và MSW handler server-side.** Tuyệt đối không import vào các client component của Next.js.
+- Mã đơn vị hành chính dùng kiểu `string` bảo toàn số 0 ở đầu (ví dụ: Hà Nội là `'01'`, TP.HCM là `'79'`, Phường Phúc Xá là `'00001'`).
+
+**Lý do:** Tối ưu hiệu năng, giảm bundle size phía client trong khi vẫn cung cấp khả năng tìm kiếm và định danh chính xác đến cấp xã/phường trên toàn quốc.
+
+**Loại bỏ:** Import toàn bộ file JSON xã/phường vào frontend bundle (gây phình bundle thêm 320KB gzip).
+
+**Hệ quả:** Truy vấn xã/phường phía client luôn thông qua API có phân trang hoặc lọc theo tỉnh (`/api/v1/provinces/:code/wards`), bảo vệ First Load JS của ứng dụng web.
+
+---
+
+## ADR-023: Bãi Bỏ Cấp Huyện — Chuyển Sang Mô Hình 2 Cấp (34 Tỉnh / 3.321 Xã-Phường) & Legacy Support
+
+**Ngày:** 2026-11-03 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Thể chế quản trị hành chính Việt Nam từ 01/07/2025 bãi bỏ cấp huyện, phân bổ lại thành 34 tỉnh/thành phố và 3.321 xã/phường. Schema hiện tại đang bắt buộc `venues.district_id NOT NULL` và `areas.type IN ('province', 'district')`.
+
+**Quyết định:**
+- `areas.type` mở rộng chấp nhận `'province'`, `'ward'`, và giữ `'district'` với trạng thái legacy.
+- Bổ sung cột `ward_id UUID REFERENCES areas(id)` vào bảng `venues`.
+- Chuyển `district_id` thành `UUID NULL` (nullable legacy).
+- Nghiệp vụ tạo mới sân (`POST /venues`) và bộ lọc chính của người dùng (`VenueFilters`) chuyển dịch sang cặp `provinceId` + `wardId`.
+- Quy tắc toàn vẹn nghiệp vụ: Bắt buộc xác thực `ward.parent_id === venue.province_id` (hoặc `ward.provinceCode === venue.provinceCode`) trước khi lưu.
+
+**Lý do:** Tuân thủ đúng thực tế địa giới hành chính quốc gia, đồng thời không phá vỡ tính tương thích ngược cho dữ liệu hiện có trong hệ thống.
+
+**Loại bỏ:** Xóa bỏ hoàn toàn cột `district_id` ngay lập tức (sẽ làm crash dữ liệu lịch sử và các booking cũ).
+
+**Hệ quả:** Cần migration có version cho Database; các API cũ vẫn nhận `districtId` nếu client phiên bản cũ gửi lên nhưng sẽ ưu tiên xử lý `wardId`.
+
+---
+
+## ADR-024: Xây Dựng LocationSelector Bằng Radix Popover & Tailwind Có Sẵn (Zero Dependency)
+
+**Ngày:** 2026-11-03 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Cần trải nghiệm chọn Tỉnh/Thành và Xã/Phường mượt mà: người dùng có thể gõ tìm kiếm tiếng Việt không dấu, hiển thị danh sách dạng dropdown có thanh cuộn, không lag khi có nhiều dữ liệu. Theo Quy tắc #9 của `AGENTS.md`, không được tùy tiện cài thêm thư viện (như `react-select`, `downshift`, `cmdk`).
+
+**Quyết định:**
+- Tận dụng `@radix-ui/react-popover` (đã có sẵn trong `apps/web/package.json`) kết hợp với input tìm kiếm và các token Tailwind sẵn có.
+- Tách logic thành component `LocationSelector` gồm 2 combobox:
+  - `ProvinceCombobox`: Lấy 34 tỉnh từ bộ nhớ/React Query, lọc in-memory tức thì.
+  - `WardCombobox`: Bị disable khi chưa chọn Tỉnh. Khi đã chọn Tỉnh, cho phép tìm kiếm xã/phường thuộc tỉnh đó; hỗ trợ debounce 250ms khi gõ từ khóa, giới hạn tối đa 50 kết quả hiển thị.
+- Tích hợp tiện ích chuẩn hóa chuỗi `unaccent` để tìm kiếm không phụ thuộc chữ hoa/thường và dấu tiếng Việt.
+
+**Lý do:** Tuân thủ Quy tắc #9 (Không thêm dependency khi chưa có quyết định), giữ bundle nhẹ, đạt chuẩn Anti-AI Design và trợ năng bàn phím WAI-ARIA.
+
+**Loại bỏ:** Cài thêm `cmdk` hoặc `react-select`.
+
+**Hệ quả:** Code UI cần xử lý focus management và keyboard navigation thủ công một cách cẩn thận bằng Radix primitives có sẵn.
+
+---
+
 ## Template ADR mới
 
 ```markdown

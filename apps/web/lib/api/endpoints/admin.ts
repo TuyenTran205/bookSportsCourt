@@ -145,7 +145,7 @@ export function deleteSport(id: string) {
     });
 }
 
-export function createArea(input: { name: string; type: "province" | "district"; parentId?: string }) {
+export function createArea(input: { name: string; type: "province" | "ward" | "district"; parentId?: string }) {
     return apiFetch<Area>("/admin/areas", { method: "POST", ...jsonBody(input) });
 }
 

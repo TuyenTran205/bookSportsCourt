@@ -314,7 +314,7 @@ export const adminHandlers = [
         const guard = requireAdmin();
         if (guard.error) return guard.error;
 
-        const body = (await request.json()) as { name: string; type: "province" | "district"; parentId?: string };
+        const body = (await request.json()) as { name: string; type: "province" | "ward" | "district"; parentId?: string };
         const newArea = {
             id: `019273c5-7f00-7000-0000-${String(Date.now()).slice(-12)}`,
             name: body.name,

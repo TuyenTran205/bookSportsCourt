@@ -65,7 +65,7 @@ export function VenueReviewDrawer({ venue, open, onClose }: VenueReviewDrawerPro
               <MapPin className="size-4 shrink-0 text-neutral-400" />
               <span>
                 {venue.address}
-                {venue.district ? `, ${venue.district.name}` : ''}
+                {venue.ward?.name ? `, ${venue.ward.name}` : venue.district ? `, ${venue.district.name}` : ''}
                 {venue.province ? `, ${venue.province.name}` : ''}
               </span>
             </div>

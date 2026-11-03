@@ -41,7 +41,10 @@ export function createOwnerVenue(input: {
   name: string;
   address: string;
   provinceId: string;
-  districtId: string;
+  provinceCode?: string;
+  wardId?: string;
+  wardCode?: string;
+  districtId?: string;
   sportIds: string[];
   description?: string;
   lat: number;
@@ -52,7 +55,9 @@ export function createOwnerVenue(input: {
 
 export function updateOwnerVenue(
   id: string,
-  input: Partial<Pick<VenueDetail, 'name' | 'address' | 'provinceId' | 'districtId' | 'description' | 'lat' | 'lng'>> & {
+  input: Partial<Pick<VenueDetail, 'name' | 'address' | 'provinceId' | 'wardId' | 'districtId' | 'description' | 'lat' | 'lng'>> & {
+    provinceCode?: string;
+    wardCode?: string;
     sportIds?: string[];
   },
 ) {

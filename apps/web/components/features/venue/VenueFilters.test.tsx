@@ -7,13 +7,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { VenueFilters, type VenueFilterValues } from './VenueFilters';
 
 const mockProvinces = [
-  { id: 'p-hn', name: 'Hà Nội', slug: 'ha-noi' },
-  { id: 'p-hcm', name: 'Hồ Chí Minh', slug: 'ho-chi-minh' },
+  { id: 'p-hn', code: '01', name: 'Hà Nội', slug: 'ha-noi', isMunicipality: true },
+  { id: 'p-hcm', code: '79', name: 'Hồ Chí Minh', slug: 'ho-chi-minh', isMunicipality: true },
 ];
 
-const mockDistricts = [
-  { id: 'd-cg', provinceId: 'p-hn', name: 'Cầu Giấy', slug: 'cau-giay' },
-  { id: 'd-bd', provinceId: 'p-hn', name: 'Ba Đình', slug: 'ba-dinh' },
+const mockWards = [
+  { id: 'w-cg', provinceCode: '01', code: '00001', name: 'Cầu Giấy', slug: 'cau-giay', type: 'ward' },
+  { id: 'w-bd', provinceCode: '01', code: '00004', name: 'Ba Đình', slug: 'ba-dinh', type: 'ward' },
 ];
 
 const mockSports = [
@@ -31,9 +31,9 @@ vi.mock('@/lib/api/endpoints/venues', async (importOriginal) => {
   return {
     ...actual,
     listProvinces: vi.fn().mockImplementation(() => Promise.resolve(mockProvinces)),
-    listDistricts: vi.fn().mockImplementation((provinceId: string) => {
-      if (provinceId === 'p-hn') {
-        return Promise.resolve(mockDistricts);
+    listWards: vi.fn().mockImplementation((provinceCodeOrId: string) => {
+      if (provinceCodeOrId === 'p-hn' || provinceCodeOrId === '01') {
+        return Promise.resolve(mockWards);
       }
       return Promise.resolve([]);
     }),
@@ -65,47 +65,44 @@ describe('VenueFilters Component (TC-FILTER)', () => {
     cleanup();
   });
 
-  it('TC-FILTER-01: render đủ các trường lọc cơ bản', async () => {
+  it('TC-FILTER-01: render đủ các trường lọc cơ bản & ghi chú ĐVHC', async () => {
     const values: VenueFilterValues = {};
     render(<VenueFilters values={values} onChange={vi.fn()} onReset={vi.fn()} />, {
       wrapper: createWrapper(),
     });
 
     expect(screen.getByLabelText('Tỉnh / Thành phố')).not.toBeNull();
-    expect(screen.getByLabelText('Quận / Huyện')).not.toBeNull();
+    expect(screen.getByLabelText('Xã / Phường / Đặc khu')).not.toBeNull();
     expect(screen.getByLabelText('Mức giá')).not.toBeNull();
     expect(screen.getByLabelText('Sắp xếp theo')).not.toBeNull();
 
-    await waitFor(() => {
-      expect(screen.getByText('Hà Nội')).not.toBeNull();
-      expect(screen.getByText('Hồ Chí Minh')).not.toBeNull();
-    });
+    // Dòng ghi chú ĐVHC (TC-LOC-09)
+    expect(screen.getByText(/Dữ liệu hành chính cập nhật đến 03\/11\/2026/i)).not.toBeNull();
   });
 
-  it('TC-FILTER-02: dropdown Quận/Huyện bị disabled khi chưa chọn Tỉnh/Thành', async () => {
+  it('TC-FILTER-02: combobox Xã/Phường bị disabled khi chưa chọn Tỉnh/Thành', async () => {
     const values: VenueFilterValues = {};
     const { rerender } = render(
       <VenueFilters values={values} onChange={vi.fn()} onReset={vi.fn()} />,
       { wrapper: createWrapper() },
     );
 
-    const districtSelect = screen.getByLabelText('Quận / Huyện') as HTMLSelectElement;
-    expect(districtSelect.disabled).toBe(true);
+    const wardBtn = screen.getByLabelText('Xã / Phường / Đặc khu') as HTMLButtonElement;
+    expect(wardBtn.disabled).toBe(true);
     expect(screen.getByText('Chọn Tỉnh/Thành trước')).not.toBeNull();
 
-    // Rerender với provinceId = 'p-hn'
+    // Rerender với provinceId = 'p-hn', provinceCode = '01'
     rerender(
       <VenueFilters
-        values={{ ...values, provinceId: 'p-hn' }}
+        values={{ ...values, provinceId: 'p-hn', provinceCode: '01' }}
         onChange={vi.fn()}
         onReset={vi.fn()}
       />,
     );
 
     await waitFor(() => {
-      expect(districtSelect.disabled).toBe(false);
-      expect(screen.getByText('Cầu Giấy')).not.toBeNull();
-      expect(screen.getByText('Ba Đình')).not.toBeNull();
+      expect(wardBtn.disabled).toBe(false);
+      expect(screen.getByText('Tất cả Xã / Phường')).not.toBeNull();
     });
   });
 
@@ -124,23 +121,28 @@ describe('VenueFilters Component (TC-FILTER)', () => {
     expect(onReset).toHaveBeenCalledTimes(1);
   });
 
-  it('TC-FILTER-04: chọn Tỉnh/Thành gọi onChange với provinceId mới, reset districtId và page 1', async () => {
+  it('TC-FILTER-04: chọn Tỉnh/Thành gọi onChange với provinceId mới, reset wardId, districtId và page 1', async () => {
     const onChange = vi.fn();
-    const values: VenueFilterValues = { provinceId: 'p-hcm', districtId: 'd-1', page: 3 };
+    const values: VenueFilterValues = { provinceId: 'p-hcm', provinceCode: '79', wardId: 'w-1', page: 3 };
 
     render(<VenueFilters values={values} onChange={onChange} onReset={vi.fn()} />, {
       wrapper: createWrapper(),
     });
 
+    const provinceBtn = screen.getByLabelText('Tỉnh / Thành phố') as HTMLButtonElement;
     await waitFor(() => {
-      expect(screen.getByText('Hà Nội')).not.toBeNull();
+      expect(provinceBtn.disabled).toBe(false);
     });
+    fireEvent.click(provinceBtn);
 
-    const provinceSelect = screen.getByLabelText('Tỉnh / Thành phố');
-    fireEvent.change(provinceSelect, { target: { value: 'p-hn' } });
+    const hanoiOption = await screen.findByText('Hà Nội');
+    fireEvent.click(hanoiOption);
 
     expect(onChange).toHaveBeenCalledWith({
       provinceId: 'p-hn',
+      provinceCode: '01',
+      wardId: undefined,
+      wardCode: undefined,
       districtId: undefined,
       page: 1,
     });
@@ -291,5 +293,15 @@ describe('VenueFilters Component (TC-FILTER)', () => {
 
     // 1 (provinceId) + 1 (maxPrice) + 2 (sportIds) + 1 (sort !== rating_desc) = 5
     expect(screen.getByText('5')).not.toBeNull();
+  });
+
+  it('TC-LOC-03: không còn bất kỳ trường lọc hoặc nhãn Quận/Huyện nào trong giao diện', () => {
+    render(<VenueFilters values={{}} onChange={vi.fn()} onReset={vi.fn()} />, {
+      wrapper: createWrapper(),
+    });
+
+    expect(screen.queryByLabelText(/Quận/i)).toBeNull();
+    expect(screen.queryByLabelText(/Huyện/i)).toBeNull();
+    expect(screen.queryByText(/Quận \/ Huyện/i)).toBeNull();
   });
 });
