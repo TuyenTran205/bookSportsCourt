@@ -105,7 +105,7 @@ export interface MockDb {
     openingHours: OpeningHour[];
     pricingRules: PricingRule[];
     bankAccounts: Record<string, BankAccountInfo>;
-    /** Nhật ký kiểm toán (ADM-09) — chỉ ghi thêm, không sửa/xoá. */
+    /** Nhật ký hoạt động (ADM-09) — chỉ ghi thêm, không sửa/xoá. */
     auditLogs: AuditLog[];
     /** Người dùng đang đăng nhập; `null` = khách vãng lai. */
     currentUserId: string | null;

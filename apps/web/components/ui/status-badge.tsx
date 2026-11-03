@@ -17,23 +17,32 @@ import { cn } from '@/lib/utils/cn';
  */
 
 const badgeVariants = cva(
-  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
+  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors',
   {
     variants: {
       tone: {
         // Booking
-        yellow: 'border-amber-200 bg-amber-50 text-amber-800',
-        'yellow-strong': 'border-amber-300 bg-amber-100 text-amber-900',
-        blue: 'border-blue-200 bg-blue-50 text-blue-800',
-        green: 'border-primary-200 bg-primary-50 text-primary-800',
-        red: 'border-red-200 bg-red-50 text-red-800',
-        gray: 'border-border bg-neutral-100 text-neutral-700',
-        'gray-light': 'border-border bg-neutral-50 text-neutral-500',
-        orange: 'border-orange-200 bg-orange-50 text-orange-800',
+        yellow:
+          'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300',
+        'yellow-strong':
+          'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-200',
+        blue:
+          'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/40 dark:text-blue-300',
+        green:
+          'border-primary-200 bg-primary-50 text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300',
+        red:
+          'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300',
+        gray: 'border-border bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+        'gray-light':
+          'border-border bg-neutral-50 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400',
+        orange:
+          'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300',
         // Venue
-        'gray-strong': 'border-neutral-400 bg-neutral-200 text-neutral-800',
+        'gray-strong':
+          'border-neutral-400 bg-neutral-200 text-neutral-800 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200',
         // Payment
-        purple: 'border-purple-200 bg-purple-50 text-purple-800',
+        purple:
+          'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300',
       },
       size: {
         sm: 'px-2 py-0 text-[11px]',

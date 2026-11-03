@@ -42,20 +42,20 @@ export function VenueOpeningHours({ openingHours, className }: VenueOpeningHours
   return (
     <section aria-labelledby="opening-hours-heading" className={cn('space-y-3', className)}>
       <div className="flex items-center gap-2">
-        <Clock className="size-5 shrink-0 text-primary-700" aria-hidden="true" />
-        <h2 id="opening-hours-heading" className="text-xl font-semibold text-neutral-900">
+        <Clock className="size-5 shrink-0 text-primary-700 dark:text-primary-400" aria-hidden="true" />
+        <h2 id="opening-hours-heading" className="text-xl font-semibold text-text-primary">
           Giờ hoạt động
         </h2>
       </div>
 
-      <div className="rounded-card border border-neutral-200 bg-white p-4 shadow-sm">
+      <div className="rounded-card border border-border bg-bg-card p-4 shadow-sm">
         {!hasData ? (
-          <div className="flex items-center gap-2 py-2 text-sm text-neutral-500">
-            <Clock className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+          <div className="flex items-center gap-2 py-2 text-sm text-text-secondary">
+            <Clock className="size-4 shrink-0 text-text-disabled" aria-hidden="true" />
             <span>Đang cập nhật giờ mở cửa</span>
           </div>
         ) : (
-          <ul className="divide-y divide-neutral-100 text-sm">
+          <ul className="divide-y divide-border/60 text-sm">
             {WEEKDAYS_ORDER.map((weekday) => {
               const item = hoursByWeekday.get(weekday);
               const isToday = weekday === currentWeekday;
@@ -68,11 +68,11 @@ export function VenueOpeningHours({ openingHours, className }: VenueOpeningHours
                   className={cn(
                     'flex items-center justify-between py-2.5 px-3 transition-colors',
                     isToday &&
-                      'rounded-md border border-primary-300 bg-primary-50/50 font-semibold text-primary-900 shadow-xs',
+                      'rounded-md border border-primary-300 bg-primary-50/50 font-semibold text-primary-900 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-200 shadow-xs',
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={cn('font-medium', isToday ? 'text-primary-900' : 'text-neutral-800')}>
+                    <span className={cn('font-medium', isToday ? 'text-primary-900 dark:text-primary-200' : 'text-text-primary')}>
                       {name}
                     </span>
                     {isToday && (
@@ -84,11 +84,11 @@ export function VenueOpeningHours({ openingHours, className }: VenueOpeningHours
 
                   <div>
                     {!item || item.isClosed ? (
-                      <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
+                      <span className="rounded bg-bg-subtle px-2 py-0.5 text-xs font-medium text-text-secondary">
                         Đóng cửa
                       </span>
                     ) : (
-                      <span className={cn('font-mono text-sm', isToday ? 'text-primary-950' : 'text-neutral-700')}>
+                      <span className={cn('font-mono text-sm', isToday ? 'text-primary-950 dark:text-primary-100' : 'text-text-secondary')}>
                         {item.openTime} – {item.closeTime}
                       </span>
                     )}

@@ -17,10 +17,10 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-10 w-full items-center justify-between gap-2 rounded-input border border-neutral-300 bg-white px-3 text-sm text-neutral-900',
-      'data-[placeholder]:text-neutral-400',
-      'focus-visible:border-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20',
-      'disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400',
+      'flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary',
+      'data-[placeholder]:text-text-disabled',
+      'focus-visible:border-border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20',
+      'disabled:cursor-not-allowed disabled:bg-bg-subtle disabled:text-text-disabled',
       'aria-[invalid=true]:border-danger',
       className,
     )}
@@ -28,7 +28,7 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
+      <ChevronDown className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -43,7 +43,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'z-50 max-h-72 min-w-[8rem] overflow-hidden rounded-card border border-neutral-200 bg-white shadow-md',
+        'z-50 max-h-72 min-w-[8rem] overflow-hidden rounded-card border border-border bg-bg-card shadow-md',
         position === 'popper' &&
           'w-[var(--radix-select-trigger-width)] translate-y-1',
         className,
@@ -63,8 +63,8 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex h-9 cursor-pointer select-none items-center rounded-btn pl-8 pr-3 text-sm text-neutral-900 outline-none',
-      'data-[highlighted]:bg-neutral-100 data-[disabled]:pointer-events-none data-[disabled]:text-neutral-400',
+      'relative flex h-9 cursor-pointer select-none items-center rounded-btn pl-8 pr-3 text-sm text-text-primary outline-none',
+      'data-[highlighted]:bg-bg-subtle data-[disabled]:pointer-events-none data-[disabled]:text-text-disabled',
       className,
     )}
     {...props}
@@ -86,9 +86,9 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
     <select
       ref={ref}
       className={cn(
-        'flex h-10 w-full rounded-input border border-neutral-300 bg-white px-3 text-sm text-neutral-900',
-        'focus-visible:border-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20',
-        'disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400',
+        'flex h-10 w-full rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary',
+        'focus-visible:border-border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600/20',
+        'disabled:cursor-not-allowed disabled:bg-bg-subtle disabled:text-text-disabled',
         'aria-[invalid=true]:border-danger',
         className,
       )}

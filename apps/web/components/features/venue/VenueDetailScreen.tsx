@@ -301,14 +301,14 @@ export function VenueDetailScreen() {
 
           {venue.amenities.length > 0 && (
             <section aria-labelledby="amenities-h" className="space-y-3">
-              <h2 id="amenities-h" className="text-xl font-semibold text-neutral-900">
+              <h2 id="amenities-h" className="text-xl font-semibold text-text-primary">
                 {t('amenities')}
               </h2>
               <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {venue.amenities.map((a) => (
                   <li
                     key={a.id}
-                    className="flex items-center gap-2 rounded-btn border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700"
+                    className="flex items-center gap-2 rounded-btn border border-border bg-bg-card px-3 py-2 text-sm text-text-primary"
                   >
                     <ShieldCheck className="size-4 shrink-0 text-primary-600" aria-hidden="true" />
                     {a.name}
@@ -322,7 +322,7 @@ export function VenueDetailScreen() {
 
           {venue.cancellationPolicy && (
             <section aria-labelledby="policy-h" className="space-y-3">
-              <h2 id="policy-h" className="text-xl font-semibold text-neutral-900">
+              <h2 id="policy-h" className="text-xl font-semibold text-text-primary">
                 {t('policy')}
               </h2>
               <Card className="space-y-1.5 p-4 text-sm text-neutral-700">
@@ -448,7 +448,7 @@ export function VenueDetailScreen() {
       </div>
 
       {/* Thanh đặt sân cố định ở đáy cho mobile */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white p-4 shadow-lg lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg-card p-4 shadow-lg lg:hidden">
         <BookingBar
           count={selected.length}
           total={total}

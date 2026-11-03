@@ -219,15 +219,15 @@ export default function VenuesPage() {
 
       {/* Thanh chuyển đổi View Mode */}
       <div className="mt-4 flex items-center justify-end">
-        <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 p-1 text-xs">
+        <div className="flex items-center rounded-lg border border-border bg-bg-subtle p-1 text-xs">
           <button
             type="button"
             onClick={() => setViewMode('grid')}
             className={cn(
               'flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors',
               viewMode === 'grid'
-                ? 'bg-white text-neutral-900 shadow-xs'
-                : 'text-neutral-600 hover:text-neutral-900',
+                ? 'bg-bg-card text-text-primary shadow-xs'
+                : 'text-text-secondary hover:text-text-primary',
             )}
             title="Dạng lưới"
           >
@@ -241,8 +241,8 @@ export default function VenuesPage() {
             className={cn(
               'flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors',
               viewMode === 'map'
-                ? 'bg-white text-neutral-900 shadow-xs'
-                : 'text-neutral-600 hover:text-neutral-900',
+                ? 'bg-bg-card text-text-primary shadow-xs'
+                : 'text-text-secondary hover:text-text-primary',
             )}
             title="Dạng bản đồ"
           >
@@ -256,8 +256,8 @@ export default function VenuesPage() {
             className={cn(
               'hidden sm:flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors',
               viewMode === 'split'
-                ? 'bg-white text-neutral-900 shadow-xs'
-                : 'text-neutral-600 hover:text-neutral-900',
+                ? 'bg-bg-card text-text-primary shadow-xs'
+                : 'text-text-secondary hover:text-text-primary',
             )}
             title="Chia đôi (Lưới & Bản đồ)"
           >
@@ -274,7 +274,7 @@ export default function VenuesPage() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-3 rounded-card border border-neutral-200 p-4"
+                className="flex flex-col gap-3 rounded-card border border-border bg-bg-card p-4"
               >
                 <Skeleton className="aspect-video w-full rounded-md" />
                 <Skeleton className="h-5 w-3/4" />

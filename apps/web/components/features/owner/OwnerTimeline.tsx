@@ -432,7 +432,7 @@ export function OwnerTimeline() {
               clearSelection();
               setPointerSelection(null);
             }}
-            className="h-10 min-w-48 rounded-input border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            className="h-10 min-w-48 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           >
             {venuesQuery.data.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
@@ -449,8 +449,8 @@ export function OwnerTimeline() {
             >
               <ChevronLeft aria-hidden="true" />
             </Button>
-            <div className="relative flex h-10 w-40 items-center gap-2 rounded-input border border-neutral-300 bg-white px-3 text-sm text-neutral-900 focus-within:border-primary-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-600/20">
-              <CalendarDays className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />
+            <div className="relative flex h-10 w-40 items-center gap-2 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary focus-within:border-primary-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-600/20">
+              <CalendarDays className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
               <label className="sr-only" htmlFor="timeline-date">{t('selectDate')}</label>
               <span aria-hidden="true" className="pointer-events-none tabular-nums">{formatDateInputLabel(selectedDate)}</span>
               <Input
@@ -509,7 +509,7 @@ export function OwnerTimeline() {
         </div>
       ) : (
         <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-          <section className="min-w-0 overflow-hidden rounded-card border border-neutral-200 bg-white">
+          <section className="min-w-0 overflow-hidden rounded-card border border-border bg-bg-card">
             {slots.length === 0 ? (
               <div className="p-8 text-center">
                 <Clock3 className="mx-auto mb-2 size-7 text-neutral-400" aria-hidden="true" />
@@ -522,14 +522,14 @@ export function OwnerTimeline() {
             ) : (
               <div className="overflow-x-auto">
                 <div className="min-w-max">
-                  <div className="grid border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-600" style={{ gridTemplateColumns: columns }}>
-                    <div className="sticky left-0 z-10 flex min-h-11 items-center border-r border-neutral-200 bg-neutral-50 px-3 font-medium">
+                  <div className="grid border-b border-border bg-bg-subtle text-xs text-text-secondary" style={{ gridTemplateColumns: columns }}>
+                    <div className="sticky left-0 z-10 flex min-h-11 items-center border-r border-border bg-bg-subtle px-3 font-medium text-text-primary">
                       {t('colCourt')}
                     </div>
                     {slots.map((slot, index) => slot.time.endsWith(':00') ? (
                       <div
                         key={slot.start}
-                        className="flex h-11 items-center justify-center border-r border-neutral-100 tabular-nums"
+                        className="flex h-11 items-center justify-center border-r border-border/60 tabular-nums"
                         style={{ gridColumn: `${index + 2} / span ${index < slots.length - 1 ? 2 : 1}` }}
                       >
                         {slot.time}
@@ -540,10 +540,10 @@ export function OwnerTimeline() {
                   {courts.map((court) => (
                     <div
                       key={court.id}
-                      className="grid min-h-14 border-b border-neutral-200 last:border-b-0"
+                      className="grid min-h-14 border-b border-border last:border-b-0"
                       style={{ gridTemplateColumns: columns }}
                     >
-                      <div className="sticky left-0 z-10 flex items-center border-r border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-800">
+                      <div className="sticky left-0 z-10 flex items-center border-r border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary">
                         {court.name}
                       </div>
                       {slots.map((slot, index) => {
@@ -559,7 +559,7 @@ export function OwnerTimeline() {
                           && index >= Math.min(pointerRange.startIndex, pointerRange.endIndex)
                           && index <= Math.max(pointerRange.startIndex, pointerRange.endIndex));
                         const classes = {
-                          available: 'bg-white hover:bg-primary-50 focus-visible:bg-primary-50',
+                          available: 'bg-bg-card hover:bg-bg-subtle focus-visible:bg-bg-subtle',
                           booked: 'bg-primary-700 text-white hover:bg-primary-800',
                           blocked: 'bg-[repeating-linear-gradient(135deg,var(--color-neutral-200)_0,var(--color-neutral-200)_4px,var(--color-neutral-50)_4px,var(--color-neutral-50)_8px)] text-neutral-700 hover:brightness-95',
                           closed: 'bg-neutral-100 text-neutral-400',
@@ -644,46 +644,46 @@ export function OwnerTimeline() {
             )}
           </section>
 
-          <aside className="min-h-48 rounded-card border border-neutral-200 bg-white p-4" aria-live="polite">
+          <aside className="min-h-48 rounded-card border border-border bg-bg-card p-4" aria-live="polite">
             {selectedBooking ? (
               <div className="space-y-4">
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-semibold text-neutral-900">{t('timelineBookingDetail')}</h2>
+                  <h2 className="font-semibold text-text-primary">{t('timelineBookingDetail')}</h2>
                   <Button type="button" size="sm" variant="ghost" onClick={clearSelection}>
                     {t('close')}
                   </Button>
                 </div>
                 <dl className="space-y-3 text-xs">
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="whitespace-nowrap text-neutral-500">{t('timelineCustomerLabel')}</dt>
-                    <dd className="text-right font-medium text-neutral-900">
+                    <dt className="whitespace-nowrap text-text-secondary">{t('timelineCustomerLabel')}</dt>
+                    <dd className="text-right font-medium text-text-primary">
                       {selectedBooking.customerName ?? selectedBooking.guestName ?? t('guestName')}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="whitespace-nowrap text-neutral-500">{t('timelineCourtLabel')}</dt>
-                    <dd className="text-right font-medium text-neutral-900">{detailCourt?.name ?? '—'}</dd>
+                    <dt className="whitespace-nowrap text-text-secondary">{t('timelineCourtLabel')}</dt>
+                    <dd className="text-right font-medium text-text-primary">{detailCourt?.name ?? '—'}</dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="whitespace-nowrap text-neutral-500">{t('time')}</dt>
-                    <dd className="text-right tabular-nums text-neutral-900">
+                    <dt className="whitespace-nowrap text-text-secondary">{t('time')}</dt>
+                    <dd className="text-right tabular-nums text-text-primary">
                       {detailRange ? `${timeInVietnam(detailRange.start)} – ${timeInVietnam(detailRange.end)}` : '—'}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="whitespace-nowrap text-neutral-500">{t('source')}</dt>
-                    <dd className="text-right text-neutral-900">
+                    <dt className="whitespace-nowrap text-text-secondary">{t('source')}</dt>
+                    <dd className="text-right text-text-primary">
                       {selectedBooking.source === 'manual' ? t('sourceManual') : t('sourceOnline')}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <dt className="whitespace-nowrap text-neutral-500">{t('totalAmount')}</dt>
-                    <dd className="text-right font-semibold tabular-nums text-neutral-900">
+                    <dt className="whitespace-nowrap text-text-secondary">{t('totalAmount')}</dt>
+                    <dd className="text-right font-semibold tabular-nums text-text-primary">
                       {formatCurrency(selectedBooking.totalPrice)}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-3">
-                    <dt className="shrink-0 whitespace-nowrap text-neutral-500">{t('status')}</dt>
+                  <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+                    <dt className="shrink-0 whitespace-nowrap text-text-secondary">{t('status')}</dt>
                     <dd className="flex min-w-0 flex-1 justify-end">
                       <StatusBadge
                         kind="booking"

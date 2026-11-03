@@ -20,7 +20,7 @@ export function Pagination({ meta, onPageChange }: PaginationProps) {
   const to = Math.min(page * limit, total);
 
   return (
-    <div className="flex flex-col items-center justify-between gap-2 text-sm text-neutral-600 sm:flex-row">
+    <div className="flex flex-col items-center justify-between gap-2 text-sm text-text-secondary sm:flex-row">
       <p className="tabular-nums">
         {from}–{to} / {total}
       </p>

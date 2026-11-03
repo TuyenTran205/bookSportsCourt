@@ -85,44 +85,44 @@ export function AdminDashboardScreen() {
 
           {/* 2 Khối cảnh báo chờ phê duyệt */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Card className="flex items-center justify-between border-amber-200 bg-amber-50/60 p-5">
+            <Card className="flex items-center justify-between border-amber-200 bg-amber-50/60 p-5 dark:border-amber-900/50 dark:bg-amber-950/30">
               <div className="flex items-start gap-3.5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
                   <ShieldCheck className="size-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-neutral-900">
+                  <h4 className="font-semibold text-text-primary">
                     Hồ sơ đăng ký chủ sân chờ duyệt
                   </h4>
-                  <p className="mt-0.5 text-xs text-neutral-600">
+                  <p className="mt-0.5 text-xs text-text-secondary">
                     Hiện có <strong>{stats?.pendingOwnerApplications ?? 0}</strong> đối tác đang chờ xác minh thông tin doanh nghiệp.
                   </p>
                 </div>
               </div>
               <Link href="/admin/owner-applications">
-                <Button size="sm" variant="outline" className="border-amber-300 bg-white hover:bg-amber-100">
+                <Button size="sm" variant="outline" className="border-amber-300 bg-white hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60">
                   Xử lý ngay
                   <ArrowRight className="ml-1 size-3.5" />
                 </Button>
               </Link>
             </Card>
 
-            <Card className="flex items-center justify-between border-blue-200 bg-blue-50/60 p-5">
+            <Card className="flex items-center justify-between border-blue-200 bg-blue-50/60 p-5 dark:border-blue-900/50 dark:bg-blue-950/30">
               <div className="flex items-start gap-3.5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
                   <Building2 className="size-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-neutral-900">
+                  <h4 className="font-semibold text-text-primary">
                     Cơ sở thể thao mới chờ kiểm duyệt
                   </h4>
-                  <p className="mt-0.5 text-xs text-neutral-600">
+                  <p className="mt-0.5 text-xs text-text-secondary">
                     Hiện có <strong>{stats?.pendingVenues ?? 0}</strong> cơ sở mới tạo đang chờ duyệt địa chỉ & tiện ích.
                   </p>
                 </div>
               </div>
               <Link href="/admin/venues">
-                <Button size="sm" variant="outline" className="border-blue-300 bg-white hover:bg-blue-100">
+                <Button size="sm" variant="outline" className="border-blue-300 bg-white hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/60">
                   Xem danh sách
                   <ArrowRight className="ml-1 size-3.5" />
                 </Button>

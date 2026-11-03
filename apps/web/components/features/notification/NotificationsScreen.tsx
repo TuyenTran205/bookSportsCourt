@@ -211,24 +211,24 @@ export function NotificationsScreen() {
                       'flex items-start gap-3.5 rounded-card border p-4 transition-all duration-150 cursor-pointer text-left',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
                       isUnread
-                        ? 'border-primary-200 bg-primary-50/20 shadow-xs hover:border-primary-300 hover:bg-primary-50/30'
-                        : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50/50',
+                        ? 'border-primary-200 bg-primary-50/20 shadow-xs hover:border-primary-300 hover:bg-primary-50/30 dark:border-primary-900/50 dark:bg-primary-950/30 dark:hover:bg-primary-950/40'
+                        : 'border-border bg-bg-card hover:bg-bg-subtle',
                     )}
                   >
                     {getNotificationIcon(item.type)}
 
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className={cn('text-sm font-semibold truncate', isUnread ? 'text-primary-950' : 'text-neutral-900')}>
+                        <h3 className={cn('text-sm font-semibold truncate', isUnread ? 'text-primary-950 dark:text-primary-300' : 'text-text-primary')}>
                           {item.title}
                         </h3>
-                        <span className="text-xs text-neutral-500 shrink-0">
+                        <span className="text-xs text-text-secondary shrink-0">
                           {timeAgo(item.createdAt)}
                         </span>
                       </div>
 
                       {item.body && (
-                        <p className="text-sm text-neutral-600 leading-relaxed">
+                        <p className="text-sm text-text-secondary leading-relaxed">
                           {item.body}
                         </p>
                       )}

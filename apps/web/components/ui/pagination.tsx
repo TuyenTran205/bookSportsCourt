@@ -101,13 +101,13 @@ export function Pagination({
         disabled={disabled || isFirstPage}
         onClick={() => handlePageClick(currentPage - 1)}
         className={cn(
-          'inline-flex min-h-11 min-w-11 items-center justify-center rounded-btn border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 transition-colors',
-          'hover:bg-neutral-50 active:bg-neutral-100',
+          'inline-flex min-h-11 min-w-11 items-center justify-center rounded-btn border border-border bg-bg-card px-3 text-sm font-medium text-text-primary transition-colors',
+          'hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
-          'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white',
+          'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-bg-card',
         )}
       >
-        <ChevronLeft className="size-4 shrink-0 text-neutral-600" aria-hidden="true" />
+        <ChevronLeft className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
         <span className="hidden sm:inline sm:ml-1">Trước</span>
       </button>
 
@@ -118,7 +118,7 @@ export function Pagination({
             <span
               key={`${item}-${idx}`}
               aria-hidden="true"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center text-neutral-400"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-text-disabled"
             >
               <MoreHorizontal className="size-4" />
             </span>
@@ -140,7 +140,7 @@ export function Pagination({
               'disabled:cursor-not-allowed disabled:opacity-50',
               isCurrent
                 ? 'bg-primary-700 text-white font-semibold shadow-xs hover:bg-primary-600'
-                : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100',
+                : 'border border-border bg-bg-card text-text-primary hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
             )}
           >
             {item}
@@ -155,14 +155,14 @@ export function Pagination({
         disabled={disabled || isLastPage}
         onClick={() => handlePageClick(currentPage + 1)}
         className={cn(
-          'inline-flex min-h-11 min-w-11 items-center justify-center rounded-btn border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 transition-colors',
-          'hover:bg-neutral-50 active:bg-neutral-100',
+          'inline-flex min-h-11 min-w-11 items-center justify-center rounded-btn border border-border bg-bg-card px-3 text-sm font-medium text-text-primary transition-colors',
+          'hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
-          'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white',
+          'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-bg-card',
         )}
       >
         <span className="hidden sm:inline sm:mr-1">Sau</span>
-        <ChevronRight className="size-4 shrink-0 text-neutral-600" aria-hidden="true" />
+        <ChevronRight className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
       </button>
     </nav>
   );

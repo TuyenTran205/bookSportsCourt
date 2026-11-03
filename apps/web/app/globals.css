@@ -97,6 +97,19 @@
 }
 
 .dark {
+  /* === NEUTRAL INVERTED RAMP (Đảo chiều thông minh toàn hệ thống) === */
+  --color-neutral-0: #0f172a;     /* Nền thẻ Card tối chuẩn Linear */
+  --color-neutral-50: #090d16;    /* Nền trang Canvas slate sâu */
+  --color-neutral-100: #1e293b;   /* Nền phụ subtle slate-800 */
+  --color-neutral-200: #334155;   /* Viền 1px slate-700 */
+  --color-neutral-300: #475569;   /* Viền ô input / select slate-600 */
+  --color-neutral-400: #64748b;   /* Placeholder / Text disabled */
+  --color-neutral-500: #94a3b8;   /* Text muted / Icon phụ */
+  --color-neutral-600: #cbd5e1;   /* Text phụ rõ nét */
+  --color-neutral-700: #e2e8f0;   /* Text nội dung chính */
+  --color-neutral-800: #f1f5f9;   /* Text tiêu đề phụ */
+  --color-neutral-900: #f8fafc;   /* Text tiêu đề chính nổi bật */
+
   /* === SURFACES (Chế độ tối dịu mắt, độ tương phản cao chuẩn Linear) === */
   --color-bg: #090d16;          /* Nền chính slate sâu */
   --color-bg-card: #0f172a;     /* Nền card neutral-900 */

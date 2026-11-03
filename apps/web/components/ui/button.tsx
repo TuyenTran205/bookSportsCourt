@@ -27,10 +27,12 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: 'bg-primary-700 text-white hover:bg-primary-600 active:bg-primary-800',
-        secondary: 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200 active:bg-neutral-300',
+        secondary:
+          'bg-bg-subtle text-text-primary hover:bg-neutral-200 dark:hover:bg-neutral-700 active:bg-neutral-300 dark:active:bg-neutral-600',
         outline:
-          'border border-border bg-bg text-neutral-900 hover:bg-neutral-50 active:bg-neutral-100',
-        ghost: 'text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200',
+          'border border-border bg-bg text-text-primary hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
+        ghost:
+          'text-text-secondary hover:bg-bg-subtle hover:text-text-primary active:bg-neutral-200 dark:active:bg-neutral-700',
         danger: 'bg-danger text-white hover:bg-red-700 active:bg-red-800',
       },
       size: {

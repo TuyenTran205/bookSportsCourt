@@ -97,42 +97,42 @@ export function BookingSummary(props: BookingSummaryProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col gap-4 rounded-card border border-neutral-200 bg-white p-4 sm:p-5',
+        'flex flex-col gap-4 rounded-card border border-border bg-bg-card p-4 sm:p-5',
         className,
       )}
       aria-label={t('summary')}
     >
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-lg font-medium text-neutral-900">{t('summary')}</h2>
+        <h2 className="text-lg font-medium text-text-primary">{t('summary')}</h2>
         {status && <StatusBadge kind="booking" status={status} />}
       </div>
 
       <dl className="flex flex-col gap-3 text-sm">
         <div className="flex items-start gap-2">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+          <MapPin className="mt-0.5 size-4 shrink-0 text-text-disabled" aria-hidden="true" />
           <div>
             <dt className="sr-only">{t('venue')}</dt>
-            <dd className="font-medium text-neutral-900">{venueName}</dd>
-            <dd className="text-neutral-600">{courtName}</dd>
+            <dd className="font-medium text-text-primary">{venueName}</dd>
+            <dd className="text-text-secondary">{courtName}</dd>
           </div>
         </div>
 
         {start && (
           <div className="flex items-start gap-2">
-            <CalendarDays className="mt-0.5 size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+            <CalendarDays className="mt-0.5 size-4 shrink-0 text-text-disabled" aria-hidden="true" />
             <div>
               <dt className="sr-only">{t('selectDate')}</dt>
-              <dd className="text-neutral-900">{formatDateLong(start)}</dd>
+              <dd className="text-text-primary">{formatDateLong(start)}</dd>
             </div>
           </div>
         )}
 
         {start && end && (
           <div className="flex items-start gap-2">
-            <Clock className="mt-0.5 size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+            <Clock className="mt-0.5 size-4 shrink-0 text-text-disabled" aria-hidden="true" />
             <div>
               <dt className="sr-only">{t('selectTime')}</dt>
-              <dd className="tabular-nums text-neutral-900">
+              <dd className="tabular-nums text-text-primary">
                 {formatTime(start)} – {formatTime(end)}
               </dd>
             </div>
@@ -142,16 +142,16 @@ export function BookingSummary(props: BookingSummaryProps) {
 
       {/* Số block — ở chế độ cart bảng giá bên dưới đã cho thấy điều này. */}
       {!isCart && count > 0 && (
-        <p className="-mt-1 pl-6 text-sm text-neutral-600">{t('stickySlots', { count })}</p>
+        <p className="-mt-1 pl-6 text-sm text-text-secondary">{t('stickySlots', { count })}</p>
       )}
 
       {/* Bảng giá từng block — chỉ ở chế độ cart vì đơn thật có thể đã đổi giá. */}
       {isCart && slots.length > 0 && (
-        <div className="border-t border-neutral-200 pt-3">
+        <div className="border-t border-border pt-3">
           <table className="w-full text-sm">
             <caption className="sr-only">{t('selectedSlots')}</caption>
             <thead>
-              <tr className="text-xs text-neutral-500">
+              <tr className="text-xs text-text-secondary">
                 <th scope="col" className="text-left font-normal">
                   {t('selectTime')}
                 </th>
@@ -163,8 +163,8 @@ export function BookingSummary(props: BookingSummaryProps) {
             <tbody>
               {slots.map((slot) => (
                 <tr key={slot.start}>
-                  <td className="py-1 tabular-nums text-neutral-700">{formatTime(slot.start)}</td>
-                  <td className="py-1 text-right tabular-nums text-neutral-700">
+                  <td className="py-1 tabular-nums text-text-primary">{formatTime(slot.start)}</td>
+                  <td className="py-1 text-right tabular-nums text-text-primary">
                     {formatCurrency(slot.price)}
                   </td>
                 </tr>
@@ -174,9 +174,9 @@ export function BookingSummary(props: BookingSummaryProps) {
         </div>
       )}
 
-      <div className="flex items-baseline justify-between border-t border-neutral-200 pt-3">
-        <span className="text-sm text-neutral-600">{t('stickyTotal')}</span>
-        <span className="text-xl font-bold text-primary-700 tabular-nums">
+      <div className="flex items-baseline justify-between border-t border-border pt-3">
+        <span className="text-sm text-text-secondary">{t('stickyTotal')}</span>
+        <span className="text-xl font-bold text-primary-700 dark:text-primary-400 tabular-nums">
           {formatCurrency(total)}
         </span>
       </div>
@@ -184,8 +184,8 @@ export function BookingSummary(props: BookingSummaryProps) {
       {/* Tiền cọc — chỉ hiện khi server đã chốt con số. */}
       {depositAmount > 0 && (
         <div className="flex items-baseline justify-between text-sm">
-          <span className="text-neutral-600">{t('deposit')}</span>
-          <span className="font-medium text-neutral-900 tabular-nums">
+          <span className="text-text-secondary">{t('deposit')}</span>
+          <span className="font-medium text-text-primary tabular-nums">
             {formatCurrency(depositAmount)}
           </span>
         </div>

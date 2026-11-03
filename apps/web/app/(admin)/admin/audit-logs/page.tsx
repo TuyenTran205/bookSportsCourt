@@ -1,9 +1,9 @@
-import { AdminAuditLogsScreen } from '@/components/features/admin/AdminAuditLogsScreen';
+import { AdminAuditLogsScreen } from "@/components/features/admin/AdminAuditLogsScreen";
 
 export const metadata = {
-  title: 'Nhật ký kiểm toán | BookSportsCourt',
+    title: "Nhật ký hoạt động | BookSportsCourt",
 };
 
 export default function AdminAuditLogsPage() {
-  return <AdminAuditLogsScreen />;
+    return <AdminAuditLogsScreen />;
 }

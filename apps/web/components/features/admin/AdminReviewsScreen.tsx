@@ -147,7 +147,7 @@ export function AdminReviewsScreen() {
                 setVenueFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full rounded-btn border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              className="w-full rounded-btn border border-border bg-bg-card px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
               aria-label={t('filterVenue')}
             >
               <option value="">{t('allVenues')}</option>
@@ -167,7 +167,7 @@ export function AdminReviewsScreen() {
                 setVisibilityFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full rounded-btn border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              className="w-full rounded-btn border border-border bg-bg-card px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
               aria-label={t('filterStatus')}
             >
               <option value="all">{t('statusAll')}</option>
@@ -184,7 +184,7 @@ export function AdminReviewsScreen() {
                 setRatingFilter(e.target.value);
                 setPage(1);
               }}
-              className="w-full rounded-btn border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              className="w-full rounded-btn border border-border bg-bg-card px-3 py-2 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
               aria-label={t('filterRating')}
             >
               <option value="all">{t('ratingAll')}</option>
@@ -247,7 +247,7 @@ export function AdminReviewsScreen() {
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm" data-testid="admin-reviews-table">
-              <thead className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-600">
+              <thead className="border-b border-border bg-bg-subtle text-xs font-semibold text-text-secondary">
                 <tr>
                   <th scope="col" className="px-4 py-3">{t('colCustomer')}</th>
                   <th scope="col" className="px-4 py-3">{t('colVenue')}</th>
@@ -256,24 +256,24 @@ export function AdminReviewsScreen() {
                   <th scope="col" className="px-4 py-3 text-right">{t('colActions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-border">
                 {reviews.map((row) => (
-                  <tr key={row.id} className="transition-colors hover:bg-neutral-50/70">
+                  <tr key={row.id} className="transition-colors hover:bg-bg-subtle/50">
                     {/* Cột 1: Khách hàng */}
                     <td className="px-4 py-3 align-top">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-text-secondary">
                           <User className="size-4" />
                         </div>
                         <div className="min-w-0">
-                          <div className="font-medium text-neutral-900">{row.customerName}</div>
-                          <div className="text-xs text-neutral-500">{formatDate(row.createdAt)}</div>
+                          <div className="font-medium text-text-primary">{row.customerName}</div>
+                          <div className="text-xs text-text-secondary">{formatDate(row.createdAt)}</div>
                         </div>
                       </div>
                     </td>
 
                     {/* Cột 2: Cơ sở */}
-                    <td className="px-4 py-3 align-top font-medium text-neutral-800">
+                    <td className="px-4 py-3 align-top font-medium text-text-primary">
                       {row.venueName}
                     </td>
 
@@ -288,20 +288,20 @@ export function AdminReviewsScreen() {
                                 'size-3.5',
                                 i < row.rating
                                   ? 'fill-amber-400 text-amber-400'
-                                  : 'text-neutral-300',
+                                  : 'text-neutral-300 dark:text-neutral-600',
                               )}
                             />
                           ))}
-                          <span className="ml-1 text-xs font-semibold text-neutral-700">
+                          <span className="ml-1 text-xs font-semibold text-text-secondary">
                             {row.rating}/5
                           </span>
                         </div>
-                        <p className="text-neutral-700 leading-relaxed text-sm">
-                          {row.comment || <span className="italic text-neutral-400">{t('reviewNoComment')}</span>}
+                        <p className="text-text-primary leading-relaxed text-sm">
+                          {row.comment || <span className="italic text-text-disabled">{t('reviewNoComment')}</span>}
                         </p>
                         {row.ownerReply && (
-                          <div className="rounded-md border border-neutral-200 bg-neutral-50 p-2 text-xs text-neutral-600">
-                            <span className="font-semibold text-neutral-800">{t('ownerReply')} </span>
+                          <div className="rounded-md border border-border bg-bg-subtle p-2 text-xs text-text-secondary">
+                            <span className="font-semibold text-text-primary">{t('ownerReply')} </span>
                             {row.ownerReply}
                           </div>
                         )}
@@ -311,12 +311,12 @@ export function AdminReviewsScreen() {
                     {/* Cột 4: Trạng thái */}
                     <td className="px-4 py-3 align-top">
                       {row.isVisible ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-800">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
                           <span className="size-1.5 rounded-full bg-primary-600" />
                           {t('badgePublic')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
                           <span className="size-1.5 rounded-full bg-neutral-500" />
                           {t('badgeHidden')}
                         </span>

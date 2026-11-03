@@ -94,7 +94,7 @@ function AvatarSection({ user }: { user: User }) {
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-4 py-6 sm:flex-row sm:gap-6">
-        <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-2 border-neutral-200 bg-neutral-100 shadow-xs">
+        <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-2 border-border bg-bg-subtle shadow-xs">
           {user.avatarUrl ? (
             <Image
               src={user.avatarUrl}
@@ -105,7 +105,7 @@ function AvatarSection({ user }: { user: User }) {
               className="size-full rounded-full object-cover"
             />
           ) : (
-            <div className="flex size-full items-center justify-center bg-primary-100 text-2xl font-bold text-primary-700">
+            <div className="flex size-full items-center justify-center bg-primary-100 text-2xl font-bold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
               {user.fullName.slice(0, 1).toUpperCase()}
             </div>
           )}
@@ -140,7 +140,7 @@ function AvatarSection({ user }: { user: User }) {
             <Camera className="size-4" aria-hidden="true" />
             <span>Đổi ảnh đại diện</span>
           </Button>
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-text-secondary">
             Định dạng JPG, PNG hoặc WebP. Dung lượng tối đa 2MB.
           </span>
         </div>
