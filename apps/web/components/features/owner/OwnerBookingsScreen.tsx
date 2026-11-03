@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import {
   CalendarDays,
@@ -10,7 +11,9 @@ import {
   ChevronRight,
   Eye,
   Search,
+  UserX,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { BOOKING_STATUSES } from '@bsc/shared';
 import type { BookingStatus } from '@bsc/shared';
@@ -30,19 +33,30 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NativeSelect } from '@/components/ui/select';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { markBookingNoShow, type OwnerBookingItem } from '@/lib/api/endpoints/owner';
+import { ApiError } from '@/lib/api/errors';
 import { useOwnerBookings } from '@/lib/hooks/useOwnerBookings';
+import { useOwnerRealtime } from '@/lib/hooks/useOwnerRealtime';
 import {
   formatCurrency,
   formatDateTimeInVietnam,
   formatDateTimeRangeInVietnam,
   maskPhone,
 } from '@/lib/utils/format';
-import type { OwnerBookingItem } from '@/lib/api/endpoints/owner';
 
 const PAGE_SIZE = 10;
 const EMPTY_BOOKINGS: OwnerBookingItem[] = [];
 
 const BOOKING_FILTERS = ['all', ...BOOKING_STATUSES] as const;
+
+/**
+ * Kiểm tra điều kiện cho phép đánh dấu No-show (OWN-09):
+ * 1. Đơn ở trạng thái 'confirmed'.
+ * 2. Thời điểm hiện tại đã quá giờ bắt đầu trận đấu.
+ */
+function canMarkNoShow(booking: OwnerBookingItem): boolean {
+  return booking.status === 'confirmed' && new Date() > new Date(booking.during.start);
+}
 
 function BookingDetails({
   booking,
@@ -119,11 +133,16 @@ function BookingDetails({
 
 export function OwnerBookingsScreen() {
   const t = useTranslations('owner');
+  const queryClient = useQueryClient();
+
+  useOwnerRealtime();
+
   const [statusFilter, setStatusFilter] = React.useState<'all' | BookingStatus>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const [selectedBooking, setSelectedBooking] = React.useState<OwnerBookingItem | null>(null);
+  const [bookingToNoShow, setBookingToNoShow] = React.useState<OwnerBookingItem | null>(null);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
@@ -136,6 +155,23 @@ export function OwnerBookingsScreen() {
     status: statusFilter === 'all' ? undefined : statusFilter,
     q: debouncedSearch || undefined,
   });
+
+  const noShowMutation = useMutation({
+    mutationFn: (bookingId: string) => markBookingNoShow(bookingId),
+    onSuccess: () => {
+      setBookingToNoShow(null);
+      if (selectedBooking && selectedBooking.id === bookingToNoShow?.id) {
+        setSelectedBooking(null);
+      }
+      toast.success('Đã đánh dấu đơn đặt sân là khách không đến (No-show)');
+      queryClient.invalidateQueries({ queryKey: ['owner', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['owner', 'timeline'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof ApiError ? err.message : 'Thao tác thất bại');
+    },
+  });
+
   const bookings = bookingsQuery.data?.data ?? EMPTY_BOOKINGS;
   const meta = bookingsQuery.data?.meta;
   const total = meta?.total ?? 0;
@@ -218,7 +254,11 @@ export function OwnerBookingsScreen() {
       ) : bookings.length === 0 ? (
         <EmptyState
           icon={CalendarX}
-          title={debouncedSearch || statusFilter !== 'all' ? t('noMatchingBookings') : t('noRecentBookings')}
+          title={
+            debouncedSearch || statusFilter !== 'all'
+              ? t('noMatchingBookings')
+              : t('noRecentBookings')
+          }
           description={
             debouncedSearch || statusFilter !== 'all'
               ? t('noMatchingBookingsDesc')
@@ -250,20 +290,39 @@ export function OwnerBookingsScreen() {
             <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-500">
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('colBookingCode')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('colCustomer')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('colCourtVenue')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('bookingColTimeRange')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('colSource')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('colStatus')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('bookingPaymentStatus')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">{t('bookingCreatedAt')}</th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3 text-right">{t('colActions')}</th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('colBookingCode')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('colCustomer')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('colCourtVenue')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('bookingColTimeRange')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('colSource')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('colStatus')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('bookingPaymentStatus')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3">
+                    {t('bookingCreatedAt')}
+                  </th>
+                  <th scope="col" className="whitespace-nowrap px-4 py-3 text-right">
+                    {t('colActions')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {bookings.map((booking) => {
                   const name = booking.customerName || booking.guestName || t('walkInCustomer');
+                  const eligibleNoShow = canMarkNoShow(booking);
                   return (
                     <tr key={booking.id} className="transition-colors hover:bg-neutral-50">
                       <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-neutral-600">
@@ -300,16 +359,30 @@ export function OwnerBookingsScreen() {
                         {formatDateTimeInVietnam(booking.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="min-h-11"
-                          onClick={() => setSelectedBooking(booking)}
-                        >
-                          <Eye aria-hidden="true" />
-                          {t('bookingDetailsAction')}
-                        </Button>
+                        <div className="flex items-center justify-end gap-2">
+                          {eligibleNoShow && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="min-h-11 border-danger/30 text-danger hover:bg-danger-50 hover:text-danger"
+                              onClick={() => setBookingToNoShow(booking)}
+                            >
+                              <UserX className="size-4" aria-hidden="true" />
+                              <span>No-show</span>
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="min-h-11"
+                            onClick={() => setSelectedBooking(booking)}
+                          >
+                            <Eye aria-hidden="true" />
+                            {t('bookingDetailsAction')}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -353,6 +426,7 @@ export function OwnerBookingsScreen() {
         </Card>
       )}
 
+      {/* Dialog chi tiết đơn */}
       <Dialog
         open={Boolean(selectedBooking)}
         onOpenChange={(open) => {
@@ -372,9 +446,67 @@ export function OwnerBookingsScreen() {
                 </DialogDescription>
               </DialogHeader>
               <BookingDetails booking={selectedBooking} t={t} />
-              <DialogFooter className="mt-5">
+              <DialogFooter className="mt-5 flex gap-2 sm:justify-end">
+                {canMarkNoShow(selectedBooking) && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="min-h-11"
+                    onClick={() => {
+                      const target = selectedBooking;
+                      setSelectedBooking(null);
+                      setBookingToNoShow(target);
+                    }}
+                  >
+                    <UserX className="size-4" aria-hidden="true" />
+                    <span>Khách không đến (No-show)</span>
+                  </Button>
+                )}
                 <Button type="button" variant="outline" onClick={() => setSelectedBooking(null)}>
                   {t('close')}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog xác nhận No-show */}
+      <Dialog
+        open={Boolean(bookingToNoShow)}
+        onOpenChange={(open) => {
+          if (!open && !noShowMutation.isPending) setBookingToNoShow(null);
+        }}
+      >
+        <DialogContent className="max-w-md p-5 sm:p-6" closeLabel={t('close')}>
+          {bookingToNoShow && (
+            <>
+              <DialogHeader className="mb-3">
+                <DialogTitle className="flex items-center gap-2 text-base text-danger">
+                  <UserX className="size-4" aria-hidden="true" />
+                  Xác nhận khách vắng mặt (No-show)?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-neutral-600">
+                  Đơn đặt sân mã #{bookingToNoShow.id.slice(0, 8)} sẽ chuyển sang trạng thái Vắng mặt. Hành động này không thể hoàn tác.
+                </DialogDescription>
+              </DialogHeader>
+
+              <DialogFooter className="mt-5 flex gap-2 sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={noShowMutation.isPending}
+                  onClick={() => setBookingToNoShow(null)}
+                >
+                  Đóng
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  loading={noShowMutation.isPending}
+                  onClick={() => noShowMutation.mutate(bookingToNoShow.id)}
+                >
+                  Xác nhận vắng mặt
                 </Button>
               </DialogFooter>
             </>

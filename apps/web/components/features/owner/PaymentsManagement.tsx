@@ -145,7 +145,7 @@ export function PaymentsManagement() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <label htmlFor="payment-status" className="shrink-0 text-sm font-medium text-neutral-700">
+          <label htmlFor="payment-status" className="shrink-0 text-sm font-medium text-text-primary">
             {t('paymentStatusFilter')}
           </label>
           <select
@@ -155,7 +155,7 @@ export function PaymentsManagement() {
               setStatus(event.target.value as PaymentStatus | 'all');
               setPage(1);
             }}
-            className="h-10 min-w-40 rounded-input border border-neutral-300 bg-white px-3 text-sm text-neutral-900 hover:border-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            className="h-10 min-w-40 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary hover:border-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           >
             {PAYMENT_FILTERS.map((filter) => (
               <option key={filter} value={filter}>
@@ -164,17 +164,17 @@ export function PaymentsManagement() {
             ))}
           </select>
         </div>
-        <p className="text-xs text-neutral-500" aria-live="polite">
+        <p className="text-xs text-text-secondary" aria-live="polite">
           {t('paymentCount', { count: meta?.total ?? items.length })}
         </p>
       </div>
 
-      <section className="overflow-hidden rounded-card border border-neutral-200 bg-white">
+      <section className="overflow-hidden rounded-card border border-border bg-bg-card">
         {items.length === 0 ? (
           <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
-            <CreditCard className="mb-3 size-8 text-neutral-400" aria-hidden="true" />
-            <h2 className="font-medium text-neutral-900">{t(status === 'all' ? 'paymentsEmptyTitle' : 'paymentsFilterEmptyTitle')}</h2>
-            <p className="mt-1 max-w-md text-sm text-neutral-600">
+            <CreditCard className="mb-3 size-8 text-text-disabled" aria-hidden="true" />
+            <h2 className="font-medium text-text-primary">{t(status === 'all' ? 'paymentsEmptyTitle' : 'paymentsFilterEmptyTitle')}</h2>
+            <p className="mt-1 max-w-md text-sm text-text-secondary">
               {t(status === 'all' ? 'paymentsEmptyDesc' : 'paymentsFilterEmptyDesc')}
             </p>
           </div>
@@ -182,7 +182,7 @@ export function PaymentsManagement() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-medium text-neutral-600">
+                <tr className="border-b border-border bg-bg-subtle text-xs font-medium text-text-secondary">
                   <th scope="col" className="px-3 py-3">{t('colBookingCode')}</th>
                   <th scope="col" className="px-3 py-3">{t('colCustomer')}</th>
                   <th scope="col" className="px-3 py-3">{t('colCourtVenue')}</th>
@@ -195,29 +195,29 @@ export function PaymentsManagement() {
               </thead>
               <tbody>
                 {items.map((payment) => (
-                  <tr key={payment.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50/70">
-                    <td className="px-3 py-3 font-mono text-xs text-neutral-600" title={payment.bookingId}>
+                  <tr key={payment.id} className="border-b border-border/60 last:border-0 hover:bg-bg-subtle/50">
+                    <td className="px-3 py-3 font-mono text-xs text-text-secondary" title={payment.bookingId}>
                       {payment.bookingId.slice(0, 8)}…
                     </td>
                     <td className="px-3 py-3">
-                      <div className="font-medium text-neutral-900">{payment.booking.customerName}</div>
+                      <div className="font-medium text-text-primary">{payment.booking.customerName}</div>
                       {payment.booking.customerPhone && (
-                        <div className="mt-0.5 text-xs text-neutral-500">{payment.booking.customerPhone}</div>
+                        <div className="mt-0.5 text-xs text-text-secondary">{payment.booking.customerPhone}</div>
                       )}
                     </td>
                     <td className="max-w-56 px-3 py-3">
-                      <div className="font-medium text-neutral-900">{payment.booking.courtName}</div>
-                      <div className="truncate text-xs text-neutral-500" title={payment.booking.venueName}>
+                      <div className="font-medium text-text-primary">{payment.booking.courtName}</div>
+                      <div className="truncate text-xs text-text-secondary" title={payment.booking.venueName}>
                         {payment.booking.venueName}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-neutral-700">
+                    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-primary">
                       {formatDateTimeRangeInVietnam(payment.booking.during.start, payment.booking.during.end)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-neutral-900">
+                    <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-text-primary">
                       {formatCurrency(payment.amount)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-neutral-600">
+                    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-secondary">
                       {formatDateTimeInVietnam(payment.proofUploadedAt)}
                     </td>
                     <td className="px-3 py-3">
@@ -245,7 +245,7 @@ export function PaymentsManagement() {
         )}
 
         {items.length > 0 && (
-          <footer className="flex flex-col gap-3 border-t border-neutral-200 px-4 py-3 text-xs text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex flex-col gap-3 border-t border-border px-4 py-3 text-xs text-text-secondary sm:flex-row sm:items-center sm:justify-between">
             <span>{t('paymentPaginationSummary', { from: firstItem, to: lastItem, total: meta?.total ?? items.length })}</span>
             <nav className="flex items-center justify-end gap-2" aria-label={t('paginationLabel')}>
               <Button

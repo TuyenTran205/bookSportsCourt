@@ -6,7 +6,20 @@ import type {
   PricingRule,
   VenueDetail,
 } from '@bsc/shared';
-import { amenities, districts, provinces, sports } from './catalogs';
+import { amenities, districts, provinces, sports, wards } from './catalogs';
+
+const hanoi = provinces.find((p) => p.code === '01')!;
+const tphcm = provinces.find((p) => p.code === '79')!;
+const danang = provinces.find((p) => p.code === '48')!;
+
+const wardBenNghe = wards.find((w) => w.provinceCode === '79' && w.name === 'Phường Bến Nghé') ?? wards.find((w) => w.provinceCode === '79')!;
+const wardCauKho = wards.find((w) => w.provinceCode === '79' && w.name === 'Phường Cầu Kho') ?? wards.find((w) => w.provinceCode === '79')!;
+const wardAnKhanh = wards.find((w) => w.provinceCode === '79' && w.name === 'Phường An Khánh') ?? wards.find((w) => w.provinceCode === '79')!;
+const wardThaoDien = wards.find((w) => w.provinceCode === '79' && w.name === 'Phường Thảo Điền') ?? wards.find((w) => w.provinceCode === '79')!;
+const wardTrungHoa = wards.find((w) => w.provinceCode === '01' && w.name === 'Phường Trung Hòa') ?? wards.find((w) => w.provinceCode === '01')!;
+const wardQuangTrung = wards.find((w) => w.provinceCode === '01' && w.name === 'Phường Quang Trung') ?? wards.find((w) => w.provinceCode === '01')!;
+const wardThachThang = wards.find((w) => w.provinceCode === '48' && w.name === 'Phường Thạch Thang') ?? wards.find((w) => w.provinceCode === '48')!;
+const wardPhuocMy = wards.find((w) => w.provinceCode === '48' && w.name === 'Phường Phước Mỹ') ?? wards.find((w) => w.provinceCode === '48')!;
 
 /**
  * Cơ sở + sân con + giờ mở cửa + bảng giá + khoá sân.
@@ -52,6 +65,7 @@ interface VenueSeed {
   description: string;
   address: string;
   provinceId: string;
+  wardId?: string;
   districtId: string;
   lat: number;
   lng: number;
@@ -78,7 +92,8 @@ const seeds: VenueSeed[] = [
     description:
       'Sân thảm tiêu chuẩn thi đấu, đèn LED chống chói, trần cao 9m. Có 6 sân đơn và đôi, phù hợp cả tập luyện lẫn giải phong trào. Giữ xe miễn phí, có căng tin phục vụ nước uống và đồ ăn nhẹ.',
     address: '123 Hoàng Diệu, Phường 1',
-    provinceId: provinces[0]!.id,
+    provinceId: tphcm.id,
+    wardId: wardBenNghe.id,
     districtId: districts[0]!.id,
     lat: 10.776889,
     lng: 106.700806,
@@ -99,7 +114,8 @@ const seeds: VenueSeed[] = [
     description:
       'Cụm 2 sân bóng đá 7 người mặt cỏ nhân tạo thế hệ mới, lưới chắn bóng cao. Có đèn chiếu sáng ban đêm, phòng thay đồ riêng cho từng đội.',
     address: '219 Lý Thường Kiệt, Phường 15',
-    provinceId: provinces[0]!.id,
+    provinceId: tphcm.id,
+    wardId: wardCauKho.id,
     districtId: districts[1]!.id,
     lat: 10.7689,
     lng: 106.6597,
@@ -120,7 +136,8 @@ const seeds: VenueSeed[] = [
     description:
       'Sân Pickleball trong nhà, mái che hoàn toàn, không lo mưa nắng. 4 sân tiêu chuẩn APA, cho thuê vợt và bóng tại chỗ.',
     address: '10 Mai Chí Thọ, Phường An Lợi Đông',
-    provinceId: provinces[0]!.id,
+    provinceId: tphcm.id,
+    wardId: wardAnKhanh.id,
     districtId: districts[4]!.id,
     lat: 10.7769,
     lng: 106.7219,
@@ -141,7 +158,8 @@ const seeds: VenueSeed[] = [
     description:
       'Sân tennis ngoài trời mặt sân cứng tiêu chuẩn ITF. Có 3 sân, đèn cao áp đủ sáng chơi tối.',
     address: '45 Nguyễn Hữu Cảnh, Phường 22',
-    provinceId: provinces[0]!.id,
+    provinceId: tphcm.id,
+    wardId: wardThaoDien.id,
     districtId: districts[3]!.id,
     lat: 10.8014,
     lng: 106.7109,
@@ -162,7 +180,8 @@ const seeds: VenueSeed[] = [
     description:
       'Tổ hợp đa môn: cầu lông, bóng rổ và bóng chuyền trong cùng một nhà thi đấu. Sức chứa khán giả 200 chỗ.',
     address: '88 Trần Duy Hưng, Phường Trung Hoà',
-    provinceId: provinces[1]!.id,
+    provinceId: hanoi.id,
+    wardId: wardTrungHoa.id,
     districtId: districts[4]!.id,
     lat: 21.0069,
     lng: 105.7975,
@@ -182,7 +201,8 @@ const seeds: VenueSeed[] = [
     slug: 'san-cau-long-dong-da',
     description: 'Sân cầu lông giá rẻ cho sinh viên, 5 sân thảm PVC. Ưu đãi giờ sáng sớm.',
     address: '12 Chùa Bộc, Phường Quang Trung',
-    provinceId: provinces[1]!.id,
+    provinceId: hanoi.id,
+    wardId: wardQuangTrung.id,
     districtId: districts[5]!.id,
     lat: 21.0075,
     lng: 105.8275,
@@ -202,7 +222,8 @@ const seeds: VenueSeed[] = [
     slug: 'san-bong-da-hai-chau',
     description: 'Sân bóng đá mini 5 người ven sông Hàn, view đẹp, gió mát về chiều.',
     address: '36 Bạch Đằng, Phường Thạch Thang',
-    provinceId: provinces[2]!.id,
+    provinceId: danang.id,
+    wardId: wardThachThang.id,
     districtId: districts[7]!.id,
     lat: 16.0748,
     lng: 108.224,
@@ -222,7 +243,8 @@ const seeds: VenueSeed[] = [
     slug: 'san-pickleball-son-tra',
     description: 'Sân Pickleball gần biển Mỹ Khê, mở cửa từ 5h sáng cho người chơi sớm.',
     address: '05 Võ Nguyên Giáp, Phường Phước Mỹ',
-    provinceId: provinces[2]!.id,
+    provinceId: danang.id,
+    wardId: wardPhuocMy.id,
     districtId: districts[8]!.id,
     lat: 16.0544,
     lng: 108.2472,
@@ -240,6 +262,7 @@ const seeds: VenueSeed[] = [
 export const venues: VenueDetail[] = seeds.map((s) => {
   const province = provinces.find((p) => p.id === s.provinceId)!;
   const district = districts.find((d) => d.id === s.districtId)!;
+  const ward = s.wardId ? wards.find((w) => w.id === s.wardId) : undefined;
 
   return {
     id: s.id,
@@ -249,8 +272,20 @@ export const venues: VenueDetail[] = seeds.map((s) => {
     description: s.description,
     address: s.address,
     provinceId: s.provinceId,
+    wardId: ward?.id ?? null,
     districtId: s.districtId,
-    province: { id: province.id, name: province.name, slug: province.slug },
+    province: { id: province.id, code: province.code, name: province.name, slug: province.slug },
+    ward: ward
+      ? {
+          id: ward.id,
+          code: ward.code,
+          name: ward.name,
+          slug: ward.slug,
+          provinceCode: ward.provinceCode,
+          type: ward.type,
+          unaccentName: ward.unaccentName,
+        }
+      : null,
     district: {
       id: district.id,
       name: district.name,

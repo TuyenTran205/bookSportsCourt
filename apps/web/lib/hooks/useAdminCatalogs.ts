@@ -67,7 +67,7 @@ export function useDeleteSport() {
 export function useCreateArea() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; type: 'province' | 'district'; parentId?: string }) =>
+    mutationFn: (input: { name: string; type: 'province' | 'ward' | 'district'; parentId?: string }) =>
       createArea(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCatalogsQueryKeys.areas() });

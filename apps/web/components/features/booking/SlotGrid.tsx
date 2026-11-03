@@ -39,7 +39,7 @@ const SLOT_CLASSES: Record<SlotStatus, string> = {
 
 /** Ô đang được chọn: viền đậm + quầng, giữ nguyên nền để vẫn đọc được giá. */
 const SELECTED_CLASSES =
-  'ring-2 ring-primary-600 ring-offset-1 ring-offset-white font-semibold brightness-100';
+  'ring-2 ring-primary-600 ring-offset-1 ring-offset-bg-card font-semibold brightness-100';
 
 export interface SlotGridProps {
   courts: readonly CourtSlots[];
@@ -312,7 +312,7 @@ function SlotLegend() {
   return (
     <ul className="flex flex-wrap items-center gap-x-4 gap-y-2">
       {items.map(({ status, label }) => (
-        <li key={status} className="flex items-center gap-1.5 text-xs text-neutral-600">
+        <li key={status} className="flex items-center gap-1.5 text-xs text-text-secondary">
           <span
             aria-hidden="true"
             className={cn('size-3 rounded-sm border border-black/5', SLOT_CLASSES[status])}

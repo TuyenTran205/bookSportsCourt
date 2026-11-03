@@ -233,6 +233,7 @@ export const ownerHandlers = [
       name?: string;
       address?: string;
       provinceId?: string;
+      wardId?: string;
       districtId?: string;
       sportIds?: string[];
       description?: string;
@@ -240,15 +241,22 @@ export const ownerHandlers = [
       lng?: number;
     };
     const province = areas.find((area) => area.id === body.provinceId && area.type === 'province');
-    const district = areas.find(
-      (area) => area.id === body.districtId && area.type === 'district' && area.parentId === province?.id,
-    );
+    const ward = body.wardId
+      ? areas.find((area) => area.id === body.wardId && area.type === 'ward' && area.parentId === province?.id)
+      : undefined;
+    const district = body.districtId
+      ? areas.find(
+          (area) => area.id === body.districtId && area.type === 'district' && area.parentId === province?.id,
+        )
+      : undefined;
     const selectedSports = sports.filter((sport) => body.sportIds?.includes(sport.id));
     if (
       !body.name?.trim() ||
       !body.address?.trim() ||
       !province ||
-      !district ||
+      (!ward && !district) ||
+      (body.wardId && !ward) ||
+      (body.districtId && !district) ||
       typeof body.lat !== 'number' ||
       typeof body.lng !== 'number' ||
       !Number.isFinite(body.lat) ||
@@ -261,7 +269,7 @@ export const ownerHandlers = [
       selectedSports.length === 0 ||
       selectedSports.length !== body.sportIds?.length
     ) {
-      return err(422, 'VALIDATION_ERROR', 'Vui lòng kiểm tra thông tin, vị trí ghim và môn thể thao của cơ sở');
+      return err(422, 'VALIDATION_ERROR', 'Vui lòng kiểm tra thông tin, địa bàn, vị trí ghim và môn thể thao của cơ sở');
     }
 
     const id = newId();
@@ -274,9 +282,23 @@ export const ownerHandlers = [
       description: body.description?.trim() || null,
       address: body.address.trim(),
       provinceId: province.id,
-      districtId: district.id,
-      province: { id: province.id, name: province.name, slug: province.slug },
-      district: { id: district.id, name: district.name, slug: district.slug, provinceId: province.id },
+      wardId: ward?.id ?? null,
+      districtId: district?.id ?? null,
+      province: { id: province.id, code: province.code, name: province.name, slug: province.slug },
+      ward: ward
+        ? {
+            id: ward.id,
+            code: ward.code ?? '',
+            name: ward.name,
+            slug: ward.slug,
+            provinceCode: province.code ?? '',
+            type: 'ward' as const,
+            unaccentName: ward.unaccentName,
+          }
+        : null,
+      district: district
+        ? { id: district.id, name: district.name, slug: district.slug, provinceId: province.id }
+        : null,
       lat: body.lat,
       lng: body.lng,
       status: 'pending' as const,
@@ -305,6 +327,7 @@ export const ownerHandlers = [
       name?: string;
       address?: string;
       provinceId?: string | null;
+      wardId?: string | null;
       districtId?: string | null;
       sportIds?: string[];
       description?: string | null;
@@ -338,15 +361,26 @@ export const ownerHandlers = [
 
     const provinceId = body.provinceId ?? venue.provinceId;
     const province = areas.find((area) => area.id === provinceId && area.type === 'province');
-    const districtId = body.districtId ?? venue.districtId;
-    const district = areas.find(
-      (area) =>
-        area.id === districtId &&
-        area.type === 'district' &&
-        area.parentId === province?.id,
-    );
-    if (!province || !district) {
-      return err(422, 'VALIDATION_ERROR', 'Quận/huyện không thuộc tỉnh/thành phố đã chọn');
+    const wardId = body.wardId !== undefined ? body.wardId : venue.wardId;
+    const ward = wardId
+      ? areas.find(
+          (area) =>
+            area.id === wardId &&
+            area.type === 'ward' &&
+            area.parentId === province?.id,
+        )
+      : undefined;
+    const districtId = body.districtId !== undefined ? body.districtId : venue.districtId;
+    const district = districtId
+      ? areas.find(
+          (area) =>
+            area.id === districtId &&
+            area.type === 'district' &&
+            area.parentId === province?.id,
+        )
+      : undefined;
+    if (!province || (!ward && !district)) {
+      return err(422, 'VALIDATION_ERROR', 'Xã/phường hoặc quận/huyện không thuộc tỉnh/thành phố đã chọn');
     }
 
     const selectedSports =
@@ -375,14 +409,28 @@ export const ownerHandlers = [
     if (body.address !== undefined) venue.address = body.address.trim();
     if (body.description !== undefined) venue.description = body.description?.trim() || null;
     venue.provinceId = province.id;
-    venue.province = { id: province.id, name: province.name, slug: province.slug };
-    venue.districtId = district.id;
-    venue.district = {
-      id: district.id,
-      name: district.name,
-      slug: district.slug,
-      provinceId: district.parentId!,
-    };
+    venue.province = { id: province.id, code: province.code, name: province.name, slug: province.slug };
+    venue.wardId = ward?.id ?? null;
+    venue.ward = ward
+      ? {
+          id: ward.id,
+          code: ward.code ?? '',
+          name: ward.name,
+          slug: ward.slug,
+          provinceCode: province.code ?? '',
+          type: 'ward' as const,
+          unaccentName: ward.unaccentName,
+        }
+      : null;
+    venue.districtId = district?.id ?? null;
+    venue.district = district
+      ? {
+          id: district.id,
+          name: district.name,
+          slug: district.slug,
+          provinceId: district.parentId!,
+        }
+      : null;
     if (body.sportIds !== undefined) {
       venue.sports = selectedSports;
     }
@@ -1025,6 +1073,51 @@ export const ownerHandlers = [
     db.bookings.unshift({ booking, payment, review: null });
     persist();
     return ok(booking, 201);
+  }),
+
+  /** Đánh dấu khách không đến (OWN-09 No-Show). */
+  http.post('/api/v1/owner/bookings/:id/no-show', async ({ params }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+
+    const record = db.bookings.find((b) => b.booking.id === params.id);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+
+    const venueId = venueIdForCourt(record.booking.courtId);
+    if (!ownedVenues().some((v) => v.id === venueId)) {
+      return err(403, 'FORBIDDEN', 'Bạn không có quyền quản lý đơn đặt sân này');
+    }
+
+    if (record.booking.status !== 'confirmed') {
+      return err(422, 'INVALID_STATUS', 'Chỉ có thể đánh dấu vắng mặt cho đơn đã xác nhận');
+    }
+
+    const now = new Date();
+    const startTime = new Date(record.booking.during.start);
+    if (now <= startTime) {
+      return err(422, 'BOOKING_NOT_STARTED', 'Chưa đến giờ diễn ra trận đấu, không thể đánh dấu vắng mặt');
+    }
+
+    record.booking.status = 'no_show';
+    persist();
+
+    if (record.booking.customerId) {
+      const timeStr = `${String(startTime.getHours()).padStart(2, '0')}:${String(startTime.getMinutes()).padStart(2, '0')}`;
+      createMockNotification(record.booking.customerId, {
+        type: 'booking_cancelled',
+        title: 'Đơn đặt sân ghi nhận vắng mặt',
+        body: `Bạn đã không đến nhận sân vào lúc ${timeStr}.`,
+        payload: { bookingId: record.booking.id, reason: 'no_show' },
+      });
+      publish({
+        type: 'booking_cancelled',
+        targetUserId: record.booking.customerId,
+        payload: { bookingId: record.booking.id, reason: 'no_show' },
+      });
+    }
+
+    return ok(record.booking);
   }),
 
   // ── Báo cáo doanh thu ────────────────────────────────────────────────────

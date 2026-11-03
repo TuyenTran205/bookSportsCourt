@@ -9,7 +9,18 @@ import { err, ok, okList, paginate, readArray, readPaging, simulateLatency } fro
 
 /** Bỏ các trường chỉ dùng ở trang chi tiết để danh sách nhẹ hơn. */
 function toListItem(v: (typeof venues)[number]): VenueListItem {
-  const { description, images, courts, amenities, cancellationPolicy, ownerId, provinceId, districtId, ...rest } = v;
+  const {
+    description,
+    images,
+    courts,
+    amenities,
+    cancellationPolicy,
+    ownerId,
+    provinceId,
+    wardId,
+    districtId,
+    ...rest
+  } = v;
   return rest;
 }
 
@@ -22,6 +33,9 @@ export const venueHandlers = [
 
     const q = url.searchParams.get('q')?.trim().toLowerCase();
     const provinceId = url.searchParams.get('provinceId');
+    const provinceCode = url.searchParams.get('provinceCode');
+    const wardId = url.searchParams.get('wardId');
+    const wardCode = url.searchParams.get('wardCode');
     const districtId = url.searchParams.get('districtId');
     const sportIds = readArray(url, 'sportIds');
     const amenityIds = readArray(url, 'amenityIds');
@@ -38,10 +52,14 @@ export const venueHandlers = [
           v.name.toLowerCase().includes(q) ||
           v.address.toLowerCase().includes(q) ||
           (v.province?.name.toLowerCase().includes(q) ?? false) ||
+          (v.ward?.name.toLowerCase().includes(q) ?? false) ||
           (v.district?.name.toLowerCase().includes(q) ?? false),
       );
     }
     if (provinceId) list = list.filter((v) => v.provinceId === provinceId);
+    if (provinceCode) list = list.filter((v) => v.province?.code === provinceCode);
+    if (wardId) list = list.filter((v) => v.wardId === wardId);
+    if (wardCode) list = list.filter((v) => v.ward?.code === wardCode);
     if (districtId) list = list.filter((v) => v.districtId === districtId);
     if (sportIds.length) list = list.filter((v) => v.sports.some((s) => sportIds.includes(s.id)));
     if (amenityIds.length) list = list.filter((v) => amenityIds.every((a) => v.amenities.some((x) => x.id === a)));
@@ -91,7 +109,8 @@ export const venueHandlers = [
     await simulateLatency(300);
     const v = venues.find((x) => x.slug === params.slug || x.id === params.slug);
     if (!v) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở này');
-    return ok(v);
+    const openingHours = db.openingHours.filter((oh) => oh.venueId === v.id);
+    return ok({ ...v, openingHours });
   }),
 
   /**

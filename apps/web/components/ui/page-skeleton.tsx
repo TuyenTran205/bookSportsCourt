@@ -12,7 +12,7 @@ export interface PageSkeletonProps extends React.HTMLAttributes<HTMLDivElement> 
 
 /** Khối xám dùng chung — đồng bộ màu `bg-neutral-100` theo spec §6.3. */
 function Bar({ className, ...props }: React.ComponentProps<typeof Skeleton>) {
-  return <Skeleton className={cn('bg-neutral-100', className)} {...props} />;
+  return <Skeleton className={cn('bg-neutral-100 dark:bg-neutral-800/80', className)} {...props} />;
 }
 
 /**
@@ -59,7 +59,7 @@ function DashboardSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-card border border-neutral-200 bg-white p-5 space-y-3"
+            className="rounded-card border border-border bg-bg-card p-5 space-y-3"
           >
             <div className="flex items-center justify-between">
               <Bar className="h-4 w-28" />
@@ -72,7 +72,7 @@ function DashboardSkeleton() {
 
       {/* 2 khối lớn: biểu đồ/timeline & danh sách gần đây */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-card border border-neutral-200 bg-white p-6 space-y-4 lg:col-span-2">
+        <div className="rounded-card border border-border bg-bg-card p-6 space-y-4 lg:col-span-2">
           <div className="flex items-center justify-between">
             <Bar className="h-5 w-40" />
             <Bar className="h-8 w-28 rounded-btn" />
@@ -80,10 +80,10 @@ function DashboardSkeleton() {
           <Bar className="h-64 w-full rounded-md" />
         </div>
 
-        <div className="rounded-card border border-neutral-200 bg-white p-6 space-y-3 lg:col-span-1">
+        <div className="rounded-card border border-border bg-bg-card p-6 space-y-3 lg:col-span-1">
           <Bar className="h-5 w-32 mb-4" />
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 py-2 border-b border-neutral-100 last:border-0">
+            <div key={i} className="flex items-center gap-3 py-2 border-b border-border/60 last:border-0">
               <Bar className="size-9 rounded-full shrink-0" />
               <div className="flex-1 space-y-1.5">
                 <Bar className="h-4 w-3/4" />
@@ -125,13 +125,13 @@ function ListSkeleton() {
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-card border border-neutral-200 bg-white overflow-hidden space-y-3"
+            className="rounded-card border border-border bg-bg-card overflow-hidden space-y-3"
           >
             <Bar className="h-44 w-full rounded-none" />
             <div className="p-4 pt-1 space-y-3">
               <Bar className="h-5 w-4/5" />
               <Bar className="h-4 w-3/5" />
-              <div className="pt-2 flex items-center justify-between border-t border-neutral-100">
+              <div className="pt-2 flex items-center justify-between border-t border-border/60">
                 <Bar className="h-5 w-24" />
                 <Bar className="h-8 w-20 rounded-btn" />
               </div>
@@ -162,7 +162,7 @@ function DetailSkeleton() {
             <Bar className="h-4 w-1/2" />
           </div>
 
-          <div className="rounded-card border border-neutral-200 bg-white p-6 space-y-4">
+          <div className="rounded-card border border-border bg-bg-card p-6 space-y-4">
             <Bar className="h-5 w-36" />
             <div className="space-y-2">
               <Bar className="h-4 w-full" />
@@ -171,7 +171,7 @@ function DetailSkeleton() {
             </div>
           </div>
 
-          <div className="rounded-card border border-neutral-200 bg-white p-6 space-y-4">
+          <div className="rounded-card border border-border bg-bg-card p-6 space-y-4">
             <Bar className="h-5 w-44" />
             {/* Lưới ô block lịch sân */}
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -184,10 +184,10 @@ function DetailSkeleton() {
 
         {/* Cột phải: Thẻ tóm tắt / Đặt chỗ */}
         <div className="lg:col-span-1">
-          <div className="rounded-card border border-neutral-200 bg-white p-6 space-y-4">
+          <div className="rounded-card border border-border bg-bg-card p-6 space-y-4">
             <Bar className="h-6 w-32" />
             <Bar className="h-10 w-full rounded-md" />
-            <div className="space-y-2 py-3 border-y border-neutral-100">
+            <div className="space-y-2 py-3 border-y border-border/60">
               <div className="flex justify-between">
                 <Bar className="h-4 w-20" />
                 <Bar className="h-4 w-24" />
@@ -209,7 +209,7 @@ function DetailSkeleton() {
 function FormSkeleton() {
   return (
     <div className="container flex min-h-[50vh] items-center justify-center py-10">
-      <div className="w-full max-w-lg rounded-card border border-neutral-200 bg-white p-6 sm:p-8 space-y-6">
+      <div className="w-full max-w-lg rounded-card border border-border bg-bg-card p-6 sm:p-8 space-y-6">
         <div className="space-y-2 text-center sm:text-left">
           <Bar className="h-7 w-48 mx-auto sm:mx-0" />
           <Bar className="h-4 w-64 mx-auto sm:mx-0" />

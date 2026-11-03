@@ -38,6 +38,7 @@
   --color-primary-700: #15803d;
   --color-primary-800: #166534;
   --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
 
   /* === ACCENT – Cam năng động === */
   --color-accent-500: #f97316;
@@ -94,6 +95,55 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* === NEUTRAL RAMP (Zinc trung tính ấm, không ánh tím, chuẩn GitHub Dark / Vercel) === */
+  --color-neutral-0: #18181b;     /* Nền thẻ Card Zinc-900 */
+  --color-neutral-50: #121214;    /* Nền trang Canvas Off-black dịu mắt */
+  --color-neutral-100: #27272a;   /* Nền phụ subtle Zinc-800 */
+  --color-neutral-200: #2e2e33;   /* Viền 1px mờ */
+  --color-neutral-300: #3f3f46;   /* Viền ô input / select Zinc-700 */
+  --color-neutral-400: #71717a;   /* Placeholder / Text disabled */
+  --color-neutral-500: #a1a1aa;   /* Text muted / Icon phụ */
+  --color-neutral-600: #d4d4d8;   /* Text phụ rõ nét */
+  --color-neutral-700: #e4e4e7;   /* Text nội dung chính */
+  --color-neutral-800: #f4f4f5;   /* Text tiêu đề phụ */
+  --color-neutral-900: #fafafa;   /* Text tiêu đề chính nổi bật */
+
+  /* === SURFACES (Chế độ tối trung tính, không ám xanh tím AI) === */
+  --color-bg: #121214;          /* Nền chính Off-black */
+  --color-bg-card: #18181b;     /* Nền card Zinc-900 */
+  --color-bg-subtle: #27272a;   /* Nền phụ Zinc-800 */
+  --color-border: #2e2e33;      /* Viền 1px trung tính */
+  --color-border-focus: #22c55e;/* Viền focus primary-500 */
+
+  /* === TEXT (Trắng kem dịu mắt, độ tương phản AAA) === */
+  --color-text-primary: #f4f4f5;   /* Zinc-100 */
+  --color-text-secondary: #a1a1aa; /* Zinc-400 */
+  --color-text-disabled: #71717a;  /* Zinc-500 */
+  --color-text-inverse: #121214;   /* Off-black */
+
+  /* === SLOT STATUS (Hạ bão hòa, loại bỏ tím gắt) === */
+  --color-slot-available: #14301f;
+  --color-slot-available-text: #4ade80;
+  --color-slot-held: #3a2e12;
+  --color-slot-held-text: #fbbf24;
+  --color-slot-booked: #1b2a3d;
+  --color-slot-booked-text: #93c5fd;
+  --color-slot-my-hold: #2a2340;
+  --color-slot-my-hold-text: #c4b5fd;
+  --color-slot-blocked: #27272a;
+  --color-slot-blocked-text: #a1a1aa;
+  --color-slot-past: #18181b;
+  --color-slot-past-text: #52525b;
+
+  /* === SHADOWS (Tăng độ đậm trên nền tối) === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.4);
 }
 
 @layer base {
@@ -187,5 +237,69 @@
     .bsc-spinner {
       animation: bsc-spin-breathe 1.6s ease-in-out infinite !important;
     }
+  }
+
+  /**
+   * Splash Brand Reveal animations – docs/specs/web-splash-welcome-screen-spec.md
+   * Chuẩn Material Design 3 / Linear Standard: không gradient tím hồng, không nảy quá đà.
+   */
+  @keyframes bsc-radar-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(1.48);
+      opacity: 0;
+    }
+  }
+
+  @keyframes bsc-logo-entrance {
+    0% {
+      transform: scale(0.72);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes bsc-slide-up-fade {
+    0% {
+      transform: translateY(14px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes bsc-badge-fade {
+    0% {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-bsc-radar-pulse {
+    animation: bsc-radar-pulse 750ms cubic-bezier(0, 0, 0.2, 1) forwards;
+  }
+
+  .animate-bsc-logo-entrance {
+    animation: bsc-logo-entrance 550ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  }
+
+  .animate-bsc-slide-up-fade {
+    animation: bsc-slide-up-fade 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-bsc-badge-fade {
+    animation: bsc-badge-fade 450ms ease-out forwards;
   }
 }

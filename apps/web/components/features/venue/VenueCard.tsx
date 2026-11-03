@@ -5,6 +5,7 @@ import { ImageOff, MapPin, Star } from 'lucide-react';
 
 import type { VenueListItem } from '@bsc/shared';
 
+import { VenueCompareButton } from '@/components/features/venue/VenueCompareButton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils/cn';
 import { formatCurrency, formatNumber } from '@/lib/utils/format';
@@ -34,24 +35,43 @@ export interface VenueCardProps {
    * Component; nút phải nằm ngoài `<Link>` nên không thể lồng trong phần dưới.
    */
   action?: React.ReactNode;
+  /**
+   * Hiển thị nút so sánh cơ sở. Mặc định tự bật ở trang khách/công khai.
+   */
+  showCompare?: boolean;
   className?: string;
 }
 
-export function VenueCard({ venue, showStatus = false, href, action, className }: VenueCardProps) {
-  const location = venue.district?.name ?? venue.province?.name ?? venue.address;
+export function VenueCard({
+  venue,
+  showStatus = false,
+  href,
+  action,
+  showCompare = true,
+  className,
+}: VenueCardProps) {
+  const location = venue.ward?.name
+    ? `${venue.ward.name}, ${venue.province?.name ?? ''}`.trim()
+    : (venue.district?.name ?? venue.province?.name ?? venue.address);
   const detailHref = href ?? `/venues/${venue.slug}`;
+  const displayCompare = showCompare && !showStatus;
 
   return (
     <article
       className={cn(
-        'group relative overflow-hidden rounded-card border border-neutral-200 bg-white',
+        'group relative overflow-hidden rounded-card border border-border bg-bg-card',
         'transition-shadow duration-150 hover:shadow-md',
         className,
       )}
     >
-      {action && <div className="absolute left-2 top-2 z-10">{action}</div>}
+      {(action || displayCompare) && (
+        <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5">
+          {action}
+          {displayCompare && <VenueCompareButton venue={venue} />}
+        </div>
+      )}
       <Link href={detailHref} className="block focus-visible:outline-none">
-        <div className="relative aspect-video bg-neutral-100">
+        <div className="relative aspect-video bg-bg-subtle">
           {venue.coverUrl ? (
             <Image
               src={venue.coverUrl}
@@ -64,7 +84,7 @@ export function VenueCard({ venue, showStatus = false, href, action, className }
           ) : (
             // Không có ảnh: khung xám + icon, KHÔNG để vỡ layout.
             <div className="flex size-full items-center justify-center">
-              <ImageOff className="size-8 text-neutral-400" aria-hidden="true" />
+              <ImageOff className="size-8 text-text-disabled" aria-hidden="true" />
             </div>
           )}
 
@@ -77,9 +97,9 @@ export function VenueCard({ venue, showStatus = false, href, action, className }
         </div>
 
         <div className="flex flex-col gap-2 p-4">
-          <h3 className="line-clamp-1 text-base font-bold text-neutral-900">{venue.name}</h3>
+          <h3 className="line-clamp-1 text-base font-bold text-text-primary">{venue.name}</h3>
 
-          <p className="flex items-center gap-1 text-sm text-neutral-600">
+          <p className="flex items-center gap-1 text-sm text-text-secondary">
             <MapPin className="size-4 shrink-0" aria-hidden="true" />
             <span className="line-clamp-1">{location}</span>
           </p>
@@ -90,13 +110,13 @@ export function VenueCard({ venue, showStatus = false, href, action, className }
               {venue.sports.slice(0, 3).map((sport) => (
                 <li
                   key={sport.id}
-                  className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-700"
+                  className="rounded-full bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary"
                 >
                   {sport.name}
                 </li>
               ))}
               {venue.sports.length > 3 && (
-                <li className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">
+                <li className="rounded-full bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
                   +{venue.sports.length - 3}
                 </li>
               )}
@@ -104,8 +124,8 @@ export function VenueCard({ venue, showStatus = false, href, action, className }
           )}
 
           <div className="mt-1 flex items-end justify-between gap-2">
-            <p className="text-sm text-neutral-500">
-              từ <span className="text-base font-bold text-primary-700">
+            <p className="text-sm text-text-secondary">
+              từ <span className="text-base font-bold text-primary-700 dark:text-primary-400">
                 {formatCurrency(venue.fromPrice)}
               </span>
             </p>
@@ -125,7 +145,7 @@ export function VenueCard({ venue, showStatus = false, href, action, className }
  */
 function RatingValue({ rating, count }: { rating: number; count: number }) {
   if (count === 0) {
-    return <span className="text-xs text-neutral-400">Chưa có đánh giá</span>;
+    return <span className="text-xs text-text-disabled">Chưa có đánh giá</span>;
   }
 
   return (
@@ -134,8 +154,8 @@ function RatingValue({ rating, count }: { rating: number; count: number }) {
       aria-label={`${rating} trên 5, ${formatNumber(count)} đánh giá`}
     >
       <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden="true" />
-      <span className="font-medium text-neutral-900">{rating.toFixed(1)}</span>
-      <span className="text-xs text-neutral-500">({formatNumber(count)})</span>
+      <span className="font-medium text-text-primary">{rating.toFixed(1)}</span>
+      <span className="text-xs text-text-secondary">({formatNumber(count)})</span>
     </span>
   );
 }

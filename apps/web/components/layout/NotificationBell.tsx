@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -143,6 +144,15 @@ export function NotificationBell() {
             {t('updateFailed')}
           </p>
         )}
+        <div className="border-t border-neutral-200 p-2 text-center">
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="block w-full rounded-btn py-1.5 text-xs font-medium text-primary-700 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+          >
+            {t('viewAll')}
+          </Link>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -41,7 +41,10 @@ export function createOwnerVenue(input: {
   name: string;
   address: string;
   provinceId: string;
-  districtId: string;
+  provinceCode?: string;
+  wardId?: string;
+  wardCode?: string;
+  districtId?: string;
   sportIds: string[];
   description?: string;
   lat: number;
@@ -52,7 +55,9 @@ export function createOwnerVenue(input: {
 
 export function updateOwnerVenue(
   id: string,
-  input: Partial<Pick<VenueDetail, 'name' | 'address' | 'provinceId' | 'districtId' | 'description' | 'lat' | 'lng'>> & {
+  input: Partial<Pick<VenueDetail, 'name' | 'address' | 'provinceId' | 'wardId' | 'districtId' | 'description' | 'lat' | 'lng'>> & {
+    provinceCode?: string;
+    wardCode?: string;
     sportIds?: string[];
   },
 ) {
@@ -234,6 +239,16 @@ export function createManualBooking(input: {
   note?: string;
 }) {
   return apiFetch<BookingDetail>('/owner/bookings/manual', { method: 'POST', ...jsonBody(input) });
+}
+
+/**
+ * Đánh dấu khách không đến nhận sân (OWN-09).
+ * Chuyển trạng thái đơn từ `confirmed` sang `no_show`.
+ */
+export function markBookingNoShow(bookingId: string) {
+  return apiFetch<Booking>(`/owner/bookings/${encodeURIComponent(bookingId)}/no-show`, {
+    method: 'POST',
+  });
 }
 
 // ── Doanh thu & đánh giá ───────────────────────────────────────────────────

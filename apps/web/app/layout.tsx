@@ -40,15 +40,23 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#16a34a',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#16a34a' },
+    { media: '(prefers-color-scheme: dark)', color: '#121214' },
+  ],
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const messages = await getMessages();
 
   return (
-    <html lang="vi" className={`${beVietnamPro.variable} ${inter.variable}`}>
+    <html lang="vi" className={`${beVietnamPro.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('bsc-theme-mode');var d=t==='dark'||(!t||t==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
+          }}
+        />
         {/* Tối ưu kết nối trước đến các CDN Tile của Bản đồ (Ưu tiên Esri mặc định) */}
         <link rel="preconnect" href="https://server.arcgisonline.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://a.tile.openstreetmap.fr" crossOrigin="anonymous" />

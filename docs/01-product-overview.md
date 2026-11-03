@@ -97,7 +97,7 @@ API trả `status` ∈ **`available | held | booked | blocked | past`** (enum du
 
 **Sân & giá**
 - [ ] Quản lý Venue / Court / Sport / Amenity (OWN-02, OWN-03, ADM-04, ADM-05)
-- [ ] Quản lý danh mục khu vực (tỉnh/quận) (ADM-06)
+- [ ] Quản lý danh mục khu vực 2 cấp (34 Tỉnh/Thành & 3.321 Xã/Phường mốc 03/11/2026, bãi bỏ cấp huyện từ 01/07/2025; hỗ trợ legacy quận/huyện) (ADM-06)
 - [ ] Thiết lập giờ mở cửa theo từng court (OWN-04)
 - [ ] Giá theo khung giờ (Pricing Rule) (OWN-05)
 - [ ] Khoá giờ bảo trì & Mở khoá sân (Blackout Period) (OWN-08)

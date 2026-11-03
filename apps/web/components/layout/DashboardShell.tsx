@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { ChevronsLeft, ChevronsRight, LogOut, Menu, Store, X } from 'lucide-react';
 
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { DASHBOARD_NAV, type DashboardArea } from '@/components/layout/dashboard-nav';
 import {
   DropdownMenu,
@@ -97,8 +98,8 @@ function NavList({ area, collapsed, onNavigate }: NavListProps) {
             className={cn(
               'flex h-11 items-center gap-3 rounded-btn px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 lg:h-10',
               active
-                ? 'bg-primary-50 text-primary-700'
-                : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
+                ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
+                : 'text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
               collapsed && 'justify-center px-0',
             )}
           >
@@ -170,10 +171,10 @@ export function DashboardShell({
   const areaTitle = area === 'owner' ? t('ownerArea') : t('adminArea');
 
   return (
-    <div className="flex min-h-screen w-full min-w-0 bg-neutral-50">
+    <div className="flex min-h-screen w-full min-w-0 bg-bg text-text-primary">
       <a
         href="#dashboard-main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-btn focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-700 focus:shadow-md"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-btn focus:bg-bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-600 focus:shadow-md"
       >
         {t('skipToContent')}
       </a>
@@ -181,13 +182,13 @@ export function DashboardShell({
       {/* Sidebar desktop */}
       <aside
         className={cn(
-          'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-neutral-200 bg-white transition-[width] duration-200 lg:flex',
+          'sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-bg-card transition-[width] duration-200 lg:flex',
           collapsed ? 'w-[72px]' : 'w-64',
         )}
       >
         <div
           className={cn(
-            'flex h-16 items-center gap-2 border-b border-neutral-200 px-4',
+            'flex h-16 items-center gap-2 border-b border-border px-4',
             collapsed && 'justify-center px-0',
           )}
         >
@@ -197,13 +198,13 @@ export function DashboardShell({
           </span>
         </div>
         <NavList area={area} collapsed={collapsed} />
-        <div className="border-t border-neutral-200 p-3">
+        <div className="border-t border-border p-3">
           <button
             type="button"
             onClick={toggleCollapsed}
             aria-label={collapsed ? t('expand') : t('collapse')}
             className={cn(
-              'flex h-10 w-full items-center gap-3 rounded-btn px-3 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
+              'flex h-10 w-full items-center gap-3 rounded-btn px-3 text-sm text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
               collapsed && 'justify-center px-0',
             )}
           >
@@ -225,16 +226,16 @@ export function DashboardShell({
           <button
             type="button"
             aria-label={t('closeMenu')}
-            className="absolute inset-0 bg-neutral-900/50"
+            className="absolute inset-0 bg-black/60 dark:bg-black/75"
             onClick={() => setDrawerOpen(false)}
           />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label={areaTitle}
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-md"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-border bg-bg-card shadow-md"
           >
-            <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4">
+            <div className="flex h-16 items-center justify-between border-b border-border px-4">
               <span className="flex items-center gap-2 text-base font-semibold">
                 <Store className="size-6 text-primary-600" aria-hidden="true" />
                 {areaTitle}
@@ -243,7 +244,7 @@ export function DashboardShell({
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 aria-label={t('closeMenu')}
-                className="inline-flex size-10 items-center justify-center rounded-btn text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                className="inline-flex size-10 items-center justify-center rounded-btn text-text-secondary hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
               >
                 <X className="size-5" aria-hidden="true" />
               </button>
@@ -254,30 +255,31 @@ export function DashboardShell({
       )}
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-2 border-b border-neutral-200 bg-white px-4 lg:px-6">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-2 border-b border-border bg-bg-card px-4 lg:px-6">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label={t('openMenu')}
-            className="inline-flex size-10 items-center justify-center rounded-btn text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 lg:hidden"
+            className="inline-flex size-10 items-center justify-center rounded-btn text-text-secondary hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 lg:hidden"
           >
             <Menu className="size-5" aria-hidden="true" />
           </button>
           <p className="truncate text-base font-semibold lg:hidden">{areaTitle}</p>
 
           <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-10 items-center gap-2 rounded-btn px-2 text-sm hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                  className="flex h-10 items-center gap-2 rounded-btn px-2 text-sm text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   aria-label={t('account')}
                 >
-                  <span className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
                     {(user?.fullName ?? '?').trim().charAt(0).toUpperCase()}
                   </span>
-                  <span className="hidden max-w-[140px] truncate font-medium text-neutral-900 sm:block">
+                  <span className="hidden max-w-[140px] truncate font-medium text-text-primary sm:block">
                     {user?.fullName}
                   </span>
                 </button>

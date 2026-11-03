@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { CalendarClock, MapPin, Star } from 'lucide-react';
+import { CalendarClock, ExternalLink, MapPin, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
@@ -123,12 +123,22 @@ export function BookingDetailScreen() {
 
       {needsPayment &&
         (hold.data ? (
-          <PaymentPanel
-            bookingId={booking.id}
-            payment={hold.data.payment}
-            expiresAt={booking.expiresAt}
-            onExpired={() => void queryClient.invalidateQueries({ queryKey: bookingKeys.all })}
-          />
+          <div className="space-y-3">
+            <PaymentPanel
+              bookingId={booking.id}
+              payment={hold.data.payment}
+              expiresAt={booking.expiresAt}
+              onExpired={() => void queryClient.invalidateQueries({ queryKey: bookingKeys.all })}
+            />
+            <div className="flex justify-end">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/checkout/${booking.id}`}>
+                  <ExternalLink className="size-4" aria-hidden="true" />
+                  <span>Mở trang thanh toán riêng</span>
+                </Link>
+              </Button>
+            </div>
+          </div>
         ) : (
           <Skeleton className="h-96 w-full" />
         ))}

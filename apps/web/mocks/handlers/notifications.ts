@@ -64,7 +64,7 @@ export function markAllUserNotificationsRead(userId: string): number {
  */
 
 export const notificationHandlers = [
-  /** `GET /notifications?unreadOnly=&page=&limit=` */
+  /** `GET /notifications?unreadOnly=&type=&page=&limit=` */
   http.get('/api/v1/notifications', async ({ request }) => {
     await simulateLatency(200);
     const user = currentUser();
@@ -72,7 +72,25 @@ export const notificationHandlers = [
     const url = new URL(request.url);
     const { page, limit } = readPaging(url);
     const unreadOnly = url.searchParams.get('unreadOnly') === 'true';
-    const { data, meta } = paginate(getUserNotifications(user.id, unreadOnly), page, limit);
+    const type = url.searchParams.get('type');
+
+    let list = getUserNotifications(user.id, unreadOnly);
+    if (type) {
+      if (type === 'booking') {
+        const bookingTypes = ['booking_created', 'booking_confirmed', 'booking_cancelled', 'hold_expired'];
+        list = list.filter((n) => bookingTypes.includes(n.type));
+      } else if (type === 'payment') {
+        const paymentTypes = ['payment_submitted', 'payment_rejected'];
+        list = list.filter((n) => paymentTypes.includes(n.type));
+      } else if (type === 'system') {
+        const systemTypes = ['owner_application_approved', 'owner_application_rejected', 'venue_approved', 'venue_rejected', 'review_reply'];
+        list = list.filter((n) => systemTypes.includes(n.type));
+      } else {
+        list = list.filter((n) => n.type === type);
+      }
+    }
+
+    const { data, meta } = paginate(list, page, limit);
     return okList(data, meta);
   }),
 

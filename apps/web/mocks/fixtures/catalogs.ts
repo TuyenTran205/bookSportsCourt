@@ -1,38 +1,59 @@
-import type { Amenity, Area, Province, Sport } from '@bsc/shared';
+import type { Amenity, Area, Province, Sport, Ward } from '@bsc/shared';
+import { PROVINCES } from '@bsc/shared';
+import rawWards from '@bsc/shared/data/wards.json';
 
 /**
  * Danh mục hệ thống – dữ liệu nền cho mọi màn hình.
- *
- * Tên và slug lấy đúng theo ví dụ trong docs/11-api-contract.md và
- * docs/04-database-schema.md để ảnh chụp màn hình khớp tài liệu.
+ * Mốc ĐVHC 2 cấp 03/11/2026: 34 Tỉnh/Thành phố và 3.321 Xã/Phường.
  */
 
-export const provinces: Province[] = [
-  { id: '019273c5-7f00-7000-0000-000000000001', name: 'Thành phố Hồ Chí Minh', slug: 'ho-chi-minh' },
-  { id: '019273c5-7f00-7000-0000-000000000010', name: 'Hà Nội', slug: 'ha-noi' },
-  { id: '019273c5-7f00-7000-0000-000000000020', name: 'Đà Nẵng', slug: 'da-nang' },
-  { id: '019273c5-7f00-7000-0000-000000000030', name: 'Bình Dương', slug: 'binh-duong' },
-  { id: '019273c5-7f00-7000-0000-000000000040', name: 'Cần Thơ', slug: 'can-tho' },
-];
+export const provinces: Province[] = PROVINCES;
+
+export const wards: Ward[] = rawWards as Ward[];
+
+// Tìm id tương ứng của các tỉnh lớn cho danh mục quận/huyện legacy
+const hanoi = provinces.find((p) => p.code === '01')!;
+const tphcm = provinces.find((p) => p.code === '79')!;
+const danang = provinces.find((p) => p.code === '48')!;
 
 export const districts: Area[] = [
-  // TP. Hồ Chí Minh
-  { id: '019273c5-7f00-7000-0000-000000000002', name: 'Quận 1', slug: 'quan-1', type: 'district', parentId: provinces[0]!.id },
-  { id: '019273c5-7f00-7000-0000-000000000003', name: 'Quận 7', slug: 'quan-7', type: 'district', parentId: provinces[0]!.id },
-  { id: '019273c5-7f00-7000-0000-000000000004', name: 'Quận Bình Thạnh', slug: 'binh-thanh', type: 'district', parentId: provinces[0]!.id },
-  { id: '019273c5-7f00-7000-0000-000000000005', name: 'Thành phố Thủ Đức', slug: 'thu-duc', type: 'district', parentId: provinces[0]!.id },
-  // Hà Nội
-  { id: '019273c5-7f00-7000-0000-000000000011', name: 'Quận Cầu Giấy', slug: 'cau-giay', type: 'district', parentId: provinces[1]!.id },
-  { id: '019273c5-7f00-7000-0000-000000000012', name: 'Quận Đống Đa', slug: 'dong-da', type: 'district', parentId: provinces[1]!.id },
-  { id: '019273c5-7f00-7000-0000-000000000013', name: 'Quận Thanh Xuân', slug: 'thanh-xuan', type: 'district', parentId: provinces[1]!.id },
-  // Đà Nẵng
-  { id: '019273c5-7f00-7000-0000-000000000021', name: 'Quận Hải Châu', slug: 'hai-chau', type: 'district', parentId: provinces[2]!.id },
-  { id: '019273c5-7f00-7000-0000-000000000022', name: 'Quận Sơn Trà', slug: 'son-tra', type: 'district', parentId: provinces[2]!.id },
+  // TP. Hồ Chí Minh (legacy)
+  { id: '019273c5-7f00-7000-0000-000000000002', name: 'Quận 1', slug: 'quan-1', type: 'district', parentId: tphcm.id },
+  { id: '019273c5-7f00-7000-0000-000000000003', name: 'Quận 7', slug: 'quan-7', type: 'district', parentId: tphcm.id },
+  { id: '019273c5-7f00-7000-0000-000000000004', name: 'Quận Bình Thạnh', slug: 'binh-thanh', type: 'district', parentId: tphcm.id },
+  { id: '019273c5-7f00-7000-0000-000000000005', name: 'Thành phố Thủ Đức', slug: 'thu-duc', type: 'district', parentId: tphcm.id },
+  // Hà Nội (legacy)
+  { id: '019273c5-7f00-7000-0000-000000000011', name: 'Quận Cầu Giấy', slug: 'cau-giay', type: 'district', parentId: hanoi.id },
+  { id: '019273c5-7f00-7000-0000-000000000012', name: 'Quận Đống Đa', slug: 'dong-da', type: 'district', parentId: hanoi.id },
+  { id: '019273c5-7f00-7000-0000-000000000013', name: 'Quận Thanh Xuân', slug: 'thanh-xuan', type: 'district', parentId: hanoi.id },
+  // Đà Nẵng (legacy)
+  { id: '019273c5-7f00-7000-0000-000000000021', name: 'Quận Hải Châu', slug: 'hai-chau', type: 'district', parentId: danang.id },
+  { id: '019273c5-7f00-7000-0000-000000000022', name: 'Quận Sơn Trà', slug: 'son-tra', type: 'district', parentId: danang.id },
 ];
 
-/** Khu vực dạng cây 2 cấp cho tab "Khu vực" của Admin. */
+/** Khu vực dạng cây cho tab "Khu vực" của Admin. */
 export const areas: Area[] = [
-  ...provinces.map<Area>((p) => ({ ...p, type: 'province', parentId: null })),
+  ...provinces.map<Area>((p) => ({
+    id: p.id,
+    code: p.code,
+    name: p.name,
+    slug: p.slug,
+    type: 'province',
+    parentId: null,
+    unaccentName: p.unaccentName,
+  })),
+  ...wards.map<Area>((w) => {
+    const parentProv = provinces.find((p) => p.code === w.provinceCode);
+    return {
+      id: w.id,
+      code: w.code,
+      name: w.name,
+      slug: w.slug,
+      type: 'ward',
+      parentId: parentProv?.id ?? null,
+      unaccentName: w.unaccentName,
+    };
+  }),
   ...districts,
 ];
 

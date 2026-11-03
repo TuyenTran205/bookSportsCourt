@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -20,6 +21,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,7 +77,7 @@ export function Header() {
   }, [isAuthenticated, role, tNav]);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-bg-card/80">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo & Brand */}
         <div className="flex items-center gap-8">
@@ -104,8 +106,8 @@ export function Header() {
                   className={cn(
                     'flex items-center gap-1.5 rounded-btn px-3 py-2 text-sm font-medium transition-colors',
                     active
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900',
+                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
+                      : 'text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
                   )}
                 >
                   {/* Ô icon giữ đúng kích thước khi pending để CLS = 0 (spec §7.2). */}
@@ -125,6 +127,7 @@ export function Header() {
 
         {/* User Account / Auth Actions (Desktop) */}
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           {isAuthenticated && <NotificationBell />}
           {isLoading ? (
             <div className="flex items-center gap-2">
@@ -136,17 +139,28 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-btn border border-neutral-200 p-1.5 pl-2 text-left text-sm transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                  className="flex items-center gap-2 rounded-btn border border-border p-1.5 pl-2 text-left text-sm text-text-primary transition-colors hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   aria-label={tNav('profile')}
                 >
-                  <div className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
-                    {user.fullName.slice(0, 1).toUpperCase()}
-                  </div>
+                  {user.avatarUrl ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      width={32}
+                      height={32}
+                      unoptimized
+                      className="size-8 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <div className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
+                      {user.fullName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
                   <div className="flex flex-col pr-1">
-                    <span className="max-w-[120px] truncate text-xs font-medium text-neutral-900">
+                    <span className="max-w-[120px] truncate text-xs font-medium text-text-primary">
                       {user.fullName}
                     </span>
-                    <span className="text-[10px] text-neutral-500">
+                    <span className="text-[10px] text-text-secondary">
                       {role === 'admin'
                         ? 'Quản trị'
                         : role === 'owner'
@@ -154,13 +168,13 @@ export function Header() {
                           : 'Khách hàng'}
                     </span>
                   </div>
-                  <ChevronDown className="size-3.5 text-neutral-400" />
+                  <ChevronDown className="size-3.5 text-text-disabled" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
-                  <p className="font-medium text-neutral-900">{user.fullName}</p>
-                  <p className="text-xs text-neutral-500">{user.email}</p>
+                  <p className="font-medium text-text-primary">{user.fullName}</p>
+                  <p className="text-xs text-text-secondary">{user.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
@@ -184,7 +198,7 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/owner/apply" className="flex items-center gap-2 text-primary-700">
+                      <Link href="/owner/apply" className="flex items-center gap-2 text-primary-600 dark:text-primary-400">
                         <Building2 className="size-4" />
                         <span>Đăng ký làm chủ sân</span>
                       </Link>
@@ -230,11 +244,12 @@ export function Header() {
         </div>
 
         {/* Mobile Menu Button (touch target ≥ 44px theo WCAG AA & Quy tắc A7) */}
-        <div className="flex items-center md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
           {isAuthenticated && <NotificationBell />}
           <button
             type="button"
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-btn text-neutral-700 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-btn text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             aria-label={tNav('menu')}
             aria-expanded={mobileMenuOpen}
             onClick={() => setMobileMenuOpen((open) => !open)}
@@ -246,7 +261,7 @@ export function Header() {
 
       {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="border-b border-neutral-200 bg-white px-4 pb-6 pt-2 md:hidden">
+        <div className="border-b border-border bg-bg-card px-4 pb-6 pt-2 text-text-primary md:hidden">
           <nav className="flex flex-col gap-1">
             {navLinks.map((link) => {
               const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
@@ -262,8 +277,8 @@ export function Header() {
                   className={cn(
                     'flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-base font-medium transition-colors',
                     active
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900',
+                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
+                      : 'text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
                   )}
                 >
                   <span className="flex size-5 shrink-0 items-center justify-center">
@@ -279,22 +294,33 @@ export function Header() {
             })}
           </nav>
 
-          <div className="mt-4 border-t border-neutral-200 pt-4">
+          <div className="mt-4 border-t border-border pt-4">
             {isAuthenticated && user ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
-                    {user.fullName.slice(0, 1).toUpperCase()}
-                  </div>
+                  {user.avatarUrl ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      width={36}
+                      height={36}
+                      unoptimized
+                      className="size-9 rounded-full object-cover border border-border"
+                    />
+                  ) : (
+                    <div className="flex size-9 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
+                      {user.fullName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-neutral-900">{user.fullName}</span>
-                    <span className="text-xs text-neutral-500">{user.email}</span>
+                    <span className="text-sm font-semibold text-text-primary">{user.fullName}</span>
+                    <span className="text-xs text-text-secondary">{user.email}</span>
                   </div>
                 </div>
                 <Link
                   href="/profile"
                   onClick={closeDrawer}
-                  className="flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-sm text-neutral-700 hover:bg-neutral-100"
+                  className="flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-sm text-text-secondary hover:bg-bg-subtle hover:text-text-primary"
                 >
                   <UserIcon className="size-4" />
                   <span>{tNav('profile')}</span>
@@ -303,7 +329,7 @@ export function Header() {
                   <Link
                     href="/owner/apply"
                     onClick={closeDrawer}
-                    className="flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-sm font-medium text-primary-700 hover:bg-primary-50"
+                    className="flex min-h-[44px] items-center gap-2.5 rounded-btn px-3 text-sm font-medium text-primary-600 dark:text-primary-400 hover:bg-bg-subtle"
                   >
                     <Building2 className="size-4" />
                     <span>Đăng ký làm chủ sân</span>

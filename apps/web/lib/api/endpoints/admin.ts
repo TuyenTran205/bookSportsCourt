@@ -1,21 +1,21 @@
 import type {
-  Area,
-  AuditLog,
-  Booking,
-  BookingSource,
-  BookingStatus,
-  OwnerApplication,
-  OwnerApplicationStatus,
-  PaymentStatus,
-  Review,
-  Sport,
-  User,
-  UserRole,
-  UserStatus,
-  VenueListItem,
-} from '@bsc/shared';
+    Area,
+    AuditLog,
+    Booking,
+    BookingSource,
+    BookingStatus,
+    OwnerApplication,
+    OwnerApplicationStatus,
+    PaymentStatus,
+    Review,
+    Sport,
+    User,
+    UserRole,
+    UserStatus,
+    VenueListItem,
+} from "@bsc/shared";
 
-import { apiFetch, apiFetchWithMeta, jsonBody } from '../client';
+import { apiFetch, apiFetchWithMeta, jsonBody } from "../client";
 
 /**
  * Endpoint module – Quản trị.
@@ -34,157 +34,160 @@ import { apiFetch, apiFetchWithMeta, jsonBody } from '../client';
  * `packages/shared` cùng lúc.
  */
 export interface AdminStats {
-  totalUsers: number;
-  totalVenues: number;
-  totalBookings: number;
-  totalRevenue: number;
-  pendingOwnerApplications: number;
-  pendingVenues: number;
+    totalUsers: number;
+    totalVenues: number;
+    totalBookings: number;
+    totalRevenue: number;
+    pendingOwnerApplications: number;
+    pendingVenues: number;
 }
 
 export interface AdminAnalytics {
-  byStatus: Array<{ status: string; count: number }>;
-  bySport: Array<{ sport: string; bookings: number }>;
-  byVenue: Array<{ venueId: string; name: string; bookings: number; revenue: number }>;
+    byStatus: Array<{ status: string; count: number }>;
+    bySport: Array<{ sport: string; bookings: number }>;
+    byVenue: Array<{ venueId: string; name: string; bookings: number; revenue: number }>;
 }
 
 export function getAdminAnalytics() {
-  return apiFetch<AdminAnalytics>('/admin/analytics');
+    return apiFetch<AdminAnalytics>("/admin/analytics");
 }
 
 /** Cơ sở kèm tên chủ sân — dữ liệu chỉ có ở màn quản trị. */
 export type AdminVenueRow = VenueListItem & { ownerName: string };
 
 export function getAdminStats() {
-  return apiFetch<AdminStats>('/admin/stats');
+    return apiFetch<AdminStats>("/admin/stats");
 }
 
 // ── Hồ sơ chủ sân (ADM-01) ─────────────────────────────────────────────────
 
-export function listOwnerApplications(
-  params: { status?: OwnerApplicationStatus; page?: number; limit?: number } = {},
-) {
-  return apiFetchWithMeta<OwnerApplication[]>('/admin/owner-applications', {
-    query: { ...params },
-  });
+export function listOwnerApplications(params: { status?: OwnerApplicationStatus; page?: number; limit?: number } = {}) {
+    return apiFetchWithMeta<OwnerApplication[]>("/admin/owner-applications", {
+        query: { ...params },
+    });
 }
 
 /** Duyệt hoặc từ chối. `reviewNote` bắt buộc khi `status = 'rejected'`. */
-export function reviewOwnerApplication(
-  id: string,
-  input: { status: 'approved' | 'rejected'; reviewNote?: string },
-) {
-  return apiFetch<OwnerApplication>(`/admin/owner-applications/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    ...jsonBody(input),
-  });
+export function reviewOwnerApplication(id: string, input: { status: "approved" | "rejected"; reviewNote?: string }) {
+    return apiFetch<OwnerApplication>(`/admin/owner-applications/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        ...jsonBody(input),
+    });
 }
 
 // ── Cơ sở (ADM-02) ─────────────────────────────────────────────────────────
 
-export function listAdminVenues(
-  params: { status?: string; page?: number; limit?: number } = {},
-) {
-  return apiFetchWithMeta<AdminVenueRow[]>('/admin/venues', { query: { ...params } });
+export function listAdminVenues(params: { status?: string; page?: number; limit?: number } = {}) {
+    return apiFetchWithMeta<AdminVenueRow[]>("/admin/venues", { query: { ...params } });
 }
 
-export function reviewVenue(
-  id: string,
-  input: { status: 'approved' | 'rejected' | 'suspended'; reviewNote?: string },
-) {
-  return apiFetch<AdminVenueRow>(`/admin/venues/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    ...jsonBody(input),
-  });
+export function reviewVenue(id: string, input: { status: "approved" | "rejected" | "suspended"; reviewNote?: string }) {
+    return apiFetch<AdminVenueRow>(`/admin/venues/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        ...jsonBody(input),
+    });
 }
 
 // ── Người dùng (ADM-03) ────────────────────────────────────────────────────
 
 export function listAdminUsers(
-  params: { role?: UserRole; status?: UserStatus; q?: string; page?: number; limit?: number } = {},
+    params: { role?: UserRole; status?: UserStatus; q?: string; page?: number; limit?: number } = {},
 ) {
-  return apiFetchWithMeta<User[]>('/admin/users', { query: { ...params } });
+    return apiFetchWithMeta<User[]>("/admin/users", { query: { ...params } });
 }
 
 /** Khoá hoặc mở khoá tài khoản. */
 export function setUserStatus(id: string, status: UserStatus) {
-  return apiFetch<User>(`/admin/users/${encodeURIComponent(id)}/status`, {
-    method: 'PATCH',
-    ...jsonBody({ status }),
-  });
+    return apiFetch<User>(`/admin/users/${encodeURIComponent(id)}/status`, {
+        method: "PATCH",
+        ...jsonBody({ status }),
+    });
 }
 
 export function setUserRole(id: string, role: UserRole) {
-  return apiFetch<User>(`/admin/users/${encodeURIComponent(id)}/role`, {
-    method: 'PATCH',
-    ...jsonBody({ role }),
-  });
+    return apiFetch<User>(`/admin/users/${encodeURIComponent(id)}/role`, {
+        method: "PATCH",
+        ...jsonBody({ role }),
+    });
 }
 
 // ── Đặt sân (ADM-04) ───────────────────────────────────────────────────────
 
 export interface AdminBookingRow extends Booking {
-  courtName: string;
-  venueName: string;
-  customerName: string;
-  paymentStatus: PaymentStatus | null;
-  source: BookingSource;
+    courtName: string;
+    venueName: string;
+    customerName: string;
+    paymentStatus: PaymentStatus | null;
+    source: BookingSource;
 }
 
-export function listAdminBookings(
-  params: { status?: BookingStatus; q?: string; page?: number; limit?: number } = {},
-) {
-  return apiFetchWithMeta<AdminBookingRow[]>('/admin/bookings', { query: { ...params } });
+export function listAdminBookings(params: { status?: BookingStatus; q?: string; page?: number; limit?: number } = {}) {
+    return apiFetchWithMeta<AdminBookingRow[]>("/admin/bookings", { query: { ...params } });
 }
 
 /** Buộc huỷ một lượt đặt — kèm lý do để ghi vào nhật ký. */
 export function forceCancelBooking(id: string, reason: string) {
-  return apiFetch<Booking>(`/admin/bookings/${encodeURIComponent(id)}/cancel`, {
-    method: 'PATCH',
-    ...jsonBody({ reason }),
-  });
+    return apiFetch<Booking>(`/admin/bookings/${encodeURIComponent(id)}/cancel`, {
+        method: "PATCH",
+        ...jsonBody({ reason }),
+    });
 }
 
 // ── Danh mục (ADM-05) ──────────────────────────────────────────────────────
 
 export function createSport(input: { name: string; icon?: string }) {
-  return apiFetch<Sport>('/admin/sports', { method: 'POST', ...jsonBody(input) });
+    return apiFetch<Sport>("/admin/sports", { method: "POST", ...jsonBody(input) });
 }
 
 export function deleteSport(id: string) {
-  return apiFetch<{ success: true }>(`/admin/sports/${encodeURIComponent(id)}`, {
-    method: 'DELETE',
-  });
+    return apiFetch<{ success: true }>(`/admin/sports/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+    });
 }
 
-export function createArea(input: { name: string; type: 'province' | 'district'; parentId?: string }) {
-  return apiFetch<Area>('/admin/areas', { method: 'POST', ...jsonBody(input) });
+export function createArea(input: { name: string; type: "province" | "ward" | "district"; parentId?: string }) {
+    return apiFetch<Area>("/admin/areas", { method: "POST", ...jsonBody(input) });
 }
 
-// ── Đánh giá (ADM-06) ──────────────────────────────────────────────────────
+// ── Đánh giá (ADM-06, ADM-10) ──────────────────────────────────────────────
+
+export interface AdminReviewRow extends Review {
+    venueName: string;
+    venueSlug?: string;
+    customerName: string;
+    customerEmail?: string;
+    isVisible: boolean;
+}
 
 export function listAdminReviews(
-  params: { venueId?: string; isVisible?: boolean; page?: number; limit?: number } = {},
+    params: {
+        venueId?: string;
+        isVisible?: boolean;
+        rating?: number;
+        q?: string;
+        page?: number;
+        limit?: number;
+    } = {},
 ) {
-  return apiFetchWithMeta<Review[]>('/admin/reviews', { query: { ...params } });
+    return apiFetchWithMeta<AdminReviewRow[]>("/admin/reviews", { query: { ...params } });
 }
 
 /** Ẩn/hiện một đánh giá. */
 export function setReviewVisibility(id: string, isVisible: boolean) {
-  return apiFetch<Review>(`/admin/reviews/${encodeURIComponent(id)}/visibility`, {
-    method: 'PATCH',
-    ...jsonBody({ isVisible }),
-  });
+    return apiFetch<AdminReviewRow>(`/admin/reviews/${encodeURIComponent(id)}/visibility`, {
+        method: "PATCH",
+        ...jsonBody({ isVisible }),
+    });
 }
 
-// ── Nhật ký kiểm toán (ADM-09) ─────────────────────────────────────────────
+// ── Nhật ký hoạt động (ADM-09) ─────────────────────────────────────────────
 // Chỉ có `GET`: nhật ký không sửa và không xoá được.
 
 export function listAuditLogs(params: { page?: number; limit?: number } = {}) {
-  return apiFetchWithMeta<AuditLog[]>('/admin/audit-logs', { query: { ...params } });
+    return apiFetchWithMeta<AuditLog[]>("/admin/audit-logs", { query: { ...params } });
 }
 
 /** Nạp lại dữ liệu mock về trạng thái ban đầu — chỉ dùng khi phát triển. */
 export function resetMockData() {
-  return apiFetch<{ success: true }>('/admin/reset-mock', { method: 'POST' });
+    return apiFetch<{ success: true }>("/admin/reset-mock", { method: "POST" });
 }

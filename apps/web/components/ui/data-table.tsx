@@ -2,12 +2,47 @@
 
 import * as React from 'react';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils/cn';
+
+/**
+ * Hook an toàn đọc translation cho DataTable, fallback chuỗi mặc định
+ * nếu component được render ngoài NextIntlClientProvider (ví dụ trong unit test).
+ */
+function useSafeTableTranslations() {
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useTranslations('table');
+  } catch {
+    return (key: string, values?: Record<string, unknown>) => {
+      switch (key) {
+        case 'noData':
+          return 'Không có dữ liệu';
+        case 'selectAll':
+          return 'Chọn tất cả dòng';
+        case 'selectRow':
+          return 'Chọn dòng';
+        case 'loadingData':
+          return 'Đang tải dữ liệu';
+        case 'pagination':
+          return 'Phân trang';
+        case 'previousPage':
+          return 'Trang trước';
+        case 'nextPage':
+          return 'Trang sau';
+        case 'pageIndicator':
+          return `Trang ${values?.page}/${values?.totalPages}`;
+        default:
+          return key;
+      }
+    };
+  }
+}
 
 /**
  * DataTable – docs/07-design-system.md mục 9.
@@ -76,7 +111,7 @@ export function DataTable<T>({
   getRowId,
   loading = false,
   isFetching = false,
-  emptyTitle = 'Không có dữ liệu',
+  emptyTitle,
   emptyDescription,
   emptyAction,
   sort,
@@ -90,6 +125,9 @@ export function DataTable<T>({
   skeletonRows = 5,
   className,
 }: DataTableProps<T>) {
+  const t = useSafeTableTranslations();
+  const resolvedEmptyTitle = emptyTitle ?? t('noData');
+
   const selectedSet = React.useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(getRowId(r)));
   const someSelected = rows.some((r) => selectedSet.has(getRowId(r))) && !allSelected;
@@ -125,7 +163,7 @@ export function DataTable<T>({
       {toolbar && <div className="flex flex-wrap items-center gap-2">{toolbar}</div>}
 
       {/* Cuộn ngang trên mobile — bảng rộng không được phá vỡ layout trang. */}
-      <div className="overflow-x-auto rounded-card border border-neutral-200 bg-white">
+      <div className="overflow-x-auto rounded-card border border-border bg-bg-card">
         <table
           className={cn(
             'w-full border-collapse text-sm transition-opacity duration-150',
@@ -135,19 +173,19 @@ export function DataTable<T>({
           aria-busy={isFetching || loading || undefined}
         >
           <thead>
-            <tr className="border-b border-neutral-200 bg-neutral-50">
+            <tr className="border-b border-border bg-bg-subtle">
               {selectable && (
                 <th scope="col" className="w-10 px-3 py-2">
                   <input
                     type="checkbox"
-                    className="size-4 rounded border-neutral-300 accent-primary-700"
+                    className="size-4 rounded border-border accent-primary-700"
                     checked={allSelected}
                     ref={(el) => {
                       // Trạng thái "chọn một phần" chỉ đặt được qua DOM.
                       if (el) el.indeterminate = someSelected;
                     }}
                     onChange={toggleAll}
-                    aria-label="Chọn tất cả dòng"
+                    aria-label={t('selectAll')}
                   />
                 </th>
               )}
@@ -161,7 +199,7 @@ export function DataTable<T>({
                       active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : undefined
                     }
                     className={cn(
-                      'px-3 py-2 font-medium text-neutral-600',
+                      'px-3 py-2 font-medium text-text-secondary',
                       col.align === 'right' && 'text-right',
                       col.align === 'center' && 'text-center',
                       !col.align && 'text-left',
@@ -173,9 +211,9 @@ export function DataTable<T>({
                         type="button"
                         onClick={() => handleSort(col.key)}
                         className={cn(
-                          'inline-flex items-center gap-1 rounded transition-colors hover:text-neutral-900',
+                          'inline-flex items-center gap-1 rounded transition-colors hover:text-text-primary',
                           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
-                          active && 'text-neutral-900',
+                          active && 'text-text-primary',
                         )}
                       >
                         {col.header}
@@ -198,7 +236,7 @@ export function DataTable<T>({
           <tbody>
             {loading ? (
               Array.from({ length: skeletonRows }).map((_, i) => (
-                <tr key={i} className="border-b border-neutral-100 last:border-0">
+                <tr key={i} className="border-b border-border/60 last:border-0">
                   {Array.from({ length: colSpan }).map((__, j) => (
                     <td key={j} className="px-3 py-3">
                       <Skeleton className="h-4 w-full" />
@@ -211,7 +249,7 @@ export function DataTable<T>({
                 <td colSpan={colSpan} className="p-0">
                   <EmptyState
                     icon={Inbox}
-                    title={emptyTitle}
+                    title={resolvedEmptyTitle}
                     description={emptyDescription}
                     action={emptyAction}
                     className="rounded-none border-0"
@@ -228,19 +266,19 @@ export function DataTable<T>({
                     // Dòng có thể nhấn thì phải là vùng bấm được cho bàn phím.
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     className={cn(
-                      'border-b border-neutral-100 last:border-0',
-                      onRowClick && 'cursor-pointer hover:bg-neutral-50',
-                      isSelected && 'bg-primary-50',
+                      'border-b border-border/60 last:border-0',
+                      onRowClick && 'cursor-pointer hover:bg-bg-subtle/50',
+                      isSelected && 'bg-primary-50 dark:bg-primary-950/40',
                     )}
                   >
                     {selectable && (
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          className="size-4 rounded border-neutral-300 accent-primary-700"
+                          className="size-4 rounded border-border accent-primary-700"
                           checked={isSelected}
                           onChange={() => toggleOne(id)}
-                          aria-label="Chọn dòng"
+                          aria-label={t('selectRow')}
                         />
                       </td>
                     )}
@@ -250,14 +288,14 @@ export function DataTable<T>({
                         <td
                           key={col.key}
                           className={cn(
-                            'px-3 py-2 text-neutral-800',
+                            'px-3 py-2 text-text-primary',
                             // Số căn phải + chữ số đều nhau để so sánh theo cột.
                             col.align === 'right' && 'text-right tabular-nums',
                             col.align === 'center' && 'text-center',
                             col.className,
                           )}
                         >
-                          {content ?? <span className="text-neutral-400">—</span>}
+                          {content ?? <span className="text-text-disabled">—</span>}
                         </td>
                       );
                     })}
@@ -272,7 +310,7 @@ export function DataTable<T>({
       {pagination && (
         <div className="flex items-center justify-center gap-2 sm:justify-end">
           {isFetching && !loading && (
-            <Spinner size="xs" variant="neutral" label="Đang tải dữ liệu" />
+            <Spinner size="xs" variant="neutral" label={t('loadingData')} />
           )}
           {pagination}
         </div>
@@ -297,31 +335,32 @@ export function DataTablePagination({
   onPageChange: (page: number) => void;
   disabled?: boolean;
 }) {
+  const t = useSafeTableTranslations();
   if (totalPages <= 1) return null;
 
   return (
-    <nav className="flex items-center gap-2" aria-label="Phân trang">
+    <nav className="flex items-center gap-2" aria-label={t('pagination')}>
       <Button
         variant="outline"
         size="sm"
         disabled={disabled || page <= 1}
         onClick={() => onPageChange(page - 1)}
-        aria-label="Trang trước"
+        aria-label={t('previousPage')}
       >
         <ChevronLeft aria-hidden="true" />
-        <span className="hidden sm:inline">Trang trước</span>
+        <span className="hidden sm:inline">{t('previousPage')}</span>
       </Button>
-      <span className="text-sm text-neutral-600" aria-live="polite">
-        Trang {page}/{totalPages}
+      <span className="text-sm text-text-secondary" aria-live="polite">
+        {t('pageIndicator', { page, totalPages })}
       </span>
       <Button
         variant="outline"
         size="sm"
         disabled={disabled || page >= totalPages}
         onClick={() => onPageChange(page + 1)}
-        aria-label="Trang sau"
+        aria-label={t('nextPage')}
       >
-        <span className="hidden sm:inline">Trang sau</span>
+        <span className="hidden sm:inline">{t('nextPage')}</span>
         <ChevronRight aria-hidden="true" />
       </Button>
     </nav>

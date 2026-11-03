@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./data/provinces": "./src/data/provinces.ts",
+    "./data/wards.json": "./src/data/wards.json",
+    "./utils/unaccent": "./src/utils/unaccent.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

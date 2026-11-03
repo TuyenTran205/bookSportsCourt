@@ -8,6 +8,7 @@ import type {
   VenueDetail,
   VenueListItem,
   VenueMapPoint,
+  Ward,
 } from '@bsc/shared';
 
 import { apiFetch, apiFetchWithMeta } from '../client';
@@ -22,9 +23,12 @@ export type VenueSort = 'rating_desc' | 'price_asc' | 'price_desc' | 'newest';
 export interface VenueListParams {
   page?: number;
   limit?: number;
-  /** Từ khoá: tên, địa chỉ, tỉnh, quận. */
+  /** Từ khoá: tên, địa chỉ, tỉnh, xã, quận. */
   q?: string;
   provinceId?: string;
+  provinceCode?: string;
+  wardId?: string;
+  wardCode?: string;
   districtId?: string;
   sportIds?: string[];
   amenityIds?: string[];
@@ -48,6 +52,9 @@ function toQuery(
     limit: params.limit,
     q: params.q?.trim() || undefined,
     provinceId: params.provinceId || undefined,
+    provinceCode: params.provinceCode || undefined,
+    wardId: params.wardId || undefined,
+    wardCode: params.wardCode || undefined,
     districtId: params.districtId || undefined,
     sportIds: params.sportIds?.length ? params.sportIds : undefined,
     amenityIds: params.amenityIds?.length ? params.amenityIds : undefined,
@@ -103,6 +110,27 @@ export function listProvinces() {
   return apiFetch<Province[]>('/provinces');
 }
 
+/** `GET /provinces/:codeOrId/wards` — lấy danh sách xã/phường theo tỉnh. */
+export function listWards(provinceCodeOrId: string, params: { q?: string; limit?: number } = {}) {
+  return apiFetch<Ward[]>(`/provinces/${encodeURIComponent(provinceCodeOrId)}/wards`, {
+    query: {
+      q: params.q?.trim() || undefined,
+      limit: params.limit,
+    },
+  });
+}
+
+/** `GET /wards/search` — tìm kiếm autocomplete xã/phường có debounce. */
+export function searchWards(params: { q: string; provinceCode?: string; limit?: number }) {
+  return apiFetch<Ward[]>('/wards/search', {
+    query: {
+      q: params.q.trim(),
+      provinceCode: params.provinceCode,
+      limit: params.limit,
+    },
+  });
+}
+
 export function listDistricts(provinceId: string) {
   return apiFetch<District[]>(`/provinces/${encodeURIComponent(provinceId)}/districts`);
 }
@@ -110,10 +138,11 @@ export function listDistricts(provinceId: string) {
 /**
  * `GET /areas` phục vụ cả cây lẫn bộ lọc:
  * - `type: 'province'` → chỉ tỉnh (dùng cho select tỉnh).
- * - `parentId` → quận của tỉnh đó.
+ * - `type: 'ward'` → chỉ xã/phường.
+ * - `parentId` → đơn vị cấp dưới trực thuộc địa bàn đó.
  * - không tham số → toàn bộ cây (màn Admin).
  */
-export function listAreas(params: { type?: 'province' | 'district'; parentId?: string } = {}) {
+export function listAreas(params: { type?: 'province' | 'ward' | 'district'; parentId?: string } = {}) {
   return apiFetch<Area[]>('/areas', { query: { type: params.type, parentId: params.parentId } });
 }
 

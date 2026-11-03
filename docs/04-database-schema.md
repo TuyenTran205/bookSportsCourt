@@ -203,7 +203,8 @@ erDiagram
         text description
         string address
         id province_id FK "areas.type = province"
-        id district_id FK "areas.type = district, con của province_id"
+        id ward_id FK "areas.type = ward, trực thuộc province_id (mới)"
+        id district_id FK "areas.type = district, nullable legacy"
         decimal lat
         decimal lng
         string status "pending, approved, rejected, suspended"
@@ -433,9 +434,11 @@ erDiagram
     }
     areas {
         UUID id PK
-        TEXT type "CHECK province, district"
+        VARCHAR_10 code UK "Mã GSO: '01'..'92' (tỉnh), '00001'..'33210' (xã)"
+        TEXT type "CHECK province, ward, district (legacy)"
         TEXT name
         TEXT slug "UNIQUE NULLS NOT DISTINCT (parent_id, slug)"
+        TEXT unaccent_name "Tên không dấu cho tìm kiếm"
         UUID parent_id FK "NULL nếu là tỉnh, ON DELETE RESTRICT"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -448,7 +451,8 @@ erDiagram
         TEXT description
         TEXT address
         UUID province_id FK "areas, type = province"
-        UUID district_id FK "areas, type = district"
+        UUID ward_id FK "areas, type = ward, bắt buộc với venue mới"
+        UUID district_id FK "areas, type = district, nullable legacy"
         NUMERIC_10_7 lat "NUMERIC(10,7)"
         NUMERIC_10_7 lng "NUMERIC(10,7)"
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected, suspended"
@@ -640,7 +644,8 @@ erDiagram
 
     areas |o--o{ areas : "parent_id"
     areas ||--o{ venues : "province_id"
-    areas ||--o{ venues : "district_id"
+    areas ||--o{ venues : "ward_id"
+    areas |o--o{ venues : "district_id (legacy)"
 
     venues ||--o| venue_payment_accounts : "venue_id"
     venues ||--o| cancellation_policies : "venue_id"
@@ -675,7 +680,8 @@ erDiagram
 | `reviews`                   | `UNIQUE (booking_id)`                                                                                                             | Một booking chỉ được đánh giá một lần                                         |
 | `payments`                  | `UNIQUE (idempotency_key)`; partial unique `(booking_id) WHERE status IN ('pending','submitted','completed')`                     | Chống webhook trùng (sau này); mỗi booking chỉ có một thanh toán còn hiệu lực |
 | `owner_applications`        | partial unique `(user_id) WHERE status = 'pending'`                                                                               | Mỗi người chỉ có một hồ sơ đang chờ duyệt                                     |
-| `areas`                     | `UNIQUE NULLS NOT DISTINCT (parent_id, slug)`, `CHECK` tỉnh không có cha, quận phải có cha                                        | Danh mục hai cấp nhất quán                                                    |
+| `areas`                     | `UNIQUE NULLS NOT DISTINCT (parent_id, slug)`, `CHECK` tỉnh không có cha, xã/quận phải có cha, GIN trigram `unaccent_name`        | Danh mục 2 cấp mốc 03/11/2026, hỗ trợ tìm kiếm không dấu                     |
+| `venues`                    | FK `province_id`, `ward_id`, FK nullable `district_id` (legacy); index `(province_id, ward_id) WHERE deleted_at IS NULL`         | Mô hình địa lý 2 cấp, trigger đảm bảo xã thuộc tỉnh đã chọn                  |
 | `users`, `venues`, `courts` | Partial index `WHERE deleted_at IS NULL`                                                                                          | Soft delete                                                                   |
 
 ### Trigger đồng bộ cột cache
@@ -855,21 +861,29 @@ CREATE INDEX idx_owner_app_status ON owner_applications(status);
 
 ### areas
 
-Danh mục khu vực hai cấp (ADM-06): tỉnh/thành và quận/huyện. Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
+Danh mục khu vực hai cấp (ADM-06, ADR-022, ADR-023 mốc 03/11/2026): Tỉnh/Thành phố trực thuộc TW và Xã/Phường/Đặc khu trực thuộc (bãi bỏ cấp huyện từ 01/07/2025; giữ `district` làm legacy). Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
 
 ```sql
 CREATE TABLE areas (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type       TEXT NOT NULL CHECK (type IN ('province','district')),
-  name       TEXT NOT NULL,             -- "Thành phố Hồ Chí Minh", "Thành phố Thủ Đức"
-  slug       TEXT NOT NULL,             -- "ho-chi-minh", "thu-duc"
-  parent_id  UUID REFERENCES areas(id) ON DELETE RESTRICT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  CHECK ((type = 'province' AND parent_id IS NULL) OR (type = 'district' AND parent_id IS NOT NULL)),
-  UNIQUE NULLS NOT DISTINCT (parent_id, slug)   -- PostgreSQL 15+
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code          VARCHAR(10),                       -- Mã định danh GSO: '01'..'92' (tỉnh), '00001'..'33210' (xã)
+  type          TEXT NOT NULL CHECK (type IN ('province','ward','district')),
+  name          TEXT NOT NULL,                     -- "Thành phố Hồ Chí Minh", "Phường Bến Nghé"
+  slug          TEXT NOT NULL,                     -- "ho-chi-minh", "ben-nghe"
+  unaccent_name TEXT,                              -- "thanh pho ho chi minh", "phuong ben nghe"
+  parent_id     UUID REFERENCES areas(id) ON DELETE RESTRICT,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now(),
+  CHECK (
+    (type = 'province' AND parent_id IS NULL) OR 
+    (type IN ('ward', 'district') AND parent_id IS NOT NULL)
+  ),
+  UNIQUE NULLS NOT DISTINCT (parent_id, slug)      -- PostgreSQL 15+
 );
 CREATE INDEX idx_areas_parent ON areas(parent_id);
+CREATE INDEX idx_areas_code ON areas(code);
+CREATE INDEX idx_areas_type_parent ON areas(type, parent_id);
+CREATE INDEX idx_areas_unaccent_trgm ON areas USING gin (unaccent_name gin_trgm_ops);
 ```
 
 ### sports
@@ -911,7 +925,8 @@ CREATE TABLE venues (
   description  TEXT,
   address      TEXT NOT NULL,
   province_id  UUID NOT NULL REFERENCES areas(id),   -- areas.type = 'province'
-  district_id  UUID NOT NULL REFERENCES areas(id),   -- areas.type = 'district', cha phải là province_id
+  ward_id      UUID REFERENCES areas(id),            -- areas.type = 'ward', bắt buộc cho venue mới
+  district_id  UUID REFERENCES areas(id),            -- areas.type = 'district', nullable legacy
   lat          NUMERIC(10,7),
   lng          NUMERIC(10,7),
   status       TEXT NOT NULL DEFAULT 'pending'
@@ -937,6 +952,27 @@ CREATE TABLE venues (
 CREATE INDEX idx_venues_owner   ON venues(owner_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_status  ON venues(status)   WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_area ON venues(province_id, district_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_venues_province_ward ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
+-- Trigger kiểm tra tính toàn vẹn: ward_id phải trực thuộc province_id
+CREATE OR REPLACE FUNCTION check_venue_ward_province_match() RETURNS TRIGGER AS $$
+DECLARE
+  v_ward_parent UUID;
+BEGIN
+  IF NEW.ward_id IS NOT NULL THEN
+    SELECT parent_id INTO v_ward_parent FROM areas WHERE id = NEW.ward_id;
+    IF v_ward_parent IS NULL OR v_ward_parent <> NEW.province_id THEN
+      RAISE EXCEPTION 'Lỗi toàn vẹn dữ liệu: Xã/phường (%) không trực thuộc Tỉnh/thành phố (%) đã chọn', 
+        NEW.ward_id, NEW.province_id
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_venues_ward_province_match
+BEFORE INSERT OR UPDATE OF province_id, ward_id ON venues
+FOR EACH ROW EXECUTE FUNCTION check_venue_ward_province_match();
 -- Index cho sort/filter đang được API hỗ trợ (xem 11-api-contract.md):
 --   sort=rating, sort=price, filter maxPrice
 CREATE INDEX idx_venues_rating ON venues(rating_avg DESC) WHERE status = 'approved' AND deleted_at IS NULL;
@@ -1304,3 +1340,41 @@ apps/api/src/database/
 4. **Constraint EXCLUDE** phải được viết trong file SQL migration tùy chỉnh (Drizzle chưa hỗ trợ native).
 5. **Trigger và function** (mục "Trigger đồng bộ cột cache", chặn blackout) cũng phải nằm trong file migration SQL tùy chỉnh — Drizzle không sinh được.
 6. Chạy lệnh: `pnpm --filter @bsc/api db:migrate`
+
+### Migration Mẫu: V20261103_01__administrative_units_2levels.sql (Mô hình 2 cấp mốc 03/11/2026)
+
+```sql
+-- 1. Bổ sung cột mã định danh GSO và tên không dấu cho bảng areas
+ALTER TABLE areas
+  ADD COLUMN IF NOT EXISTS code VARCHAR(10),
+  ADD COLUMN IF NOT EXISTS unaccent_name TEXT;
+
+-- 2. Cập nhật ràng buộc CHECK của areas.type để hỗ trợ 'ward' và giữ 'district' (legacy)
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_type_check;
+ALTER TABLE areas ADD CONSTRAINT areas_type_check 
+  CHECK (type IN ('province', 'ward', 'district'));
+
+-- 3. Cập nhật ràng buộc phân cấp:
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_parent_check;
+ALTER TABLE areas ADD CONSTRAINT areas_parent_check 
+  CHECK (
+    (type = 'province' AND parent_id IS NULL) OR 
+    (type IN ('ward', 'district') AND parent_id IS NOT NULL)
+  );
+
+-- 4. Bổ sung index tối ưu truy vấn cho areas
+CREATE INDEX IF NOT EXISTS idx_areas_code ON areas(code);
+CREATE INDEX IF NOT EXISTS idx_areas_type_parent ON areas(type, parent_id);
+CREATE INDEX IF NOT EXISTS idx_areas_unaccent_trgm ON areas USING gin (unaccent_name gin_trgm_ops);
+
+-- 5. Cập nhật bảng venues: thêm ward_id, nới lỏng district_id thành NULL
+ALTER TABLE venues 
+  ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT;
+
+ALTER TABLE venues 
+  ALTER COLUMN district_id DROP NOT NULL;
+
+-- 6. Index cho venues theo cặp tỉnh - xã mới
+CREATE INDEX IF NOT EXISTS idx_venues_province_ward 
+  ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
+```
