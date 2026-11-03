@@ -135,9 +135,9 @@ export function VenueCompareScreen() {
           {/* Ô trống lớn thêm cơ sở */}
           <Link
             href="/venues"
-            className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-card border-2 border-dashed border-neutral-300 p-6 text-center transition-colors hover:border-primary-500 hover:bg-neutral-50 dark:border-neutral-700 dark:hover:border-primary-500 dark:hover:bg-neutral-900"
+            className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-card border-2 border-dashed border-border p-6 text-center transition-colors hover:border-primary-500 hover:bg-bg-subtle text-text-primary"
           >
-            <div className="flex size-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+            <div className="flex size-12 items-center justify-center rounded-full bg-bg-subtle text-text-secondary">
               <Plus className="size-6" aria-hidden="true" />
             </div>
             <div>
@@ -209,11 +209,11 @@ export function VenueCompareScreen() {
       </div>
 
       {/* Ma trận so sánh dạng bảng */}
-      <div className="overflow-x-auto rounded-card border border-neutral-200 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="overflow-x-auto rounded-card border border-border bg-bg-card shadow-xs text-text-primary">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             {/* Hàng 1: Cơ sở Header & Ảnh */}
-            <tr className="border-b border-neutral-200 bg-neutral-50/50 dark:border-neutral-800 dark:bg-neutral-800/40">
+            <tr className="border-b border-border bg-bg-subtle text-text-primary">
               <th
                 scope="col"
                 className="w-40 sm:w-56 p-4 align-top font-bold text-neutral-900 dark:text-white"

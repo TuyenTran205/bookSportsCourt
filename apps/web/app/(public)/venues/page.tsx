@@ -225,7 +225,7 @@ export default function VenuesPage() {
           onChange={applyFilterChange}
           onReset={handleResetFilters}
           totalResults={meta?.total ?? venues.length}
-          isLoading={venuesQuery.isFetching}
+          isLoading={venuesQuery.isLoading && venues.length === 0}
         />
       </div>
 

@@ -104,7 +104,7 @@ export function CheckoutProofUploader({
 
       {/* Vùng xem trước ảnh đã chọn */}
       {preview ? (
-        <div className="relative overflow-hidden rounded-card border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="relative overflow-hidden rounded-card border border-border bg-bg-subtle p-2">
           <div className="relative aspect-[4/3] max-h-56 w-full">
             <Image
               src={preview}
@@ -114,7 +114,7 @@ export function CheckoutProofUploader({
               className="object-contain"
             />
           </div>
-          <div className="mt-2 flex items-center justify-between border-t border-neutral-200 pt-2 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+          <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-xs text-text-secondary">
             <span className="truncate font-medium">{file?.name}</span>
             <button
               type="button"

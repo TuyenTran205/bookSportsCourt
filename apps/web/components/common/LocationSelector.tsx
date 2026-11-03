@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, ChevronsUpDown, Loader2, MapPin, Search, X } from 'lucide-react';
 import type { Province, Ward } from '@bsc/shared';
-import { matchUnaccent } from '@bsc/shared';
+import { PROVINCES, matchUnaccent } from '@bsc/shared';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { listProvinces, listWards } from '@/lib/api/endpoints/venues';
@@ -40,14 +40,19 @@ export function LocationSelector({
   showFooterNotice = false,
   className,
 }: LocationSelectorProps) {
+  const provinceInputRef = React.useRef<HTMLInputElement>(null);
+  const wardInputRef = React.useRef<HTMLInputElement>(null);
+
   // ── 1. Danh sách 34 Tỉnh/Thành ─────────────────────────────────────────────
   const provincesQuery = useQuery({
     queryKey: ['catalogs', 'provinces'],
     queryFn: listProvinces,
+    initialData: PROVINCES,
+    initialDataUpdatedAt: 0,
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  const provinces = React.useMemo(() => provincesQuery.data ?? [], [provincesQuery.data]);
+  const provinces = React.useMemo(() => provincesQuery.data ?? PROVINCES, [provincesQuery.data]);
 
   // Tìm tỉnh đang được chọn
   const selectedProvince = React.useMemo(() => {
@@ -192,7 +197,7 @@ export function LocationSelector({
         <div className="flex flex-col gap-1">
           <label
             htmlFor="location-province-btn"
-            className="text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+            className="text-xs font-semibold text-text-secondary"
           >
             Tỉnh / Thành phố
           </label>
@@ -206,24 +211,19 @@ export function LocationSelector({
                 aria-controls="location-province-listbox"
                 aria-haspopup="listbox"
                 aria-label="Tỉnh / Thành phố"
-                disabled={disabled || provincesQuery.isLoading}
-                onClick={() => setProvinceOpen((prev) => !prev)}
+                disabled={disabled}
                 className={cn(
-                  'flex min-h-11 w-full items-center justify-between rounded-btn border bg-white px-3 py-2 text-left text-xs transition-colors',
-                  'border-neutral-300 hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900',
+                  'flex min-h-11 w-full items-center justify-between rounded-btn border border-border bg-bg-card px-3 py-2 text-left text-xs text-text-primary transition-colors',
+                  'hover:border-neutral-400 dark:hover:border-neutral-500',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:border-transparent',
-                  disabled && 'cursor-not-allowed opacity-50 bg-neutral-100 dark:bg-neutral-800',
+                  disabled && 'cursor-not-allowed opacity-50 bg-bg-subtle text-text-disabled',
                   error?.province && 'border-danger text-danger focus-visible:ring-danger',
                 )}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <MapPin className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
-                  <span className={cn('truncate', !selectedProvince && 'text-neutral-400')}>
-                    {provincesQuery.isLoading
-                      ? 'Đang tải danh mục...'
-                      : selectedProvince
-                        ? selectedProvince.name
-                        : 'Chọn Tỉnh / Thành phố'}
+                  <MapPin className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                  <span className={cn('truncate', !selectedProvince ? 'text-text-disabled' : 'text-text-primary')}>
+                    {selectedProvince ? selectedProvince.name : 'Chọn Tỉnh / Thành phố'}
                   </span>
                 </span>
                 <div className="flex items-center gap-1">
@@ -233,31 +233,35 @@ export function LocationSelector({
                       tabIndex={0}
                       onClick={handleClearProvince}
                       onKeyDown={(e) => e.key === 'Enter' && handleClearProvince(e as unknown as React.MouseEvent)}
-                      className="rounded-xs p-0.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                      className="rounded-xs p-0.5 text-text-secondary hover:text-text-primary"
                       aria-label="Xóa chọn tỉnh"
                     >
                       <X className="size-3.5" />
                     </span>
                   )}
-                  <ChevronsUpDown className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+                  <ChevronsUpDown className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 </div>
               </button>
             </PopoverTrigger>
 
             <PopoverContent
-              className="w-(--radix-popover-trigger-width) p-0 shadow-lg"
+              className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0 shadow-lg border border-border bg-bg-card text-text-primary"
               align="start"
+              onOpenAutoFocus={(e) => {
+                e.preventDefault();
+                provinceInputRef.current?.focus();
+              }}
               onKeyDown={handleProvinceKeyDown}
             >
-              <div className="flex items-center border-b border-neutral-200 px-2.5 dark:border-neutral-700">
-                <Search className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+              <div className="flex items-center border-b border-border px-2.5">
+                <Search className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 <input
+                  ref={provinceInputRef}
                   type="text"
                   value={provinceSearch}
                   onChange={(e) => setProvinceSearch(e.target.value)}
                   placeholder="Tìm kiếm 34 tỉnh/thành..."
-                  className="min-h-10 w-full bg-transparent px-2 text-xs outline-none placeholder:text-neutral-400"
-                  autoFocus
+                  className="min-h-10 w-full bg-transparent px-2 text-xs text-text-primary outline-none placeholder:text-text-disabled"
                 />
               </div>
 
@@ -268,7 +272,7 @@ export function LocationSelector({
                 className="max-h-60 overflow-y-auto p-1 text-xs"
               >
                 {filteredProvinces.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-neutral-500">
+                  <div className="py-6 text-center text-xs text-text-disabled">
                     Không tìm thấy tỉnh/thành phố nào
                   </div>
                 ) : (
@@ -284,8 +288,9 @@ export function LocationSelector({
                         onMouseEnter={() => setProvinceActiveIndex(idx)}
                         className={cn(
                           'flex min-h-9 cursor-pointer items-center justify-between rounded-xs px-2.5 py-1.5 transition-colors',
-                          isActive && 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100',
+                          isActive && 'bg-bg-subtle text-text-primary',
                           isSelected && 'font-semibold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/40',
+                          !isActive && !isSelected && 'text-text-primary hover:bg-bg-subtle',
                         )}
                       >
                         <span className="truncate">{p.name}</span>
@@ -308,7 +313,7 @@ export function LocationSelector({
         <div className="flex flex-col gap-1">
           <label
             htmlFor="location-ward-btn"
-            className="text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+            className="text-xs font-semibold text-text-secondary"
           >
             Xã / Phường / Đặc khu
           </label>
@@ -323,18 +328,17 @@ export function LocationSelector({
                 aria-haspopup="listbox"
                 aria-label="Xã / Phường / Đặc khu"
                 disabled={disabled || !activeProvinceTarget}
-                onClick={() => setWardOpen((prev) => !prev)}
                 className={cn(
-                  'flex min-h-11 w-full items-center justify-between rounded-btn border bg-white px-3 py-2 text-left text-xs transition-colors',
-                  'border-neutral-300 hover:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900',
+                  'flex min-h-11 w-full items-center justify-between rounded-btn border border-border bg-bg-card px-3 py-2 text-left text-xs text-text-primary transition-colors',
+                  'hover:border-neutral-400 dark:hover:border-neutral-500',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:border-transparent',
-                  (!activeProvinceTarget || disabled) && 'cursor-not-allowed opacity-50 bg-neutral-100 dark:bg-neutral-800',
+                  (!activeProvinceTarget || disabled) && 'cursor-not-allowed opacity-50 bg-bg-subtle text-text-disabled',
                   error?.ward && 'border-danger text-danger focus-visible:ring-danger',
                 )}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <MapPin className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
-                  <span className={cn('truncate', !selectedWard && 'text-neutral-400')}>
+                  <MapPin className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                  <span className={cn('truncate', !selectedWard ? 'text-text-disabled' : 'text-text-primary')}>
                     {!activeProvinceTarget
                       ? 'Chọn Tỉnh/Thành trước'
                       : wardsQuery.isLoading
@@ -346,7 +350,7 @@ export function LocationSelector({
                 </span>
                 <div className="flex items-center gap-1">
                   {wardsQuery.isFetching && activeProvinceTarget && (
-                    <Loader2 className="size-3.5 animate-spin text-neutral-400" />
+                    <Loader2 className="size-3.5 animate-spin text-text-secondary" />
                   )}
                   {selectedWard && !disabled && (
                     <span
@@ -354,31 +358,35 @@ export function LocationSelector({
                       tabIndex={0}
                       onClick={handleClearWard}
                       onKeyDown={(e) => e.key === 'Enter' && handleClearWard(e as unknown as React.MouseEvent)}
-                      className="rounded-xs p-0.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                      className="rounded-xs p-0.5 text-text-secondary hover:text-text-primary"
                       aria-label="Xóa chọn xã"
                     >
                       <X className="size-3.5" />
                     </span>
                   )}
-                  <ChevronsUpDown className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+                  <ChevronsUpDown className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 </div>
               </button>
             </PopoverTrigger>
 
             <PopoverContent
-              className="w-(--radix-popover-trigger-width) p-0 shadow-lg"
+              className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0 shadow-lg border border-border bg-bg-card text-text-primary"
               align="start"
+              onOpenAutoFocus={(e) => {
+                e.preventDefault();
+                wardInputRef.current?.focus();
+              }}
               onKeyDown={handleWardKeyDown}
             >
-              <div className="flex items-center border-b border-neutral-200 px-2.5 dark:border-neutral-700">
-                <Search className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+              <div className="flex items-center border-b border-border px-2.5">
+                <Search className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 <input
+                  ref={wardInputRef}
                   type="text"
                   value={wardSearch}
                   onChange={(e) => setWardSearch(e.target.value)}
                   placeholder={`Tìm xã/phường tại ${selectedProvince?.name ?? 'tỉnh'}...`}
-                  className="min-h-10 w-full bg-transparent px-2 text-xs outline-none placeholder:text-neutral-400"
-                  autoFocus
+                  className="min-h-10 w-full bg-transparent px-2 text-xs text-text-primary outline-none placeholder:text-text-disabled"
                 />
               </div>
 
@@ -389,12 +397,12 @@ export function LocationSelector({
                 className="max-h-60 overflow-y-auto p-1 text-xs"
               >
                 {wardsQuery.isLoading ? (
-                  <div className="flex items-center justify-center gap-2 py-6 text-xs text-neutral-500">
+                  <div className="flex items-center justify-center gap-2 py-6 text-xs text-text-disabled">
                     <Loader2 className="size-4 animate-spin text-primary-600" />
                     <span>Đang tìm kiếm dữ liệu...</span>
                   </div>
                 ) : wards.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-neutral-500">
+                  <div className="py-6 text-center text-xs text-text-disabled">
                     {debouncedWardSearch
                       ? `Không có kết quả khớp với "${debouncedWardSearch}"`
                       : 'Không có dữ liệu xã/phường'}
@@ -413,8 +421,9 @@ export function LocationSelector({
                           onMouseEnter={() => setWardActiveIndex(idx)}
                           className={cn(
                             'flex min-h-9 cursor-pointer items-center justify-between rounded-xs px-2.5 py-1.5 transition-colors',
-                            isActive && 'bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100',
+                            isActive && 'bg-bg-subtle text-text-primary',
                             isSelected && 'font-semibold text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-950/40',
+                            !isActive && !isSelected && 'text-text-primary hover:bg-bg-subtle',
                           )}
                         >
                           <span className="truncate">{w.name}</span>
@@ -423,7 +432,7 @@ export function LocationSelector({
                       );
                     })}
                     {wards.length >= 50 && (
-                      <div className="border-t border-neutral-100 p-2 text-center text-[11px] text-neutral-400 dark:border-neutral-800">
+                      <div className="border-t border-border p-2 text-center text-[11px] text-text-disabled">
                         Hiển thị 50 kết quả đầu tiên (gõ thêm để lọc chính xác)
                       </div>
                     )}
@@ -442,7 +451,7 @@ export function LocationSelector({
 
       {showFooterNotice && (
         <div className="mt-1 text-right">
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <p className="text-[11px] text-text-disabled">
             Dữ liệu hành chính cập nhật đến 03/11/2026 — Nguồn: Tổng cục Thống kê & CSDL Quốc gia về Đơn vị Hành chính
           </p>
         </div>

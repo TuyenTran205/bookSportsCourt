@@ -26,7 +26,7 @@ export function VenueCompareFloatingBar() {
   return (
     <aside
       aria-label="Thanh công cụ so sánh cơ sở thể thao"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 backdrop-blur-md shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:border-neutral-800 dark:bg-neutral-900/95"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg-card/95 backdrop-blur-md shadow-[0_-4px_16px_rgba(0,0,0,0.2)] text-text-primary"
     >
       <div className="container flex flex-wrap items-center justify-between gap-3 py-2.5">
         {/* Khu vực bên trái: Tiêu đề, badge & thumbnails */}

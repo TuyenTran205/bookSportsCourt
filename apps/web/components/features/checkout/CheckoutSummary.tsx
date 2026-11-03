@@ -99,8 +99,8 @@ export function CheckoutSummary({ booking, className }: CheckoutSummaryProps) {
         </div>
       </dl>
 
-      <div className="rounded-btn border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/60 dark:text-neutral-400">
-        <div className="mb-1 flex items-center gap-1.5 font-semibold text-neutral-800 dark:text-neutral-200">
+      <div className="rounded-btn border border-border bg-bg-subtle p-3 text-xs text-text-secondary">
+        <div className="mb-1 flex items-center gap-1.5 font-semibold text-text-primary">
           <ShieldCheck className="size-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
           <span>{t('cancellationPolicyTitle')}</span>
         </div>

@@ -53,7 +53,7 @@ export function VenueCompareButton({
           'inline-flex h-9 items-center gap-1.5 rounded-btn px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
           active
             ? 'border border-primary-300 bg-primary-50 text-primary-700 dark:border-primary-700 dark:bg-primary-950/60 dark:text-primary-300'
-            : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800',
+            : 'border border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
           className,
         )}
       >
@@ -79,7 +79,7 @@ export function VenueCompareButton({
         'inline-flex size-9 items-center justify-center rounded-full border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
         active
           ? 'border-primary-300 bg-primary-50 text-primary-700 shadow-xs dark:border-primary-700 dark:bg-primary-950/70 dark:text-primary-300'
-          : 'border-neutral-200 bg-white/95 text-neutral-600 shadow-xs hover:bg-white hover:text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white',
+          : 'border border-border bg-bg-card/95 text-text-secondary shadow-xs hover:bg-bg-subtle hover:text-text-primary',
         className,
       )}
     >

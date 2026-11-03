@@ -92,8 +92,8 @@ export function CheckoutScreen() {
             </p>
           </div>
 
-          <div className="rounded-btn border border-neutral-200 bg-neutral-50 p-4 text-left text-xs text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
-            <p className="font-semibold text-neutral-900 dark:text-neutral-100">
+          <div className="rounded-btn border border-border bg-bg-subtle p-4 text-left text-xs text-text-secondary">
+            <p className="font-semibold text-text-primary">
               {court.venue.name} · {court.name}
             </p>
             <p className="mt-1 text-neutral-500">Mã đơn giữ chỗ: {booking.id}</p>
@@ -244,7 +244,7 @@ export function CheckoutScreen() {
                 setIsExpiredLocal(true);
                 void queryClient.invalidateQueries({ queryKey: bookingKeys.all });
               }}
-              className="border-neutral-200 bg-white shadow-xs dark:border-neutral-800 dark:bg-neutral-900"
+              className="border border-border bg-bg-card shadow-xs text-text-primary"
             />
           )}
 

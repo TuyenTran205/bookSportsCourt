@@ -34,7 +34,7 @@ const badgeVariants = cva(
           'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300',
         gray: 'border-border bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
         'gray-light':
-          'border-border bg-neutral-50 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400',
+          'border-border bg-bg-subtle text-text-secondary',
         orange:
           'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300',
         // Venue

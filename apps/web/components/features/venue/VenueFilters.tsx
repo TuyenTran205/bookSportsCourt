@@ -173,7 +173,7 @@ export function VenueFilters({
   return (
     <section
       aria-label="Bộ lọc tìm kiếm sân"
-      className={cn('rounded-card border border-neutral-200 bg-white p-4 shadow-xs dark:border-neutral-800 dark:bg-neutral-900', className)}
+      className={cn('rounded-card border border-border bg-bg-card p-4 shadow-xs text-text-primary', className)}
     >
       {/* Hàng lọc nhanh cơ bản */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -193,7 +193,7 @@ export function VenueFilters({
 
         {/* Mức giá trần */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="filter-price" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+          <label htmlFor="filter-price" className="text-xs font-semibold text-text-secondary">
             Mức giá
           </label>
           <NativeSelect
@@ -214,7 +214,7 @@ export function VenueFilters({
 
         {/* Tiêu chí sắp xếp */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="filter-sort" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+          <label htmlFor="filter-sort" className="text-xs font-semibold text-text-secondary">
             Sắp xếp theo
           </label>
           <NativeSelect
@@ -235,15 +235,15 @@ export function VenueFilters({
       </div>
 
       {/* Thanh công cụ phụ: Nút Mở rộng bộ lọc & Đặt lại */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setIsAdvancedOpen((prev) => !prev)}
             aria-expanded={isAdvancedOpen}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           >
-            <SlidersHorizontal className="size-3.5 text-neutral-500" aria-hidden="true" />
+            <SlidersHorizontal className="size-3.5 text-text-secondary" aria-hidden="true" />
             <span>{isAdvancedOpen ? 'Thu gọn bộ lọc' : 'Bộ lọc nâng cao'}</span>
             {activeFiltersCount > 0 && (
               <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300">
@@ -256,27 +256,27 @@ export function VenueFilters({
             <button
               type="button"
               onClick={onReset}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             >
-              <RotateCcw className="size-3.5 text-neutral-400" aria-hidden="true" />
+              <RotateCcw className="size-3.5 text-text-secondary" aria-hidden="true" />
               <span>Xóa bộ lọc</span>
             </button>
           )}
         </div>
 
         {totalResults !== undefined && (
-          <span className="text-xs text-neutral-500 dark:text-neutral-400">
-            Tìm thấy <strong className="font-semibold text-neutral-900 dark:text-neutral-100">{totalResults}</strong> cơ sở
+          <span className="text-xs text-text-secondary">
+            Tìm thấy <strong className="font-semibold text-text-primary">{totalResults}</strong> cơ sở
           </span>
         )}
       </div>
 
       {/* Vùng bộ lọc nâng cao */}
       {isAdvancedOpen && (
-        <div className="mt-4 flex flex-col gap-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+        <div className="mt-4 flex flex-col gap-4 border-t border-border pt-4">
           {/* Môn thể thao (chọn nhiều) */}
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Môn thể thao</span>
+            <span className="text-xs font-semibold text-text-secondary">Môn thể thao</span>
             <div className="flex flex-wrap gap-2">
               {sports.map((sport) => {
                 const isSelected = values.sportIds?.includes(sport.id) ?? false;
@@ -290,7 +290,7 @@ export function VenueFilters({
                       'inline-flex min-h-11 items-center rounded-btn px-3 py-1.5 text-xs font-medium transition-colors',
                       isSelected
                         ? 'bg-primary-700 text-white font-semibold dark:bg-primary-600'
-                        : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                        : 'border border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
                     )}
                   >
                     {sport.name}
@@ -302,7 +302,7 @@ export function VenueFilters({
 
           {/* Đánh giá tối thiểu */}
           <div className="flex flex-col gap-1.5 sm:max-w-xs">
-            <label htmlFor="filter-rating" className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+            <label htmlFor="filter-rating" className="text-xs font-semibold text-text-secondary">
               Đánh giá sao tối thiểu
             </label>
             <NativeSelect
@@ -324,7 +324,7 @@ export function VenueFilters({
           {/* Tiện ích sân */}
           {amenities.length > 0 && (
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">Tiện ích đi kèm</span>
+              <span className="text-xs font-semibold text-text-secondary">Tiện ích đi kèm</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                 {amenities.map((amenity) => {
                   const isChecked = values.amenityIds?.includes(amenity.id) ?? false;
@@ -335,14 +335,14 @@ export function VenueFilters({
                         'flex min-h-11 cursor-pointer items-center gap-2 rounded-btn border p-2 text-xs transition-colors',
                         isChecked
                           ? 'border-primary-600 bg-primary-50 text-primary-900 font-medium dark:bg-primary-950/40 dark:text-primary-200 dark:border-primary-500'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700',
+                          : 'border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
                       )}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => handleAmenityToggle(amenity.id)}
-                        className="size-4 rounded-xs border-neutral-300 text-primary-600 focus:ring-primary-500"
+                        className="size-4 rounded-xs border-border text-primary-600 focus:ring-primary-500"
                       />
                       <span className="truncate">{amenity.name}</span>
                     </label>
@@ -355,8 +355,8 @@ export function VenueFilters({
       )}
 
       {/* Dòng ghi chú bản quyền & mốc dữ liệu ĐVHC */}
-      <div className="mt-3 border-t border-neutral-100 pt-2 text-right dark:border-neutral-800">
-        <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+      <div className="mt-3 border-t border-border pt-2 text-right">
+        <p className="text-[11px] text-text-disabled">
           Dữ liệu hành chính cập nhật đến 03/11/2026 — Nguồn: Tổng cục Thống kê &amp; CSDL Quốc gia về Đơn vị Hành chính
         </p>
       </div>
