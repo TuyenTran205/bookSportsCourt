@@ -308,7 +308,12 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-              <Button variant="secondary" size="lg" asChild className="font-semibold shadow-sm">
+              <Button
+                variant="secondary"
+                size="lg"
+                asChild
+                className="border-0 bg-white font-semibold text-primary-950 shadow-sm hover:bg-primary-50 hover:text-primary-950 active:bg-primary-100 dark:bg-white dark:text-primary-950 dark:hover:bg-primary-50 dark:hover:text-primary-950 dark:active:bg-primary-100"
+              >
                 <Link href="/owner/apply">
                   <span>{tHome('ctaRegisterOwner')}</span>
                   <ArrowRight className="size-4" aria-hidden="true" />
