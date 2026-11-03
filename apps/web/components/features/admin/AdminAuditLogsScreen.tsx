@@ -18,36 +18,36 @@ function formatAuditAction(action: string): { label: string; tone: string } {
     if (action.includes("approve")) {
         return {
             label: "Phê duyệt",
-            tone: "bg-primary-50 text-primary-800 border-primary-200 dark:bg-primary-950/40 dark:text-primary-300 dark:border-primary-900/50",
+            tone: "bg-primary-50 text-primary-800 border-primary-200 dark:bg-primary-950 dark:text-primary-300 dark:border-primary-800",
         };
     }
     if (action.includes("reject")) {
         return {
             label: "Từ chối",
-            tone: "bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50",
+            tone: "bg-red-50 text-red-800 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800",
         };
     }
     if (action.includes("suspend") || action.includes("cancel")) {
         return {
             label: "Khoá / Huỷ bỏ",
-            tone: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50",
+            tone: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
         };
     }
     if (action.includes("create")) {
         return {
             label: "Thêm mới",
-            tone: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50",
+            tone: "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
         };
     }
     if (action.includes("delete")) {
         return {
             label: "Xoá bỏ",
-            tone: "bg-neutral-100 text-neutral-800 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700",
+            tone: "bg-bg-subtle text-text-primary border-border",
         };
     }
     return {
         label: action,
-        tone: "bg-neutral-50 text-neutral-700 border-neutral-200 dark:bg-neutral-800/60 dark:text-neutral-300 dark:border-neutral-700",
+        tone: "bg-bg-subtle text-text-secondary border-border",
     };
 }
 
@@ -183,7 +183,7 @@ export function AdminAuditLogsScreen() {
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <div className="flex items-center gap-1.5 font-medium text-text-primary">
-                                                        <ShieldAlert className="size-3.5 text-purple-600" />
+                                                        <ShieldAlert className="size-3.5 text-primary-600 dark:text-primary-400" />
                                                         {log.actorName ?? "Hệ thống"}
                                                     </div>
                                                 </td>

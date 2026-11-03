@@ -71,12 +71,12 @@ describe('AdminAuditLogsScreen Component (TC-DM-07: Dark Mode Styling)', () => {
 
     // Kiểm tra chip hành động 'Phê duyệt' có biến thể dark
     const approveBadge = screen.getByText('Phê duyệt');
-    expect(approveBadge.className).toContain('dark:bg-primary-950/40');
+    expect(approveBadge.className).toContain('dark:bg-primary-950');
     expect(approveBadge.className).toContain('dark:text-primary-300');
 
     // Kiểm tra chip hành động 'Từ chối' có biến thể dark
     const rejectBadge = screen.getByText('Từ chối');
-    expect(rejectBadge.className).toContain('dark:bg-red-950/40');
+    expect(rejectBadge.className).toContain('dark:bg-red-950');
     expect(rejectBadge.className).toContain('dark:text-red-300');
 
     // Kiểm tra hàng tbody có hover:bg-bg-subtle/50

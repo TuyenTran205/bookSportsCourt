@@ -100,9 +100,20 @@ export function VenueFilters({
     return count;
   }, [values]);
 
+  // LocationSelector gọi onProvinceChange rồi onWardChange(null) liên tiếp trong cùng một
+  // tick. Nếu mỗi handler dựa vào `values` (closure cũ) thì lần gọi thứ hai sẽ ghi đè lần
+  // đầu và tỉnh vừa chọn bị mất. Dùng ref giữ giá trị mới nhất để các lần gọi nối tiếp nhau.
+  const latestValuesRef = React.useRef(values);
+  latestValuesRef.current = values;
+
+  const emitChange = (patch: Partial<VenueFilterValues>) => {
+    const next = { ...latestValuesRef.current, ...patch };
+    latestValuesRef.current = next;
+    onChange(next);
+  };
+
   const handleProvinceChange = (province: Province | null) => {
-    onChange({
-      ...values,
+    emitChange({
       provinceId: province?.id,
       provinceCode: province?.code,
       wardId: undefined,
@@ -113,8 +124,7 @@ export function VenueFilters({
   };
 
   const handleWardChange = (ward: Ward | null) => {
-    onChange({
-      ...values,
+    emitChange({
       wardId: ward?.id,
       wardCode: ward?.code,
       page: 1,

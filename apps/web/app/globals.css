@@ -38,6 +38,7 @@
   --color-primary-700: #15803d;
   --color-primary-800: #166534;
   --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
 
   /* === ACCENT – Cam năng động === */
   --color-accent-500: #f97316;
@@ -97,45 +98,47 @@
 }
 
 .dark {
-  /* === NEUTRAL INVERTED RAMP (Đảo chiều thông minh toàn hệ thống) === */
-  --color-neutral-0: #0f172a;     /* Nền thẻ Card tối chuẩn Linear */
-  --color-neutral-50: #090d16;    /* Nền trang Canvas slate sâu */
-  --color-neutral-100: #1e293b;   /* Nền phụ subtle slate-800 */
-  --color-neutral-200: #334155;   /* Viền 1px slate-700 */
-  --color-neutral-300: #475569;   /* Viền ô input / select slate-600 */
-  --color-neutral-400: #64748b;   /* Placeholder / Text disabled */
-  --color-neutral-500: #94a3b8;   /* Text muted / Icon phụ */
-  --color-neutral-600: #cbd5e1;   /* Text phụ rõ nét */
-  --color-neutral-700: #e2e8f0;   /* Text nội dung chính */
-  --color-neutral-800: #f1f5f9;   /* Text tiêu đề phụ */
-  --color-neutral-900: #f8fafc;   /* Text tiêu đề chính nổi bật */
+  color-scheme: dark;
 
-  /* === SURFACES (Chế độ tối dịu mắt, độ tương phản cao chuẩn Linear) === */
-  --color-bg: #090d16;          /* Nền chính slate sâu */
-  --color-bg-card: #0f172a;     /* Nền card neutral-900 */
-  --color-bg-subtle: #1e293b;   /* Nền phụ neutral-800 */
-  --color-border: #334155;      /* Viền 1px neutral-700 */
+  /* === NEUTRAL RAMP (Zinc trung tính ấm, không ánh tím, chuẩn GitHub Dark / Vercel) === */
+  --color-neutral-0: #18181b;     /* Nền thẻ Card Zinc-900 */
+  --color-neutral-50: #121214;    /* Nền trang Canvas Off-black dịu mắt */
+  --color-neutral-100: #27272a;   /* Nền phụ subtle Zinc-800 */
+  --color-neutral-200: #2e2e33;   /* Viền 1px mờ */
+  --color-neutral-300: #3f3f46;   /* Viền ô input / select Zinc-700 */
+  --color-neutral-400: #71717a;   /* Placeholder / Text disabled */
+  --color-neutral-500: #a1a1aa;   /* Text muted / Icon phụ */
+  --color-neutral-600: #d4d4d8;   /* Text phụ rõ nét */
+  --color-neutral-700: #e4e4e7;   /* Text nội dung chính */
+  --color-neutral-800: #f4f4f5;   /* Text tiêu đề phụ */
+  --color-neutral-900: #fafafa;   /* Text tiêu đề chính nổi bật */
+
+  /* === SURFACES (Chế độ tối trung tính, không ám xanh tím AI) === */
+  --color-bg: #121214;          /* Nền chính Off-black */
+  --color-bg-card: #18181b;     /* Nền card Zinc-900 */
+  --color-bg-subtle: #27272a;   /* Nền phụ Zinc-800 */
+  --color-border: #2e2e33;      /* Viền 1px trung tính */
   --color-border-focus: #22c55e;/* Viền focus primary-500 */
 
-  /* === TEXT === */
-  --color-text-primary: #f8fafc;   /* neutral-50 */
-  --color-text-secondary: #94a3b8; /* neutral-400 */
-  --color-text-disabled: #64748b;  /* neutral-500 */
-  --color-text-inverse: #0f172a;   /* neutral-900 */
+  /* === TEXT (Trắng kem dịu mắt, độ tương phản AAA) === */
+  --color-text-primary: #f4f4f5;   /* Zinc-100 */
+  --color-text-secondary: #a1a1aa; /* Zinc-400 */
+  --color-text-disabled: #71717a;  /* Zinc-500 */
+  --color-text-inverse: #121214;   /* Off-black */
 
-  /* === SLOT STATUS (Tương phản AA trên nền tối) === */
-  --color-slot-available: #14532d;
+  /* === SLOT STATUS (Hạ bão hòa, loại bỏ tím gắt) === */
+  --color-slot-available: #14301f;
   --color-slot-available-text: #4ade80;
-  --color-slot-held: #713f12;
-  --color-slot-held-text: #fde047;
-  --color-slot-booked: #1e3a8a;
+  --color-slot-held: #3a2e12;
+  --color-slot-held-text: #fbbf24;
+  --color-slot-booked: #1b2a3d;
   --color-slot-booked-text: #93c5fd;
-  --color-slot-my-hold: #4c1d95;
+  --color-slot-my-hold: #2a2340;
   --color-slot-my-hold-text: #c4b5fd;
-  --color-slot-blocked: #334155;
-  --color-slot-blocked-text: #94a3b8;
-  --color-slot-past: #0f172a;
-  --color-slot-past-text: #475569;
+  --color-slot-blocked: #27272a;
+  --color-slot-blocked-text: #a1a1aa;
+  --color-slot-past: #18181b;
+  --color-slot-past-text: #52525b;
 
   /* === SHADOWS (Tăng độ đậm trên nền tối) === */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
