@@ -7,7 +7,23 @@ settings:
 importers:
 
   .:
+    dependencies:
+      dotenv:
+        specifier: ^18.0.9
+        version: 18.0.9
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.23.1)(@types/react@18.3.31)(pg@8.23.1)(react@18.3.1)
+      pg:
+        specifier: ^8.13.1
+        version: 8.23.1
     devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.23.1
+      drizzle-kit:
+        specifier: ^0.27.2
+        version: 0.27.2
       prettier:
         specifier: ^3.3.3
         version: 3.9.10
@@ -1623,6 +1639,11 @@ packages:
   dotenv@16.4.5:
     resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
     engines: {node: '>=12'}
+
+  dotenv@18.0.9:
+    resolution: {integrity: sha512-3fVOW4cB02R066PUSwn8O4TJyz9NckQl7F81blIbaq9jKBm2tSmOKky7ZHIXzGvkVPXCSn6jkpziBPZdGFs8Tw==}
+    engines: {node: '>=12'}
+    hasBin: true
 
   drizzle-kit@0.27.2:
     resolution: {integrity: sha512-F6cFZ1wxa9XzFyeeQsp/0/lIzUbDuQjS8/njpYBDWa+wdWmXuY+Z/X2hHFK/9PGHZkv3c9mER+mVWfKlp/B6Vw==}
@@ -4594,6 +4615,8 @@ snapshots:
   dotenv-expand@10.0.0: {}
 
   dotenv@16.4.5: {}
+
+  dotenv@18.0.9: {}
 
   drizzle-kit@0.27.2:
     dependencies:
