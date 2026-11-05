@@ -1,6 +1,6 @@
 # 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.4.9 | **Cập nhật lần cuối:** 2026-11-05 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.4.11 | **Cập nhật lần cuối:** 2026-11-05 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -65,6 +65,8 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-11-05 | Đánh dấu trực tiếp các phần BE đã triển khai trong từng Phase; tách việc còn thiếu/nghiệm thu thành checkbox riêng, bỏ bảng tiến độ tách rời | `backend-roadmap.md`, `00-README.md` |
+| 2026-11-05 | Rà checklist BE theo code và kết quả 131/131 backend, 7/7 shared: tick nền tảng/shared/migration/hạ tầng HTTP và API tài khoản nhận tiền; ghi phần đã có/còn thiếu ở các issue tích hợp, cập nhật hiện trạng DB/profile | `backend-roadmap.md`, `00-README.md` |
 | 2026-11-05 | Xử lý conflict backend: giữ các bảo vệ BSC-014, ghép Catalogs/Courts/Owner applications/Users/Venue extensions, thống nhất shared/workspace/lockfile/CI và bổ sung test AppModule thật; giữ trạng thái issue theo bằng chứng nghiệm thu | API/shared, package/lock/workspace/CI, `backend-conflict-resolution.md`, `implemented-apis.md`, roadmap, ADR-023, `00` |
 | 2026-11-01 | Hoàn thành Bước 9 BSC-014: đối chiếu ma trận, 5 nhóm acceptance mới, sửa thứ tự resource/body ở moderation, script test:venues; 70/70 API/DB/unit + 7/7 shared đạt. Chốt AC-13 và API thực tế còn dang dở Bước 8 | API test/service/controller/package, Bước 1/8/9, kế hoạch/tiến độ, roadmap, API thực tế, `00` |
 | 2026-10-31 | Hoàn thành Bước 8 BSC-014: Admin status, state machine/retry/legacy reason, audit tối thiểu cùng transaction; 36/36 test đạt, đủ 7 endpoint local; còn rà soát Bước 9–10/PR | API moderation/audit/test, AC-13, kế hoạch/tiến độ/Bước 8, API thực tế, `11`, OpenAPI, roadmap, `00` |
