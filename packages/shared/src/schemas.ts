@@ -6,10 +6,11 @@
  * này để trả lỗi 422 giống BE thật.
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 import {
   API_ERROR_CODES,
   BOOKING_STATUSES,
+  COURT_STATUSES,
   PAYMENT_STATUSES,
   SLOT_MINUTES,
   UPLOAD_ACCEPTED_TYPES,
@@ -17,17 +18,17 @@ import {
   USER_ROLES,
   USER_STATUSES,
   VENUE_STATUSES,
-} from './constants.js';
+} from "./constants.js";
 
 // ===== Nguyên thuỷ dùng lại nhiều nơi =====
 
-export const uuidSchema = z.string().uuid('ID không hợp lệ');
+export const uuidSchema = z.string().uuid("ID không hợp lệ");
 
 export const emailSchema = z
   .string()
-  .min(1, 'Vui lòng nhập email')
-  .email('Email không hợp lệ')
-  .max(255, 'Email quá dài')
+  .min(1, "Vui lòng nhập email")
+  .email("Email không hợp lệ")
+  .max(255, "Email quá dài")
   .toLowerCase()
   .trim();
 
@@ -37,14 +38,20 @@ export const emailSchema = z
  */
 export const phoneSchema = z
   .string()
-  .min(1, 'Vui lòng nhập số điện thoại')
-  .transform((v) => v.replace(/[\s.-]/g, ''))
-  .refine((v) => /^0\d{9}$/.test(v), 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0');
+  .min(1, "Vui lòng nhập số điện thoại")
+  .transform((v) => v.replace(/[\s.-]/g, ""))
+  .refine(
+    (v) => /^0\d{9}$/.test(v),
+    "Số điện thoại phải gồm 10 số và bắt đầu bằng 0",
+  );
 
 export const optionalPhoneSchema = z
   .string()
-  .transform((v) => v.replace(/[\s.-]/g, ''))
-  .refine((v) => v === '' || /^0\d{9}$/.test(v), 'Số điện thoại phải gồm 10 số và bắt đầu bằng 0')
+  .transform((v) => v.replace(/[\s.-]/g, ""))
+  .refine(
+    (v) => v === "" || /^0\d{9}$/.test(v),
+    "Số điện thoại phải gồm 10 số và bắt đầu bằng 0",
+  )
   .optional();
 
 /**
@@ -55,12 +62,12 @@ export const optionalPhoneSchema = z
  */
 export const passwordSchema = z
   .string()
-  .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
-  .max(72, 'Mật khẩu tối đa 72 ký tự');
+  .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+  .max(72, "Mật khẩu tối đa 72 ký tự");
 
 export const dateOnlySchema = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ngày phải theo định dạng YYYY-MM-DD');
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày phải theo định dạng YYYY-MM-DD");
 
 export const isoDateTimeSchema = z.string().datetime({ offset: true });
 
@@ -74,56 +81,60 @@ export const slotTimeSchema = z.object({
 
 export const registerSchema = z
   .object({
-    fullName: z.string().min(2, 'Vui lòng nhập họ tên').max(100, 'Họ tên quá dài').trim(),
+    fullName: z
+      .string()
+      .min(2, "Vui lòng nhập họ tên")
+      .max(100, "Họ tên quá dài")
+      .trim(),
     email: emailSchema,
     phone: phoneSchema,
     password: passwordSchema,
-    confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu'),
+    confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu"),
   })
   .refine((d) => d.password === d.confirmPassword, {
-    message: 'Mật khẩu nhập lại không khớp',
-    path: ['confirmPassword'],
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirmPassword"],
   });
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+  password: z.string().min(1, "Vui lòng nhập mật khẩu"),
   rememberMe: z.boolean().default(false),
 });
 
 export const forgotPasswordSchema = z.object({ email: emailSchema });
 export const verifyEmailSchema = z.object({
-  token: z.string().min(1, 'Thiếu token xác thực email'),
+  token: z.string().min(1, "Thiếu token xác thực email"),
 });
 
 export const resetPasswordSchema = z
   .object({
-    token: z.string().min(1, 'Thiếu token đặt lại mật khẩu'),
+    token: z.string().min(1, "Thiếu token đặt lại mật khẩu"),
     password: passwordSchema,
-    confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu'),
+    confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu"),
   })
   .refine((d) => d.password === d.confirmPassword, {
-    message: 'Mật khẩu nhập lại không khớp',
-    path: ['confirmPassword'],
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirmPassword"],
   });
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, 'Vui lòng nhập mật khẩu hiện tại'),
+    currentPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
     newPassword: passwordSchema,
-    confirmPassword: z.string().min(1, 'Vui lòng nhập lại mật khẩu mới'),
+    confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu mới"),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
-    message: 'Mật khẩu nhập lại không khớp',
-    path: ['confirmPassword'],
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirmPassword"],
   });
 
 // ===== Người dùng =====
 
 export const updateProfileSchema = z.object({
-  fullName: z.string().min(2, 'Vui lòng nhập họ tên').max(100).trim(),
+  fullName: z.string().min(2, "Vui lòng nhập họ tên").max(100).trim(),
   phone: optionalPhoneSchema,
-  avatarUrl: z.string().url('URL ảnh không hợp lệ').nullish(),
+  avatarUrl: z.string().url("URL ảnh không hợp lệ").nullish(),
 });
 
 export const updateUserRoleSchema = z.object({
@@ -136,7 +147,12 @@ export const updateUserStatusSchema = z.object({
 
 // ===== Tìm kiếm sân =====
 
-export const venueSortSchema = z.enum(['price_asc', 'price_desc', 'rating_desc', 'newest']);
+export const venueSortSchema = z.enum([
+  "price_asc",
+  "price_desc",
+  "rating_desc",
+  "newest",
+]);
 
 export const venueSearchSchema = z.object({
   q: z.string().trim().max(100).optional(),
@@ -165,23 +181,23 @@ export const createHoldSchema = z.object({
   courtId: uuidSchema,
   slots: z
     .array(slotTimeSchema)
-    .min(1, 'Vui lòng chọn ít nhất một khung giờ')
-    .max(16, 'Tối đa 16 khung giờ mỗi lượt đặt'),
+    .min(1, "Vui lòng chọn ít nhất một khung giờ")
+    .max(16, "Tối đa 16 khung giờ mỗi lượt đặt"),
   idempotencyKey: z.string().min(1).max(128),
-  note: z.string().max(500, 'Ghi chú tối đa 500 ký tự').optional(),
+  note: z.string().max(500, "Ghi chú tối đa 500 ký tự").optional(),
 });
 
 /** Booking tại quầy do Owner tạo (`source: 'manual'`) — có thể không gắn tài khoản. */
 export const createManualBookingSchema = z.object({
   courtId: uuidSchema,
-  slots: z.array(slotTimeSchema).min(1, 'Vui lòng chọn ít nhất một khung giờ'),
-  guestName: z.string().min(2, 'Vui lòng nhập tên khách').max(100).trim(),
+  slots: z.array(slotTimeSchema).min(1, "Vui lòng chọn ít nhất một khung giờ"),
+  guestName: z.string().min(2, "Vui lòng nhập tên khách").max(100).trim(),
   guestPhone: phoneSchema,
   note: z.string().max(500).optional(),
 });
 
 export const cancelBookingSchema = z.object({
-  reason: z.string().max(500, 'Lý do tối đa 500 ký tự').optional(),
+  reason: z.string().max(500, "Lý do tối đa 500 ký tự").optional(),
 });
 
 /** Hình dạng tối thiểu của một `File` trình duyệt — không phụ thuộc lib DOM. */
@@ -192,10 +208,10 @@ interface BrowserFile {
 
 function isBrowserFile(value: unknown): value is BrowserFile {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    typeof (value as BrowserFile).type === 'string' &&
-    typeof (value as BrowserFile).size === 'number'
+    typeof (value as BrowserFile).type === "string" &&
+    typeof (value as BrowserFile).size === "number"
   );
 }
 
@@ -208,27 +224,29 @@ function isBrowserFile(value: unknown): value is BrowserFile {
  */
 export const proofUploadSchema = z.object({
   file: z
-    .custom<BrowserFile>(isBrowserFile, { message: 'Vui lòng chọn ảnh biên lai' })
+    .custom<BrowserFile>(isBrowserFile, {
+      message: "Vui lòng chọn ảnh biên lai",
+    })
     .refine(
       (f) => (UPLOAD_ACCEPTED_TYPES as readonly string[]).includes(f.type),
-      'Chỉ nhận ảnh JPG, PNG hoặc WebP',
+      "Chỉ nhận ảnh JPG, PNG hoặc WebP",
     )
-    .refine((f) => f.size <= UPLOAD_MAX_BYTES, 'Ảnh tối đa 5MB'),
+    .refine((f) => f.size <= UPLOAD_MAX_BYTES, "Ảnh tối đa 5MB"),
 });
 
 // ===== Đánh giá =====
 
 export const createReviewSchema = z.object({
   bookingId: uuidSchema,
-  rating: z.coerce.number().int().min(1, 'Vui lòng chọn số sao').max(5),
-  comment: z.string().max(2000, 'Nội dung tối đa 2000 ký tự').optional(),
+  rating: z.coerce.number().int().min(1, "Vui lòng chọn số sao").max(5),
+  comment: z.string().max(2000, "Nội dung tối đa 2000 ký tự").optional(),
 });
 
 export const replyReviewSchema = z.object({
   ownerReply: z
     .string()
-    .min(1, 'Vui lòng nhập nội dung trả lời')
-    .max(2000, 'Nội dung tối đa 2000 ký tự'),
+    .min(1, "Vui lòng nhập nội dung trả lời")
+    .max(2000, "Nội dung tối đa 2000 ký tự"),
 });
 
 // ===== Owner: cơ sở, sân con, giá, khoá sân =====
@@ -288,23 +306,31 @@ export type VenueStatusUpdateInput = z.infer<typeof venueStatusUpdateSchema>;
 // HTTP query strings may be strings; reject arrays, blanks, booleans and exponents.
 const venueQueryInteger = z.union([
   z.number().int().positive().safe(),
-  z.string().regex(/^[0-9]+$/).transform(Number).pipe(z.number().int().positive().safe()),
+  z
+    .string()
+    .regex(/^[0-9]+$/)
+    .transform(Number)
+    .pipe(z.number().int().positive().safe()),
 ]);
 const venuePageFields = {
   page: venueQueryInteger.default(1),
-  limit: venueQueryInteger.refine((value) => value <= 100, 'Tối đa 100 mục').default(20),
+  limit: venueQueryInteger
+    .refine((value) => value <= 100, "Tối đa 100 mục")
+    .default(20),
 };
 export const ownerVenueQuerySchema = z.object(venuePageFields).strict();
-export const adminVenueQuerySchema = z.object({
-  ...venuePageFields,
-  status: z.enum(VENUE_STATUSES).default('pending'),
-  q: z.string().trim().max(200).optional(),
-}).strict();
+export const adminVenueQuerySchema = z
+  .object({
+    ...venuePageFields,
+    status: z.enum(VENUE_STATUSES).default("pending"),
+    q: z.string().trim().max(200).optional(),
+  })
+  .strict();
 export type OwnerVenueQueryInput = z.infer<typeof ownerVenueQuerySchema>;
 export type AdminVenueQueryInput = z.infer<typeof adminVenueQuerySchema>;
 
 export const createCourtSchema = z.object({
-  name: z.string().min(1, 'Vui lòng nhập tên sân').max(100).trim(),
+  name: z.string().min(1, "Vui lòng nhập tên sân").max(100).trim(),
   description: z.string().max(1000).optional(),
   sportId: uuidSchema.nullish(),
 });
@@ -313,29 +339,38 @@ export const openingHourSchema = z
   .object({
     /** 0 = Chủ nhật … 6 = Thứ bảy. */
     weekday: z.coerce.number().int().min(0).max(6),
-    openTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
-    closeTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
+    openTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, "Giờ phải theo định dạng HH:mm"),
+    closeTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, "Giờ phải theo định dạng HH:mm"),
     isClosed: z.boolean().default(false),
   })
   .refine((d) => d.isClosed || d.openTime < d.closeTime, {
-    message: 'Giờ đóng cửa phải sau giờ mở cửa',
-    path: ['closeTime'],
+    message: "Giờ đóng cửa phải sau giờ mở cửa",
+    path: ["closeTime"],
   });
 
-export const pricingRuleSchema = z
-  .object({
-    label: z.string().min(1, 'Vui lòng nhập tên khung giá').max(100).trim(),
-    /** 0 = Chủ nhật … 6 = Thứ bảy. */
-    weekdays: z.array(z.coerce.number().int().min(0).max(6)).min(1, 'Chọn ít nhất một ngày'),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Giờ phải theo định dạng HH:mm'),
-    /** VND cho mỗi block SLOT_MINUTES. */
-    pricePerSlot: z.coerce.number().int().nonnegative('Giá không được âm'),
-  })
-  .refine((d) => d.startTime < d.endTime, {
-    message: 'Giờ kết thúc phải sau giờ bắt đầu',
-    path: ['endTime'],
-  });
+export const pricingRuleBaseSchema = z.object({
+  label: z.string().min(1, "Vui lòng nhập tên khung giá").max(100).trim(),
+  /** 0 = Chủ nhật … 6 = Thứ bảy. */
+  weekdays: z
+    .array(z.coerce.number().int().min(0).max(6))
+    .min(1, "Chọn ít nhất một ngày"),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Giờ phải theo định dạng HH:mm"),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Giờ phải theo định dạng HH:mm"),
+  /** VND cho mỗi block SLOT_MINUTES. */
+  pricePerSlot: z.coerce.number().int().nonnegative("Giá không được âm"),
+});
+
+export const pricingRuleSchema = pricingRuleBaseSchema.refine(
+  (d) => d.startTime < d.endTime,
+  {
+    message: "End time must be after start time",
+    path: ["endTime"],
+  },
+);
 
 export const blackoutSchema = z
   .object({
@@ -344,19 +379,28 @@ export const blackoutSchema = z
     reason: z.string().max(500).optional(),
   })
   .refine((d) => new Date(d.start) < new Date(d.end), {
-    message: 'Thời điểm kết thúc phải sau thời điểm bắt đầu',
-    path: ['end'],
+    message: "Thời điểm kết thúc phải sau thời điểm bắt đầu",
+    path: ["end"],
   });
 
 export const bankAccountSchema = z.object({
-  bankBin: z.string().min(6, 'Vui lòng chọn ngân hàng').max(20),
-  bankName: z.string().min(1, 'Vui lòng nhập tên ngân hàng').max(200).trim(),
+  bankBin: z.string().min(6, "Vui lòng chọn ngân hàng").max(20),
+  bankName: z
+    .string()
+    .trim()
+    .min(1, "Vui lòng nhập tên ngân hàng")
+    .max(200)
+    .optional(),
   accountNo: z
     .string()
-    .min(6, 'Số tài khoản quá ngắn')
-    .max(30, 'Số tài khoản quá dài')
-    .regex(/^\d+$/, 'Số tài khoản chỉ gồm chữ số'),
-  accountName: z.string().min(2, 'Vui lòng nhập tên chủ tài khoản').max(200).trim(),
+    .min(6, "Số tài khoản quá ngắn")
+    .max(30, "Số tài khoản quá dài")
+    .regex(/^\d+$/, "Số tài khoản chỉ gồm chữ số"),
+  accountName: z
+    .string()
+    .min(2, "Vui lòng nhập tên chủ tài khoản")
+    .max(200)
+    .trim(),
 });
 
 export const cancellationPolicySchema = z
@@ -366,49 +410,56 @@ export const cancellationPolicySchema = z
     depositPercent: z.coerce.number().int().min(0).max(100),
   })
   .refine((d) => d.refundPercent <= 100, {
-    message: 'Phần trăm hoàn tối đa 100%',
-    path: ['refundPercent'],
+    message: "Phần trăm hoàn tối đa 100%",
+    path: ["refundPercent"],
   });
 
 // ===== Owner: đăng ký làm chủ sân =====
 
 export const ownerApplicationSchema = z.object({
-  businessName: z.string().min(2, 'Vui lòng nhập tên cơ sở kinh doanh').max(200).trim(),
+  businessName: z
+    .string()
+    .min(2, "Vui lòng nhập tên cơ sở kinh doanh")
+    .max(200)
+    .trim(),
+  phone: phoneSchema,
+  address: z.string().trim().min(5, "Vui lòng nhập địa chỉ").max(500),
+  note: z.string().max(1000).optional(),
   taxCode: z
     .string()
-    .regex(/^\d{10}(\d{3})?$/, 'Mã số thuế gồm 10 hoặc 13 chữ số')
+    .regex(/^\d{10}(\d{3})?$/, "Mã số thuế gồm 10 hoặc 13 chữ số")
     .optional(),
 });
 
 export const rejectSchema = z.object({
   rejectReason: z
     .string()
-    .min(5, 'Vui lòng nhập lý do từ chối (ít nhất 5 ký tự)')
-    .max(500, 'Lý do tối đa 500 ký tự'),
+    .min(5, "Vui lòng nhập lý do từ chối (ít nhất 5 ký tự)")
+    .max(500, "Lý do tối đa 500 ký tự"),
 });
 
 // ===== Admin: danh mục =====
 
 export const sportSchema = z.object({
-  name: z.string().min(1, 'Vui lòng nhập tên môn').max(100).trim(),
+  name: z.string().min(1, "Vui lòng nhập tên môn").max(100).trim(),
   slug: z
     .string()
-    .min(1, 'Vui lòng nhập slug')
+    .min(1, "Vui lòng nhập slug")
     .max(100)
-    .regex(/^[a-z0-9-]+$/, 'Slug chỉ gồm chữ thường, số và dấu gạch nối'),
+    .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối"),
   icon: z.string().max(50).optional(),
 });
 
 export const amenitySchema = sportSchema;
 
 export const areaSchema = z.object({
-  name: z.string().min(1, 'Vui lòng nhập tên khu vực').max(100).trim(),
+  name: z.string().min(1, "Vui lòng nhập tên khu vực").max(100).trim(),
   slug: z
     .string()
-    .min(1, 'Vui lòng nhập slug')
+    .min(1, "Vui lòng nhập slug")
     .max(100)
-    .regex(/^[a-z0-9-]+$/, 'Slug chỉ gồm chữ thường, số và dấu gạch nối'),
-  type: z.enum(['province', 'district']),
+    .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối"),
+  type: z.enum(["province", "district"]),
   parentId: uuidSchema.nullish(),
 });
 
@@ -424,7 +475,7 @@ export const tableQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
   q: z.string().trim().max(100).optional(),
   sort: z.string().max(50).optional(),
-  order: z.enum(['asc', 'desc']).default('desc'),
+  order: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const bookingFilterSchema = tableQuerySchema.extend({
@@ -449,7 +500,9 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type VenueSearchInput = z.infer<typeof venueSearchSchema>;
 export type CreateHoldInput = z.infer<typeof createHoldSchema>;
-export type CreateManualBookingInput = z.infer<typeof createManualBookingSchema>;
+export type CreateManualBookingInput = z.infer<
+  typeof createManualBookingSchema
+>;
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type ReplyReviewInput = z.infer<typeof replyReviewSchema>;
 export type CreateVenueInput = z.infer<typeof createVenueSchema>;
@@ -467,3 +520,99 @@ export type BookingFilterInput = z.infer<typeof bookingFilterSchema>;
 export type PaymentFilterInput = z.infer<typeof paymentFilterSchema>;
 
 export { API_ERROR_CODES, SLOT_MINUTES };
+
+// Additional schemas for catalogs, courts and venue settings.
+export const addVenueImageSchema = z.object({
+  url: z.string().url("URL ảnh không hợp lệ"),
+  sortOrder: z.coerce.number().int().default(0),
+});
+
+export const reorderVenueImagesSchema = z.object({
+  imageIds: z.array(uuidSchema).min(1, "Danh sách ảnh không được rỗng"),
+});
+
+export const updateCourtSchema = createCourtSchema.partial().extend({
+  status: z.enum(COURT_STATUSES).optional(),
+  sortOrder: z.coerce.number().int().optional(),
+});
+
+export const updateOpeningHoursSchema = z.array(openingHourSchema);
+
+export const updatePricingRuleSchema = pricingRuleBaseSchema.partial();
+
+export const updateOwnerApplicationStatusSchema = z.object({
+  status: z.enum(["approved", "rejected"]),
+  reviewNote: z.string().max(500).optional(),
+});
+
+export type AddVenueImageInput = z.infer<typeof addVenueImageSchema>;
+
+export type ReorderVenueImagesInput = z.infer<typeof reorderVenueImagesSchema>;
+
+export type UpdateCourtInput = z.infer<typeof updateCourtSchema>;
+
+export type UpdateOpeningHoursInput = z.infer<typeof updateOpeningHoursSchema>;
+
+export type UpdatePricingRuleInput = z.infer<typeof updatePricingRuleSchema>;
+
+export type UpdateOwnerApplicationStatusInput = z.infer<
+  typeof updateOwnerApplicationStatusSchema
+>;
+
+export type VenueModerationInput = z.infer<typeof venueModerationSchema>;
+
+const venueQueryIds = z.union([
+  z.array(uuidSchema),
+  z
+    .string()
+    .transform((value) => value.split(",").map((id) => id.trim()))
+    .pipe(z.array(uuidSchema)),
+]);
+export const publicVenueSearchQuerySchema = z
+  .object({
+    q: z.string().trim().max(100).optional(),
+    provinceId: uuidSchema.optional(),
+    districtId: uuidSchema.optional(),
+    sportId: uuidSchema.optional(),
+    sportIds: venueQueryIds.optional(),
+    amenityIds: venueQueryIds.optional(),
+    minPrice: z.coerce.number().int().nonnegative().optional(),
+    maxPrice: z.coerce.number().int().nonnegative().optional(),
+    minRating: z.coerce.number().min(0).max(5).optional(),
+    sort: venueSortSchema.optional(),
+    ...venuePageFields,
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.minPrice === undefined ||
+      value.maxPrice === undefined ||
+      value.minPrice <= value.maxPrice,
+    { message: "Khoảng giá không hợp lệ" },
+  );
+
+export const venueMapQuerySchema = z
+  .object({
+    provinceId: uuidSchema.optional(),
+    districtId: uuidSchema.optional(),
+    sportId: uuidSchema.optional(),
+    minLat: z.coerce.number().finite().min(-90).max(90).optional(),
+    maxLat: z.coerce.number().finite().min(-90).max(90).optional(),
+    minLng: z.coerce.number().finite().min(-180).max(180).optional(),
+    maxLng: z.coerce.number().finite().min(-180).max(180).optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      (value.minLat === undefined ||
+        value.maxLat === undefined ||
+        value.minLat <= value.maxLat) &&
+      (value.minLng === undefined ||
+        value.maxLng === undefined ||
+        value.minLng <= value.maxLng),
+    { message: "Giới hạn bản đồ không hợp lệ" },
+  );
+export type PublicVenueSearchQueryInput = z.infer<
+  typeof publicVenueSearchQuerySchema
+>;
+export type VenueMapQueryInput = z.infer<typeof venueMapQuerySchema>;

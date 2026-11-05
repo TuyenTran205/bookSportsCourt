@@ -1,5 +1,17 @@
 import { Injectable } from "@nestjs/common";
-import { and, count, desc, eq, ilike, inArray, isNull } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+} from "drizzle-orm";
 import {
   InjectDrizzle,
   type DrizzleDb,
@@ -16,12 +28,17 @@ import {
   cancellationPolicies,
   bookings,
   auditLogs,
+  venuePaymentAccounts,
 } from "../../database/schema/index.js";
 import type {
   AdminVenueQueryDto,
   OwnerVenueQueryDto,
 } from "./dto/venue.dto.js";
 import type { AuthTransaction } from "../auth/auth.repository.js";
+import type {
+  BankAccountInput,
+  CancellationPolicyInput,
+} from "../../../../../packages/shared/src/schemas.js";
 
 @Injectable()
 export class VenuesRepository {
@@ -38,22 +55,20 @@ export class VenuesRepository {
     before: { status: string; rejectionReason: string | null },
     after: { status: string; rejectionReason: string | null },
   ) {
-    await tx
-      .insert(auditLogs)
-      .values({
-        actorId,
-        entityId,
-        entityType: "venue",
-        action: "venue.status_changed",
-        oldData: {
-          status: before.status,
-          hasRejectionReason: before.rejectionReason !== null,
-        },
-        newData: {
-          status: after.status,
-          hasRejectionReason: after.rejectionReason !== null,
-        },
-      });
+    await tx.insert(auditLogs).values({
+      actorId,
+      entityId,
+      entityType: "venue",
+      action: "venue.status_changed",
+      oldData: {
+        status: before.status,
+        hasRejectionReason: before.rejectionReason !== null,
+      },
+      newData: {
+        status: after.status,
+        hasRejectionReason: after.rejectionReason !== null,
+      },
+    });
   }
 
   async lockVenue(tx: AuthTransaction, id: string) {
@@ -298,5 +313,394 @@ export class VenuesRepository {
           amenityIds.map((amenityId) => ({ venueId: venue.id, amenityId })),
         );
     return venue;
+  }
+  async findById(id: string) {
+    const [row] = await this.db
+      .select()
+      .from(venues)
+      .where(and(eq(venues.id, id), isNull(venues.deletedAt)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async searchVenues(params: {
+    q?: string;
+    provinceId?: string;
+    districtId?: string;
+    sportIds?: string[];
+    amenityIds?: string[];
+    minPrice?: number;
+    maxPrice?: number;
+    minRating?: number;
+    sort?: string;
+    page: number;
+    limit: number;
+  }) {
+    const conditions = [
+      eq(venues.status, "approved"),
+      isNull(venues.deletedAt),
+    ];
+
+    if (params.q) {
+      conditions.push(
+        ilike(
+          venues.name,
+          `%${params.q.replace(/[\\%_]/g, "\\ilike(venues.name, `%${params.q}%`)")}%`,
+        ),
+      );
+    }
+    if (params.provinceId) {
+      conditions.push(eq(venues.provinceId, params.provinceId));
+    }
+    if (params.districtId) {
+      conditions.push(eq(venues.districtId, params.districtId));
+    }
+    if (params.minPrice !== undefined) {
+      conditions.push(gte(venues.fromPrice, params.minPrice));
+    }
+    if (params.maxPrice !== undefined) {
+      conditions.push(lte(venues.fromPrice, params.maxPrice));
+    }
+    if (params.minRating !== undefined) {
+      conditions.push(gte(venues.ratingAvg, String(params.minRating)));
+    }
+
+    if (params.sportIds && params.sportIds.length > 0) {
+      conditions.push(
+        inArray(
+          venues.id,
+          this.db
+            .select({ venueId: venueSports.venueId })
+            .from(venueSports)
+            .where(inArray(venueSports.sportId, params.sportIds)),
+        ),
+      );
+    }
+
+    if (params.amenityIds && params.amenityIds.length > 0) {
+      conditions.push(
+        inArray(
+          venues.id,
+          this.db
+            .select({ venueId: venueAmenities.venueId })
+            .from(venueAmenities)
+            .where(inArray(venueAmenities.amenityId, params.amenityIds)),
+        ),
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    const [totalRow] = await this.db
+      .select({ count: count() })
+      .from(venues)
+      .where(whereClause);
+
+    const total = Number(totalRow?.count ?? 0);
+    if (params.page > Math.ceil(total / params.limit))
+      return {
+        data: [],
+        meta: {
+          page: params.page,
+          limit: params.limit,
+          total,
+          totalPages: Math.ceil(total / params.limit),
+        },
+      };
+    const offset = (params.page - 1) * params.limit;
+
+    let orderBy;
+    switch (params.sort) {
+      case "price_asc":
+        orderBy = asc(venues.fromPrice);
+        break;
+      case "price_desc":
+        orderBy = desc(venues.fromPrice);
+        break;
+      case "rating_desc":
+        orderBy = desc(venues.ratingAvg);
+        break;
+      case "newest":
+      default:
+        orderBy = desc(venues.createdAt);
+        break;
+    }
+
+    const rows = await this.db
+      .select()
+      .from(venues)
+      .where(whereClause)
+      .orderBy(orderBy, desc(venues.id))
+      .limit(params.limit)
+      .offset(offset);
+
+    // Fetch sports & images for these venues
+    const venueIds = rows.map((r) => r.id);
+    const sportsMap = new Map<
+      string,
+      Array<{ id: string; name: string; slug: string; icon: string | null }>
+    >();
+
+    if (venueIds.length > 0) {
+      const sportsList = await this.db
+        .select({
+          venueId: venueSports.venueId,
+          sport: {
+            id: sports.id,
+            name: sports.name,
+            slug: sports.slug,
+            icon: sports.icon,
+          },
+        })
+        .from(venueSports)
+        .innerJoin(sports, eq(venueSports.sportId, sports.id))
+        .where(inArray(venueSports.venueId, venueIds));
+
+      for (const item of sportsList) {
+        const arr = sportsMap.get(item.venueId) ?? [];
+        arr.push(item.sport);
+        sportsMap.set(item.venueId, arr);
+      }
+    }
+
+    const areaIds = [
+      ...new Set(rows.flatMap((row) => [row.provinceId, row.districtId])),
+    ];
+    const locations = areaIds.length
+      ? await this.db.select().from(areas).where(inArray(areas.id, areaIds))
+      : [];
+    const enriched = rows.map((row) => {
+      const province = locations.find((area) => area.id === row.provinceId);
+      const district = locations.find((area) => area.id === row.districtId);
+      return {
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        address: row.address,
+        province: province
+          ? { id: province.id, name: province.name, slug: province.slug }
+          : null,
+        district: district
+          ? {
+              id: district.id,
+              name: district.name,
+              slug: district.slug,
+              provinceId: district.parentId,
+            }
+          : null,
+        lat: row.lat === null ? null : Number(row.lat),
+        lng: row.lng === null ? null : Number(row.lng),
+        status: row.status,
+        coverUrl: row.coverUrl,
+        ratingAvg: Number(row.ratingAvg),
+        reviewCount: row.reviewCount,
+        fromPrice: row.fromPrice,
+        sports: sportsMap.get(row.id) ?? [],
+      };
+    });
+
+    return {
+      data: enriched,
+      meta: {
+        page: params.page,
+        limit: params.limit,
+        total,
+        totalPages: Math.ceil(total / params.limit),
+      },
+    };
+  }
+
+  async getMapVenues(filters?: {
+    provinceId?: string;
+    districtId?: string;
+    sportIds?: string[];
+    minLat?: number;
+    maxLat?: number;
+    minLng?: number;
+    maxLng?: number;
+  }) {
+    const conditions = [
+      eq(venues.status, "approved"),
+      isNull(venues.deletedAt),
+      isNotNull(venues.lat),
+      isNotNull(venues.lng),
+    ];
+
+    if (filters?.provinceId) {
+      conditions.push(eq(venues.provinceId, filters.provinceId));
+    }
+    if (filters?.districtId) {
+      conditions.push(eq(venues.districtId, filters.districtId));
+    }
+    if (filters?.minLat !== undefined) {
+      conditions.push(gte(venues.lat, String(filters.minLat)));
+    }
+    if (filters?.maxLat !== undefined) {
+      conditions.push(lte(venues.lat, String(filters.maxLat)));
+    }
+    if (filters?.minLng !== undefined) {
+      conditions.push(gte(venues.lng, String(filters.minLng)));
+    }
+    if (filters?.maxLng !== undefined) {
+      conditions.push(lte(venues.lng, String(filters.maxLng)));
+    }
+    if (filters?.sportIds && filters.sportIds.length > 0) {
+      conditions.push(
+        inArray(
+          venues.id,
+          this.db
+            .select({ venueId: venueSports.venueId })
+            .from(venueSports)
+            .where(inArray(venueSports.sportId, filters.sportIds)),
+        ),
+      );
+    }
+
+    return this.db
+      .select({
+        id: venues.id,
+        slug: venues.slug,
+        name: venues.name,
+        lat: venues.lat,
+        lng: venues.lng,
+        fromPrice: venues.fromPrice,
+        ratingAvg: venues.ratingAvg,
+        coverUrl: venues.coverUrl,
+      })
+      .from(venues)
+      .where(and(...conditions))
+      .orderBy(venues.id);
+  }
+
+  async getCancellationPolicy(venueId: string) {
+    const [row] = await this.db
+      .select()
+      .from(cancellationPolicies)
+      .where(eq(cancellationPolicies.venueId, venueId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertCancellationPolicy(
+    venueId: string,
+    input: CancellationPolicyInput,
+    tx: AuthTransaction,
+  ) {
+    const [row] = await tx
+      .insert(cancellationPolicies)
+      .values({
+        venueId,
+        cancelBeforeHours: input.cancelBeforeHours,
+        refundPercent: input.refundPercent,
+        depositPercent: input.depositPercent,
+      })
+      .onConflictDoUpdate({
+        target: cancellationPolicies.venueId,
+        set: {
+          cancelBeforeHours: input.cancelBeforeHours,
+          refundPercent: input.refundPercent,
+          depositPercent: input.depositPercent,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
+  }
+
+  async getPaymentAccount(venueId: string) {
+    const [row] = await this.db
+      .select()
+      .from(venuePaymentAccounts)
+      .where(eq(venuePaymentAccounts.venueId, venueId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async upsertPaymentAccount(
+    venueId: string,
+    input: BankAccountInput,
+    tx: AuthTransaction,
+  ) {
+    const [row] = await tx
+      .insert(venuePaymentAccounts)
+      .values({
+        venueId,
+        bankBin: input.bankBin,
+        accountNo: input.accountNo,
+        accountName: input.accountName,
+      })
+      .onConflictDoUpdate({
+        target: venuePaymentAccounts.venueId,
+        set: {
+          bankBin: input.bankBin,
+          accountNo: input.accountNo,
+          accountName: input.accountName,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return row;
+  }
+
+  async addImage(
+    venueId: string,
+    url: string,
+    sortOrder: number,
+    tx: AuthTransaction,
+  ) {
+    const [row] = await tx
+      .insert(venueImages)
+      .values({
+        venueId,
+        url,
+        sortOrder,
+      })
+      .returning();
+
+    // If venue doesn't have a coverUrl, set this image as coverUrl
+    const [venue] = await tx
+      .select({ coverUrl: venues.coverUrl })
+      .from(venues)
+      .where(eq(venues.id, venueId));
+
+    if (!venue?.coverUrl) {
+      await tx
+        .update(venues)
+        .set({ coverUrl: url, updatedAt: new Date() })
+        .where(eq(venues.id, venueId));
+    }
+
+    return row;
+  }
+
+  async reorderImages(
+    venueId: string,
+    imageIds: string[],
+    tx: AuthTransaction,
+  ) {
+    for (const [sortOrder, imageId] of imageIds.entries()) {
+      await tx
+        .update(venueImages)
+        .set({ sortOrder })
+        .where(
+          and(eq(venueImages.id, imageId), eq(venueImages.venueId, venueId)),
+        );
+    }
+    return this.imageList(venueId, tx);
+  }
+
+  async deleteImage(venueId: string, imageId: string, tx: AuthTransaction) {
+    const [row] = await tx
+      .delete(venueImages)
+      .where(and(eq(venueImages.id, imageId), eq(venueImages.venueId, venueId)))
+      .returning();
+    return row ?? null;
+  }
+  async imageList(venueId: string, tx: AuthTransaction) {
+    return tx
+      .select()
+      .from(venueImages)
+      .where(eq(venueImages.venueId, venueId))
+      .orderBy(asc(venueImages.sortOrder), asc(venueImages.id));
   }
 }

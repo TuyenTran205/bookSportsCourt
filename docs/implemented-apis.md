@@ -16,7 +16,7 @@ Hiện có **16 endpoint HTTP** trong controller được đăng ký qua AppModu
 
 Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sách Venue nhận query phân trang; public detail nhận slug/UUID.
 
-| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+| Method | Endpoint | X?c th?c / quy?n | Input | Th?nh c?ng |
 |---|---|---|---|---|
 | POST | `/api/v1/auth/register` | Công khai | `fullName`, `email`, `phone`, `password`, `confirmPassword` | 201, hồ sơ Customer; không tự đăng nhập |
 | POST | `/api/v1/auth/login` | Công khai | `email`, `password`, `rememberMe?` | 200, hồ sơ user + hai cookie |
@@ -34,6 +34,43 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sá
 | PATCH | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ | UUID, body updateVenueSchema strict không rỗng | 200 OwnerVenueResponse; thay đổi approved/rejected về pending |
 | DELETE | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ | UUID | 204 không body; 409 nếu còn booking chặn, gọi lại 404 |
 | PATCH | `/api/v1/venues/:id/status` | Cookie; Admin active | UUID, status và reason chỉ khi rejected | 200 AdminVenueResponse; transition sai 400; audit thay đổi cùng transaction |
+| PATCH | `/api/v1/users/me` | Cookie `access_token`; tài khoản active | `fullName`, `phone?`, `avatarUrl?` | 200, hồ sơ user sau cập nhật |
+| PATCH | `/api/v1/users/me/password` | Cookie `access_token`; tài khoản active | `currentPassword`, `newPassword`, `confirmPassword` | 204, đổi mật khẩu và xoá cookie |
+| GET | `/api/v1/sports` | Công khai | Không có | 200, danh sách môn thể thao |
+| POST | `/api/v1/sports` | Admin | `name`, `slug`, `icon?` | 201, môn thể thao mới tạo |
+| PATCH | `/api/v1/sports/:id` | Admin | Partial `SportInput` | 200, môn thể thao sau khi sửa |
+| DELETE | `/api/v1/sports/:id` | Admin | Không có | 204, xoá môn thể thao (409 nếu đang dùng) |
+| GET | `/api/v1/amenities` | Công khai | Không có | 200, danh sách tiện ích |
+| POST | `/api/v1/amenities` | Admin | `name`, `slug`, `icon?` | 201, tiện ích mới tạo |
+| PATCH | `/api/v1/amenities/:id` | Admin | Partial `AmenityInput` | 200, tiện ích sau khi sửa |
+| DELETE | `/api/v1/amenities/:id` | Admin | Không có | 204, xoá tiện ích (409 nếu đang dùng) |
+| GET | `/api/v1/areas` | Công khai | Query `type?`, `parentId?` | 200, danh sách khu vực |
+| POST | `/api/v1/areas` | Admin | `name`, `slug`, `type`, `parentId?` | 201, khu vực mới tạo |
+| PATCH | `/api/v1/areas/:id` | Admin | Partial `AreaInput` | 200, khu vực sau khi sửa |
+| DELETE | `/api/v1/areas/:id` | Admin | Không có | 204, xoá khu vực (409 nếu đang dùng) |
+| POST | `/api/v1/owner-applications` | Customer | `businessName`, `phone`, `address`, `note?` | 201, hồ sơ đăng ký chủ sân |
+| GET | `/api/v1/owner-applications/me` | Customer / Owner | Không có | 200, hồ sơ mới nhất của tài khoản |
+| GET | `/api/v1/admin/owner-applications` | Admin | Query `status?`, `page`, `limit` | 200, danh sách hồ sơ kèm phân trang |
+| PATCH | `/api/v1/admin/owner-applications/:id` | Admin | `status: 'approved'|'rejected'`, `reviewNote?` | 200, hồ sơ sau duyệt (tự động nâng role lên owner) |
+| GET | `/api/v1/venues` | Công khai | Query lọc & phân trang | 200, danh sách sân kèm phân trang |
+| GET | `/api/v1/venues/map` | Công khai | Query lọc theo toạ độ bbox | 200, danh sách sân nhẹ cho bản đồ |
+| POST | `/api/v1/venues/:id/images` | Owner (chính chủ) | `url`, `sortOrder?` | 201, thêm ảnh cơ sở |
+| PATCH | `/api/v1/venues/:id/images/order` | Owner (chính chủ) | `imageIds: string[]` | 200, danh sách ảnh sau sắp xếp |
+| DELETE | `/api/v1/venues/:id/images/:imageId` | Owner (chính chủ) | Không có | 204, xoá ảnh |
+| GET | `/api/v1/owner/venues/:id/cancellation-policy` | Owner (chính chủ) | Không có | 200, chính sách huỷ và cọc |
+| PUT | `/api/v1/owner/venues/:id/cancellation-policy` | Owner (chính chủ) | `CancellationPolicyInput` | 200, cập nhật chính sách huỷ |
+| GET | `/api/v1/owner/venues/:id/payment-account` | Owner (chính chủ) | Không có | 200, thông tin tài khoản nhận tiền |
+| PUT | `/api/v1/owner/venues/:id/payment-account` | Owner (chính chủ) | `BankAccountInput` | 200, cập nhật tài khoản nhận tiền |
+| GET | `/api/v1/venues/:id/courts` | Công khai | Param `id` của cơ sở | 200, danh sách sân con |
+| POST | `/api/v1/venues/:id/courts` | Owner (chủ cơ sở) | `name`, `description?`, `sportId?` | 201, tạo sân con + giờ mở cửa mặc định |
+| PATCH | `/api/v1/courts/:id` | Owner (chủ sân) | `UpdateCourtInput` | 200, cập nhật sân con |
+| DELETE | `/api/v1/courts/:id` | Owner (chủ sân) | Không có | 204, xoá mềm sân con |
+| GET | `/api/v1/courts/:id/opening-hours` | Công khai | Không có | 200, giờ mở cửa 7 ngày |
+| PUT | `/api/v1/courts/:id/opening-hours` | Owner (chủ sân) | Array `OpeningHourInput` | 200, cập nhật giờ mở cửa |
+| GET | `/api/v1/courts/:id/pricing-rules` | Công khai/Owner | Không có | 200, danh sách bảng giá |
+| POST | `/api/v1/courts/:id/pricing-rules` | Owner (chủ sân) | `PricingRuleInput` | 201, tạo khung giá theo block 30 phút |
+| PATCH | `/api/v1/courts/:id/pricing-rules/:ruleId` | Owner (chủ sân) | Partial `PricingRuleInput` | 200, cập nhật khung giá |
+| DELETE | `/api/v1/courts/:id/pricing-rules/:ruleId` | Owner (chủ sân) | Không có | 204, xoá khung giá |
 
 POST Venue dùng strict allowlist; ownerId/status/slug do server quyết định. Kiểm tra địa lý và danh mục, tạo Venue cùng liên kết trong một transaction; lỗi 400 VALIDATION_ERROR, 401 UNAUTHORIZED/TOKEN_EXPIRED, 403 FORBIDDEN/ACCOUNT_SUSPENDED, 409 ALREADY_EXISTS. Giải thích: [Bước 5](bsc-014-step-05-create-venue.md), [Bước 6](bsc-014-step-06-read-venues.md), [Bước 7](bsc-014-step-07-update-and-delete.md), [Bước 8](bsc-014-step-08-admin-moderation.md). Public search/map chưa triển khai.
 
@@ -144,7 +181,7 @@ DB không sẵn sàng: HTTP 503 với code `DATABASE_UNAVAILABLE`.
 
 ## Phần chưa có endpoint thực tế
 
-Google OAuth, cập nhật hồ sơ/đổi mật khẩu khi đang đăng nhập, danh mục, Owner applications, public search/map, Court, giá, slots, booking, thanh toán, upload, notifications, reviews, favorites, reports và các API Admin khác vẫn cần triển khai controller/module nghiệp vụ. Socket.IO cũng chưa có gateway nghiệp vụ trong AppModule.
+Google OAuth, slots, booking, xử lý payment/proof, upload multipart/R2, notifications, reviews, favorites, reports và các API Admin khác ngoài danh sách trên vẫn cần triển khai controller/module nghiệp vụ. Socket.IO cũng chưa có gateway nghiệp vụ trong AppModule. Hồ sơ cá nhân, danh mục, hồ sơ Owner, search/map, Court/giá và cấu hình nhận tiền/chính sách/ảnh Venue đã được ghép; kiểm thử khởi động cơ bản không thay thế nghiệm thu đầy đủ từng issue.
 
 Guards và OwnershipService đã có là nền tảng phân quyền, không phải các endpoint độc lập. Các route kiểm thử trong `scripts/` không nằm trong danh sách API chạy thật.
 

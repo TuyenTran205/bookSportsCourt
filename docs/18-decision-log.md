@@ -1,6 +1,6 @@
-﻿# 18 – Decision Log (ADR)
+# 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
+> **Phiên bản:** 1.3.1 | **Cập nhật lần cuối:** 2026-11-05
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
 
@@ -434,6 +434,16 @@ interface PaymentAdapter {
 **Hệ quả:** Sửa nội dung làm Venue tạm ẩn; booking cũ vẫn vận hành. Slug dài hơn nhưng không cần dependency. Hold quá hạn chưa được cron xử lý vẫn chặn DELETE. Các thao tác ảnh sau này phải tuân thủ duyệt lại. Legacy rejected có thể trả reason=null. Cần test HTTP/DB/concurrency khi triển khai service.
 
 **Chi tiết và giải thích:** [Bước 2](bsc-014-step-02-business-rules.md), [contract](11-api-contract.md), [OpenAPI](openapi/bsc-014.openapi.json). Không thêm dependency.
+
+## ADR-023: Dependency hỗ trợ công cụ DB và Swagger khi tích hợp backend
+
+**Ngày:** 2026-11-05 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Nhánh tích hợp bổ sung công cụ DB chạy từ root và dependency Swagger. Giữ dependency và lockfile nhất quán, không đưa mật khẩu DB cố định vào script.
+
+**Quyết định:** Giữ `dotenv`, `pg`, `drizzle-orm` cùng `drizzle-kit`/`@types/pg` tại root cho công cụ DB/cấu hình Drizzle; giữ `swagger-ui-express`/`@types/swagger-ui-express` tại apps/api theo nhánh tích hợp. Tái sử dụng phiên bản trong lockfile, không thêm thư viện khác. Công cụ DB đọc DATABASE_URL từ môi trường hoặc file env local. `packages/api` là stub, tiếp tục bị loại khỏi workspace để không trùng tên apps/api.
+
+**Hệ quả:** Frozen install phải khớp importers root/API/shared; không tự coi root task thiếu script lint/build là đã kiểm tra thành công. Không commit giá trị env hoặc thông tin xác thực trong hướng dẫn/script.
 
 ## Template ADR mới
 

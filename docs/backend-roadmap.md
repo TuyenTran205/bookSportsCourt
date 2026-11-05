@@ -1,6 +1,6 @@
 # Lộ trình triển khai Backend BookSportsCourt
 
-> **Phiên bản:** 1.10.0 | **Cập nhật lần cuối:** 2026-11-01
+> **Phiên bản:** 1.10.1 | **Cập nhật lần cuối:** 2026-11-05
 
 ## Checklist theo dõi tiến độ BE
 
@@ -21,11 +21,11 @@
 - [x] BSC-012 — Refresh token xoay vòng, revoke và xử lý reuse.
 - [x] BSC-013 — JWT Guard, RolesGuard, OwnershipGuard và kiểm tra quyền sở hữu.
 - [x] BSC-014 — Venue CRUD và Admin duyệt Venue.
-- [ ] BSC-015 — Court CRUD, giờ mở cửa và quy tắc giá.
-- [ ] BSC-016 — Sports, Amenities, Areas: public read và Admin CRUD.
-- [ ] BSC-017 — Tìm kiếm/lọc/phân trang Venue.
-- [ ] BSC-062 — API đăng ký và xem hồ sơ chủ sân.
-- [ ] BSC-063 — API xem và chỉnh sửa hồ sơ cá nhân (GET me đã có).
+- [ ] BSC-015 — Court CRUD, giờ mở cửa và quy tắc giá. — Code đã ghép; còn nghiệm thu đầy đủ issue.
+- [ ] BSC-016 — Sports, Amenities, Areas: public read và Admin CRUD. — Code đã ghép; có smoke test, còn nghiệm thu đầy đủ issue.
+- [ ] BSC-017 — Tìm kiếm/lọc/phân trang Venue. — Search/map đã ghép; còn date/filter contract và nghiệm thu đầy đủ.
+- [ ] BSC-062 — API đăng ký và xem hồ sơ chủ sân. — Code đã ghép, gồm Admin review; còn nghiệm thu đầy đủ issue.
+- [ ] BSC-063 — API xem và chỉnh sửa hồ sơ cá nhân (GET/PATCH me, PATCH me/password đã có). — Còn nghiệm thu đầy đủ issue.
 - [ ] BSC-073 — Nghiệm thu Health API và tình huống DB không sẵn sàng.
 - [ ] BSC-074 — Upload R2 presigned URL.
 - [ ] BSC-075 — Hoàn thiện rate limit theo phạm vi issue (auth đã có limiter).
@@ -142,7 +142,7 @@ Tuần là giả định kế hoạch 12 tuần, không phải lịch tính từ
 | Hồ sơ hiện tại | Đã có `GET /api/v1/users/me` | Chưa có API cập nhật hồ sơ |
 | Phân quyền | Đã có JwtAuthGuard, RolesGuard, OwnershipGuard và OwnershipService | Áp dụng và kiểm thử trên từng endpoint nghiệp vụ mới |
 | Health | Đã có `GET /api/v1/health`, kiểm tra `SELECT 1` | Dùng trong vận hành |
-| Module nghiệp vụ còn lại | Chưa có controller được đăng ký trong AppModule | Triển khai theo các Phase bên dưới |
+| Danh mục, Court/giờ/giá, hồ sơ Owner và mở rộng Venue | Đã được ghép và đăng ký vào AppModule ngày 2026-11-05; có kiểm tra khởi động chung | Nghiệm thu từng issue, xem báo cáo xử lý conflict |
 
 “Đã có” ở đây là có mã nguồn trong workspace tại ngày cập nhật; không đồng nghĩa đã deploy hoặc vừa được chạy lại toàn bộ test. Danh sách endpoint thực tế nằm trong [implemented-apis.md](implemented-apis.md). Thư mục `.gitkeep`, type/schema shared và controller chỉ dùng trong test không được tính là API đã triển khai.
 

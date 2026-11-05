@@ -1,5 +1,11 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
-import { ApiCookieAuth, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiCookieAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import {
   ownerVenueQuerySchema,
   adminVenueQuerySchema,
@@ -32,6 +38,7 @@ import { VenuesService } from "./venues.service.js";
 export class OwnerVenuesController {
   constructor(private readonly service: VenuesService) {}
   @Get()
+  @ApiOperation({ summary: "Owner venue list" })
   @ApiVenueQuery("owner")
   @ApiResponse({ status: 200, schema: privateVenueListResponseOpenApi })
   list(
@@ -54,6 +61,7 @@ export class OwnerVenuesController {
 export class AdminVenuesController {
   constructor(private readonly service: VenuesService) {}
   @Get()
+  @ApiOperation({ summary: "Admin moderation queue" })
   @ApiVenueQuery("admin")
   @ApiResponse({ status: 200, schema: privateVenueListResponseOpenApi })
   list(
@@ -68,8 +76,9 @@ export class AdminVenuesController {
 @Controller("venues")
 export class PublicVenuesController {
   constructor(private readonly service: VenuesService) {}
-  // Register future static GET routes (e.g. map) ABOVE this parameter route.
+  // VenueExtensionsController (including static /map) is registered before this controller.
   @Get(":slug")
+  @ApiOperation({ summary: "Public approved venue detail by slug or UUID" })
   @ApiParam({
     name: "slug",
     description: "Exact slug or UUID (UUID takes precedence)",

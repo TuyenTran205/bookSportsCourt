@@ -1,4 +1,4 @@
-﻿# CI – Lint, Typecheck, Test, Build
+# CI – Lint, Typecheck, Test, Build
 # Chạy trên mọi PR vào develop hoặc main (develop là nhánh tích hợp, main là nhánh phát hành)
 # Ghi chú: Bản nháp – sẽ chạy được khi có code ứng dụng
 #
@@ -106,7 +106,7 @@ jobs:
       - name: Run migrations
         run: pnpm --filter @bsc/api db:migrate
 
-      - name: Test API auth and venues with PostgreSQL
+      - name: Test API auth, venues and integrated modules with PostgreSQL
         run: pnpm --filter @bsc/api test
       - name: Test shared schemas
         run: pnpm --filter @bsc/shared test

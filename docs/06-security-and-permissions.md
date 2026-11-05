@@ -1,4 +1,4 @@
-﻿# 06 – Bảo mật & Phân quyền
+# 06 – Bảo mật & Phân quyền
 
 > **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
 

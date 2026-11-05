@@ -1,0 +1,102 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                 BOOKSPORTSCOURT - BẢNG LỆNH NHANH                         ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+🚀 KHỞI ĐỘNG NHANH
+═══════════════════════════════════════════════════════════════════════════
+
+  check-system.bat        → Kiểm tra toàn bộ hệ thống (DB, API, Frontend)
+  start-dev.bat           → Khởi động đầy đủ (DB migration + seed + API + FE)
+  stop-dev.bat            → Dừng tất cả server
+  view-database.bat       → Mở Drizzle Studio xem database
+
+═══════════════════════════════════════════════════════════════════════════
+
+📊 DATABASE
+═══════════════════════════════════════════════════════════════════════════
+
+  pnpm --filter @bsc/api db:migrate       Chạy migrations
+  pnpm --filter @bsc/api db:seed          Seed dữ liệu mẫu
+  pnpm --filter @bsc/api db:studio        Mở Drizzle Studio (port 4983)
+  pnpm --filter @bsc/api db:generate      Generate migration mới
+
+═══════════════════════════════════════════════════════════════════════════
+
+🌐 CHẠY SERVER
+═══════════════════════════════════════════════════════════════════════════
+
+  pnpm dev                                Chạy cả API + Frontend
+  pnpm --filter @bsc/api dev              Chỉ API (port 3001)
+  pnpm --filter @bsc/web dev              Chỉ Frontend (port 3000)
+
+═══════════════════════════════════════════════════════════════════════════
+
+🧪 TEST
+═══════════════════════════════════════════════════════════════════════════
+
+  pnpm test                               Chạy tất cả test
+  pnpm --filter @bsc/api test:auth        Test Auth API
+  pnpm --filter @bsc/api test:group1      Test API group 1
+  pnpm --filter @bsc/web test             Test Frontend
+  pnpm test:e2e                           E2E tests (Playwright)
+
+═══════════════════════════════════════════════════════════════════════════
+
+🔨 BUILD & LINT
+═══════════════════════════════════════════════════════════════════════════
+
+  pnpm build                              Build toàn bộ
+  pnpm lint                               Lint code
+  pnpm typecheck                          TypeScript check
+
+═══════════════════════════════════════════════════════════════════════════
+
+🌐 ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════
+
+  Frontend              http://localhost:3000
+  Swagger API Docs      http://localhost:3001/api/docs
+  Drizzle Studio        http://localhost:4983
+  Health Check          http://localhost:3001/api/v1/health
+
+═══════════════════════════════════════════════════════════════════════════
+
+🔑 TÀI KHOẢN TEST (sau khi seed)
+═══════════════════════════════════════════════════════════════════════════
+
+  Admin       admin@bsc.vn        Admin@123456
+  Owner       owner1@bsc.vn       Owner@123456
+  Customer    customer1@bsc.vn    Customer@123456
+
+═══════════════════════════════════════════════════════════════════════════
+
+🐛 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════
+
+  Kiểm tra PostgreSQL:
+    pg_isready -h localhost -p 5432
+
+  Xem port đang dùng:
+    netstat -ano | findstr ":3001"
+
+  Kill process:
+    taskkill /F /PID <PID>
+
+  Reset database:
+    psql ... -c "DROP DATABASE booksportscourt; CREATE DATABASE booksportscourt;"
+    pnpm --filter @bsc/api db:migrate
+    pnpm --filter @bsc/api db:seed
+
+═══════════════════════════════════════════════════════════════════════════
+
+📚 TÀI LIỆU
+═══════════════════════════════════════════════════════════════════════════
+
+  README.dev.md                    Hướng dẫn đầy đủ
+  AGENTS.md                        Quy tắc tối thượng (ĐỌC ĐẦU TIÊN)
+  docs/00-README.md                Mục lục tài liệu
+  docs/09-frontend-conventions.md  Conventions Frontend
+  docs/10-backend-conventions.md   Conventions Backend
+  docs/11-api-contract.md          API Contract
+
+═══════════════════════════════════════════════════════════════════════════

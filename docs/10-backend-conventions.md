@@ -1,4 +1,4 @@
-﻿# 10 – Quy ước Backend
+# 10 – Quy ước Backend
 
 > **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
 

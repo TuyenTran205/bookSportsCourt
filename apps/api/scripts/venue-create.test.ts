@@ -338,13 +338,14 @@ test("create and read Venue against isolated PostgreSQL", async (t) => {
           }
         },
       );
-      await t.test("Swagger exposes POST without public search list", () => {
+      await t.test("Swagger exposes protected CRUD together with incoming public search/map", () => {
         const doc = SwaggerModule.createDocument(
           app,
           new DocumentBuilder().build(),
         );
         assert.ok(doc.paths["/api/v1/venues"]?.post?.responses["201"]);
-        assert.equal(doc.paths["/api/v1/venues"]?.get, undefined);
+        assert.ok(doc.paths["/api/v1/venues"]?.get);
+        assert.ok(doc.paths["/api/v1/venues/map"]?.get);
         assert.ok(doc.paths["/api/v1/venues/{id}"]?.patch?.responses["200"]);
         assert.deepEqual(
           doc.paths["/api/v1/venues/{id}"]?.delete?.responses["204"],

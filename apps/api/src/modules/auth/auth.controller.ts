@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   Req,
   Res,
@@ -17,10 +18,12 @@ import {
 } from "@nestjs/swagger";
 
 import {
+  changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  updateProfileSchema,
   verifyEmailSchema,
 } from "../../../../../packages/shared/src/schemas.js";
 import { AuthService } from "./auth.service.js";
@@ -210,6 +213,11 @@ export class AuthController {
 @ApiTags("Users")
 @Controller("users")
 export class CurrentUserController {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly cookies: AuthCookies,
+  ) {}
+
   @Get("me")
   @UseGuards(JwtAuthGuard)
   @ApiCookieAuth("access_token")
@@ -222,5 +230,38 @@ export class CurrentUserController {
   @ApiResponse({ status: 403, description: "ACCOUNT_SUSPENDED hoặc FORBIDDEN" })
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  @Patch("me")
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "Cập nhật hồ sơ cá nhân" })
+  @ApiResponse({ status: 200, description: "Hồ sơ sau khi cập nhật" })
+  @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
+  @ApiResponse({ status: 401, description: "UNAUTHORIZED" })
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: unknown,
+  ) {
+    const input = parseBody(updateProfileSchema, body);
+    return this.auth.updateProfile(user.id, input);
+  }
+
+  @Patch("me/password")
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "Đổi mật khẩu người dùng đang đăng nhập" })
+  @ApiResponse({ status: 204, description: "Đổi mật khẩu thành công" })
+  @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
+  @ApiResponse({ status: 401, description: "INVALID_CREDENTIALS hoặc UNAUTHORIZED" })
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: AuthResponse,
+  ) {
+    const input = parseBody(changePasswordSchema, body);
+    await this.auth.changePassword(user.id, input);
+    this.cookies.clear(response);
   }
 }

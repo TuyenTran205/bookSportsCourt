@@ -182,7 +182,6 @@ export async function runVenueReadCases(
         ids.venues.deletedA,
         ids.missing,
         "not-a-venue",
-        "map",
       ]) {
         for (const who of ["guest", "ownerA", "admin"]) {
           const response = await get(`/venues/${id}`, who);

@@ -3,6 +3,7 @@ import {
   ApiBody,
   ApiCookieAuth,
   ApiParam,
+  ApiOperation,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
@@ -27,6 +28,7 @@ import { VenuesService } from "./venues.service.js";
 export class VenuesModerationController {
   constructor(private readonly service: VenuesService) {}
   @Patch(":id/status")
+  @ApiOperation({ summary: "Admin venue moderation" })
   @ApiParam({ name: "id", format: "uuid" })
   @ApiBody({ schema: venueStatusOpenApi })
   @ApiResponse({ status: 200, schema: privateVenueResponseOpenApi })

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -15,9 +16,11 @@ import {
 import type { AuthenticatedUser } from "../../../../../packages/shared/src/types.js";
 
 import {
+  changePasswordSchema,
   registerSchema,
   loginSchema,
   resetPasswordSchema,
+  updateProfileSchema,
 } from "../../../../../packages/shared/src/schemas.js";
 import {
   AuthRepository,
@@ -274,6 +277,50 @@ export class AuthService {
   async me(raw: string | undefined) {
     const claims = await this.jwt.verify(raw, "access");
     return this.requireActiveUser(claims.userId);
+  }
+
+  async updateProfile(
+    userId: string,
+    dto: z.infer<typeof updateProfileSchema>,
+  ): Promise<AuthenticatedUser> {
+    return this.repo.transaction(async (tx) => {
+      await this.requireActiveUser(userId, tx);
+      await this.repo.updateUser(tx, userId, {
+        fullName: dto.fullName,
+        ...(dto.phone !== undefined ? { phone: dto.phone || null } : {}),
+        ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl } : {}),
+      });
+      return this.requireActiveUser(userId, tx);
+    });
+  }
+
+  async changePassword(
+    userId: string,
+    dto: z.infer<typeof changePasswordSchema>,
+  ): Promise<void> {
+    return this.repo.transaction(async (tx) => {
+      const user = await this.repo.lockUser(tx, userId);
+      this.active(user);
+      if (!user.passwordHash) {
+        throw new BadRequestException({
+          code: "VALIDATION_ERROR",
+          message: "Tài khoản đăng nhập qua OAuth không có mật khẩu.",
+        });
+      }
+      const valid = await verifyPassword(
+        user.passwordHash,
+        dto.currentPassword,
+      );
+      if (!valid) {
+        throw new UnauthorizedException({
+          code: "INVALID_CREDENTIALS",
+          message: "Mật khẩu hiện tại không chính xác.",
+        });
+      }
+      const newHash = await hashPassword(dto.newPassword);
+      await this.repo.updateUser(tx, userId, { passwordHash: newHash });
+      await this.repo.revokeAll(tx, userId);
+    });
   }
 
   /** Re-read account state; lock it when called inside a sensitive mutation. */

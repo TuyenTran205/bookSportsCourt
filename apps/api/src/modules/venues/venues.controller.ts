@@ -45,6 +45,7 @@ export class VenuesController {
   constructor(private readonly service: VenuesService) {}
 
   @Patch(":id")
+  @ApiOperation({ summary: "Owner updates own venue" })
   @UseGuards(OwnershipGuard)
   @CheckOwnership("venue")
   @ApiParam({ name: "id", format: "uuid" })
@@ -67,6 +68,7 @@ export class VenuesController {
   }
 
   @Delete(":id")
+  @ApiOperation({ summary: "Owner soft-deletes own venue" })
   @HttpCode(204)
   @UseGuards(OwnershipGuard)
   @CheckOwnership("venue")

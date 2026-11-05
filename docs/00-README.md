@@ -1,6 +1,6 @@
-﻿# 00 – Mục lục tài liệu BookSportsCourt
+# 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.4.8 | **Cập nhật lần cuối:** 2026-11-01 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.4.9 | **Cập nhật lần cuối:** 2026-11-05 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -28,6 +28,7 @@
 | `18-decision-log.md` | Nhật ký quyết định | Khi thêm dep/thay đổi lớn |
 | `implemented-apis.md` | Tổng hợp API thực tế đã triển khai | Khi tích hợp và tra cứu API hiện có |
 | `backend-roadmap.md` | Các giai đoạn BE và bước tiếp theo sau auth/phân quyền | Khi chọn issue và theo dõi phạm vi BE |
+| `backend-conflict-resolution.md` | Cách ghép hai nhánh backend, kiểm thử và giới hạn nghiệm thu | Khi review kết quả xử lý conflict ngày 2026-11-05 |
 | `bsc-014-implementation-plan.md` | Lộ trình từng bước cho Venue CRUD và Admin duyệt | Khi triển khai BSC-014 |
 | `bsc-014-progress.md` | Tiến độ BSC-014, bằng chứng kiểm tra và công việc còn lại | Khi theo dõi BSC-014 |
 | `bsc-014-step-01-scope-and-ac.md` | Đầu ra Bước 1: phạm vi, input/output, quyền/lỗi, AC và giải thích code | Khi chốt phạm vi BSC-014 |
@@ -64,6 +65,7 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-11-05 | Xử lý conflict backend: giữ các bảo vệ BSC-014, ghép Catalogs/Courts/Owner applications/Users/Venue extensions, thống nhất shared/workspace/lockfile/CI và bổ sung test AppModule thật; giữ trạng thái issue theo bằng chứng nghiệm thu | API/shared, package/lock/workspace/CI, `backend-conflict-resolution.md`, `implemented-apis.md`, roadmap, ADR-023, `00` |
 | 2026-11-01 | Hoàn thành Bước 9 BSC-014: đối chiếu ma trận, 5 nhóm acceptance mới, sửa thứ tự resource/body ở moderation, script test:venues; 70/70 API/DB/unit + 7/7 shared đạt. Chốt AC-13 và API thực tế còn dang dở Bước 8 | API test/service/controller/package, Bước 1/8/9, kế hoạch/tiến độ, roadmap, API thực tế, `00` |
 | 2026-10-31 | Hoàn thành Bước 8 BSC-014: Admin status, state machine/retry/legacy reason, audit tối thiểu cùng transaction; 36/36 test đạt, đủ 7 endpoint local; còn rà soát Bước 9–10/PR | API moderation/audit/test, AC-13, kế hoạch/tiến độ/Bước 8, API thực tế, `11`, OpenAPI, roadmap, `00` |
 | 2026-10-31 | Hoàn thành Bước 7 BSC-014: PATCH/DELETE, ownership trong tx, khoá user→Venue, duyệt lại/no-op, soft delete kiểm tra booking; suite Venue/contract 29/29 đạt; còn Admin status | API/controller/service/repository/test, kế hoạch/tiến độ/Bước 7, API thực tế, `11`, OpenAPI, roadmap, `00` |

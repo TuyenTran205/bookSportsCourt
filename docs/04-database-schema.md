@@ -1,4 +1,4 @@
-﻿# 04 – Database Schema
+# 04 – Database Schema
 
 > **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-10-30
 

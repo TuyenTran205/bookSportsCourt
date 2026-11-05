@@ -1,4 +1,4 @@
-﻿# 05 – Đặt sân & Realtime
+# 05 – Đặt sân & Realtime
 
 > **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
 

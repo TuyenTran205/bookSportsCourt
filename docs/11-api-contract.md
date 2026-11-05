@@ -1,4 +1,4 @@
-﻿# 11 – Hợp đồng API
+# 11 – Hợp đồng API
 
 > **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-10-31
 >

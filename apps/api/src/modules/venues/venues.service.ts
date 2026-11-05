@@ -1,3 +1,7 @@
+import type {
+  PublicVenueSearchQueryInput,
+  VenueMapQueryInput,
+} from "../../../../../packages/shared/src/schemas.js";
 import {
   BadRequestException,
   ConflictException,
@@ -28,6 +32,10 @@ import { uuidSchema } from "../../../../../packages/shared/src/schemas.js";
 import { venueStatusUpdateSchema } from "../../../../../packages/shared/src/schemas.js";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe.js";
 import { moderateVenue } from "./venue-moderation.js";
+import type {
+  BankAccountInput,
+  CancellationPolicyInput,
+} from "../../../../../packages/shared/src/schemas.js";
 
 function invalid(message: string) {
   return new BadRequestException({ code: "VALIDATION_ERROR", message });
@@ -457,5 +465,147 @@ export class VenuesService {
         throw invalid("Dữ liệu địa điểm hoặc danh mục không hợp lệ.");
       throw error;
     }
+  }
+  async searchVenues(params: PublicVenueSearchQueryInput) {
+    return this.repository.searchVenues({
+      ...params,
+      sportIds:
+        params.sportIds ?? (params.sportId ? [params.sportId] : undefined),
+    });
+  }
+
+  async getMapVenues(filters: VenueMapQueryInput) {
+    const rows = await this.repository.getMapVenues({
+      ...filters,
+      sportIds: filters.sportId ? [filters.sportId] : undefined,
+    });
+    return rows.map((row) => ({
+      ...row,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      ratingAvg: Number(row.ratingAvg),
+    }));
+  }
+
+  async getCancellationPolicy(venueId: string) {
+    const policy = await this.repository.getCancellationPolicy(venueId);
+    if (!policy) {
+      return {
+        venueId,
+        cancelBeforeHours: 24,
+        refundPercent: 100,
+        depositPercent: 100,
+      };
+    }
+    return policy;
+  }
+
+  async updateCancellationPolicy(
+    userId: string,
+    venueId: string,
+    input: CancellationPolicyInput,
+  ) {
+    return this.repository.transaction(async (tx) => {
+      await this.lockOwnedVenue(tx, userId, venueId);
+      return this.repository.upsertCancellationPolicy(venueId, input, tx);
+    });
+  }
+
+  async getPaymentAccount(venueId: string) {
+    const account = await this.repository.getPaymentAccount(venueId);
+    return account
+      ? {
+          bankBin: account.bankBin,
+          accountNo: account.accountNo,
+          accountName: account.accountName,
+        }
+      : null;
+  }
+
+  async updatePaymentAccount(
+    userId: string,
+    venueId: string,
+    input: BankAccountInput,
+  ) {
+    return this.repository.transaction(async (tx) => {
+      await this.lockOwnedVenue(tx, userId, venueId);
+      const account = await this.repository.upsertPaymentAccount(
+        venueId,
+        input,
+        tx,
+      );
+      return {
+        bankBin: account!.bankBin,
+        accountNo: account!.accountNo,
+        accountName: account!.accountName,
+      };
+    });
+  }
+
+  async addImage(userId: string, venueId: string, url: string, sortOrder = 0) {
+    return this.repository.transaction(async (tx) => {
+      const venue = await this.lockOwnedVenue(tx, userId, venueId);
+      const image = await this.repository.addImage(venueId, url, sortOrder, tx);
+      await this.imageContentChanged(tx, venue);
+      return image;
+    });
+  }
+
+  async reorderImages(userId: string, venueId: string, imageIds: string[]) {
+    return this.repository.transaction(async (tx) => {
+      const venue = await this.lockOwnedVenue(tx, userId, venueId);
+      const before = await this.repository.imageList(venueId, tx);
+      const ids = imageIds.map((id) => id.toLowerCase());
+      if (
+        new Set(ids).size !== ids.length ||
+        ids.length !== before.length ||
+        ids.some((id) => !before.some((image) => image.id === id))
+      )
+        throw invalid(
+          "Danh sách ảnh phải gồm toàn bộ ảnh của cơ sở, không lặp ID.",
+        );
+      if (
+        before.every(
+          (image, index) =>
+            image.id === ids[index] && image.sortOrder === index,
+        )
+      )
+        return before;
+      const images = await this.repository.reorderImages(venueId, ids, tx);
+      await this.imageContentChanged(tx, venue);
+      return images;
+    });
+  }
+
+  async deleteImage(userId: string, venueId: string, imageId: string) {
+    if (!uuidSchema.safeParse(imageId).success)
+      throw invalid("ID ảnh không hợp lệ.");
+    return this.repository.transaction(async (tx) => {
+      const venue = await this.lockOwnedVenue(tx, userId, venueId);
+      const image = await this.repository.deleteImage(venueId, imageId, tx);
+      if (!image)
+        throw new NotFoundException({
+          code: "NOT_FOUND",
+          message: "Ảnh không tồn tại.",
+        });
+      if (venue.coverUrl === image.url) {
+        const images = await this.repository.imageList(venueId, tx);
+        await this.repository.update(tx, venueId, {
+          coverUrl: images[0]?.url ?? null,
+        });
+      }
+      await this.imageContentChanged(tx, venue);
+    });
+  }
+  private async imageContentChanged(
+    tx: AuthTransaction,
+    venue: NonNullable<Awaited<ReturnType<VenuesRepository["lockVenue"]>>>,
+  ) {
+    await this.repository.update(tx, venue.id, {
+      updatedAt: new Date(),
+      ...(venue.status === "approved" || venue.status === "rejected"
+        ? { status: "pending", rejectionReason: null }
+        : {}),
+    });
   }
 }
