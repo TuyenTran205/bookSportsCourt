@@ -27,7 +27,6 @@ import {
   courts,
   cancellationPolicies,
   bookings,
-  auditLogs,
   venuePaymentAccounts,
 } from "../../database/schema/index.js";
 import type {
@@ -35,6 +34,7 @@ import type {
   OwnerVenueQueryDto,
 } from "./dto/venue.dto.js";
 import type { AuthTransaction } from "../auth/auth.repository.js";
+import { writeAudit } from '../audit/audit-writer.js';
 import type {
   BankAccountInput,
   CancellationPolicyInput,
@@ -55,16 +55,15 @@ export class VenuesRepository {
     before: { status: string; rejectionReason: string | null },
     after: { status: string; rejectionReason: string | null },
   ) {
-    await tx.insert(auditLogs).values({
+    await writeAudit(tx, {
       actorId,
       entityId,
-      entityType: "venue",
       action: "venue.status_changed",
-      oldData: {
+      before: {
         status: before.status,
         hasRejectionReason: before.rejectionReason !== null,
       },
-      newData: {
+      after: {
         status: after.status,
         hasRejectionReason: after.rejectionReason !== null,
       },

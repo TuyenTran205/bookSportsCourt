@@ -16,7 +16,6 @@ import {
   UPLOAD_ACCEPTED_TYPES,
   UPLOAD_MAX_BYTES,
   USER_ROLES,
-  USER_STATUSES,
   VENUE_STATUSES,
 } from "./constants.js";
 
@@ -102,7 +101,7 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().default(false),
 });
 
-export const forgotPasswordSchema = z.object({ email: emailSchema });
+export const forgotPasswordSchema = z.object({ email: emailSchema }).strict();
 export const verifyEmailSchema = z.object({
   token: z.string().min(1, "Thiếu token xác thực email"),
 });
@@ -113,6 +112,7 @@ export const resetPasswordSchema = z
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu"),
   })
+  .strict()
   .refine((d) => d.password === d.confirmPassword, {
     message: "Mật khẩu nhập lại không khớp",
     path: ["confirmPassword"],
@@ -142,8 +142,8 @@ export const updateUserRoleSchema = z.object({
 });
 
 export const updateUserStatusSchema = z.object({
-  status: z.enum(USER_STATUSES),
-});
+  status: z.enum(["active", "suspended"]),
+}).strict();
 
 // ===== Tìm kiếm sân =====
 
@@ -237,10 +237,10 @@ export const proofUploadSchema = z.object({
 // ===== Đánh giá =====
 
 export const createReviewSchema = z.object({
-  bookingId: uuidSchema,
-  rating: z.coerce.number().int().min(1, "Vui lòng chọn số sao").max(5),
-  comment: z.string().max(2000, "Nội dung tối đa 2000 ký tự").optional(),
-});
+  bookingId: uuidSchema.transform((value) => value.toLowerCase()),
+  rating: z.number().int().min(1, "Vui lòng chọn số sao").max(5),
+  comment: z.string().trim().max(2000, "Nội dung tối đa 2000 ký tự").optional(),
+}).strict();
 
 export const replyReviewSchema = z.object({
   ownerReply: z
@@ -312,7 +312,7 @@ const venueQueryInteger = z.union([
     .transform(Number)
     .pipe(z.number().int().positive().safe()),
 ]);
-const venuePageFields = {
+export const venuePageFields = {
   page: venueQueryInteger.default(1),
   limit: venueQueryInteger
     .refine((value) => value <= 100, "Tối đa 100 mục")
@@ -419,17 +419,18 @@ export const cancellationPolicySchema = z
 export const ownerApplicationSchema = z.object({
   businessName: z
     .string()
+    .trim()
     .min(2, "Vui lòng nhập tên cơ sở kinh doanh")
-    .max(200)
-    .trim(),
+    .max(200),
   phone: phoneSchema,
   address: z.string().trim().min(5, "Vui lòng nhập địa chỉ").max(500),
-  note: z.string().max(1000).optional(),
+  note: z.string().trim().max(1000).optional(),
   taxCode: z
     .string()
+    .trim()
     .regex(/^\d{10}(\d{3})?$/, "Mã số thuế gồm 10 hoặc 13 chữ số")
     .optional(),
-});
+}).strict();
 
 export const rejectSchema = z.object({
   rejectReason: z
@@ -542,7 +543,9 @@ export const updatePricingRuleSchema = pricingRuleBaseSchema.partial();
 
 export const updateOwnerApplicationStatusSchema = z.object({
   status: z.enum(["approved", "rejected"]),
-  reviewNote: z.string().max(500).optional(),
+  reviewNote: z.string().trim().min(1).max(500).optional(),
+}).strict().refine((value) => value.status !== "rejected" || value.reviewNote !== undefined, {
+  message: "Từ chối hồ sơ cần lý do", path: ["reviewNote"],
 });
 
 export type AddVenueImageInput = z.infer<typeof addVenueImageSchema>;

@@ -21,6 +21,7 @@ import {
   changePasswordSchema,
   forgotPasswordSchema,
   loginSchema,
+  passwordSchema,
   registerSchema,
   resetPasswordSchema,
   updateProfileSchema,
@@ -55,6 +56,7 @@ const stringFields = (names: string[]) =>
 @ApiTags("Auth")
 @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
 @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
+@ApiResponse({ status: 500, description: "INTERNAL_ERROR" })
 @UseGuards(AuthRequestGuard)
 @Controller("auth")
 export class AuthController {
@@ -159,7 +161,15 @@ export class AuthController {
     schema: {
       type: "object",
       required: ["email"],
-      properties: stringFields(["email"]),
+      additionalProperties: false,
+      properties: {
+        email: {
+          type: "string",
+          format: "email",
+          minLength: 1,
+          maxLength: 255,
+        },
+      },
     },
   })
   @ApiResponse({
@@ -177,7 +187,22 @@ export class AuthController {
     schema: {
       type: "object",
       required: ["token", "password", "confirmPassword"],
-      properties: stringFields(["token", "password", "confirmPassword"]),
+      additionalProperties: false,
+      properties: {
+        token: { type: "string", minLength: 1 },
+        password: {
+          type: "string",
+          format: "password",
+          minLength: passwordSchema.minLength ?? undefined,
+          maxLength: passwordSchema.maxLength ?? undefined,
+        },
+        confirmPassword: {
+          type: "string",
+          format: "password",
+          minLength: 1,
+          description: "Phải khớp password",
+        },
+      },
     },
   })
   @ApiResponse({
@@ -239,10 +264,7 @@ export class CurrentUserController {
   @ApiResponse({ status: 200, description: "Hồ sơ sau khi cập nhật" })
   @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
   @ApiResponse({ status: 401, description: "UNAUTHORIZED" })
-  updateProfile(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() body: unknown,
-  ) {
+  updateProfile(@CurrentUser() user: AuthenticatedUser, @Body() body: unknown) {
     const input = parseBody(updateProfileSchema, body);
     return this.auth.updateProfile(user.id, input);
   }
@@ -254,7 +276,10 @@ export class CurrentUserController {
   @ApiOperation({ summary: "Đổi mật khẩu người dùng đang đăng nhập" })
   @ApiResponse({ status: 204, description: "Đổi mật khẩu thành công" })
   @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
-  @ApiResponse({ status: 401, description: "INVALID_CREDENTIALS hoặc UNAUTHORIZED" })
+  @ApiResponse({
+    status: 401,
+    description: "INVALID_CREDENTIALS hoặc UNAUTHORIZED",
+  })
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: unknown,

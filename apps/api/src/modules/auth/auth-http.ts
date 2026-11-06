@@ -85,6 +85,19 @@ export class AuthCookies {
     response.clearCookie("access_token", this.options());
     response.clearCookie("refresh_token", this.options());
   }
+  setGoogleBinding(response: AuthResponse, binding: string) {
+    response.cookie("google_oauth_binding", binding, {
+      ...this.options(),
+      path: "/api/v1/auth/google",
+      maxAge: 600000,
+    });
+  }
+  clearGoogleBinding(response: AuthResponse) {
+    response.clearCookie("google_oauth_binding", {
+      ...this.options(),
+      path: "/api/v1/auth/google",
+    });
+  }
 }
 
 /** Single-instance auth limit; never trusts X-Forwarded-For without proxy configuration. */

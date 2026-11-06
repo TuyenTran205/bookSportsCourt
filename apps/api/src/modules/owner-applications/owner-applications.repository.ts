@@ -1,18 +1,37 @@
 import { Injectable } from "@nestjs/common";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import {
   InjectDrizzle,
   type DrizzleDb,
 } from "../../database/database.module.js";
 import { ownerApplications, users } from "../../database/schema/index.js";
 import type { OwnerApplicationInput } from "../../../../../packages/shared/src/schemas.js";
+import type {
+  AdminOwnerApplicationQueryInput,
+  OwnerApplicationDecisionInput,
+} from "../../../../../packages/shared/src/phase4-schemas.js";
+import type { AuthTransaction } from "../auth/auth.repository.js";
+import { writeAudit } from "../audit/audit-writer.js";
 
 @Injectable()
 export class OwnerApplicationsRepository {
   constructor(@InjectDrizzle() private readonly db: DrizzleDb) {}
-
-  async findPendingByUserId(userId: string) {
-    const [row] = await this.db
+  transaction<T>(work: (tx: AuthTransaction) => Promise<T>) {
+    return this.db.transaction(work);
+  }
+  async lockUsers(tx: AuthTransaction, ids: string[]) {
+    return tx
+      .select()
+      .from(users)
+      .where(inArray(users.id, [...new Set(ids)]))
+      .orderBy(asc(users.id))
+      .for("update");
+  }
+  async findPendingByUserId(
+    userId: string,
+    tx: AuthTransaction | DrizzleDb = this.db,
+  ) {
+    const [row] = await tx
       .select()
       .from(ownerApplications)
       .where(
@@ -24,28 +43,33 @@ export class OwnerApplicationsRepository {
       .limit(1);
     return row ?? null;
   }
-
   async findLatestByUserId(userId: string) {
     const [row] = await this.db
       .select()
       .from(ownerApplications)
       .where(eq(ownerApplications.userId, userId))
-      .orderBy(desc(ownerApplications.createdAt))
+      .orderBy(desc(ownerApplications.createdAt), desc(ownerApplications.id))
       .limit(1);
     return row ?? null;
   }
-
-  async findById(id: string) {
-    const [row] = await this.db
+  async findById(
+    id: string,
+    tx: AuthTransaction | DrizzleDb = this.db,
+    lock = false,
+  ) {
+    const query = tx
       .select()
       .from(ownerApplications)
-      .where(eq(ownerApplications.id, id))
-      .limit(1);
+      .where(eq(ownerApplications.id, id));
+    const [row] = await (lock ? query.for("update") : query);
     return row ?? null;
   }
-
-  async create(userId: string, input: OwnerApplicationInput) {
-    const [row] = await this.db
+  async create(
+    userId: string,
+    input: OwnerApplicationInput,
+    tx: AuthTransaction | DrizzleDb = this.db,
+  ) {
+    const [row] = await tx
       .insert(ownerApplications)
       .values({
         userId,
@@ -53,109 +77,72 @@ export class OwnerApplicationsRepository {
         phone: input.phone,
         address: input.address,
         note: input.note ?? null,
+        taxCode: input.taxCode ?? null,
         status: "pending",
       })
       .returning();
-    return row;
+    return row!;
   }
-
-  async list(options: { status?: string; page: number; limit: number }) {
-    const offset = (options.page - 1) * options.limit;
-    const condition = options.status
-      ? eq(ownerApplications.status, options.status)
-      : undefined;
-
-    const [totalResult] = await this.db
-      .select({ count: count() })
-      .from(ownerApplications)
-      .where(condition);
-
-    const total = Number(totalResult?.count ?? 0);
-
-    const rows = await this.db
-      .select({
-        id: ownerApplications.id,
-        userId: ownerApplications.userId,
-        businessName: ownerApplications.businessName,
-        phone: ownerApplications.phone,
-        address: ownerApplications.address,
-        note: ownerApplications.note,
-        status: ownerApplications.status,
-        reviewNote: ownerApplications.reviewNote,
-        reviewedBy: ownerApplications.reviewedBy,
-        reviewedAt: ownerApplications.reviewedAt,
-        createdAt: ownerApplications.createdAt,
-        updatedAt: ownerApplications.updatedAt,
-        applicant: {
-          fullName: users.fullName,
-          email: users.email,
-          avatarUrl: users.avatarUrl,
-        },
-      })
-      .from(ownerApplications)
-      .innerJoin(users, eq(ownerApplications.userId, users.id))
-      .where(condition)
-      .orderBy(desc(ownerApplications.createdAt))
-      .limit(options.limit)
-      .offset(offset);
-
-    return {
-      data: rows,
-      meta: {
-        page: options.page,
-        limit: options.limit,
-        total,
-        totalPages: Math.ceil(total / options.limit) || 1,
+  async list(query: AdminOwnerApplicationQueryInput) {
+    return this.db.transaction(
+      async (tx) => {
+        const condition = eq(ownerApplications.status, query.status);
+        const totals = await tx
+          .select({ total: count() })
+          .from(ownerApplications)
+          .where(condition);
+        const total = totals[0]!.total,
+          offset = (query.page - 1) * query.limit;
+        if (!Number.isSafeInteger(offset) || offset >= total)
+          return { rows: [], total };
+        const rows = await tx
+          .select()
+          .from(ownerApplications)
+          .where(condition)
+          .orderBy(
+            desc(ownerApplications.createdAt),
+            desc(ownerApplications.id),
+          )
+          .limit(query.limit)
+          .offset(offset);
+        return { rows, total };
       },
-    };
+      { isolationLevel: "repeatable read", accessMode: "read only" },
+    );
   }
-
-  async updateStatusApproved(id: string, adminId: string, reviewNote?: string) {
-    return this.db.transaction(async (tx) => {
-      const [app] = await tx
-        .select()
-        .from(ownerApplications)
-        .where(eq(ownerApplications.id, id))
-        .for("update");
-
-      if (!app) return null;
-
-      const [updatedApp] = await tx
-        .update(ownerApplications)
-        .set({
-          status: "approved",
-          reviewNote: reviewNote ?? null,
-          reviewedBy: adminId,
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(ownerApplications.id, id))
-        .returning();
-
+  async decide(
+    tx: AuthTransaction,
+    app: typeof ownerApplications.$inferSelect,
+    adminId: string,
+    input: OwnerApplicationDecisionInput,
+  ) {
+    const now = new Date();
+    if (input.status === "approved")
       await tx
         .update(users)
-        .set({
-          role: "owner",
-          updatedAt: new Date(),
-        })
+        .set({ role: "owner", updatedAt: now })
         .where(eq(users.id, app.userId));
-
-      return updatedApp;
-    });
-  }
-
-  async updateStatusRejected(id: string, adminId: string, reviewNote?: string) {
-    const [updatedApp] = await this.db
+    const [updated] = await tx
       .update(ownerApplications)
       .set({
-        status: "rejected",
-        reviewNote: reviewNote ?? null,
+        status: input.status,
+        reviewNote: input.reviewNote ?? null,
         reviewedBy: adminId,
-        reviewedAt: new Date(),
-        updatedAt: new Date(),
+        reviewedAt: now,
+        updatedAt: now,
       })
-      .where(eq(ownerApplications.id, id))
+      .where(eq(ownerApplications.id, app.id))
       .returning();
-    return updatedApp ?? null;
+    await writeAudit(tx, {
+      actorId: adminId,
+      action: "owner_application.reviewed",
+      entityId: app.id,
+      before: { status: app.status, hasReason: app.reviewNote !== null },
+      after: {
+        status: input.status,
+        hasReason: input.reviewNote !== undefined,
+      },
+    });
+    return updated!;
   }
 }

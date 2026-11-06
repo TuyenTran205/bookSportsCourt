@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { test } from "node:test";
 import { ConfigModule } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
@@ -162,15 +162,10 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
     ALLOWED_ORIGINS: "http://localhost:3000",
   };
   try {
-    await pool.query(
-      await readFile(
-        new URL(
-          "../src/database/migrations/0001_init-users-and-auth.sql",
-          import.meta.url,
-        ),
-        "utf8",
-      ),
-    );
+    const migrations = new URL('../src/database/migrations/', import.meta.url);
+    for (const file of (await readdir(migrations)).filter((file) => file.endsWith('.sql')).sort()) {
+      await pool.query(await readFile(new URL(file, migrations), 'utf8'));
+    }
     const module = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -564,17 +559,6 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
           );
         },
       );
-      for (const file of [
-        "0002_init-catalogs-and-venues.sql",
-        "0003_init-courts-pricing-and-blackouts.sql",
-      ]) {
-        await pool.query(
-          await readFile(
-            new URL(`../src/database/migrations/${file}`, import.meta.url),
-            "utf8",
-          ),
-        );
-      }
       const ownerId = randomUUID(),
         otherId = randomUUID(),
         customerId = randomUUID(),
