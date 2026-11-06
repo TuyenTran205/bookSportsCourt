@@ -126,7 +126,7 @@ export function VenueCard({
           <div className="mt-1 flex items-end justify-between gap-2">
             <p className="text-sm text-text-secondary">
               từ <span className="text-base font-bold text-primary-700 dark:text-primary-400">
-                {formatCurrency(venue.fromPrice)}
+                {venue.fromPrice === null ? 'Liên hệ' : formatCurrency(venue.fromPrice)}
               </span>
             </p>
             <RatingValue rating={venue.ratingAvg} count={venue.reviewCount} />

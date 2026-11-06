@@ -10,6 +10,17 @@ const nextConfig = {
   // mà không cần bước build riêng — Next biên dịch kèm.
   transpilePackages: ['@bsc/shared'],
 
+  // @bsc/shared viết import kiểu NodeNext (`./constants.js`) để apps/api chạy được
+  // với moduleResolution node16. Webpack của Next không tự map `.js` → `.ts`,
+  // nên khai báo alias để không phải nhân đôi cách viết import trong shared.
+  webpack: (config) => {
+    config.resolve.extensionAlias = {
+      ...config.resolve.extensionAlias,
+      '.js': ['.ts', '.tsx', '.js'],
+    };
+    return config;
+  },
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },

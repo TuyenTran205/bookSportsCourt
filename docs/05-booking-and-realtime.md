@@ -1,6 +1,6 @@
-﻿# 05 – Đặt sân & Realtime
+# 05 – Đặt sân & Realtime
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
 
 ## 1. Block 30 phút
 
@@ -22,6 +22,12 @@
 ```
 
 ## 2. Chống trùng lịch (EXCLUDE Constraint)
+
+### Điều kiện Venue và phối hợp với xoá/kiểm duyệt (BSC-014)
+
+Hold/manual booking mới chỉ tạo khi Venue approved và chưa xoá. Transaction tạo booking khoá user rồi Venue FOR SHARE và kiểm tra lại điều kiện trước khi INSERT; mutation Venue khoá user rồi Venue FOR UPDATE. DELETE bị chặn với 409 RESOURCE_IN_USE nếu còn booking held/pending_payment/confirmed trên bất kỳ Court của Venue (kể cả hold quá giờ chưa expire và Court đã xoá). Nếu DELETE commit trước, request tạo booking phải bị từ chối; nếu booking commit trước, DELETE phải thấy booking và bị chặn. EXCLUDE vẫn là bảo vệ cuối chống trùng slot.
+
+Owner sửa làm Venue về pending hoặc Admin đình chỉ không huỷ/đổi giá booking hiện có. Lịch sử và xử lý payment vẫn truy cập theo quyền booking; không lọc mất lịch sử do Venue/Court bị xoá mềm. Đây là yêu cầu triển khai Phase 2/3, chưa phải xác nhận đã có service. Quy tắc đầy đủ ở mục BSC-014 của [API contract](11-api-contract.md).
 
 ```sql
 EXCLUDE USING gist (

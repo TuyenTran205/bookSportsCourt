@@ -63,17 +63,19 @@ export const venueHandlers = [
     if (districtId) list = list.filter((v) => v.districtId === districtId);
     if (sportIds.length) list = list.filter((v) => v.sports.some((s) => sportIds.includes(s.id)));
     if (amenityIds.length) list = list.filter((v) => amenityIds.every((a) => v.amenities.some((x) => x.id === a)));
-    if (minPrice) list = list.filter((v) => v.fromPrice >= Number(minPrice));
-    if (maxPrice) list = list.filter((v) => v.fromPrice <= Number(maxPrice));
+    // Lọc giá: cơ sở chưa có giá (null) bị loại khi lọc theo giá, thay vì coi là 0.
+    if (minPrice) list = list.filter((v) => v.fromPrice !== null && v.fromPrice >= Number(minPrice));
+    if (maxPrice) list = list.filter((v) => v.fromPrice !== null && v.fromPrice <= Number(maxPrice));
     if (minRating) list = list.filter((v) => v.ratingAvg >= Number(minRating));
 
     const sorted = [...list];
     switch (sort) {
       case 'price_asc':
-        sorted.sort((a, b) => a.fromPrice - b.fromPrice);
+        // Cơ sở chưa có giá xếp cuối, tránh trộn null vào phép so sánh số.
+        sorted.sort((a, b) => (a.fromPrice ?? Number.POSITIVE_INFINITY) - (b.fromPrice ?? Number.POSITIVE_INFINITY));
         break;
       case 'price_desc':
-        sorted.sort((a, b) => b.fromPrice - a.fromPrice);
+        sorted.sort((a, b) => (b.fromPrice ?? Number.NEGATIVE_INFINITY) - (a.fromPrice ?? Number.NEGATIVE_INFINITY));
         break;
       case 'newest':
         sorted.sort((a, b) => b.id.localeCompare(a.id));

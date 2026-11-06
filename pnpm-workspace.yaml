@@ -1,3 +1,5 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  # Legacy mock stub duplicates apps/api and only echoes successful checks.
+  - '!packages/api'

@@ -1,6 +1,6 @@
-﻿# 04 – Database Schema
+# 04 – Database Schema
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-10-30
 
 ## Quy ước chung
 
@@ -916,6 +916,8 @@ CREATE TABLE amenities (
 
 ### venues
 
+`rejection_reason` được thêm bằng migration `0007_add-venue-rejection-reason.sql`. Nullable để giữ dữ liệu rejected cũ chưa có lý do; API mới bắt buộc reason trim 1–500 ký tự khi từ chối. Khi gửi lại/duyệt đặt NULL; public không trả cột này. Đây là lý do hiện tại, không phải lịch sử kiểm duyệt. Xem quy tắc BSC-014 trong docs/11. Không sửa migration 0002 đã áp dụng.
+
 ```sql
 CREATE TABLE venues (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -932,6 +934,7 @@ CREATE TABLE venues (
   status       TEXT NOT NULL DEFAULT 'pending'
                  CHECK (status IN ('pending','approved','rejected','suspended')),
   cover_url    TEXT,
+  rejection_reason TEXT,                         -- Lý do từ chối hiện tại; NULL cho legacy/không bị từ chối
   -- ── Cột denormalized, cache để sort/filter không phải JOIN + aggregate ──
   -- API cho phép sort=rating, sort=price, filter=maxPrice (xem 11-api-contract.md)
   -- và UI hiển thị rating + "giá từ" trên VenueCard (xem 07-design-system.md).

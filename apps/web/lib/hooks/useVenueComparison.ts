@@ -16,12 +16,12 @@ export interface CompareVenueItem {
   address: string;
   provinceName?: string;
   districtName?: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   coverUrl: string | null;
   ratingAvg: number;
   reviewCount: number;
-  fromPrice: number;
+  fromPrice: number | null;
   sports: Array<{ id: string; name: string; slug: string }>;
 }
 

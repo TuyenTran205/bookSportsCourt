@@ -52,11 +52,13 @@ function MapBoundsUpdater({
 /** Tạo thẻ đánh dấu vị trí tuỳ biến theo Design System (Token màu xanh sân cỏ). */
 function createMarkerIcon(venue: VenueListItem, isSelected: boolean) {
   const priceLabel =
-    venue.fromPrice >= 1_000_000
-      ? `${(venue.fromPrice / 1_000_000).toFixed(1)}Tr`
-      : venue.fromPrice >= 1_000
-        ? `${Math.round(venue.fromPrice / 1_000)}k`
-        : formatCurrency(venue.fromPrice);
+    venue.fromPrice === null
+      ? 'Liên hệ'
+      : venue.fromPrice >= 1_000_000
+        ? `${(venue.fromPrice / 1_000_000).toFixed(1)}Tr`
+        : venue.fromPrice >= 1_000
+          ? `${Math.round(venue.fromPrice / 1_000)}k`
+          : formatCurrency(venue.fromPrice);
 
   const html = `
     <div class="bsc-leaflet-marker ${
@@ -192,7 +194,7 @@ export function VenueMap({
 
                       <div className="mt-1 flex items-center justify-between gap-1 text-xs">
                         <span className="font-semibold text-primary-700">
-                          từ {formatCurrency(venue.fromPrice)}
+                          từ {venue.fromPrice === null ? 'liên hệ' : formatCurrency(venue.fromPrice)}
                         </span>
 
                         {venue.reviewCount > 0 ? (

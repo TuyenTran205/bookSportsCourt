@@ -91,7 +91,12 @@ export function VenueFormDialog({
     setSportIds(venue?.sports.map((sport) => sport.id) ?? []);
     setDescription(venue?.description ?? '');
     setLocation(
-      venue && Number.isFinite(venue.lat) && Number.isFinite(venue.lng) && (venue.lat !== 0 || venue.lng !== 0)
+      venue &&
+        typeof venue.lat === 'number' &&
+        typeof venue.lng === 'number' &&
+        Number.isFinite(venue.lat) &&
+        Number.isFinite(venue.lng) &&
+        (venue.lat !== 0 || venue.lng !== 0)
         ? [venue.lat, venue.lng]
         : null,
     );

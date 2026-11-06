@@ -365,7 +365,7 @@ export const openingHours: OpeningHour[] = venues.flatMap((v) =>
  * mức giá khác nhau — đúng yêu cầu "hiện giá per slot" của SlotGrid.
  */
 export const pricingRules: PricingRule[] = venues.flatMap((v) => {
-  const base = v.fromPrice;
+  const base = v.fromPrice ?? 100000;
   return [
     {
       id: `${v.id.slice(0, 22)}pr1`,

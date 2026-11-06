@@ -28,10 +28,11 @@ export function VenueCompareScreen() {
   const t = useTranslations('compare');
   const { venues, count, removeVenue, clearVenues } = useVenueComparison();
 
-  // Xác định giá thấp nhất để gắn nhãn "Giá tốt nhất"
+  // Xác định giá thấp nhất để gắn nhãn "Giá tốt nhất". Bỏ qua cơ sở chưa có giá.
   const lowestPrice = React.useMemo(() => {
-    if (venues.length === 0) return 0;
-    return Math.min(...venues.map((v) => v.fromPrice));
+    const prices = venues.map((v) => v.fromPrice).filter((p): p is number => p !== null);
+    if (prices.length === 0) return 0;
+    return Math.min(...prices);
   }, [venues]);
 
   // 1. Trạng thái rỗng: chưa chọn cơ sở nào
@@ -127,7 +128,7 @@ export function VenueCompareScreen() {
                 <span className="line-clamp-1">{singleVenue.address}</span>
               </p>
               <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
-                {t('fromPrice')}: {formatCurrency(singleVenue.fromPrice)}
+                {t('fromPrice')}: {singleVenue.fromPrice === null ? 'Liên hệ' : formatCurrency(singleVenue.fromPrice)}
               </p>
             </div>
           </Card>
@@ -309,7 +310,7 @@ export function VenueCompareScreen() {
                   <td key={venue.id} className="p-4 align-top">
                     <div className="space-y-1">
                       <p className="text-base font-bold text-primary-700 dark:text-primary-300">
-                        {formatCurrency(venue.fromPrice)}
+                        {venue.fromPrice === null ? 'Liên hệ' : formatCurrency(venue.fromPrice)}
                         <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">
                           {' '}
                           / 30 phút

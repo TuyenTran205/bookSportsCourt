@@ -1,6 +1,6 @@
-﻿# 06 – Bảo mật & Phân quyền
+# 06 – Bảo mật & Phân quyền
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
 
 ## Ma trận Role × Resource × Action
 
@@ -12,9 +12,9 @@
 |----------|-------|----------|-------|-------|
 | **Venues** – List/Search | ✅ | ✅ | ✅ | ✅ |
 | **Venues** – Detail | ✅ | ✅ | ✅ | ✅ |
-| **Venues** – Create | ❌ | ❌ | ✅ (chờ duyệt) | ✅ |
-| **Venues** – Update | ❌ | ❌ | ✅ (sở hữu) | ✅ |
-| **Venues** – Approve/Reject | ❌ | ❌ | ❌ | ✅ |
+| **Venues** – Create | ❌ | ❌ | ✅ (chờ duyệt) | ❌ |
+| **Venues** – Update/Delete | ❌ | ❌ | ✅ (sở hữu) | ❌ |
+| **Venues** – Approve/Reject/Suspend/Đưa lại hàng đợi | ❌ | ❌ | ❌ | ✅ |
 | **Courts** – CRUD | ❌ | ❌ | ✅ (sở hữu venue) | ✅ |
 | **Bookings** – Create Hold | ❌ | ✅ | ❌ | ❌ |
 | **Bookings** – View own | ❌ | ✅ | ✅ (venue của mình) | ❌ |
@@ -57,9 +57,9 @@ Request → JwtAuthGuard (xác thực) → RolesGuard (kiểm tra role) → Owne
 
 ### RolesGuard
 ```typescript
-@Roles('owner', 'admin')
+@Roles('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Patch(':id/approve')
+@Patch(':id/status')
 async approveVenue() { ... }
 ```
 
@@ -67,7 +67,8 @@ async approveVenue() { ... }
 ```typescript
 // Kiểm tra: user.id === venue.owner_id
 // Dùng decorator @CheckOwnership('venue')
-// Admin bỏ qua kiểm tra sở hữu
+// Chỉ bypass khi policy allowAdmin=true VÀ @Roles cho phép admin.
+// Route Owner của Venue không bật bypass; xem docs/11 phần BSC-014.
 ```
 
 ## Auth – Refresh Token xoay vòng

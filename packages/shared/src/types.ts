@@ -22,7 +22,7 @@ import type {
   UserStatus,
   VenueStatus,
   WardType,
-} from './constants';
+} from './constants.js';
 
 // ===== Envelope chung =====
 
@@ -45,6 +45,8 @@ export interface ApiErrorBody {
   error: {
     code: string;
     message: string;
+    /** Mã HTTP, lặp lại trong body để client/test khỏi phải đọc status. */
+    httpStatus: number;
     /** Lỗi theo từng trường, dùng để hiển thị dưới input trong form. */
     details?: Record<string, string[]> | undefined;
   };
@@ -125,6 +127,12 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   createdAt: string;
+}
+
+/** Hồ sơ người dùng đầy đủ trả về cho phiên đăng nhập hiện tại. */
+export interface AuthenticatedUser extends User {
+  emailVerifiedAt: string | null;
+  updatedAt: string;
 }
 
 /** Rút gọn, dùng trong danh sách admin. */
@@ -210,13 +218,15 @@ export interface VenueListItem {
   province: Province | null;
   ward?: Ward | null;
   district: District | null;
-  lat: number;
-  lng: number;
+  /** Null khi cơ sở chưa ghim toạ độ trên bản đồ. */
+  lat: number | null;
+  lng: number | null;
   status: VenueStatus;
   coverUrl: string | null;
   ratingAvg: number;
   reviewCount: number;
-  fromPrice: number;
+  /** Null khi cơ sở chưa có bảng giá nào được duyệt. */
+  fromPrice: number | null;
   sports: Sport[];
 }
 
@@ -233,6 +243,29 @@ export interface VenueDetail extends VenueListItem {
   cancellationPolicy: CancellationPolicy | null;
   openingHours?: OpeningHour[];
 }
+
+/** Private projection for owner mutations/list; never expose on public routes. */
+export interface OwnerVenueResponse {
+  id: string;
+  ownerId: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  address: string;
+  provinceId: string;
+  districtId: string;
+  lat: number | null;
+  lng: number | null;
+  sportIds: string[];
+  amenityIds: string[];
+  status: VenueStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Same fields, separately authorized by the Admin-only endpoint. */
+export type AdminVenueResponse = OwnerVenueResponse;
 
 /** Giờ mở cửa theo thứ trong tuần. `courtId = null` nghĩa là áp cho cả cơ sở. */
 export interface OpeningHour {

@@ -253,8 +253,10 @@ export function VenueDetailScreen() {
               )}
               <span className="text-neutral-600">
                 {t('fromPrice')}{' '}
-                <strong className="text-primary-700">{formatCurrency(venue.fromPrice)}</strong>
-                {t('perBlock')}
+                <strong className="text-primary-700">
+                  {venue.fromPrice === null ? t('contactForPrice') : formatCurrency(venue.fromPrice)}
+                </strong>
+                {venue.fromPrice === null ? null : t('perBlock')}
               </span>
             </div>
             {venue.sports.length > 0 && (
@@ -269,7 +271,9 @@ export function VenueDetailScreen() {
             {venue.description && <p className="leading-relaxed text-neutral-700">{venue.description}</p>}
           </section>
 
-          {Number.isFinite(venue.lat) &&
+          {typeof venue.lat === 'number' &&
+            typeof venue.lng === 'number' &&
+            Number.isFinite(venue.lat) &&
             Number.isFinite(venue.lng) &&
             (venue.lat !== 0 || venue.lng !== 0) && (
               <section aria-labelledby="venue-location-heading" className="space-y-3">
