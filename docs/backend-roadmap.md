@@ -33,22 +33,22 @@
 
 ### Phase 2 – Booking và realtime
 
-- [ ] BSC-023, 059–061 — Kiểm chứng schema booking/payment, các bảng bổ sung, EXCLUDE và trigger.
-- [ ] BSC-024 — Hold trong transaction, giá/cọc do BE tính, idempotency và hạn mức.
-- [ ] BSC-025 — Cron expire hold, đồng bộ payment.
+- [x] BSC-023, 059–061 — Kiểm chứng schema booking/payment, các bảng bổ sung, EXCLUDE và trigger.
+- [x] BSC-024 — Hold trong transaction, giá/cọc do BE tính, idempotency và hạn mức.
+- [x] BSC-025 — Cron expire hold, đồng bộ payment.
 - [ ] BSC-026 — Realtime Socket.IO, quyền join room và emit sau commit.
-- [ ] BSC-027 — Slots API theo ngày.
-- [ ] BSC-028 — Huỷ và chuyển trạng thái booking (P1).
-- [ ] BSC-029 — Test đồng thời chống trùng lịch.
+- [x] BSC-027 — Slots API theo ngày.
+- [x] BSC-028 — Huỷ và chuyển trạng thái booking (P1).
+- [x] BSC-029 — Test đồng thời chống trùng lịch.
 - [ ] BSC-064 — Favorites API (P1).
-- [ ] BSC-077 — Cron auto-complete booking.
+- [x] BSC-077 — Cron auto-complete booking.
 - [ ] BSC-078 — Cron nhắc lịch trước 24 giờ (P1).
 - [ ] Chốt OpenAPI-2 theo mốc giữa Phase 2.
 - [ ] Nghiệm thu Phase 2: hold, expire, slots, realtime và race condition.
 
 ### Phase 3 – Vận hành Owner
 
-- [ ] BSC-036 — Booking thủ công, payment cash và chống trùng lịch.
+- [x] BSC-036 — Booking thủ công, payment cash và chống trùng lịch.
 - [ ] BSC-038 — Blackout: khoá/mở sân, kiểm tra quyền và cạnh tranh với booking.
 - [ ] BSC-039 — Báo cáo doanh thu API (P1).
 - [ ] BSC-065 — Chính sách huỷ/cọc và áp dụng tại BE (P1).

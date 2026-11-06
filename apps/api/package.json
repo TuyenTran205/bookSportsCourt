@@ -6,6 +6,7 @@
 		"dev": "node --loader ts-node/esm --no-warnings src/main.ts",
 		"typecheck": "tsc --noEmit",
 		"test:group1": "node --loader ts-node/esm --no-warnings --test scripts/group1-api.test.ts",
+		"test:bookings": "node --loader ts-node/esm --no-warnings --test scripts/bookings-api.test.ts",
 		"test:auth": "node --loader ts-node/esm --no-warnings --test scripts/auth-api.test.ts scripts/auth-secrets.test.ts scripts/http-security.test.ts scripts/permissions-decorators.test.ts scripts/jwt-auth-guard.test.ts scripts/roles-guard.test.ts",
 		"test:roles-guard": "node --loader ts-node/esm --no-warnings --test scripts/roles-guard.test.ts",
 		"test:jwt-auth-guard": "node --loader ts-node/esm --no-warnings --test scripts/jwt-auth-guard.test.ts",

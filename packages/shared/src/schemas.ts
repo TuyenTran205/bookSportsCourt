@@ -167,7 +167,7 @@ export const createHoldSchema = z.object({
     .array(slotTimeSchema)
     .min(1, 'Vui lòng chọn ít nhất một khung giờ')
     .max(16, 'Tối đa 16 khung giờ mỗi lượt đặt'),
-  idempotencyKey: z.string().min(1).max(128),
+  idempotencyKey: z.string().min(1).max(128).optional(),
   note: z.string().max(500, 'Ghi chú tối đa 500 ký tự').optional(),
 });
 
@@ -419,6 +419,7 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type VenueSearchInput = z.infer<typeof venueSearchSchema>;
 export type CreateHoldInput = z.infer<typeof createHoldSchema>;
+export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
 export type CreateManualBookingInput = z.infer<typeof createManualBookingSchema>;
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type ReplyReviewInput = z.infer<typeof replyReviewSchema>;
