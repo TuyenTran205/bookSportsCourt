@@ -5,7 +5,7 @@ import {
   venueStatusUpdateSchema,
   ownerVenueQuerySchema,
   adminVenueQuerySchema,
-} from "./schemas";
+} from "./schemas.js";
 
 const input = {
   name: "  Sân cầu lông  ",

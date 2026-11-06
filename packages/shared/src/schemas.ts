@@ -18,7 +18,7 @@ import {
     USER_ROLES,
     USER_STATUSES,
     VENUE_STATUSES,
-} from "./constants";
+} from "./constants.js";
 
 // ===== Nguyên thuỷ dùng lại nhiều nơi =====
 

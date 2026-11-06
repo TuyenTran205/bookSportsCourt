@@ -22,7 +22,7 @@ import type {
   UserStatus,
   VenueStatus,
   WardType,
-} from './constants';
+} from './constants.js';
 
 // ===== Envelope chung =====
 
