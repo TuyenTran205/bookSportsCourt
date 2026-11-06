@@ -1,0 +1,305 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.bsc-venue-location-icon {
+  background: transparent;
+  border: 0;
+}
+
+.bsc-venue-location-pin {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--color-neutral-0);
+  border-radius: 50% 50% 50% 0;
+  background: var(--color-primary-700);
+  box-shadow: var(--shadow-md);
+  transform: rotate(-45deg);
+}
+
+/**
+ * Design tokens – nguồn: docs/07-design-system.md (mục 3).
+ *
+ * Chép nguyên giá trị từ tài liệu. KHÔNG thêm dark mode: ADR-008 chốt MVP
+ * không có dark mode (token đã là CSS variable nên thêm sau rất rẻ).
+ */
+:root {
+  /* === PRIMARY – Xanh sân cỏ đậm === */
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a; /* Màu chủ đạo chính */
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+  --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
+
+  /* === ACCENT – Cam năng động === */
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea580c; /* Màu nhấn chính */
+  --color-accent-700: #c2410c;
+
+  /* === NEUTRAL – Slate (không dùng gray thuần) === */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* === SEMANTIC === */
+  --color-success: #16a34a; /* = primary-600 */
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-info: #2563eb;
+
+  /* === SLOT STATUS (Trạng thái block trên SlotGrid) === */
+  --color-slot-available: #dcfce7; /* Xanh lá nhạt */
+  --color-slot-available-text: #15803d;
+  --color-slot-held: #fef9c3; /* Vàng nhạt */
+  --color-slot-held-text: #a16207;
+  --color-slot-booked: #dbeafe; /* Xanh dương nhạt */
+  --color-slot-booked-text: #1d4ed8;
+  --color-slot-my-hold: #ede9fe; /* Tím nhạt (của tôi) */
+  --color-slot-my-hold-text: #6d28d9;
+  --color-slot-blocked: #e2e8f0; /* Xám trung tính */
+  --color-slot-blocked-text: #64748b;
+  --color-slot-past: #f8fafc;
+  --color-slot-past-text: #cbd5e1;
+
+  /* === SURFACES === */
+  --color-bg: var(--color-neutral-50);
+  --color-bg-card: var(--color-neutral-0);
+  --color-bg-subtle: var(--color-neutral-100);
+  --color-border: var(--color-neutral-200);
+  --color-border-focus: var(--color-primary-600);
+
+  /* === TEXT === */
+  --color-text-primary: var(--color-neutral-900);
+  --color-text-secondary: var(--color-neutral-600);
+  --color-text-disabled: var(--color-neutral-400);
+  --color-text-inverse: var(--color-neutral-0);
+
+  /* === SHADOW – dè dặt, ưu tiên border (mục 7) === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* === NEUTRAL RAMP (Zinc trung tính ấm, không ánh tím, chuẩn GitHub Dark / Vercel) === */
+  --color-neutral-0: #18181b;     /* Nền thẻ Card Zinc-900 */
+  --color-neutral-50: #121214;    /* Nền trang Canvas Off-black dịu mắt */
+  --color-neutral-100: #27272a;   /* Nền phụ subtle Zinc-800 */
+  --color-neutral-200: #2e2e33;   /* Viền 1px mờ */
+  --color-neutral-300: #3f3f46;   /* Viền ô input / select Zinc-700 */
+  --color-neutral-400: #71717a;   /* Placeholder / Text disabled */
+  --color-neutral-500: #a1a1aa;   /* Text muted / Icon phụ */
+  --color-neutral-600: #d4d4d8;   /* Text phụ rõ nét */
+  --color-neutral-700: #e4e4e7;   /* Text nội dung chính */
+  --color-neutral-800: #f4f4f5;   /* Text tiêu đề phụ */
+  --color-neutral-900: #fafafa;   /* Text tiêu đề chính nổi bật */
+
+  /* === SURFACES (Chế độ tối trung tính, không ám xanh tím AI) === */
+  --color-bg: #121214;          /* Nền chính Off-black */
+  --color-bg-card: #18181b;     /* Nền card Zinc-900 */
+  --color-bg-subtle: #27272a;   /* Nền phụ Zinc-800 */
+  --color-border: #2e2e33;      /* Viền 1px trung tính */
+  --color-border-focus: #22c55e;/* Viền focus primary-500 */
+
+  /* === TEXT (Trắng kem dịu mắt, độ tương phản AAA) === */
+  --color-text-primary: #f4f4f5;   /* Zinc-100 */
+  --color-text-secondary: #a1a1aa; /* Zinc-400 */
+  --color-text-disabled: #71717a;  /* Zinc-500 */
+  --color-text-inverse: #121214;   /* Off-black */
+
+  /* === SLOT STATUS (Hạ bão hòa, loại bỏ tím gắt) === */
+  --color-slot-available: #14301f;
+  --color-slot-available-text: #4ade80;
+  --color-slot-held: #3a2e12;
+  --color-slot-held-text: #fbbf24;
+  --color-slot-booked: #1b2a3d;
+  --color-slot-booked-text: #93c5fd;
+  --color-slot-my-hold: #2a2340;
+  --color-slot-my-hold-text: #c4b5fd;
+  --color-slot-blocked: #27272a;
+  --color-slot-blocked-text: #a1a1aa;
+  --color-slot-past: #18181b;
+  --color-slot-past-text: #52525b;
+
+  /* === SHADOWS (Tăng độ đậm trên nền tối) === */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg text-text-primary antialiased;
+  }
+
+  /**
+   * Focus indicator LUÔN hiện – docs/08-ui-quality-rules.md.
+   * Cấm `outline: none` trần trụi: ở đây thay bằng ring rõ ràng, không xoá bỏ.
+   */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-600 ring-offset-2 ring-offset-bg-card;
+  }
+
+  /* Tôn trọng người dùng giảm chuyển động – docs/07 mục 12. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /**
+   * Nhấp nháy khi slot đổi qua WebSocket – docs/07 mục 12
+   * ("Realtime slot update | 300ms | ease-in-out | Flash highlight → màu mới").
+   * Biên độ nhẹ để không gây choáng; tự tắt nếu người dùng giảm chuyển động.
+   */
+  @keyframes slot-flash {
+    0% {
+      box-shadow: 0 0 0 2px var(--color-accent-500);
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+
+  .animate-slot-flash {
+    animation: slot-flash 300ms ease-in-out;
+  }
+
+  /* Ẩn thanh cuộn ngang của lưới slot trên desktop vẫn cuộn được. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  /**
+   * Spinner – docs/specs/loading-states-spec.md (SPEC-FE-LOADING-01).
+   * Xoay đều, không nảy, không gradient.
+   */
+  @keyframes bsc-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .bsc-spinner {
+    animation: bsc-spin 800ms linear infinite;
+    transform-origin: center;
+  }
+
+  /**
+   * Quy tắc giảm chuyển động toàn cục ở trên ép mọi animation về 0.01ms, khiến
+   * vòng xoay đứng hình ở một góc tuỳ ý. Thay bằng nhịp thở chậm, tĩnh và dễ chịu.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    @keyframes bsc-spin-breathe {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.45;
+      }
+    }
+
+    .bsc-spinner {
+      animation: bsc-spin-breathe 1.6s ease-in-out infinite !important;
+    }
+  }
+
+  /**
+   * Splash Brand Reveal animations – docs/specs/web-splash-welcome-screen-spec.md
+   * Chuẩn Material Design 3 / Linear Standard: không gradient tím hồng, không nảy quá đà.
+   */
+  @keyframes bsc-radar-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(1.48);
+      opacity: 0;
+    }
+  }
+
+  @keyframes bsc-logo-entrance {
+    0% {
+      transform: scale(0.72);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes bsc-slide-up-fade {
+    0% {
+      transform: translateY(14px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes bsc-badge-fade {
+    0% {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-bsc-radar-pulse {
+    animation: bsc-radar-pulse 750ms cubic-bezier(0, 0, 0.2, 1) forwards;
+  }
+
+  .animate-bsc-logo-entrance {
+    animation: bsc-logo-entrance 550ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  }
+
+  .animate-bsc-slide-up-fade {
+    animation: bsc-slide-up-fade 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-bsc-badge-fade {
+    animation: bsc-badge-fade 450ms ease-out forwards;
+  }
+}

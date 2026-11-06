@@ -385,6 +385,10 @@ export class VenuesService {
       ...new Set(input.amenityIds.map((id) => id.toLowerCase())),
     ].sort();
     const provinceId = input.provinceId.toLowerCase();
+    // `districtId` là optional trong schema dùng chung (giữ tương thích mô hình 2 cấp),
+    // nhưng luồng tạo cơ sở của API vẫn bắt buộc có quận/huyện.
+    if (!input.districtId)
+      throw invalid("Vui lòng chọn quận/huyện cho cơ sở.");
     const districtId = input.districtId.toLowerCase();
     try {
       return await this.repository.transaction(async (tx) => {

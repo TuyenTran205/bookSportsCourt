@@ -64,6 +64,10 @@ test("Group 1 OwnerApplicationsService handles application flow and transitions"
           businessName: "Sân Sao Mai",
           phone: "0901234567",
           address: "123 Đường Số 1",
+          bankBin: "970436",
+          bankName: "Vietcombank",
+          accountNo: "0123456789",
+          accountName: "NGUYEN VAN A",
         }),
       (err: any) =>
         err.status === 409 && err.response?.code === "ALREADY_EXISTS",
@@ -83,6 +87,10 @@ test("Group 1 OwnerApplicationsService handles application flow and transitions"
             businessName: "Sân Sao Mai",
             phone: "0901234567",
             address: "123 Đường Số 1",
+            bankBin: "970436",
+            bankName: "Vietcombank",
+            accountNo: "0123456789",
+            accountName: "NGUYEN VAN A",
           }),
         (err: any) =>
           err.status === 409 && err.response?.code === "ALREADY_EXISTS",

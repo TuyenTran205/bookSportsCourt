@@ -7,10 +7,12 @@
  */
 
 import type {
+  AllAreaType,
   AreaType,
   BookingSource,
   BookingStatus,
   CourtStatus,
+  LegacyAreaType,
   NotificationType,
   OwnerApplicationStatus,
   PaymentProvider,
@@ -19,7 +21,8 @@ import type {
   UserRole,
   UserStatus,
   VenueStatus,
-} from './constants.js';
+  WardType,
+} from './constants';
 
 // ===== Envelope chung =====
 
@@ -31,7 +34,7 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
-/** Envelope thành công có body; HTTP 204 không có body. */
+/** Envelope thành công: mọi response 2xx đều bọc trong `data`. */
 export interface ApiSuccess<T> {
   data: T;
   meta?: PaginationMeta;
@@ -42,6 +45,7 @@ export interface ApiErrorBody {
   error: {
     code: string;
     message: string;
+    /** Mã HTTP, lặp lại trong body để client/test khỏi phải đọc status. */
     httpStatus: number;
     /** Lỗi theo từng trường, dùng để hiển thị dưới input trong form. */
     details?: Record<string, string[]> | undefined;
@@ -51,21 +55,50 @@ export interface ApiErrorBody {
 // ===== Danh mục =====
 
 export interface Province {
-  id: string;
-  name: string;
-  slug: string;
+  id: string;              // UUID
+  code?: string;           // '01'..'92' (chuỗi 2 chữ số bảo toàn số 0)
+  name: string;            // 'Thành phố Hà Nội'
+  slug: string;            // 'ha-noi'
+  unaccentName?: string;   // 'thanh pho ha noi'
+  isMunicipality?: boolean;// true cho 6 Thành phố trực thuộc TW
+  sortOrder?: number;
 }
 
+export interface Ward {
+  id: string;              // UUID
+  code: string;            // '00001'..'33210' (chuỗi 5 chữ số bảo toàn số 0)
+  name: string;            // 'Phường Phúc Xá', 'Xã Tân Triều', 'Đặc khu Vân Đồn'
+  slug: string;            // 'phuc-xa'
+  provinceCode: string;    // '01' (mã tỉnh trực thuộc)
+  provinceId?: string;     // UUID của tỉnh
+  provinceName?: string;   // Tên tỉnh (khi trả về từ search)
+  type: WardType;          // 'ward' | 'commune' | 'special_zone'
+  unaccentName?: string;   // 'phuong phuc xa'
+}
+
+/** @deprecated Sử dụng Ward theo mô hình ĐVHC 2 cấp mốc 03/11/2026 */
 export interface District extends Province {
   provinceId: string;
 }
 
+export type LegacyDistrict = District;
+
 export interface Area {
   id: string;
+  code?: string;
   name: string;
   slug: string;
-  type: AreaType;
+  type: AllAreaType;
   parentId: string | null;
+  unaccentName?: string;
+}
+
+export interface AdminUnitDataset {
+  version: string;
+  updatedAt: string;
+  provincesCount: number;
+  wardsCount: number;
+  source: string;
 }
 
 export interface Sport {
@@ -95,10 +128,13 @@ export interface User {
   status: UserStatus;
   createdAt: string;
 }
+
+/** Hồ sơ người dùng đầy đủ trả về cho phiên đăng nhập hiện tại. */
 export interface AuthenticatedUser extends User {
   emailVerifiedAt: string | null;
   updatedAt: string;
 }
+
 /** Rút gọn, dùng trong danh sách admin. */
 export interface UserSummary {
   id: string;
@@ -125,8 +161,15 @@ export interface OwnerApplication {
   id: string;
   user: UserSummary;
   businessName: string;
+  phone?: string;
+  address?: string;
   taxCode: string | null;
   idCardUrl: string | null;
+  bankBin?: string;
+  bankName?: string;
+  accountNo?: string;
+  accountName?: string;
+  note?: string | null;
   status: OwnerApplicationStatus;
   rejectReason: string | null;
   reviewedAt: string | null;
@@ -173,13 +216,16 @@ export interface VenueListItem {
   slug: string;
   address: string;
   province: Province | null;
+  ward?: Ward | null;
   district: District | null;
+  /** Null khi cơ sở chưa ghim toạ độ trên bản đồ. */
   lat: number | null;
   lng: number | null;
   status: VenueStatus;
   coverUrl: string | null;
   ratingAvg: number;
   reviewCount: number;
+  /** Null khi cơ sở chưa có bảng giá nào được duyệt. */
   fromPrice: number | null;
   sports: Sport[];
 }
@@ -188,12 +234,14 @@ export interface VenueListItem {
 export interface VenueDetail extends VenueListItem {
   ownerId: string;
   description: string | null;
-  provinceId: string;
-  districtId: string;
+  provinceId: string | null;
+  wardId?: string | null;
+  districtId: string | null;
   images: VenueImage[];
   amenities: Amenity[];
   courts: Court[];
   cancellationPolicy: CancellationPolicy | null;
+  openingHours?: OpeningHour[];
 }
 
 /** Private projection for owner mutations/list; never expose on public routes. */
@@ -263,7 +311,7 @@ export interface VenueMapPoint {
   name: string;
   lat: number;
   lng: number;
-  fromPrice: number | null;
+  fromPrice: number;
   ratingAvg: number;
 }
 
@@ -356,6 +404,7 @@ export interface Review {
   comment: string | null;
   ownerReply: string | null;
   ownerRepliedAt: string | null;
+  isVisible?: boolean;
   createdAt: string;
   customer?: Pick<UserSummary, 'id' | 'fullName' | 'avatarUrl'>;
 }
@@ -409,7 +458,6 @@ export interface HoldBookingResponse {
 export interface RevenueSummary {
   totalRevenue: number;
   totalBookings: number;
-  occupancyRate: number;
   from: string;
   to: string;
 }
@@ -418,6 +466,36 @@ export interface RevenuePoint {
   date: string;
   revenue: number;
   bookings: number;
+}
+
+export interface RevenueReport {
+  summary: RevenueSummary;
+  series: RevenuePoint[];
+}
+
+export interface OccupancyPoint {
+  date: string;
+  occupancyRate: number;
+  bookedSlots: number;
+  availableSlots: number;
+}
+
+export interface PeakHour {
+  startTime: string;
+  endTime: string;
+  bookedSlots: number;
+}
+
+export interface OccupancyReport {
+  summary: {
+    occupancyRate: number;
+    bookedSlots: number;
+    availableSlots: number;
+    from: string;
+    to: string;
+    peakHours: PeakHour[];
+  };
+  series: OccupancyPoint[];
 }
 
 export interface OwnerTimelineBooking {

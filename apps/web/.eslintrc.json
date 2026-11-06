@@ -1,0 +1,9 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["@typescript-eslint"],
+  "rules": {
+    // docs/12-coding-standards.md – không dùng `any` trần
+    "@typescript-eslint/no-explicit-any": "error"
+  },
+  "ignorePatterns": ["node_modules", ".next", "public/mockServiceWorker.js"]
+}

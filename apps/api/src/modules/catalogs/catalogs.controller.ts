@@ -133,7 +133,7 @@ export class CatalogsController {
   @ApiCookieAuth("access_token")
   @ApiOperation({ summary: "[Admin] Cập nhật khu vực" })
   updateArea(@Param("id") id: string, @Body() body: unknown) {
-    const input = parseBody(areaSchema.partial(), body);
+    const input = parseBody(areaSchema.innerType().partial(), body);
     return this.service.updateArea(id, input);
   }
 
