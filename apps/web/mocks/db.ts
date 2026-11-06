@@ -249,7 +249,7 @@ function seedBankAccounts(): Record<string, BankAccountInfo> {
         seedVenues.flatMap((venue) => {
             if (ownersWithAccount.has(venue.ownerId)) return [];
             ownersWithAccount.add(venue.ownerId);
-            return [[venue.id, { bankBin: "970436", accountNo: "0071000123456", accountName: "NGUYEN VAN OWNER" }]];
+            return [[venue.id, { bankBin: "970415", accountNo: "0376354782", accountName: "TRAN VAN TUYEN" }]];
         }),
     );
 }

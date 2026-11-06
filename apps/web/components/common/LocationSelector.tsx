@@ -261,7 +261,7 @@ export function LocationSelector({
                   value={provinceSearch}
                   onChange={(e) => setProvinceSearch(e.target.value)}
                   placeholder="Tìm kiếm 34 tỉnh/thành..."
-                  className="min-h-10 w-full bg-transparent px-2 text-xs text-text-primary outline-none placeholder:text-text-disabled"
+                  className="min-h-10 w-full bg-transparent px-2 text-xs text-text-primary outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-text-disabled"
                 />
               </div>
 
@@ -386,7 +386,7 @@ export function LocationSelector({
                   value={wardSearch}
                   onChange={(e) => setWardSearch(e.target.value)}
                   placeholder={`Tìm xã/phường tại ${selectedProvince?.name ?? 'tỉnh'}...`}
-                  className="min-h-10 w-full bg-transparent px-2 text-xs text-text-primary outline-none placeholder:text-text-disabled"
+                  className="min-h-10 w-full bg-transparent px-2 text-xs text-text-primary outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-text-disabled"
                 />
               </div>
 
