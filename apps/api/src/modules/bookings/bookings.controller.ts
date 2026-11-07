@@ -10,9 +10,12 @@ import {
 } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
+  bookingFilterSchema,
   cancelBookingSchema,
   createHoldSchema,
   createManualBookingSchema,
+  customerBookingFilterSchema,
+  slotsQuerySchema,
 } from "../../../../../packages/shared/src/schemas.js";
 import type { AuthenticatedUser } from "../../../../../packages/shared/src/types.js";
 import { parseBody } from "../../common/utils/parse-body.js";
@@ -33,9 +36,10 @@ export class VenuesSlotsController {
   })
   getSlots(
     @Param("id") venueId: string,
-    @Query("date") date: string,
+    @Query() query: unknown,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
+    const { date } = parseBody(slotsQuerySchema, query);
     return this.service.getSlots(venueId, date, user?.id);
   }
 }
@@ -68,15 +72,10 @@ export class BookingsController {
   @ApiOperation({ summary: "[Customer] Lịch sử đặt sân của tôi" })
   getMyBookings(
     @CurrentUser() user: AuthenticatedUser,
-    @Query("status") status?: string,
-    @Query("page") page = "1",
-    @Query("limit") limit = "20",
+    @Query() query: unknown,
   ) {
-    return this.service.getCustomerBookings(user.id, {
-      status,
-      page: Math.max(1, parseInt(page, 10) || 1),
-      limit: Math.min(100, Math.max(1, parseInt(limit, 10) || 20)),
-    });
+    const input = parseBody(customerBookingFilterSchema, query);
+    return this.service.getCustomerBookings(user.id, input);
   }
 
   @Get(":id")
@@ -143,23 +142,10 @@ export class OwnerBookingsController {
   })
   getOwnerBookings(
     @CurrentUser() user: AuthenticatedUser,
-    @Query("venueId") venueId?: string,
-    @Query("courtId") courtId?: string,
-    @Query("status") status?: string,
-    @Query("from") from?: string,
-    @Query("to") to?: string,
-    @Query("page") page = "1",
-    @Query("limit") limit = "20",
+    @Query() query: unknown,
   ) {
-    return this.service.getOwnerBookings(user.id, {
-      venueId,
-      courtId,
-      status,
-      from,
-      to,
-      page: Math.max(1, parseInt(page, 10) || 1),
-      limit: Math.min(100, Math.max(1, parseInt(limit, 10) || 20)),
-    });
+    const input = parseBody(bookingFilterSchema, query);
+    return this.service.getOwnerBookings(user.id, input);
   }
 
   @Post("manual")

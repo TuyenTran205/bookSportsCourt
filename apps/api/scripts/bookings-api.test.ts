@@ -239,6 +239,11 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
     venue: { id: "venue-uuid-1", name: "CLB Sao Mai", status: "approved" },
   };
 
+  // Sân mở cửa 06:00 - 22:00 hằng ngày.
+  const openingHours = async (_courtIds: string[], dayOfWeek: number) => [
+    { courtId, dayOfWeek, openTime: "06:00", closeTime: "22:00" },
+  ];
+
   await t.test("tạo hold thành công và tính đúng deposit_amount theo policy", async () => {
     const mockRepo: any = {
       findCourtWithVenue: async () => baseCourtData,
@@ -264,6 +269,7 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
           priority: 0,
         },
       ],
+      getOpeningHoursByVenueAndDay: openingHours,
       getCancellationPolicy: async () => ({
         cancelBeforeHours: 24,
         refundPercent: 100,
@@ -327,6 +333,7 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
         accountNo: "0123456789",
         accountName: "NGUYEN VAN CHU SAN",
       }),
+      getOpeningHoursByVenueAndDay: openingHours,
       countActiveHolds: async () => 1,
       countRecentHoldsOnCourt: async () => 1,
       expireCourtHolds: async () => {},
@@ -371,6 +378,7 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
           priority: 0,
         },
       ],
+      getOpeningHoursByVenueAndDay: openingHours,
       getCancellationPolicy: async () => ({ depositPercent: 100 }),
       createHoldBooking: async () => {
         const error: any = new Error("exclusion_violation");
@@ -389,6 +397,7 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
   await t.test("vượt quá HOLD_LIMIT (tối đa 3 hold đồng thời) -> ném HOLD_LIMIT_EXCEEDED (422)", async () => {
     const mockRepo: any = {
       findCourtWithVenue: async () => baseCourtData,
+      getOpeningHoursByVenueAndDay: openingHours,
       getVenuePaymentAccount: async () => ({ bankBin: "970415", accountNo: "123", accountName: "A" }),
       countActiveHolds: async () => 3, // Đã đủ 3 hold
     };
@@ -403,6 +412,7 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
   await t.test("venue thiếu tài khoản ngân hàng -> ném PAYMENT_ACCOUNT_MISSING (422)", async () => {
     const mockRepo: any = {
       findCourtWithVenue: async () => baseCourtData,
+      getOpeningHoursByVenueAndDay: openingHours,
       getVenuePaymentAccount: async () => null, // Chưa cấu hình bank
     };
 
@@ -410,6 +420,48 @@ test("Bookings Hold Creation and Concurrency (BOOKING-TEST-01, 02, 16, 19)", asy
     await assert.rejects(
       async () => service.createHold("cust-1", { courtId, slots: [slot1] }),
       (err: any) => err.status === 422 && err.response?.code === "PAYMENT_ACCOUNT_MISSING",
+    );
+  });
+
+  await t.test("khung giờ ngoài giờ mở cửa của sân -> ném VALIDATION_ERROR (400)", async () => {
+    const mockRepo: any = {
+      findCourtWithVenue: async () => baseCourtData,
+      // Sân chỉ mở từ 10:00 nhưng slot đặt là 09:00-09:30
+      getOpeningHoursByVenueAndDay: async (_courtIds: string[], dayOfWeek: number) => [
+        { courtId, dayOfWeek, openTime: "10:00", closeTime: "22:00" },
+      ],
+    };
+
+    const service = new BookingsService(mockRepo);
+    await assert.rejects(
+      async () => service.createHold("cust-1", { courtId, slots: [slot1] }),
+      (err: any) => err.status === 400 && err.response?.code === "VALIDATION_ERROR",
+    );
+  });
+
+  await t.test("sân đóng cửa ngày đã chọn (không có opening_hours) -> ném VALIDATION_ERROR (400)", async () => {
+    const mockRepo: any = {
+      findCourtWithVenue: async () => baseCourtData,
+      getOpeningHoursByVenueAndDay: async () => [],
+    };
+
+    const service = new BookingsService(mockRepo);
+    await assert.rejects(
+      async () => service.createHold("cust-1", { courtId, slots: [slot1] }),
+      (err: any) => err.status === 400 && err.response?.code === "VALIDATION_ERROR",
+    );
+  });
+
+  await t.test("sân không tồn tại -> ném NOT_FOUND (404) trước khi kiểm tra giờ mở cửa", async () => {
+    const mockRepo: any = {
+      findCourtWithVenue: async () => null,
+      getOpeningHoursByVenueAndDay: openingHours,
+    };
+
+    const service = new BookingsService(mockRepo);
+    await assert.rejects(
+      async () => service.createHold("cust-1", { courtId, slots: [slot1] }),
+      (err: any) => err.status === 404 && err.response?.code === "NOT_FOUND",
     );
   });
 });

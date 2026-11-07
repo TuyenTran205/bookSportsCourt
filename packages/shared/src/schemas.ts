@@ -400,8 +400,19 @@ export const tableQuerySchema = z.object({
 export const bookingFilterSchema = tableQuerySchema.extend({
   status: z.enum(BOOKING_STATUSES).optional(),
   venueId: uuidSchema.optional(),
+  courtId: uuidSchema.optional(),
   from: dateOnlySchema.optional(),
   to: dateOnlySchema.optional(),
+});
+
+/** Bộ lọc cho khách xem lịch sử đặt sân của chính mình. */
+export const customerBookingFilterSchema = tableQuerySchema.extend({
+  status: z.enum(BOOKING_STATUSES).optional(),
+});
+
+/** Query của lưới slot 30 phút: bắt buộc có `date` dạng YYYY-MM-DD. */
+export const slotsQuerySchema = z.object({
+  date: dateOnlySchema,
 });
 
 export const paymentFilterSchema = tableQuerySchema.extend({
@@ -443,6 +454,8 @@ export type SportInput = z.infer<typeof sportSchema>;
 export type AreaInput = z.infer<typeof areaSchema>;
 export type TableQueryInput = z.infer<typeof tableQuerySchema>;
 export type BookingFilterInput = z.infer<typeof bookingFilterSchema>;
+export type CustomerBookingFilterInput = z.infer<typeof customerBookingFilterSchema>;
+export type SlotsQueryInput = z.infer<typeof slotsQuerySchema>;
 export type PaymentFilterInput = z.infer<typeof paymentFilterSchema>;
 
 export { API_ERROR_CODES, SLOT_MINUTES };

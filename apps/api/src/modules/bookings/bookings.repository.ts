@@ -34,6 +34,7 @@ import {
   formatTsTzRange,
   parseTsTzRange,
 } from "../../common/utils/time-range.js";
+import type { BookingStatus } from "../../../../../packages/shared/src/constants.js";
 
 export type DbClient = DrizzleDb;
 
@@ -407,7 +408,7 @@ export class BookingsRepository {
   /** Lấy danh sách booking của customer kèm phân trang. */
   async findBookingsByCustomer(
     customerId: string,
-    options: { status?: string; page: number; limit: number },
+    options: { status?: BookingStatus; page: number; limit: number },
   ) {
     const conditions = [eq(bookings.customerId, customerId)];
     if (options.status) {
@@ -455,7 +456,7 @@ export class BookingsRepository {
     options: {
       venueId?: string;
       courtId?: string;
-      status?: string;
+      status?: BookingStatus;
       from?: string;
       to?: string;
       page: number;

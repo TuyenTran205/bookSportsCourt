@@ -32,6 +32,7 @@ import type {
   CreateHoldInput,
   CreateManualBookingInput,
 } from "../../../../../packages/shared/src/schemas.js";
+import type { BookingStatus } from "../../../../../packages/shared/src/constants.js";
 
 interface PricingRuleEntity {
   id: string;
@@ -348,8 +349,6 @@ export class BookingsService {
       });
     }
 
-    await this.assertWithinOpeningHours(input.courtId, blocks);
-
     // 2. Kiểm tra sân và cơ sở
     const courtData = await this.repo.findCourtWithVenue(input.courtId);
     if (!courtData || courtData.court.status !== "active") {
@@ -366,7 +365,10 @@ export class BookingsService {
       });
     }
 
-    // 3. Kiểm tra tài khoản nhận tiền của Venue (PAYMENT_ACCOUNT_MISSING - 422)
+    // 3. Khung giờ đặt phải nằm trong giờ mở cửa của sân
+    await this.assertWithinOpeningHours(input.courtId, blocks);
+
+    // 4. Kiểm tra tài khoản nhận tiền của Venue (PAYMENT_ACCOUNT_MISSING - 422)
     const bankAccount = await this.repo.getVenuePaymentAccount(
       courtData.venue.id,
     );
@@ -378,7 +380,7 @@ export class BookingsService {
       });
     }
 
-    // 4. Chống lạm dụng giữ chỗ (Hold Abuse - docs/06)
+    // 5. Chống lạm dụng giữ chỗ (Hold Abuse - docs/06)
     const holdLimit = parseInt(process.env.HOLD_LIMIT || "3", 10);
     const activeHolds = await this.repo.countActiveHolds(customerId);
     if (activeHolds >= holdLimit) {
@@ -513,7 +515,7 @@ export class BookingsService {
    */
   async getCustomerBookings(
     customerId: string,
-    query: { status?: string; page: number; limit: number },
+    query: { status?: BookingStatus; page: number; limit: number },
   ) {
     const result = await this.repo.findBookingsByCustomer(customerId, query);
     return {
@@ -816,7 +818,7 @@ export class BookingsService {
     query: {
       venueId?: string;
       courtId?: string;
-      status?: string;
+      status?: BookingStatus;
       from?: string;
       to?: string;
       page: number;
@@ -900,7 +902,7 @@ export class BookingsService {
       if (!slot) continue;
       const s = new Date(slot.start);
       const e = new Date(slot.end);
-       if (!isMultipleOf30Minutes(s) || !isMultipleOf30Minutes(e)) {
+      if (!isMultipleOf30Minutes(s) || !isMultipleOf30Minutes(e)) {
         throw new BadRequestException({
           code: "INVALID_TIME_RANGE",
           message: "Khung giờ phải là bội số của 30 phút.",
@@ -1018,6 +1020,63 @@ export class BookingsService {
 
     const updated = await this.repo.markNoShow(id);
     return this.mapBooking(updated!);
+  }
+
+  /**
+   * Kiểm tra các block đặt sân nằm trong giờ mở cửa của sân.
+   * - Không có dòng `opening_hours` cho thứ đó ⇒ sân đóng cửa ngày hôm đó.
+   * - Chỉ gọi sau khi đã xác thực sân tồn tại và đang hoạt động.
+   * - Giờ mở cửa được nạp 1 lần cho mỗi thứ (tránh N+1 query theo từng block).
+   */
+  private async assertWithinOpeningHours(
+    courtId: string,
+    blocks: Array<{ start: Date; end: Date }>,
+  ): Promise<void> {
+    if (blocks.length === 0) return;
+
+    const normalizeTime = (t: string) => (t.length === 5 ? `${t}:00` : t);
+
+    // Gom block theo thứ trong tuần để giảm số lần truy vấn.
+    const blocksByDay = new Map<number, Array<{ start: Date; end: Date }>>();
+    for (const block of blocks) {
+      const dayOfWeek = getVnDateTimeParts(block.start).dayOfWeek;
+      const group = blocksByDay.get(dayOfWeek);
+      if (group) group.push(block);
+      else blocksByDay.set(dayOfWeek, [block]);
+    }
+
+    for (const [dayOfWeek, dayBlocks] of blocksByDay) {
+      const hoursList = await this.repo.getOpeningHoursByVenueAndDay(
+        [courtId],
+        dayOfWeek,
+      );
+      const hours = hoursList.find((h) => h.courtId === courtId);
+      const openTime = hours ? normalizeTime(hours.openTime) : "";
+      const closeTime = hours ? normalizeTime(hours.closeTime) : "";
+
+      if (!hours || openTime >= closeTime) {
+        const dateStr = getVnDateTimeParts(dayBlocks[0]!.start).dateStr;
+        throw new BadRequestException({
+          code: "VALIDATION_ERROR",
+          message: `Sân không mở cửa vào ngày ${dateStr}.`,
+        });
+      }
+
+      for (const block of dayBlocks) {
+        const startParts = getVnDateTimeParts(block.start);
+        const endParts = getVnDateTimeParts(block.end);
+        // Block kết thúc ở ngày kế tiếp ⇒ coi mốc kết thúc là cuối ngày.
+        const endTimeStr =
+          endParts.dateStr === startParts.dateStr ? endParts.timeStr : "24:00:00";
+
+        if (startParts.timeStr < openTime || endTimeStr > closeTime) {
+          throw new BadRequestException({
+            code: "VALIDATION_ERROR",
+            message: `Khung giờ đặt ${startParts.timeStr.slice(0, 5)} - ${endParts.timeStr.slice(0, 5)} nằm ngoài giờ mở cửa của sân (${openTime.slice(0, 5)} - ${closeTime.slice(0, 5)}).`,
+          });
+        }
+      }
+    }
   }
 
   /**
