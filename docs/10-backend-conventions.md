@@ -1,6 +1,6 @@
 # 10 – Quy ước Backend
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
+> **Phiên bản:** 1.3.2 | **Cập nhật lần cuối:** 2026-11-08
 
 ## Cấu trúc module NestJS
 
@@ -183,6 +183,10 @@ const AppConfigSchema = z.object({
 ```
 
 ## OpenAPI (Swagger)
+
+**Kiểm chứng Phase4:** `pnpm --filter @bsc/api contract:check` đối chiếu snapshot runtime và metadata đã triển khai; `contract:export` xuất lại để review, `contract:final` còn yêu cầu không có route planned bị thiếu. Bước15 ghi artifact candidate và gate chưa đạt, không coi snapshot OpenAPI3 là nghiệm thu vòng đời.
+
+**Build API:** `pnpm --filter @bsc/api build` chạy tsconfig.build.json, emit src và shared sources cần thiết vào dist, giữ cấu trúc monorepo để relative imports hoạt động. Entry JS là apps/api/dist/apps/api/src/main.js tính từ root. Inject env riêng khi chạy compiled application; không copy secret vào dist. API typecheck vẫn bao gồm scripts, build không emit scripts. Shared build hiện là kiểm tra type, không emit package JS.
 
 - Thêm `@ApiTags()`, `@ApiOperation()`, `@ApiResponse()` đầy đủ vào mọi endpoint.
 - Dùng `@ApiProperty()` trên mọi DTO field.

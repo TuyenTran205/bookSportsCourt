@@ -1,10 +1,26 @@
 # 11 – Hợp đồng API
 
-> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-10-31
+> **Phiên bản:** 1.19.1 | **Cập nhật lần cuối:** 2026-11-08
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
+**Contract bổ sung Phase 4 đã chốt ngày 2026-11-06:** nghiệp vụ, input/output, transition, quyền và AC, OpenAPI thiết kế. Đây là phần mở rộng có hiệu lực cho thiết kế Phase 4, chưa phải xác nhận runtime/DB đã triển khai. Các quy tắc chi tiết mới ở bản bổ sung thay chỗ chưa rõ hoặc lệch trong ví dụ cũ; BSC-014 không đổi. Tiến độ thực thi ghi tại Tiến độ chung Phase 4, kiểm chứng đầu vào, bằng chứng test và giải thích code.
+
+**Cập nhật Bước 2:** nền schema/shared/fixture đã triển khai qua migration 0008, xem giải thích code. OpenAPI 0.1.1 đồng bộ status đọc/lọc user active/suspended/pending với enum DB/shared; PATCH status chỉ active/suspended. Không suy ra payment/OAuth/worker hoặc Swagger runtime Phase 4 đã hoàn thành từ việc có schema.
+
 ## Quy ước REST
+
+**BSC-068/069 – Bước 8–9:** GET /admin/bookings và /admin/stats đã triển khai/test độc lập. Admin active, query strict, from/to ngày Việt Nam inclusive≤366 hoặc tháng hiện tại; booking lọc start, gross lọc paidAt, refund lọc refundedAt. Cùng snapshot REPEATABLE READ READ ONLY; lịch sử Venue/Court xoá mềm vẫn được đọc. Không nhân booking/tiền vì JOIN; payment projection chọn theo quy tắc payment read. Series day/week/month lấp0, net có thể âm; population và excludedPaymentCount legacy là toàn cục. Count/SUM kiểm tra integer safe, không bịa legacy dates hoặc thay totalPrice cho tiền đã thu. Migration0009 chỉ thêm index; không đổi Owner reports. Code/fixture tính tay/query/index.
+
+**BSC-070/BSC-041 – Bước 7:** GET /admin/users (role/status/q/page/limit), GET /users/:id và PATCH /users/:id/status đã triển khai backend. Admin active, projection UserListItem/UserAdminDetail, no-store; cấm status mutation nhắm mọi Admin kể cả self/no-op. Suspend tăng sessionVersion + revoke refresh + audit trong transaction; activate không phục hồi phiên cũ. Guard/refresh so DB version, legacy thiếu claim=0; request scope kiểm tra lại version trong mutation kể cả suspend/activate sau guard. Reset/change-password cũng invalidate phiên; OAuth-only không phát reset token. Adapter socket có handshake/packet/pre-send checks và disconnect sau commit, còn Gateway Phase 2 chưa tích hợp. Code/test/phạm vi.
+
+**Admin hồ sơ Owner – Bước 6:** POST/me và GET/PATCH Admin owner-applications dùng OwnerApplicationView allowlist, taxCode roundtrip, no-store và shared body/query strict. Admin list status mặc định pending; count/page cùng snapshot, totalPages0 khi rỗng. Mutation khoá user theo UUID trước hồ sơ; recheck Admin/target; approved cấp role Owner cùng hồ sơ/audit, rejected không cấp role, retry cùng status/note không ghi lại. Promotion giữ phiên hợp lệ hiện có, đọc role từ DB; không tạo cookie hoặc đăng nhập hộ applicant. Không thêm giấy tờ ngoài contract; bỏ email/avatar/applicant ngoài projection. Giải thích Bước 6. FE Dashboard BSC-040, Gateway và sessionVersion/revoke Bước 7/14 vẫn cần nghiệm thu riêng.
+
+**BSC-043 – Bước 5 triển khai độc lập:** GET /owner/payments, PATCH /owner/payments/:id/approve và /reject dùng shared input/response, Owner scope/live role và cùng lock protocol với proof. Approve/reject200 theo bảng chuyển tiếp Bước 1; retry không thêm audit/event. Cron mỗi5 phút huỷ quá hạn thành cancelled/cancelled, không refunded; notification/outbox cùng transaction, consumer chỉ gửi sau commit. Cron cũng khoá user recipient trước Venue để tránh FK lock đi ngược thứ tự. Lịch sử Venue suspended/deleted vẫn đọc/xử lý theo quyền. Code, cron và bằng chứng kiểm thử; chưa xác nhận tích hợp Phase 2/email/realtime thật.
+
+**BSC-042 – Bước 4 triển khai/test độc lập:** GET /bookings/:id/payment và POST /bookings/:id/payment/proof theo contract Bước 1. PUT payment-account bắt buộc X-Request-Origin, nhận đúng bankBin/accountNo/accountName, không nhận bankName/ownerId/status. Proof200 cho cả lần đầu/thay ảnh, giữ first timestamp/deadline, từ chối field/query lạ. Ảnh JPEG/PNG/WebP tối đa5 MiB, decoder tối đa16 triệu pixel, PNG chuẩn hoá tối đa5 MiB; signed URL300 giây, GET Cache-Control:no-store. Notification/outbox cùng commit, intent nội bộ slot_refresh_requested cần consumer hydrate payload slot_updated đúng docs/05. Chưa nghiệm thu provider R2 thật, hold/realtime Phase 2 hoặc email worker; chi tiết code/test/config.
+
+**BSC-071 – Bước 3 đã triển khai local:** GET /api/v1/admin/audit-logs dùng shared query, projection AuditView và phân trang theo contract Bước 1. Chỉ Admin active; lọc actorId/action/entityType exact, from/to ISO offset from,to), mặc định 30 ngày và tối đa366 ngày; sort createdAt DESC,id DESC, count/page cùng snapshot. No-op không ghi log; lỗi audit rollback mutation Venue. Writer/registry đã sẵn cho các producer khác, chưa xác nhận những producer đó hoạt động. [Giải thích và bằng chứng.
 
 - Base URL: `/api/v1`
 - Versioning: `/api/v1/` (tăng lên `v2` khi breaking change)
@@ -64,6 +80,10 @@
 | 409 | `CONFLICT_WITH_EXISTING_BOOKING` | Blackout trùng booking đã confirmed |
 | 409 | `ALREADY_EXISTS` | Trùng giá trị duy nhất (ID/slug Venue, slug danh mục, đánh giá của một booking, hồ sơ chủ sân đang chờ duyệt) |
 | 409 | `RESOURCE_IN_USE` | Danh mục đang dùng hoặc Venue còn booking held/pending_payment/confirmed |
+| 409 | `PAYMENT_DATA_INCOMPLETE` | Thiếu snapshot/nghiệp vụ bắt buộc của payment legacy hoặc số tiền refund đã tính |
+| 409 | `PAYMENT_REVIEW_EXPIRED` | Đã tới hạn duyệt; pending mutation bị từ chối, cron xử lý huỷ riêng |
+| 409 | `PAYMENT_STATE_CONFLICT` | Cặp trạng thái booking/payment không nhất quán |
+| 409 | `RESOURCE_STATE_CONFLICT` | User đích của hồ sơ Owner không còn đủ điều kiện để duyệt |
 | 413 | `FILE_TOO_LARGE` | File upload vượt dung lượng cho phép |
 | 422 | `HOLD_LIMIT_EXCEEDED` | Quá giới hạn hold đồng thời: mỗi khách tối đa **3** booking ở trạng thái `held` (hằng số `HOLD_LIMIT`, cấu hình qua env). Chi tiết quy tắc ở [06-security-and-permissions.md](06-security-and-permissions.md) |
 | 422 | `CANCELLATION_NOT_ALLOWED` | Booking không còn được huỷ theo chính sách huỷ |
@@ -73,6 +93,7 @@
 | 429 | `RATE_LIMIT_EXCEEDED` | Quá số request cho phép |
 | 429 | `HOLD_RATE_LIMITED` | Giữ rồi thả cùng một court quá **5 lần/giờ** (cửa sổ trượt 60 phút, hằng số `HOLD_RATE_LIMIT_PER_HOUR`) — chi tiết cách đếm ở [06-security-and-permissions.md](06-security-and-permissions.md) |
 | 500 | `INTERNAL_ERROR` | Lỗi server |
+| 503 | `SERVICE_UNAVAILABLE` | Provider/config chưa sẵn sàng, hết retry transaction hoặc dữ liệu tổng hợp vượt miền integer an toàn |
 
 ## Phân trang
 
@@ -88,11 +109,17 @@ Response luôn kèm `meta.total` và `meta.totalPages`.
 - `PATCH /api/v1/owner/payments/:id/approve`: gọi lại trên payment đã `completed` → 200 với trạng thái hiện tại, không đổi dữ liệu.
 - `POST /api/v1/bookings/:id/payment/proof`: tải lại ảnh khi payment đang `submitted` → thay ảnh, không tạo payment mới.
 
+Phase 4: proof trả 200 cả lần đầu/thay ảnh; lần thay giữ proofUploadedAt và review deadline, chỉ đổi proofUpdatedAt/key. Reject lặp cùng reason sau trim trả200 no-op, khác reason trả400 INVALID_STATUS_TRANSITION. Approve completed không hồi sinh booking terminal và không đổi paidAt/audit/event. Quy tắc biên giờ/legacy/cash/refund theo bản bổ sung Phase 4.
+
 > **Vì sao phân biệt 201/200/409:** tính idempotent bảo vệ **một** người dùng khỏi double-submit (bấm hai lần, mạng chập chờn) — họ nhận lại đúng hold cũ. Nó **không** được phép biến việc tranh chấp giữa nhiều người thành thành công: hai người khác nhau không thể cùng giữ một block. Ràng buộc `EXCLUDE` ở tầng DB là nơi thực thi điều này; `409` chỉ là cách báo lại. Xem test tương ứng ở [12-coding-standards.md](12-coding-standards.md#api-test-supertest).
 
 ## Danh sách Endpoint theo Module
 
 ### Auth
+
+**BSC-047 – Bước13:** GET /auth/google không nhận query, 302 tới Google authorization endpoint với state/nonce/PKCE S256; binding cookie httpOnly/Lax, Secure staging/production,10 phút. Callback nhận state + đúng một trong code/error; scope/authuser/prompt/hd/error_description là metadata bounded theo shared, không dùng làm danh tính. Query lạ/trùng/sai schema400. Cookie/state sai, hết hạn/đã dùng hoặc ciphertext bị sửa400 VALIDATION_ERROR; valid state được consume trước network cả khi provider từ chối. Provider/config/network lỗi503; token/signature/iss/aud/azp/expiry/nonce sai401 INVALID_TOKEN; email thiếu/sai/chưa verified403 FORBIDDEN. Linked user suspended403 ACCOUNT_SUSPENDED, deleted401; pending403. Email active tồn tại mà provider/sub chưa liên kết409 EMAIL_ALREADY_EXISTS, không tự merge.
+
+Thành công302 về root của AUTH_FRONTEND_URL thuộc ALLOWED_ORIGINS; không nhận returnTo/redirect client và không token trên URL. User mới Customer active/passwordHash=null/emailVerifiedAt; liên kết có sẵn giữ role/status DB, không nhận role từ Google profile. User/account/refresh nguyên tử, unique provider/sub và email active bảo vệ race, sessionVersion đọc DB và cookie/session cơ chế hiện tại (không persistent mặc định). Không lưu Google access/refresh token. OAuth response no-store/no-referrer; callback clear binding cả khi lỗi. Hai endpoint dùng AuthRequestGuard rate limit hiện có429. ADR026/code/test và giới hạn Google thật; OpenAPI thiết kế0.8.0 chưa phải nghiệm thu FE/provider/Phase4 cuối.
 ```
 POST   /api/v1/auth/register          Đăng ký tài khoản
 POST   /api/v1/auth/login             Đăng nhập
@@ -107,6 +134,22 @@ POST   /api/v1/auth/resend-verification  Gửi lại email xác thực
 ```
 
 > **Thông tin user hiện tại:** dùng `GET /api/v1/users/me` (mục Users), **không** có `GET /auth/me` — trước đây tài liệu liệt kê cả hai cho cùng một chức năng. `/auth/*` chỉ còn các endpoint xác thực/phiên, không trả hồ sơ.
+
+### Artifact nghiệm thu Phase4 và OpenAPI-3
+
+Thiết kế Phase4 phiên bản0.10.0 giữ25 paths/26 operations, gồm refund chưa có runtime. Snapshot Swagger thật candidate1.0.0-rc.1 chỉ có24 paths/25 operations; path đã có /api/v1 nên server URL không thêm prefix lần hai. Báo cáo contract ghi parity metadata đã triển khai và pending riêng; contract:final hiện exit1 vì PATCH /owner/payments/:id/refund chưa tồn tại.
+
+Hướng dẫn Bước15 có Postman, test và bảng bàn giao no-show/notifications/refund/FE. Chưa chốt mốc OpenAPI-3 cuối Phase4: lint/pipeline đúng toolchain, provider/Gateway và vòng đời Phase2 thật còn cần nghiệm thu. Không xoá route thiết kế hoặc thêm route giả vào snapshot để coi là đạt.
+
+### Nghiệm thu forgot/reset password – BSC-076
+
+- POST /auth/forgot-password: strict body `{ email }`, email hợp lệ tối đa255; 204 không body/no-store cho tồn tại, không tồn tại, inactive, OAuth-only và lỗi DB/config/provider. Input sai400; giới hạn Auth10/IP/5 phút và cap100 tác vụ pending/process trả429 chung.
+- POST /auth/reset-password: strict body `{ token, password, confirmPassword }`, token không rỗng, password8–72 ký tự theo shared, confirm khớp. 204 xoá cookie/không auto-login; token sai/type sai/hết hạn/used/inactive/OAuth-only401 INVALID_TOKEN, input400, rate429, lỗi DB chưa phân loại500 INTERNAL_ERROR chung.
+- Token chỉ lưu SHA-256, hạn1 giờ theo clock DB, mới thay cũ. Khoá user→token, kiểm tra expiry sau khoá; tiêu thụ token, đổi hash password, tăng sessionVersion và revoke refresh nguyên tử. Access/refresh cũ không còn hiệu lực, kể cả user đang active.
+- AUTH_FRONTEND_URL là root origin trong ALLOWED_ORIGINS, HTTPS ở staging/production; link `/reset-password?token=...` do server tạo. Không nhận redirect từ client, không log raw token/link/provider body hoặc lưu plaintext token vào outbox.
+- Forgot HTTP không chờ lookup/provider; chưa cam kết constant-time tuyệt đối. Queue Promise chưa bền vững, process chết có thể mất tác vụ. Config lỗi trước issuance giữ token cũ; lỗi provider sau commit không rollback token đã cấp, người dùng có thể yêu cầu lại.
+
+Bằng chứng HTTP/PostgreSQL và trạng thái mailbox/FE. Backend đã đạt test; smoke AuthMail/Resend thật đã tới inbox theo xác nhận người dùng, URL đúng origin local. FE mở link/reset end-to-end chưa chạy; không dùng smoke token để đóng toàn bộ BSC-076.
 
 ### Users
 ```
@@ -297,6 +340,8 @@ PUT    /api/v1/owner/venues/:id/payment-account  [Owner] Cập nhật tài kho�
 
 Quá `OWNER_REVIEW_TIMEOUT` (2 giờ) kể từ lúc khách gửi ảnh mà Owner chưa xử lý, hệ thống tự huỷ booking. Không có webhook ngân hàng ở MVP.
 
+Snapshot ngân hàng lưu tại payment lúc hold, không đọc tài khoản hiện tại để thay lịch sử. Proof R2 private, signed read URL TTL5 phút, multipart 5 MiB kiểm tra nội dung file. Actor/cron cùng dùng lock protocol, clock sau lock và transaction booking/payment/audit/outbox trong contract Phase 4. Mutation pending ở/qua deadline trả409 PAYMENT_REVIEW_EXPIRED; cron huỷ riêng, không ngầm commit huỷ trong request lỗi.
+
 **Hoàn tiền (refund):** MVP **không** có endpoint hoàn tiền tự động và **không** gọi API ngân hàng. Khi booking đã thanh toán (`payments.status = 'completed'`) bị huỷ theo chính sách, Owner chuyển khoản lại cho khách **ngoài hệ thống**, rồi đánh dấu để đóng sổ:
 
 ```
@@ -308,6 +353,12 @@ PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiề
 > **`PAYMENT_ACCOUNT_MISSING` là lỗi cấu hình, không phải lỗi dữ liệu người dùng.** Nó chỉ phát sinh ở `POST /bookings/hold` (bước đầu của luồng thanh toán) khi venue chưa cấu hình tài khoản nhận tiền — không phát sinh ở các endpoint trong mục Payments này, vì chúng chỉ chạy sau khi hold đã tồn tại.
 
 ### Reviews
+
+**BSC-046/072 – Bước11–12:** bốn API create/public-list/Admin-list/visibility đã triển khai backend, dùng shared schema và projection trong Bước1. POST trả201 ReviewAdmin, thiếu booking/khác Customer/chưa completed trả422 REVIEW_NOT_ALLOWED, trùng booking409 ALREADY_EXISTS. rating JSON integer1–5; comment trim≤2000, bỏ qua/rỗng lưu null qua DB content. Venue/customer/isVisible/cache do BE quyết định; field lạ400. Manual có Customer và completed hợp lệ; manual guest null không đủ điều kiện.
+
+GET public nhận UUID Venue, page/limit1–100 (mặc định1/20), thứ tự createdAt DESC/id DESC; chỉ Venue approved/chưa xoá và review visible, còn lại404. ReviewPublic không có bookingId/customerId/isVisible/updatedAt/PII. Admin query venueId/isVisible/page/limit; isVisible query chỉ true/false, bỏ qua trả cả hai; ReviewAdmin thêm bookingId/customerId/isVisible/updatedAt. Cả hai list trả data+meta(page,limit,total,totalPages), count/page cùng snapshot REPEATABLE READ READ ONLY; trang vượt phạm vi giữ total và trả[]. Mọi response no-store.
+
+Mutation khoá user active/version trước Venue FOR UPDATE; create khoá tiếp Court SHARE→booking UPDATE/recheck, moderation khoá review UPDATE/recheck. Trigger hiện có tính visible AVG làm tròn2 chữ số/count trong cùng transaction, rỗng0/0; không đổi trạng thái duyệt Venue. Visibility chỉ Admin, strict boolean JSON; cùng giá trị200 no-op, không đổi updatedAt/audit. Thay đổi thật ghi audit chỉ isVisible cùng transaction; Owner403. Review lịch sử vẫn tạo/kiểm duyệt khi Venue suspended/deleted nhưng không xuất hiện public. Deadlock/serialization retry tối đa3, hết lượt503; lỗi nội bộ500 không lộ SQL. Code/test và ranh giới FE/Phase2. Owner reply/list thuộc BSC-067, chưa triển khai trong lượt này.
 ```
 GET    /api/v1/venues/:id/reviews        Danh sách review (public, chỉ review đang hiển thị)
 POST   /api/v1/reviews                   [Customer] Đánh giá (cần booking completed)
@@ -341,6 +392,8 @@ GET    /api/v1/owner-applications/me     [Customer/Owner] Trạng thái hồ sơ
 ```
 
 > **Schema:** bảng `owner_applications` đã có trong `04-database-schema.md`. Khi Admin duyệt, `users.role` đổi từ `customer` sang `owner` trong cùng transaction.
+
+Phase 4 chốt payload strict businessName/phone/address/note?/taxCode?; taxCode phải được lưu qua migration, không nhận rồi bỏ. Rejected bắt buộc reviewNote; retry phải cùng quyết định/note, không cấp lại role nếu user đã đổi trạng thái. Khoá/mở tài khoản không cho sửa bất kỳ Admin nào qua endpoint status. Chi tiết input/projection và sessionVersion ở bản bổ sung Phase 4.
 
 ### Catalogs (danh mục)
 ```

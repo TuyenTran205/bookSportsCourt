@@ -1,6 +1,6 @@
 # 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.3.1 | **Cập nhật lần cuối:** 2026-11-05
+> **Phiên bản:** 1.6.1 | **Cập nhật lần cuối:** 2026-11-08
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
 
@@ -28,6 +28,11 @@
 | 020 | Bộ công cụ kiểm thử (Vitest, Supertest, Playwright) |
 | 021 | Sinh mã QR phía client |
 | 022 | Quy tắc kiểm duyệt, slug và xoá mềm Venue |
+| 023 | Dependency hỗ trợ DB/Swagger khi tích hợp backend |
+| 024 | Contract Phase 4: snapshot, proof private, lock protocol, session và outbox PostgreSQL |
+| 025 | SDK S3 cho proof R2 private và Sharp để giải mã/chuẩn hoá ảnh |
+| 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
+
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
 
@@ -312,7 +317,7 @@ interface PaymentAdapter {
 
 **Bối cảnh:** Cần lưu ảnh venue và **ảnh xác nhận chuyển khoản**. Ảnh chuyển khoản là dữ liệu nhạy cảm — không được public.
 
-**Quyết định:** **Cloudflare R2** với **presigned URL**: client xin URL từ BE rồi upload trực tiếp lên R2, không qua BE.
+**Quyết định:** **Cloudflare R2** với **presigned URL**: client xin URL từ BE rồi upload trực tiếp lên R2 cho ảnh thông thường. **Bổ sung 2026-11-06 (ADR-024):** endpoint proof thanh toán giữ multipart theo docs/11, BE nhận stream giới hạn 5 MiB rồi lưu R2 private; signed GET TTL5 phút cấp sau kiểm tra quyền. Không thêm luồng direct-presigned-proof thứ hai ngoài contract.
 
 **Lý do:**
 - Free tier 10 GB + 10M request/tháng, và **không tính phí egress** — khác S3.
@@ -444,6 +449,55 @@ interface PaymentAdapter {
 **Quyết định:** Giữ `dotenv`, `pg`, `drizzle-orm` cùng `drizzle-kit`/`@types/pg` tại root cho công cụ DB/cấu hình Drizzle; giữ `swagger-ui-express`/`@types/swagger-ui-express` tại apps/api theo nhánh tích hợp. Tái sử dụng phiên bản trong lockfile, không thêm thư viện khác. Công cụ DB đọc DATABASE_URL từ môi trường hoặc file env local. `packages/api` là stub, tiếp tục bị loại khỏi workspace để không trùng tên apps/api.
 
 **Hệ quả:** Frozen install phải khớp importers root/API/shared; không tự coi root task thiếu script lint/build là đã kiểm tra thành công. Không commit giá trị env hoặc thông tin xác thực trong hướng dẫn/script.
+
+## ADR-024: Quy tắc tích hợp Phase 4
+
+**Ngày:** 2026-11-06 | **Trạng thái:** Accepted (thiết kế; chờ migration/code/test)
+
+**Bối cảnh:** Phase 4 triển khai trước khi thành viên khác bàn giao Phase 2; tài liệu chưa chốt thay proof/deadline/retry, snapshot ngân hàng, thứ tự khoá và việc gửi sau commit. ADR-016 direct upload còn lệch multipart proof ở API contract.
+
+**Quyết định:** Lưu snapshot ngân hàng tại payment khi hold; proof private qua multipart R2, proofUploadedAt giữ lần đầu, thay ảnh không gia hạn 2 giờ, URL đọc ký 5 phút. Clock quyết định deadline lấy sau lock; actor→Venue→Court→booking→payment là thứ tự tài nguyên dùng chung. Reject retry cùng reason no-op; terminal không hồi sinh. SessionVersion tăng khi suspend/reset/change-password để activate không phục hồi token cũ; status API không thao tác Admin. Google OAuth không auto-link theo email trùng.
+
+Ghi audit/notifications/outbox cùng transaction, gửi mạng sau commit. Dùng PostgreSQL outbox/lease/idempotency key, không Redis/BullMQ (giữ ADR-004); job cleanup proof có retry. Gửi dịch vụ ngoài có delivery_unknown khi không chắc kết quả, không hứa exactly-once. Doanh thu Admin là dòng tiền amount theo paidAt trừ refund theo refundedAt, gồm cash/cọc và có thể âm theo kỳ; chỉ số user/Venue là snapshot hiện tại.
+
+**Hệ quả:** Cần migration/shared/OpenAPI/auth rollout và test mới ở các bước sau. Không thay DB/runtime bằng tài liệu. Không thêm dependency trong Bước 1. Phải bàn giao protocol cho Phase 2 và chạy integration test thật trước khi chốt OpenAPI-3. Chi tiết quyết định, projection, mã lỗi và AC: contract Phase 4 Bước 1.
+
+### Bổ sung BSC-045 vào ADR-024 (2026-11-06)
+
+Worker email dùng chung Resend transport với Auth; không thêm dependency. Migration0010 bổ sung `email_request` private và `first_attempt_at`: đóng băng from/to/subject/text/html trước lần gửi đầu để retry cùng idempotency key không đổi payload. Snapshot chỉ có địa chỉ người nhận của sự kiện, tên cơ sở/sân, lịch, giá/cọc và UUID booking; không có thông tin ngân hàng, proof, họ tên/điện thoại khách khác hoặc token auth. Không expose/log snapshot; đây là dữ liệu vận hành có PII cần quyền DB hạn chế.
+
+Claim email bằng SKIP LOCKED, lease120 giây; gửi ngoài transaction với timeout10 giây; ACK theo lease token. Tối đa5 lần mỗi chu kỳ, backoff1/5/15/60 phút. Giữ nguyên request/key khi retry vận hành. Sau23 giờ từ lần thử đầu, hoặc kết quả hết retry không chắc chắn, dừng ở delivery_unknown để đối soát. Resend giữ key24 giờ; dành1 giờ dự phòng, không tự gửi lại ngoài cửa sổ. `delivered` ở outbox nghĩa là provider chấp nhận, không phải bằng chứng tới inbox.
+
+Cron15 phút bắt kịp mọi booking confirmed chưa bắt đầu trong24 giờ, không dùng cửa sổ15 phút dễ bỏ sót. Unique event booking/reminder ngăn enqueue trùng; notification và intent cùng transaction. `reminders_sent_at` chỉ đặt cùng ACK sau provider chấp nhận. `BUSINESS_MAIL_ENABLED=false` mặc định để local/fixture không tự gửi mail; khi bật phải đủ cấu hình, không đánh dấu thành công giả khi tắt.
+
+Nguồn kiểm tra provider: [Resend idempotency](https://resend.com/changelog/idempotency-keys), [cơ chế header và cửa sổ](https://resend.com/blog/engineering-idempotency-keys). Thử provider thật chỉ với mailbox test được chỉ định; transport giả không thay nghiệm thu provider.
+
+## ADR-025: SDK R2 private và kiểm tra nội dung ảnh chứng từ
+
+**Ngày:** 2026-11-06 | **Trạng thái:** Accepted
+
+**Quyết định:** thêm `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` vào API để dùng R2 S3 API, PUT/DELETE và signed GET TTL 300 giây; thêm `sharp` để giải mã JPEG/PNG/WebP, giới hạn pixel và chuẩn hoá lại ảnh, loại metadata/trailing payload. Dùng FileInterceptor có sẵn của Nest platform-express với memory buffer tối đa 5 MiB; không import trực tiếp dependency Multer transitive, không lưu file vào ổ đĩa/DB. Không tự viết thuật toán ký AWS.
+
+**Hệ quả:** cấu hình R2 private fail-closed 503 khi thiếu; không dùng R2_PUBLIC_URL cho proof. SDK và decoder có test adapter/transport riêng; test DB dùng storage double không thay nghiệm thu R2 thật. Khoá phiên bản/engines tương thích Node20 và cập nhật pnpm-lock.yaml. Bucket chứng từ phải tách ảnh Venue public; không tự bật bucket public hoặc thay tài nguyên cloud trong lượt này.
+
+**Nguồn:** [Cloudflare SDK v3](https://developers.cloudflare.com/r2/examples/aws/aws-sdk-js-v3/), [Nest file upload](https://docs.nestjs.com/techniques/file-upload), [Sharp](https://sharp.pixelplumbing.com/api-input/).
+
+
+## ADR-026: Google OIDC và session ứng dụng dùng chung
+
+**Ngày:** 2026-11-06 | **Trạng thái:** Accepted
+
+**Quyết định:** dùng authorization code/OpenID Connect + PKCE S256, không thêm Passport hoặc dependency OAuth thứ hai. Tái sử dụng jose đã có để kiểm tra RS256 với JWKS Google cố định; native fetch gọi token endpoint cố định, timeout10 giây/không follow redirect. Kiểm tra issuer, audience/azp, sub, exp/iat, nonce hash và email_verified boolean true; email hợp lệ được chuẩn hoá lowercase. Không tin profile/scope/role từ query client.
+
+State/binding/nonce độc lập32 byte; DB chỉ giữ hash, PKCE verifier mã hoá AES-256-GCM bằng OAUTH_STATE_ENCRYPTION_KEY riêng (32 byte hex), AAD=state hash. Binding cookie httpOnly/host-only/SameSite=Lax, Secure staging/production, path OAuth/10 phút. Consume state dưới lock theo clock DB và commit trước network; redaction verifier thành consumed. Lỗi/deny/replay cần bắt đầu lại. Cleanup hourly bounded500 row expired quá24 giờ, SKIP LOCKED.
+
+Callback URI cấu hình chính xác /api/v1/auth/google/callback, không lấy Host/X-Forwarded-Host/redirect client. Frontend là origin cấu hình trong ALLOWED_ORIGINS, redirect cố định về /, không token trong URL; HTTPS ngoài local dev/test. Chỉ cấu hình Google một phần thì startup fail; không có cấu hình Google thì app vẫn chạy, endpoint503. Referrer-Policy:no-referrer/no-store cho OAuth, kể cả middleware từ chối sớm.
+
+Liên kết bằng (google,sub), không bằng email. Provider đã liên kết đăng nhập user active hiện tại/giữ role; chưa liên kết nhưng email active đã tồn tại trả409 EMAIL_ALREADY_EXISTS kể cả Google verified. Explicit account linking ngoài MVP. Advisory transaction locks identity/email theo thứ tự chung + unique provider/email DB xử lý race; user/account/refresh cùng transaction. Reuse AuthService.sessionForGoogle và AuthCookies, user mới luôn Customer active/passwordHash null/emailVerifiedAt; không lưu Google access/refresh token. Phiên ứng dụng không persistent mặc định, version/status đọc DB.
+
+**Hệ quả:** không cần migration/dependency; callback schema mở rộng code XOR error và metadata Google hữu hạn, không dùng metadata làm danh tính. Key rotation làm pending flow cũ hết hiệu lực, không đổi JWT session hiện có. Test real RS256/local JWKS và PostgreSQL không thay smoke Google thật. Không tự sửa cloud credentials/consent hoặc account linking để vượt lỗi email trùng.
+
+**Nguồn:** [Google OIDC](https://developers.google.com/identity/openid-connect/openid-connect), [Google ID-token claims](https://developers.google.com/identity/openid-connect/reference), [PKCE RFC7636](https://www.rfc-editor.org/rfc/rfc7636).
 
 ## Template ADR mới
 

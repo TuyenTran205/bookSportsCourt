@@ -1,8 +1,50 @@
 # 04 – Database Schema
 
-> **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-10-30
+> **Phiên bản:** 1.8.4 | **Cập nhật lần cuối:** 2026-11-08
 
 ## Quy ước chung
+
+### BSC-046/072 – tái sử dụng schema review
+
+Bước11–12 không thêm migration: reviews/unique booking_id/trigger hiện có từ0005, average NUMERIC(3,2) và ROUND2 từ0008 đã đáp ứng contract. Tên unique thực tế là reviews_booking_id_key; handler cũng hỗ trợ uq_reviews_booking theo metadata Drizzle. Không sửa migration cũ hoặc tạo unique thứ hai. API tạo/đổi visibility khoá Venue FOR UPDATE trong statement riêng trước INSERT/UPDATE review để các writer cùng cơ sở tuần tự và statement trigger đọc được dữ liệu vừa commit. Trigger vẫn là nơi ghi cache, không cộng/trừ rating bằng tay trong service. SQL/seed ghi cạnh tranh cũng phải tuân thủ protocol khoá này; không suy ra trigger đơn lẻ đã chứng minh an toàn với mọi writer bỏ qua protocol. Giải thích/test.
+
+### Bổ sung BSC-045 – migration0010
+
+`0010_email-delivery.sql` thêm nullable `outbox_deliveries.email_request JSONB`, `first_attempt_at TIMESTAMPTZ` và partial index lease cho email processing. CHECK giới hạn email_request là object và chỉ dùng channel email. Drizzle đồng bộ hai cột; không sửa migration cũ. Payload sự kiện vẫn chỉ chứa UUID allowlist; snapshot request private giữ chính xác nội dung/người nhận/from qua retry và được ghi trước network. Không trả snapshot qua API hoặc ghi log; xem giới hạn PII và retry trong [ADR-024](18-decision-log.md) và Bước10. Dữ liệu legacy giữ null, không dựng lại thông điệp đã gửi trước đó.
+
+### Bổ sung BSC-068/069 – migration0009
+
+`0009_admin-reporting-indexes.sql` thêm btree idx_bookings_start trên lower(during), partial idx_payments_collected_at trên paid_at cho completed/refunded có timestamp và partial idx_payments_refunded_at trên refunded_at cho refunded đủ refundAmount/refundedAt. Đồng bộ Drizzle; không đổi cột, dữ liệu, EXCLUDE/trigger hoặc migration cũ. Phục vụ range query UTC từ ngày Việt Nam; population/data quality vẫn là snapshot/global count theo contract. Fresh/upgrade từ0008 và index-only DOWN/UP đã có test riêng; không suy ra index đã áp dụng vào DB ứng dụng từ việc schema test đạt. Giải thích và EXPLAIN.
+
+Kiểm chứng ứng dụng riêng ngày2026-11-06: đã chạy runner chuẩn trên DB PostgreSQL local từ0008 lên0009; metadata xác nhận9 migration và đủ ba index mới. Không seed/đổi dữ liệu booking/payment hoặc triển khai staging/production.
+
+### Bổ sung Phase 4 – migration 0008
+
+Bước 1 đã chốt contract Phase 4. Bước 2 bổ sung `0008_phase4-foundation.sql` và Drizzle schema cho các phần sau. DB chỉ có các phần này sau khi chạy migration; không sửa migration 0001–0007. Xem giải thích và kiểm chứng Bước 2.
+
+| Bảng/phần | Thiết kế cần bổ sung | Ràng buộc bắt buộc |
+|---|---|---|
+| payments | bank_account_snapshot JSONB nullable; proof_object_key/proof_updated_at; refund_note nullable | Snapshot bank_transfer không thay sau hold; legacy null không bịa dữ liệu. proof_uploaded_at giữ lần đầu; không lưu signed URL làm key |
+| owner_applications | tax_code nullable | 10 hoặc 13 chữ số khi có; shared/repository roundtrip cùng contract |
+| users | session_version integer default0 | Không âm, tăng nguyên tử khi suspend/reset/change-password; JWT/guard/refresh phải triển khai cùng |
+| OAuth state | State hash, binding/nonce/PKCE secret được bảo vệ, expires/used timestamps | Một lần/10 phút, không lưu token/state plaintext không cần thiết; cleanup có version |
+| Outbox/delivery | eventKey/type/payload allowlist, delivery channel/recipient, status/attempts/nextAttempt/lease và result timestamps | Unique event+channel+recipient; claim lease, retry có kiểm soát, không chứa raw auth token/proof URL/bank snapshot |
+| notifications | event_key nullable cho legacy | Unique event_key/user_id khi event_key khác null; read/unread theo user |
+| Storage cleanup jobs | Object key và thời điểm dọn, lease/retry hoặc delivery job kind trong outbox | Chỉ xoá object không còn reference sau grace, không xoá ảnh vừa commit |
+
+Migration 0008 dùng nullable cho dữ liệu legacy, không suy snapshot từ tài khoản hiện tại, không đoán thời gian proof/paidAt. Snapshot có CHECK JSON đủ ba field đúng kiểu/định dạng; trigger cấm thay/xoá snapshot đã có. `proof_updated_at` không trước lần gửi đầu. `tax_code` có CHECK 10/13 chữ số; `session_version` không âm.
+
+`oauth_states`: UUID ứng dụng sinh; state_hash unique, binding_hash/nonce_hash là SHA-256 hex, pkce_verifier_ciphertext là dữ liệu mã hoá AES-256-GCM khi pending, expires_at/used_at/created_at; expiry tối đa10 phút/index expires_at. Bước13 đã có handler/encryption adapter, dùng schema0008 không thêm migration: state consume dưới row lock/clock DB, commit trước network, usedAt và verifier redaction thành consumed cùng statement. Cleanup hourly500 state expired quá24h, SKIP LOCKED. Fixture ciphertext không dùng trong production. Giải thích BSC-047.
+
+`outbox_deliveries`: id, event_key/event_type, channel email|realtime, recipient_id FK users RESTRICT, payload JSON object, status pending|processing|delivered|failed|delivery_unknown, attempts 0–5, next_attempt_at, lease_token/lease_expires_at, delivered_at, last_error_code, created_at/updated_at. Unique(event_key,channel,recipient_id), index(status,next_attempt_at). Processing bắt buộc đủ lease; trạng thái khác không giữ lease; chỉ delivered có delivered_at. Payload allowlist và loại bỏ secret do service tương lai kiểm soát, không phải CHECK JSON tổng quát đã chứng minh an toàn.
+
+`storage_cleanup_jobs`: id, object_key unique, not_before, status pending|processing|completed|failed, attempts 0–5, lease_token/lease_expires_at, last_error_code, created_at/updated_at; index(status,not_before), quy tắc lease như outbox. Worker phải kiểm tra reference và thời gian grace trước xoá; có bảng không đồng nghĩa đã có worker.
+
+`notifications.event_key` nullable cho legacy; unique(event_key,user_id) khi khác null. `venues.rating_avg` chuyển NUMERIC(3,2), trigger và backfill tính lại AVG từ review visible làm tròn hai chữ số. Constraint EXCLUDE, unique payment/review/OAuth có sẵn giữ nguyên. SQL là nguồn cho CHECK/trigger, Drizzle khai báo field/type/index; không dùng db:generate ghi đè custom SQL.
+
+SessionVersion/outbox/snapshot là nền schema theo ADR-024. JWT/guard/worker/service phải được triển khai và test ở bước tương ứng trước khi nghiệm thu tính năng; thêm cột không tự thu hồi token.
+
+### Quy ước áp dụng cho schema hiện tại
 
 - **snake_case** cho tất cả tên bảng và cột.
 - **Soft delete:** thêm cột `deleted_at TIMESTAMPTZ DEFAULT NULL`; query luôn filter `deleted_at IS NULL`.
@@ -689,7 +731,7 @@ DECLARE
   v_id UUID := COALESCE(NEW.venue_id, OLD.venue_id);
 BEGIN
   UPDATE venues SET
-    rating_avg   = COALESCE((SELECT ROUND(AVG(rating)::numeric, 1) FROM reviews
+    rating_avg   = COALESCE((SELECT ROUND(AVG(rating)::numeric, 2) FROM reviews
                              WHERE venue_id = v_id AND is_visible = true), 0),
     review_count = (SELECT COUNT(*) FROM reviews
                     WHERE venue_id = v_id AND is_visible = true)
@@ -736,7 +778,7 @@ FOR EACH ROW EXECUTE FUNCTION trg_refresh_from_price_by_court();
 
 ```sql
 UPDATE venues v SET
-  rating_avg   = COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews r
+  rating_avg   = COALESCE((SELECT ROUND(AVG(rating)::numeric,2) FROM reviews r
                            WHERE r.venue_id = v.id AND r.is_visible = true), 0),
   review_count = (SELECT COUNT(*) FROM reviews r
                   WHERE r.venue_id = v.id AND r.is_visible = true),
@@ -772,6 +814,7 @@ CREATE TABLE users (
   avatar_url  TEXT,
   role        TEXT NOT NULL CHECK (role IN ('customer','owner','admin')),
   status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','pending')),
+  session_version INTEGER NOT NULL DEFAULT 0 CHECK (session_version >= 0),
   email_verified_at TIMESTAMPTZ,         -- NULL = chưa xác thực email (CUS-01)
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now(),
@@ -814,6 +857,8 @@ CREATE INDEX idx_rt_user ON refresh_tokens(user_id) WHERE revoked = false;
 
 ### auth_tokens
 
+**Nghiệm thu BSC-076:** dùng bảng hiện có, không thêm migration. password_reset chỉ lưu SHA-256 của token 32 byte, TTL 1 giờ theo clock DB. Luồng dùng token khoá users trước auth_tokens, đọc clock_timestamp() sau khi lấy khoá để kiểm tra hạn; used_at/password_hash/session_version/revoke refresh cùng transaction. Không lưu raw token vào audit/email_outbox. Giải thích và test PostgreSQL.
+
 Token dùng một lần cho xác thực email và đặt lại mật khẩu. Chỉ lưu hash, không lưu token gốc.
 
 ```sql
@@ -838,6 +883,7 @@ CREATE TABLE owner_applications (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id),
   business_name TEXT NOT NULL,
+  tax_code TEXT CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{13})$'),
   phone         TEXT NOT NULL,
   address       TEXT NOT NULL,
   note          TEXT,
@@ -924,7 +970,7 @@ CREATE TABLE venues (
   -- API cho phép sort=rating, sort=price, filter=maxPrice (xem 11-api-contract.md)
   -- và UI hiển thị rating + "giá từ" trên VenueCard (xem 07-design-system.md).
   -- Nếu tính bằng subquery mỗi lần list thì không thể index và phân trang sẽ chậm.
-  rating_avg   NUMERIC(2,1) NOT NULL DEFAULT 0,  -- 0.0–5.0, cache từ AVG(reviews.rating)
+  rating_avg   NUMERIC(3,2) NOT NULL DEFAULT 0,  -- 0.0–5.0, cache từ AVG(reviews.rating)
   review_count INT NOT NULL DEFAULT 0,           -- cache từ COUNT(reviews) đang hiển thị
   from_price   INT,                              -- VND, MIN(price_per_slot) của pricing_rules thuộc các court đang hoạt động; NULL nếu chưa cấu hình giá
   created_at   TIMESTAMPTZ DEFAULT now(),
@@ -1162,6 +1208,10 @@ CREATE TABLE payments (
   provider        TEXT NOT NULL DEFAULT 'bank_transfer' CHECK (provider IN ('bank_transfer','cash')),
   transfer_code   TEXT,                        -- Nội dung chuyển khoản điền sẵn trong QR, VD "BSC-7F3A91"; NULL khi provider = 'cash'
   proof_url       TEXT,                        -- Ảnh chuyển khoản khách tải lên
+  bank_account_snapshot JSONB, -- shape/immutability: migration 0008
+  proof_object_key TEXT,
+  proof_updated_at TIMESTAMPTZ,
+  refund_note TEXT,
   proof_uploaded_at TIMESTAMPTZ,
   status          TEXT NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending','submitted','completed','rejected','refunded','cancelled','expired')),
@@ -1234,6 +1284,7 @@ CREATE TABLE notifications (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type        TEXT NOT NULL,             -- "booking_confirmed", "booking_cancelled", ...
+  event_key TEXT, -- unique(event_key,user_id) WHERE event_key IS NOT NULL
   title       TEXT NOT NULL,
   body        TEXT NOT NULL,
   data        JSONB,

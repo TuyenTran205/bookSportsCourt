@@ -1,6 +1,8 @@
 # 05 – Đặt sân & Realtime
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+> **Phiên bản:** 1.4.2 | **Cập nhật lần cuối:** 2026-11-08 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+
+**Bổ sung Phase 4 đã chốt:** snapshot/deadline/retry/lock/outbox. Protocol này cần được Phase 2 và Phase 4 cùng triển khai; chưa xác nhận runtime đã có. Các ví dụ SQL dưới đây minh hoạ chuyển trạng thái, không thay thế lock/recheck/outbox trong contract.
 
 ## 1. Block 30 phút
 
@@ -104,7 +106,7 @@ HOLD REQUEST
 
 Mọi chuyển trạng thái ngoài bảng trên phải ném lỗi `INVALID_STATUS_TRANSITION`.
 
-**Ba trạng thái kết thúc (terminal):** `completed`, `cancelled`, `expired`, `no_show` — không có chuyển tiếp nào đi ra. Đặc biệt **không** có `completed → cancelled`: huỷ chỉ xảy ra trước khi booking hoàn tất; sau khi đã `completed` thì không huỷ được nữa.
+**Bốn trạng thái kết thúc (terminal):** `completed`, `cancelled`, `expired`, `no_show` — không có chuyển tiếp nào đi ra. Đặc biệt **không** có `completed → cancelled`: huỷ chỉ xảy ra trước khi booking hoàn tất; sau khi đã `completed` thì không huỷ được nữa.
 
 **`confirmed → completed` do cron `autoCompleteBookings` thực hiện** (mục 6), không do người dùng bấm. `confirmed → no_show` do Owner đánh dấu (OWN-09) và chỉ hợp lệ sau khi giờ bắt đầu đã qua.
 
@@ -117,7 +119,7 @@ Mọi chuyển trạng thái ngoài bảng trên phải ném lỗi `INVALID_STAT
 | `pending_payment` | `submitted` | Người đặt gửi ảnh xác nhận chuyển khoản |
 | `confirmed` | `completed` | Owner duyệt |
 | `cancelled` | `rejected` | Owner từ chối (kèm `reject_reason`) |
-| `cancelled` | `refunded` | Khách/Owner huỷ booking đã `completed` thanh toán, hoàn theo chính sách huỷ |
+| `cancelled` | `completed`, rồi `refunded` sau xác nhận hoàn tiền | Khách/Owner huỷ theo chính sách, Owner chuyển tiền ngoài hệ thống rồi gọi refund để ghi nhận; không tự refunded khi mới huỷ |
 | `cancelled` | `cancelled` | Khách huỷ khi thanh toán chưa duyệt (`pending`/`submitted`), hoặc quá hạn Owner duyệt (cron); không tạo hoàn tiền |
 
 ### Quy trình thanh toán chuyển khoản QR
@@ -128,6 +130,10 @@ Mọi chuyển trạng thái ngoài bảng trên phải ném lỗi `INVALID_STAT
 4. Owner nhận thông báo realtime `booking_created`/`payment_submitted`, đối chiếu ảnh với sao kê, rồi duyệt hoặc từ chối.
 5. Quá **2 giờ** (hằng số `OWNER_REVIEW_TIMEOUT`, cấu hình qua env) kể từ `proof_uploaded_at` mà Owner chưa xử lý, cron chuyển booking sang `cancelled` và thông báo cho khách. Hệ thống không tự hoàn tiền; khách liên hệ Owner.
 6. Owner **phải** được xác nhận là chủ của venue chứa court trong booking (`NOT_VENUE_OWNER`) trước khi duyệt/từ chối.
+
+Chốt thêm ngày 2026-11-06: payment giữ snapshot tài khoản trả lúc hold; thay proof không đổi proof_uploaded_at hoặc deadline, chỉ đổi proof_updated_at/key. Proof trả200, chỉ khi còn held/pending trước expiresAt hoặc pending_payment/submitted trước review deadline. Clock lấy sau lock; đúng deadline là hết hạn. Nếu booking đã bắt đầu/kết thúc nhưng review chưa hết 2 giờ, vẫn cho approve theo contract; không tự rút ngắn deadline. Pending mutation quá review deadline trả409, cron huỷ riêng. Payment cash không nhận proof/approve/reject bank_transfer.
+
+Đơn vị config giữ theo .env.example: HOLD_TTL_MINUTES=10, OWNER_REVIEW_TIMEOUT_HOURS=2, AUTOCOMPLETE_GRACE_MINUTES=30. OWNER_REVIEW_TIMEOUT/AUTOCOMPLETE_GRACE trong pseudocode là milliseconds sau chuyển đổi, không phải tên env mới hoặc giá trị giờ/phút đem trừ trực tiếp vào Date.now().
 
 **Hạn chế đã chấp nhận (MVP):** không có đối soát tự động với ngân hàng; Owner chịu trách nhiệm kiểm tra ảnh chuyển khoản. Tích hợp webhook ngân hàng (SePay/Casso/PayOS) để dành cho giai đoạn sau, xem ADR-006.
 
@@ -144,7 +150,7 @@ async hold(courtId: string, during: TsTzRange, customerId: string): Promise<Book
       .where(and(
         eq(bookings.court_id, courtId),
         eq(bookings.status, 'held'),
-        lt(bookings.expires_at, new Date())
+        lte(bookings.expires_at, new Date())
       ));
 
     // 2. Tính giá ở server (bỏ qua mọi giá từ client) và lấy chính sách cọc
@@ -197,9 +203,9 @@ async expireHolds() {
       .set({ status: 'expired', updated_at: new Date() })
       .where(inArray(payments.booking_id, expired.map((b) => b.id)));
 
-    // Chỉ emit SAU khi transaction commit, tránh client refetch thấy dữ liệu cũ.
+    // Pseudocode: lưu sự kiện cùng transaction; worker gửi realtime SAU commit.
     for (const b of expired) {
-      this.realtime.emitSlotUpdated(b.court_id, b.during); // → venue:{venueId}:date:{date}
+      await this.outbox.enqueue(tx, 'hold_expired', b);
     }
   });
 }
@@ -227,34 +233,10 @@ async autoCompleteBookings() {
 > **Vì sao cần cron này:** không có nó thì `completed` là trạng thái không thể đạt tới, khiến CUS-13 (đánh giá sân, chỉ cho booking `completed`) và OWN-09 (đánh dấu no-show) vĩnh viễn không dùng được.
 
 ### Cron nhắc lịch (mỗi 15 phút) – phục vụ CUS-14
-```typescript
-@Cron('*/15 * * * *')
-async sendUpcomingReminders() {
-  // Booking confirmed có thời điểm bắt đầu trong khoảng (now + 24h, now + 24h + 15p].
-  // Cửa sổ 15 phút khớp nhịp cron để mỗi booking được nhắc ĐÚNG MỘT LẦN.
-  // Chống nhắc trùng bằng cờ reminders_sent_at (null = chưa nhắc), KHÔNG dựa vào
-  // việc "cron chạy đúng giờ" — cron có thể trễ hoặc chạy lại sau khi job fail.
-  const from = new Date(Date.now() + 24 * 3600_000);
-  const to = new Date(from.getTime() + 15 * 60_000);
 
-  const due = await this.db.select().from(bookings).where(and(
-    eq(bookings.status, 'confirmed'),
-    isNull(bookings.reminders_sent_at),
-    // So sánh trên lower(during) = thời điểm bắt đầu. KHÔNG so sánh trực tiếp
-    // cột tstzrange với timestamp: Postgres không có toán tử đó cho range.
-    sql`lower(${bookings.during}) >= ${from}`,
-    sql`lower(${bookings.during}) <  ${to}`
-  ));
+BSC-045/BSC-078 triển khai ở `BookingRemindersRepository`, `SendRemindersSchedule` và `BusinessMailService`; giải thích code/test. Mỗi lượt tối đa100 booking confirmed có Customer, chưa nhắc, start trong `(now,now+24h]`. Cửa sổ bắt kịp giúp server dừng/trễ cron vẫn nhắc được trước giờ bắt đầu; không dùng duy nhất cửa sổ15 phút quanh mốc24h. Có thể nhắc trễ hơn24h nếu server ngừng hoặc booking mới xác nhận sát giờ.
 
-  for (const b of due) {
-    await this.notifications.sendReminder(b);
-    // Đánh dấu sau khi gửi thành công; nếu gửi lỗi thì lần chạy sau thử lại.
-    await this.db.update(bookings)
-      .set({ reminders_sent_at: new Date() })
-      .where(eq(bookings.id, b.id));
-  }
-}
-```
+Khoá Customer→Venue→Court→booking và kiểm tra lại điều kiện; tạo notification/outbox cùng transaction. Unique `booking:{id}:reminder` ngăn hai cron/khởi động lại enqueue trùng. Job failed/unknown không tự tạo intent mới; retry cùng key theo quy trình vận hành. `reminders_sent_at` chỉ đặt cùng ACK sau provider chấp nhận, không phải lúc enqueue. Worker gửi ngoài transaction, kiểm tra lại confirmed/chưa bắt đầu, retry bằng body/key đã đóng băng và dừng đối soát nếu quá cửa sổ provider. Không bảo đảm exactly-once ở dịch vụ ngoài. Manual guest không có Customer/email thì bỏ qua, không dựng địa chỉ email.
 
 ### Cron huỷ booking quá hạn duyệt (mỗi 5 phút)
 ```typescript
@@ -276,7 +258,8 @@ async cancelStalePendingPayments() {
       .innerJoin(payments, eq(payments.booking_id, bookings.id))
       .where(and(
         eq(bookings.status, 'pending_payment'),
-        lt(payments.proof_uploaded_at, deadline)
+        eq(payments.status, 'submitted'),
+        lte(payments.proof_uploaded_at, deadline)
       ));
 
     if (stale.length === 0) return;
@@ -297,10 +280,8 @@ async cancelStalePendingPayments() {
       .set({ status: 'cancelled', updated_at: new Date() })
       .where(inArray(payments.booking_id, ids));
 
-    for (const b of stale) {
-      this.realtime.emitBookingCancelled(b.customer_id, b.id); // → user:{customerId}
-      this.realtime.emitSlotUpdated(b.court_id, b.during);     // → venue:{venueId}:date:{date}
-    }
+    // Pseudocode: worker dựng payload theo room/contract và gửi sau commit.
+    for (const b of stale) await this.outbox.enqueue(tx, 'payment.review_expired', b);
   });
 }
 ```
