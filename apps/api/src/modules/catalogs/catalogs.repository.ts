@@ -48,7 +48,7 @@ export class CatalogsRepository {
     return row ?? null;
   }
 
-  async createSport(input: SportInput) {
+  async createSport(input: Omit<SportInput, "slug"> & { slug: string }) {
     const [row] = await this.db
       .insert(sports)
       .values({
@@ -120,7 +120,7 @@ export class CatalogsRepository {
     return row ?? null;
   }
 
-  async createAmenity(input: SportInput) {
+  async createAmenity(input: Omit<SportInput, "slug"> & { slug: string }) {
     const [row] = await this.db
       .insert(amenities)
       .values({
@@ -205,7 +205,7 @@ export class CatalogsRepository {
     return row ?? null;
   }
 
-  async createArea(input: AreaInput) {
+  async createArea(input: Omit<AreaInput, "slug"> & { slug: string }) {
     const [row] = await this.db
       .insert(areas)
       .values({

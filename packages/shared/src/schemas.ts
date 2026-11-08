@@ -385,11 +385,16 @@ export const rejectSchema = z.object({
 
 export const sportSchema = z.object({
     name: z.string().min(1, "Vui lòng nhập tên môn").max(100).trim(),
+    /**
+     * Không bắt buộc: bỏ trống thì BE tự sinh từ `name` (`slugify`) — admin
+     * trong UI chỉ nhập tên, xem `CatalogsService.createSport`.
+     */
     slug: z
         .string()
         .min(1, "Vui lòng nhập slug")
         .max(100)
-        .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối"),
+        .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối")
+        .optional(),
     icon: z.string().max(50).optional(),
 });
 
@@ -406,7 +411,8 @@ export const areaSchema = z
             .string()
             .min(1, "Vui lòng nhập slug")
             .max(100)
-            .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối"),
+            .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối")
+            .optional(),
         type: z.enum(["province", "ward", "district"]),
         parentId: uuidSchema.nullish(),
     })
@@ -576,6 +582,13 @@ export const publicVenueSearchQuerySchema = z
         q: z.string().trim().max(100).optional(),
         provinceId: uuidSchema.optional(),
         districtId: uuidSchema.optional(),
+        /**
+         * FE gửi mã địa danh 2 cấp (tỉnh 2 số, phường/xã 5 số) vì bộ lọc địa
+         * điểm dùng danh mục `provinces`/`wards` chứ không giữ UUID của `areas`.
+         * BE tự quy đổi mã → `provinceId`/`districtId` trước khi truy vấn.
+         */
+        provinceCode: provinceCodeSchema.optional(),
+        wardCode: wardCodeSchema.optional(),
         sportId: uuidSchema.optional(),
         sportIds: venueQueryIds.optional(),
         amenityIds: venueQueryIds.optional(),

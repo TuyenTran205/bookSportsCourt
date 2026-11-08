@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import {
   InjectDrizzle,
   type DrizzleDb,
@@ -209,6 +209,126 @@ export class CourtsRepository {
       .delete(pricingRules)
       .where(
         and(eq(pricingRules.id, ruleId), eq(pricingRules.courtId, courtId)),
+      )
+      .returning();
+    return row ?? null;
+  }
+
+  // ===== Phạm vi cơ sở (dùng cho màn "Kênh chủ sân") =====
+
+  /**
+   * DB lưu giờ mở cửa / bảng giá theo từng sân con (docs/04), còn UI chủ sân
+   * cấu hình một lần cho cả cơ sở. Vì vậy:
+   * - Đọc: lấy cấu hình của sân "chính" (sortOrder nhỏ nhất).
+   * - Ghi: áp dụng cho toàn bộ sân con còn hoạt động của cơ sở.
+   */
+  async findCourtIdsByVenueId(venueId: string) {
+    const rows = await this.db
+      .select({ id: courts.id })
+      .from(courts)
+      .where(and(eq(courts.venueId, venueId), isNull(courts.deletedAt)))
+      .orderBy(asc(courts.sortOrder), asc(courts.createdAt));
+    return rows.map((row) => row.id);
+  }
+
+  async findPrimaryCourtIdByVenueId(venueId: string) {
+    const [row] = await this.db
+      .select({ id: courts.id })
+      .from(courts)
+      .where(and(eq(courts.venueId, venueId), isNull(courts.deletedAt)))
+      .orderBy(asc(courts.sortOrder), asc(courts.createdAt))
+      .limit(1);
+    return row?.id ?? null;
+  }
+
+  async upsertOpeningHoursForCourts(
+    courtIds: string[],
+    hours: UpdateOpeningHoursInput,
+  ) {
+    const primaryCourtId = courtIds[0];
+    if (!primaryCourtId) return [];
+
+    return this.db.transaction(async (tx) => {
+      await tx
+        .delete(openingHours)
+        .where(inArray(openingHours.courtId, courtIds));
+
+      const rowsToInsert = hours
+        .filter((hour) => !hour.isClosed)
+        .flatMap((hour) =>
+          courtIds.map((courtId) => ({
+            courtId,
+            dayOfWeek: hour.weekday,
+            openTime: hour.openTime,
+            closeTime: hour.closeTime,
+          })),
+        );
+
+      if (rowsToInsert.length > 0) {
+        await tx.insert(openingHours).values(rowsToInsert);
+      }
+
+      return tx
+        .select()
+        .from(openingHours)
+        .where(eq(openingHours.courtId, primaryCourtId))
+        .orderBy(asc(openingHours.dayOfWeek));
+    });
+  }
+
+  async createPricingRuleForCourts(
+    courtIds: string[],
+    input: PricingRuleInput,
+  ) {
+    if (courtIds.length === 0) return [];
+    return this.db
+      .insert(pricingRules)
+      .values(
+        courtIds.map((courtId) => ({
+          courtId,
+          name: input.label,
+          pricePerSlot: input.pricePerSlot,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          dayOfWeek: input.weekdays,
+        })),
+      )
+      .returning();
+  }
+
+  async findPricingRuleWithCourt(ruleId: string) {
+    const [row] = await this.db
+      .select({
+        rule: pricingRules,
+        venueId: courts.venueId,
+      })
+      .from(pricingRules)
+      .innerJoin(courts, eq(pricingRules.courtId, courts.id))
+      .where(eq(pricingRules.id, ruleId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /**
+   * Xoá khung giá ở phạm vi cơ sở: xoá bản ghi được chọn và các bản sao cùng
+   * tên/khung giờ ở những sân con khác (do thao tác tạo ở cấp cơ sở sinh ra).
+   */
+  async deletePricingRuleAcrossVenue(
+    venueId: string,
+    signature: { name: string; startTime: string; endTime: string },
+  ) {
+    const courtIds = await this.findCourtIdsByVenueId(venueId);
+    if (courtIds.length === 0) return null;
+
+    const [row] = await this.db
+      .delete(pricingRules)
+      .where(
+        and(
+          inArray(pricingRules.courtId, courtIds),
+          eq(pricingRules.name, signature.name),
+          eq(pricingRules.startTime, signature.startTime),
+          eq(pricingRules.endTime, signature.endTime),
+        ),
       )
       .returning();
     return row ?? null;

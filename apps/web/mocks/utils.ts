@@ -16,6 +16,11 @@ export function okList<T>(data: T[], meta: PaginationMeta) {
   return HttpResponse.json({ data, meta });
 }
 
+/** Response không nội dung: `204 No Content` — dùng cho logout/forgot/reset/verify. */
+export function noContent() {
+  return new HttpResponse(null, { status: 204 });
+}
+
 /** Response lỗi: `{ error: { code, message, details? } }`. */
 export function err(
   status: number,

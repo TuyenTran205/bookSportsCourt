@@ -1,10 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 
-import type { LoginInput, RegisterInput, User, OwnerProfile } from '@bsc/shared';
+import type { LoginInput, RegisterInput, User } from '@bsc/shared';
 import { login as apiLogin, logout as apiLogout, me as apiMe, register as apiRegister } from '@/lib/api/endpoints/auth';
 import { useAppRouter } from '@/lib/navigation/navigate';
 
@@ -13,6 +14,29 @@ export const authKeys = {
   me: () => [...authKeys.all, 'me'] as const,
 };
 
+/** Cookie phiên chỉ để `middleware.ts` biết đã đăng nhập; BE vẫn là nơi quyết định quyền. */
+const SESSION_COOKIE = 'bsc_session';
+const ROLE_COOKIE = 'bsc_role';
+const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
+
+/**
+ * BE đặt cookie httpOnly `access_token`/`refresh_token` cho miền API, còn
+ * `middleware.ts` của Next lại chạy trên miền FE nên không đọc được cookie đó.
+ * Vì vậy FE giữ thêm 2 cookie "gợi ý phiên" (không httpOnly, không chứa secret)
+ * để chặn điều hướng sớm — quyền thật vẫn do BE kiểm tra ở mỗi request.
+ */
+function syncSessionCookies(user: User | null) {
+  if (typeof document === 'undefined') return;
+
+  if (user) {
+    document.cookie = `${SESSION_COOKIE}=${user.id}; path=/; max-age=${SESSION_MAX_AGE}; samesite=lax`;
+    document.cookie = `${ROLE_COOKIE}=${user.role}; path=/; max-age=${SESSION_MAX_AGE}; samesite=lax`;
+    return;
+  }
+  document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  document.cookie = `${ROLE_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
 export function useAuth() {
   const queryClient = useQueryClient();
   const router = useAppRouter();
@@ -20,7 +44,7 @@ export function useAuth() {
 
   const meQuery = useQuery({
     queryKey: authKeys.me(),
-    queryFn: async () => {
+    queryFn: async (): Promise<User | null> => {
       try {
         return await apiMe();
       } catch (err: unknown) {
@@ -40,7 +64,7 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: (input: LoginInput) => apiLogin(input),
     onSuccess: (result) => {
-      queryClient.setQueryData(authKeys.me(), { user: result.user, ownerProfile: null });
+      queryClient.setQueryData(authKeys.me(), result);
       queryClient.invalidateQueries();
       toast.success(tAuth('loginSuccess'));
     },
@@ -49,7 +73,7 @@ export function useAuth() {
   const registerMutation = useMutation({
     mutationFn: (input: RegisterInput) => apiRegister(input),
     onSuccess: (result) => {
-      queryClient.setQueryData(authKeys.me(), { user: result.user, ownerProfile: null });
+      queryClient.setQueryData(authKeys.me(), result);
       queryClient.invalidateQueries();
     },
   });
@@ -68,8 +92,20 @@ export function useAuth() {
     },
   });
 
-  const user: User | null = meQuery.data?.user ?? null;
-  const ownerProfile: OwnerProfile | null = meQuery.data?.ownerProfile ?? null;
+  const user: User | null = meQuery.data ?? null;
+
+  // Giữ cookie gợi ý phiên đồng bộ với trạng thái đăng nhập thật (kể cả khi
+  // người dùng F5 — `GET /users/me` thành công sẽ dựng lại cookie cho middleware).
+  useEffect(() => {
+    if (!meQuery.isSuccess) return;
+    syncSessionCookies(user);
+  }, [meQuery.isSuccess, user]);
+
+  /**
+   * BE hiện chưa trả hồ sơ chủ sân kèm `GET /users/me`; trạng thái chủ sân lấy
+   * từ `GET /owner-applications/me`. Giữ trường này để không phá vỡ API hook.
+   */
+  const ownerProfile = null;
 
   return {
     user,

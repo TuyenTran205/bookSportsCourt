@@ -323,6 +323,20 @@ export class VenuesRepository {
     return row ?? null;
   }
 
+  /**
+   * Quy đổi mã địa danh 2 cấp (tỉnh 2 số, phường/xã 5 số) sang `id` của bảng
+   * `areas`. Bảng `areas` hiện chưa có cột `code` (migration GSO code còn ở
+   * dạng spec), nên cầu nối là `slug` — danh mục dùng chung và seed đều dùng
+   * cùng quy ước slug (`ha-noi`, `ben-thanh`…).
+   */
+  async findAreaIdsBySlugs(slugs: string[]) {
+    if (slugs.length === 0) return [];
+    return this.db
+      .select({ id: areas.id, slug: areas.slug })
+      .from(areas)
+      .where(inArray(areas.slug, slugs));
+  }
+
   async searchVenues(params: {
     q?: string;
     provinceId?: string;
@@ -342,12 +356,10 @@ export class VenuesRepository {
     ];
 
     if (params.q) {
-      conditions.push(
-        ilike(
-          venues.name,
-          `%${params.q.replace(/[\\%_]/g, "\\ilike(venues.name, `%${params.q}%`)")}%`,
-        ),
-      );
+      // Escape ký tự đại diện của LIKE để từ khoá người dùng nhập được hiểu
+      // theo nghĩa đen (`%`, `_`, `\`).
+      const escaped = params.q.replace(/[\\%_]/g, (char) => `\\${char}`);
+      conditions.push(ilike(venues.name, `%${escaped}%`));
     }
     if (params.provinceId) {
       conditions.push(eq(venues.provinceId, params.provinceId));

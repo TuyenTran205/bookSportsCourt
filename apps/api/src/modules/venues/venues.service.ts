@@ -32,6 +32,8 @@ import { uuidSchema } from "../../../../../packages/shared/src/schemas.js";
 import { venueStatusUpdateSchema } from "../../../../../packages/shared/src/schemas.js";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe.js";
 import { moderateVenue } from "./venue-moderation.js";
+import { PROVINCES } from "../../../../../packages/shared/src/data/provinces.js";
+import { loadWards } from "../catalogs/wards-data.js";
 import type {
   BankAccountInput,
   CancellationPolicyInput,
@@ -471,10 +473,38 @@ export class VenuesService {
     }
   }
   async searchVenues(params: PublicVenueSearchQueryInput) {
+    const { provinceCode, wardCode, ...rest } = params;
+    let { provinceId, districtId } = rest;
+
+    if ((!provinceId && provinceCode) || (!districtId && wardCode)) {
+      // Bộ lọc địa điểm của FE gửi mã GSO (tỉnh 2 số / phường-xã 5 số) thay vì
+      // UUID của `areas`, nên phải tra slug từ danh mục rồi mới lọc được.
+      const province = provinceCode
+        ? PROVINCES.find((item) => item.code === provinceCode)
+        : undefined;
+      const ward = wardCode
+        ? loadWards().find((item) => item.code === wardCode)
+        : undefined;
+
+      const slugs = [province?.slug, ward?.slug].filter(
+        (slug): slug is string => Boolean(slug),
+      );
+      const resolved = await this.repository.findAreaIdsBySlugs(slugs);
+
+      if (!provinceId && province) {
+        provinceId = resolved.find((row) => row.slug === province.slug)?.id;
+      }
+      if (!districtId && ward) {
+        districtId = resolved.find((row) => row.slug === ward.slug)?.id;
+      }
+    }
+
     return this.repository.searchVenues({
-      ...params,
+      ...rest,
+      provinceId,
+      districtId,
       sportIds:
-        params.sportIds ?? (params.sportId ? [params.sportId] : undefined),
+        rest.sportIds ?? (rest.sportId ? [rest.sportId] : undefined),
     });
   }
 

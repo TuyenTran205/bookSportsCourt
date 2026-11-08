@@ -158,8 +158,11 @@ export const adminHandlers = [
         return okList(data, meta);
     }),
 
-    /** Duyệt/từ chối cơ sở — cùng quy ước gộp route như hồ sơ chủ sân. */
-    http.patch("/api/v1/admin/venues/:id", async ({ params, request }) => {
+    /**
+     * Duyệt/từ chối cơ sở — BE dùng `PATCH /venues/:id/status` với body
+     * `{ status, reason? }` (xem docs/implemented-apis.md).
+     */
+    http.patch("/api/v1/venues/:id/status", async ({ params, request }) => {
         await simulateLatency(450);
         const guard = requireAdmin();
         if (guard.error) return guard.error;
@@ -169,12 +172,13 @@ export const adminHandlers = [
 
         const body = (await request.json()) as {
             status?: "approved" | "rejected" | "suspended";
-            reviewNote?: string;
+            reason?: string;
         };
+        const reviewNote = body.reason;
         if (!body.status || !["approved", "rejected", "suspended"].includes(body.status)) {
             return err(422, "VALIDATION_ERROR", "Trạng thái không hợp lệ");
         }
-        if (body.status === "rejected" && !body.reviewNote?.trim()) {
+        if (body.status === "rejected" && !reviewNote?.trim()) {
             return err(422, "VALIDATION_ERROR", "Vui lòng nhập lý do từ chối");
         }
 
@@ -182,7 +186,7 @@ export const adminHandlers = [
         // Lý do không nằm trong `VenueDetail` — ghi vào nhật ký hoạt động, cùng
         // cách xử lý như hồ sơ chủ sân ở trên.
         writeAudit(`venue.${body.status}`, "venue", venue.id, {
-            reviewNote: body.reviewNote ?? null,
+            reviewNote: reviewNote ?? null,
             venueName: venue.name,
         });
         persist();
@@ -193,7 +197,7 @@ export const adminHandlers = [
                 body:
                     body.status === "approved"
                         ? `${venue.name} đã hiển thị với khách hàng.`
-                        : (body.reviewNote?.trim() ?? `Vui lòng cập nhật thông tin của ${venue.name}.`),
+                        : (reviewNote?.trim() ?? `Vui lòng cập nhật thông tin của ${venue.name}.`),
                 payload: { venueId: venue.id },
             });
         }
@@ -263,7 +267,7 @@ export const adminHandlers = [
     }),
 
     // ── Danh mục hệ thống (A-03) ─────────────────────────────────────────────
-    http.post("/api/v1/admin/sports", async ({ request }) => {
+    http.post("/api/v1/sports", async ({ request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
         if (guard.error) return guard.error;
@@ -281,7 +285,7 @@ export const adminHandlers = [
         return ok(newSport, 201);
     }),
 
-    http.patch("/api/v1/admin/sports/:id", async ({ params, request }) => {
+    http.patch("/api/v1/sports/:id", async ({ params, request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
         if (guard.error) return guard.error;
@@ -294,7 +298,7 @@ export const adminHandlers = [
         return ok({ ...body, id: params.id });
     }),
 
-    http.delete("/api/v1/admin/sports/:id", async ({ params }) => {
+    http.delete("/api/v1/sports/:id", async ({ params }) => {
         await simulateLatency(350);
         const guard = requireAdmin();
         if (guard.error) return guard.error;
@@ -309,7 +313,7 @@ export const adminHandlers = [
         return ok({ success: true });
     }),
 
-    http.post("/api/v1/admin/areas", async ({ request }) => {
+    http.post("/api/v1/areas", async ({ request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
         if (guard.error) return guard.error;

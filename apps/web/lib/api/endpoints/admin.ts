@@ -81,10 +81,18 @@ export function listAdminVenues(params: { status?: string; page?: number; limit?
     return apiFetchWithMeta<AdminVenueRow[]>("/admin/venues", { query: { ...params } });
 }
 
+/**
+ * Duyệt / từ chối / tạm ngưng cơ sở.
+ *
+ * BE chỉ có một route kiểm duyệt là `PATCH /venues/:id/status` với body
+ * `{ status, reason? }` (`venueStatusUpdateSchema`, xem docs/implemented-apis.md).
+ * `reviewNote` của UI được ánh xạ sang `reason`.
+ */
 export function reviewVenue(id: string, input: { status: "approved" | "rejected" | "suspended"; reviewNote?: string }) {
-    return apiFetch<AdminVenueRow>(`/admin/venues/${encodeURIComponent(id)}`, {
+    const { reviewNote, status } = input;
+    return apiFetch<VenueListItem>(`/venues/${encodeURIComponent(id)}/status`, {
         method: "PATCH",
-        ...jsonBody(input),
+        ...jsonBody({ status, ...(reviewNote ? { reason: reviewNote } : {}) }),
     });
 }
 
@@ -135,18 +143,18 @@ export function forceCancelBooking(id: string, reason: string) {
 
 // ── Danh mục (ADM-05) ──────────────────────────────────────────────────────
 
-export function createSport(input: { name: string; icon?: string }) {
-    return apiFetch<Sport>("/admin/sports", { method: "POST", ...jsonBody(input) });
+export function createSport(input: { name: string; slug?: string; icon?: string }) {
+    return apiFetch<Sport>("/sports", { method: "POST", ...jsonBody(input) });
 }
 
 export function deleteSport(id: string) {
-    return apiFetch<{ success: true }>(`/admin/sports/${encodeURIComponent(id)}`, {
+    return apiFetch<void>(`/sports/${encodeURIComponent(id)}`, {
         method: "DELETE",
     });
 }
 
-export function createArea(input: { name: string; type: "province" | "ward" | "district"; parentId?: string }) {
-    return apiFetch<Area>("/admin/areas", { method: "POST", ...jsonBody(input) });
+export function createArea(input: { name: string; slug?: string; type: "province" | "ward" | "district"; parentId?: string }) {
+    return apiFetch<Area>("/areas", { method: "POST", ...jsonBody(input) });
 }
 
 // ── Đánh giá (ADM-06, ADM-10) ──────────────────────────────────────────────

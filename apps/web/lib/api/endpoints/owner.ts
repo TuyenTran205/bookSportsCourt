@@ -124,7 +124,8 @@ export function createPricingRule(
 }
 
 export function deletePricingRule(ruleId: string) {
-  return apiFetch<{ success: true }>(`/owner/pricing-rules/${encodeURIComponent(ruleId)}`, {
+  // BE trả 204 (không body) — xoá áp dụng cho mọi sân con của cơ sở.
+  return apiFetch<void>(`/owner/pricing-rules/${encodeURIComponent(ruleId)}`, {
     method: 'DELETE',
   });
 }

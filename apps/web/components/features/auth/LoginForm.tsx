@@ -66,9 +66,9 @@ export function LoginForm() {
       // Chuyển hướng theo vai trò hoặc query param
       if (nextUrl) {
         router.push(nextUrl);
-      } else if (res.user.role === 'admin') {
+      } else if (res.role === 'admin') {
         router.push('/admin/dashboard');
-      } else if (res.user.role === 'owner') {
+      } else if (res.role === 'owner') {
         router.push('/owner/timeline');
       } else {
         router.push('/');
