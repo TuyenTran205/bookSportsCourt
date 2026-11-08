@@ -1,6 +1,6 @@
 # 02 – Tính năng theo vai trò
 
-> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-10-30
+> **Phiên bản:** 1.3.4 | **Cập nhật lần cuối:** 2026-11-08
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
 
@@ -14,7 +14,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | GST-02 | Xem sân trên bản đồ (Leaflet + OpenStreetMap) | P0 | Hiển thị pin venue, click vào pin mở card venue; không cần đăng nhập |
 | GST-03 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa; không cần đăng nhập |
 | GST-04 | Xem lưới block 30 phút (chỉ đọc) | P0 | Hiển thị đúng trạng thái block (available/booked/held) theo realtime; không thể chọn block; hiển thị nút CTA "Đăng nhập để đặt sân" |
-| GST-05 | Xem đánh giá sân | P1 | Hiển thị danh sách review (sao, nhận xét, ngày); không cần đăng nhập; không thể gửi đánh giá |
+| GST-05 | Xem đánh giá sân | P1 | Chỉ review visible của Venue approved/chưa xoá (sao, nhận xét, ngày); phân trang, không lộ định danh Customer/booking; không cần đăng nhập, không thể gửi đánh giá |
 | GST-06 | Đăng ký / Đăng nhập | P0 | Hiển thị form đăng ký và đăng nhập; sau khi đăng nhập thành công redirect về trang trước đó |
 
 ---
@@ -25,7 +25,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 |----|-----------|---------|---------------------|
 | CUS-01 | Đăng ký tài khoản (email + mật khẩu) | P0 | Tạo được tài khoản, nhận email xác nhận (P1), không cho trùng email |
 | CUS-02 | Đăng nhập / Đăng xuất | P0 | Access token + Refresh token httpOnly; tự động refresh; logout xoá cookie |
-| CUS-03 | Đăng nhập Google OAuth | P1 | Redirect OAuth, tạo profile nếu chưa có, merge account nếu email trùng |
+| CUS-03 | Đăng nhập Google OAuth | P1 | BE xác minh Google OIDC/state/nonce/PKCE; liên kết bằng provider/sub. User mới chỉ Customer; email đã tồn tại nhưng chưa liên kết trả409, không tự merge. Dùng session/cookie hiện có; explicit linking ngoài MVP (ADR026) |
 | CUS-04 | Tìm kiếm sân (khu vực, môn, giá, tiện ích) | P0 | Lọc được theo: tỉnh/quận, môn thể thao, giá tối đa, tiện ích; hiển thị kết quả pagination |
 | CUS-05 | Xem sân trên bản đồ (Leaflet + OpenStreetMap) | P0 | Hiển thị pin venue, click vào pin mở card venue |
 | CUS-06 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa |
@@ -35,10 +35,10 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | CUS-10 | Xem lịch sử đặt sân | P0 | Danh sách booking với filter trạng thái; xem chi tiết từng booking |
 | CUS-11 | Huỷ booking | P1 | Tuân theo chính sách huỷ của Owner; hiển thị điều kiện huỷ trước khi xác nhận |
 | CUS-12 | Yêu thích sân (Favorite) | P1 | Toggle yêu thích; xem danh sách sân đã yêu thích |
-| CUS-13 | Đánh giá sân sau khi hoàn thành | P1 | Chỉ đánh giá được booking trạng thái completed; 1-5 sao + nhận xét văn bản |
+| CUS-13 | Đánh giá sân sau khi hoàn thành | P1 | Customer active đánh giá booking completed của mình, tối đa1 review/booking; sao nguyên1–5, comment trim≤2000; BE suy Venue/customer, trùng trả409 |
 | CUS-14 | Thông báo trong app | P1 | Thông báo khi booking confirmed, sắp diễn ra (24h trước), huỷ |
 | CUS-15 | Xem và chỉnh sửa hồ sơ | P0 | Cập nhật tên, số điện thoại, ảnh đại diện |
-| CUS-16 | Quên / đặt lại mật khẩu | P1 | Gửi email chứa link đặt lại (`POST /auth/forgot-password`); luôn trả 204 để không lộ email có tồn tại; link chứa token dùng một lần, hết hạn 15 phút (`auth_tokens.type = 'password_reset'`); đặt lại xong thu hồi mọi refresh token cũ |
+| CUS-16 | Quên / đặt lại mật khẩu | P1 | `POST /auth/forgot-password` trả 204 chung cho email hợp lệ, kể cả không tồn tại hoặc lỗi mail; quá giới hạn trả 429. Token chỉ lưu hash, dùng một lần, hết hạn 1 giờ (`auth_tokens.type = 'password_reset'`). Reset thành công thu hồi mọi phiên cũ và yêu cầu login lại; tài khoản OAuth-only không dùng reset để tạo mật khẩu. BE và smoke email thật tới inbox đã đạt; FE/reset end-to-end còn nghiệm thu tại Bước14 |
 
 ---
 
@@ -58,7 +58,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | OWN-10 | Thiết lập chính sách huỷ và cọc | P1 | Cấu hình: huỷ trước X giờ được hoàn Y%; yêu cầu cọc Z% |
 | OWN-11 | Báo cáo doanh thu | P1 | Biểu đồ doanh thu theo ngày/tuần/tháng; lọc theo venue/court |
 | OWN-12 | Báo cáo tỷ lệ lấp đầy | P1 | Phần trăm block được đặt; peak hours; so sánh kỳ |
-| OWN-13 | Quản lý đánh giá | P1 | Xem và phản hồi đánh giá từ khách |
+| OWN-13 | Quản lý đánh giá | P1 | Xem và phản hồi đánh giá từ khách; không có quyền ẩn/hiện review |
 | OWN-14 | Nhận thông báo booking mới | P1 | Thông báo realtime + email khi có booking mới, huỷ |
 
 ---
@@ -76,4 +76,4 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | ADM-07 | Xem toàn bộ booking hệ thống | P0 | Danh sách booking với filter đầy đủ; xem chi tiết |
 | ADM-08 | Xem thống kê toàn hệ thống | P0 | Tổng booking, doanh thu, số venue, số user theo kỳ |
 | ADM-09 | Audit log | P0 | Ghi lại mọi hành động admin; không thể sửa/xoá |
-| ADM-10 | Kiểm duyệt đánh giá | P1 | Ẩn/hiển thị review vi phạm tiêu chuẩn cộng đồng |
+| ADM-10 | Kiểm duyệt đánh giá | P1 | Chỉ Admin active ẩn/hiển thị review; list gồm review ẩn, retry no-op; audit và rating/count visible nhất quán trong transaction |

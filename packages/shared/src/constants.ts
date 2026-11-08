@@ -117,6 +117,18 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 // ===== Thông báo & kiểm toán =====
 
+export const AUDIT_ACTION_ENTITIES = {
+  'venue.status_changed': 'venue',
+  'owner_application.reviewed': 'owner_application',
+  'user.status_changed': 'user',
+  'review.visibility_changed': 'review',
+  'payment.approved': 'payment',
+  'payment.rejected': 'payment',
+  'payment.refunded': 'payment',
+  'payment.review_expired': 'payment',
+} as const;
+export type AuditAction = keyof typeof AUDIT_ACTION_ENTITIES;
+
 export const NOTIFICATION_TYPES = [
   'booking_created',
   'booking_confirmed',
@@ -175,6 +187,12 @@ export const API_ERROR_CODES = {
   HOLD_EXPIRED: 'HOLD_EXPIRED',
   RATE_LIMITED: 'RATE_LIMITED',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
+  PAYMENT_DATA_INCOMPLETE: 'PAYMENT_DATA_INCOMPLETE',
+  PAYMENT_REVIEW_EXPIRED: 'PAYMENT_REVIEW_EXPIRED',
+  PAYMENT_STATE_CONFLICT: 'PAYMENT_STATE_CONFLICT',
+  RESOURCE_STATE_CONFLICT: 'RESOURCE_STATE_CONFLICT',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+  REVIEW_NOT_ALLOWED: 'REVIEW_NOT_ALLOWED',
 } as const;
 export type ApiErrorCode = (typeof API_ERROR_CODES)[keyof typeof API_ERROR_CODES];
 
@@ -194,6 +212,8 @@ export const HOLD_MINUTES = 10;
 
 /** Giới hạn upload ảnh biên lai — docs/11-api-contract.md. */
 export const UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+export const PROOF_MAX_PIXELS = 16_000_000;
+export const PROOF_URL_TTL_SECONDS = 300;
 export const UPLOAD_ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 
 /** Định dạng ngày dùng cho query `date` của lưới slot. */

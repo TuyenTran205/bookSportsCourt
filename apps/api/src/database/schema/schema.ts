@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import {
   AnyPgColumn,
   boolean,
@@ -19,6 +19,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { v7 } from 'uuid';
+import type { BankAccountInfo } from '../../../../../packages/shared/src/types.js';
 
 const tstzrange = customType<{ data: string; driverData: string }>({
   dataType: () => 'tstzrange',
@@ -42,6 +43,7 @@ export const users = pgTable(
     avatarUrl: text('avatar_url'),
     role: text().notNull().default('customer'),
     status: text().notNull().default('active'),
+    sessionVersion: integer('session_version').notNull().default(0),
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -118,6 +120,7 @@ export const ownerApplications = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
     businessName: text('business_name').notNull(),
+    taxCode: text('tax_code'),
     phone: text().notNull(),
     address: text().notNull(),
     note: text(),
@@ -199,7 +202,7 @@ export const venues = pgTable(
     status: text().notNull().default('pending'),
     coverUrl: text('cover_url'),
     rejectionReason: text('rejection_reason'),
-    ratingAvg: numeric('rating_avg', { precision: 2, scale: 1 })
+    ratingAvg: numeric('rating_avg', { precision: 3, scale: 2 })
       .notNull()
       .default('0'),
     reviewCount: integer('review_count').notNull().default(0),
@@ -392,6 +395,7 @@ export const bookings = pgTable(
   (table) => [
     index('idx_bookings_court_during').on(table.courtId, table.during),
     index('idx_bookings_customer').on(table.customerId),
+    index('idx_bookings_start').on(sql`lower(${table.during})`),
     index('idx_bookings_status').on(table.status),
     index('idx_bookings_expires')
       .on(table.expiresAt)
@@ -413,6 +417,10 @@ export const payments = pgTable(
     provider: text().notNull().default('bank_transfer'),
     transferCode: text('transfer_code'),
     proofUrl: text('proof_url'),
+    bankAccountSnapshot: jsonb('bank_account_snapshot').$type<BankAccountInfo>(),
+    proofObjectKey: text('proof_object_key'),
+    proofUpdatedAt: timestamp('proof_updated_at', { withTimezone: true }),
+    refundNote: text('refund_note'),
     proofUploadedAt: timestamp('proof_uploaded_at', { withTimezone: true }),
     status: text().notNull().default('pending'),
     reviewedBy: uuid('reviewed_by').references(() => users.id, {
@@ -433,6 +441,10 @@ export const payments = pgTable(
       .on(table.transferCode)
       .where(isNotNull(table.transferCode)),
     index('idx_payments_booking').on(table.bookingId),
+    index('idx_payments_collected_at').on(table.paidAt)
+      .where(sql`${table.status} in ('completed','refunded') and ${table.paidAt} is not null`),
+    index('idx_payments_refunded_at').on(table.refundedAt)
+      .where(sql`${table.status} = 'refunded' and ${table.refundAmount} is not null and ${table.refundedAt} is not null`),
     index('idx_payments_pending_proof')
       .on(table.proofUploadedAt)
       .where(eq(table.status, 'submitted')),
@@ -497,6 +509,7 @@ export const notifications = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     type: text().notNull(),
+    eventKey: text('event_key'),
     title: text().notNull(),
     body: text().notNull(),
     data: jsonb(),
@@ -507,8 +520,54 @@ export const notifications = pgTable(
     index('idx_notif_user_unread')
       .on(table.userId)
       .where(isNull(table.readAt)),
+    uniqueIndex('uq_notifications_event_user').on(table.eventKey, table.userId).where(isNotNull(table.eventKey)),
   ],
 );
+
+// CHECK constraints and triggers are versioned in 0008_phase4-foundation.sql.
+export const oauthStates = pgTable('oauth_states', {
+  id: id(),
+  stateHash: text('state_hash').notNull(),
+  bindingHash: text('binding_hash').notNull(),
+  nonceHash: text('nonce_hash').notNull(),
+  pkceVerifierCiphertext: text('pkce_verifier_ciphertext').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: createdAt(),
+}, (table) => [uniqueIndex('oauth_states_state_hash_key').on(table.stateHash), index('idx_oauth_states_expiry').on(table.expiresAt)]);
+
+export const outboxDeliveries = pgTable('outbox_deliveries', {
+  id: id(),
+  eventKey: text('event_key').notNull(),
+  eventType: text('event_type').notNull(),
+  channel: text().notNull(),
+  recipientId: uuid('recipient_id').notNull().references(() => users.id, { onDelete: 'restrict' }),
+  payload: jsonb().$type<Record<string, unknown>>().notNull(),
+  status: text().notNull().default('pending'),
+  attempts: integer().notNull().default(0),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull().defaultNow(),
+  leaseToken: uuid('lease_token'),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  emailRequest: jsonb('email_request').$type<import('../../modules/mail/mail.transport.js').MailRequest>(),
+  firstAttemptAt: timestamp('first_attempt_at', { withTimezone: true }),
+  lastErrorCode: text('last_error_code'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (table) => [uniqueIndex('uq_outbox_delivery').on(table.eventKey, table.channel, table.recipientId), index('idx_outbox_due').on(table.status, table.nextAttemptAt)]);
+
+export const storageCleanupJobs = pgTable('storage_cleanup_jobs', {
+  id: id(),
+  objectKey: text('object_key').notNull(),
+  notBefore: timestamp('not_before', { withTimezone: true }).notNull(),
+  status: text().notNull().default('pending'),
+  attempts: integer().notNull().default(0),
+  leaseToken: uuid('lease_token'),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+  lastErrorCode: text('last_error_code'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (table) => [uniqueIndex('storage_cleanup_jobs_object_key_key').on(table.objectKey), index('idx_storage_cleanup_due').on(table.status, table.notBefore)]);
 
 export const auditLogs = pgTable(
   'audit_logs',

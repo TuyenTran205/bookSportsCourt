@@ -44,4 +44,6 @@ drizzle/meta/_journal.json.bak
 
 # Ảnh upload khi phát triển local (production dùng R2)
 uploads/
+!apps/api/src/modules/uploads/
+!apps/api/src/modules/uploads/**
 tmp/

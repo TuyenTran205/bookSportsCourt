@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "node --loader ts-node/esm --no-warnings src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm run test:auth && pnpm run test:venues && pnpm run test:group1 && pnpm run test:merge",
+    "test": "pnpm run test:auth && pnpm run test:venues && pnpm run test:group1 && pnpm run test:merge && pnpm run test:phase4-prerequisites && pnpm run test:phase4-foundation && pnpm run test:audit && pnpm run test:payments && pnpm run test:payment-review && pnpm run test:owner-applications && pnpm run test:users && pnpm run test:admin-reporting && pnpm run test:business-mail && pnpm run test:reviews && pnpm run test:google-oauth && pnpm run test:password-recovery && pnpm run test:contract",
+    "test:payments": "node --loader ts-node/esm --no-warnings --test scripts/payment-api.test.ts scripts/proof-storage.test.ts",
+    "test:audit": "node --loader ts-node/esm --no-warnings --test scripts/audit-api.test.ts",
+    "test:phase4-foundation": "node --loader ts-node/esm --no-warnings --test scripts/phase4-foundation.test.ts",
+    "test:phase4-prerequisites": "node --loader ts-node/esm --no-warnings --test scripts/phase4-prerequisites.test.ts",
     "test:merge": "node --loader ts-node/esm --no-warnings --test scripts/backend-merge.test.ts",
     "test:auth": "node --loader ts-node/esm --no-warnings --test scripts/auth-api.test.ts scripts/auth-secrets.test.ts scripts/http-security.test.ts scripts/permissions-decorators.test.ts scripts/jwt-auth-guard.test.ts scripts/roles-guard.test.ts",
     "test:roles-guard": "node --loader ts-node/esm --no-warnings --test scripts/roles-guard.test.ts",
@@ -21,9 +25,26 @@
     "db:migrate": "node --loader ts-node/esm --no-warnings scripts/migrate.ts",
     "db:seed": "node --loader ts-node/esm --no-warnings scripts/seed.ts",
     "db:studio": "drizzle-kit studio --config ../../drizzle.config.ts",
-    "test:group1": "node --loader ts-node/esm --no-warnings --test scripts/group1-api.test.ts"
+    "test:group1": "node --loader ts-node/esm --no-warnings --test scripts/group1-api.test.ts",
+    "test:payment-review": "node --loader ts-node/esm --no-warnings --test scripts/payment-review-api.test.ts scripts/payment-review-rules.test.ts",
+    "test:owner-applications": "node --loader ts-node/esm --no-warnings --test scripts/owner-applications-api.test.ts",
+    "test:users": "node --loader ts-node/esm --no-warnings --test scripts/user-management-api.test.ts",
+    "test:admin-reporting": "node --loader ts-node/esm --no-warnings --test scripts/admin-reporting-api.test.ts scripts/admin-reporting-rules.test.ts scripts/admin-reporting-migration.test.ts",
+    "test:business-mail": "node --loader ts-node/esm --no-warnings --test scripts/business-mail.test.ts",
+    "mail:retry": "node --loader ts-node/esm --no-warnings scripts/retry-business-mail.ts",
+    "test:reviews": "node --loader ts-node/esm --no-warnings --test scripts/reviews-api.test.ts scripts/review-rules.test.ts",
+    "test:google-oauth": "node --loader ts-node/esm --no-warnings --test scripts/google-oauth-api.test.ts scripts/google-provider.test.ts",
+    "test:password-recovery": "node --loader ts-node/esm --no-warnings --test scripts/password-recovery-api.test.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "contract:check": "node --loader ts-node/esm --no-warnings scripts/phase4-contract.ts",
+    "contract:export": "node --loader ts-node/esm --no-warnings scripts/phase4-contract.ts --write",
+    "test:contract": "node --loader ts-node/esm --no-warnings --test scripts/phase4-contract.test.ts",
+    "contract:final": "node --loader ts-node/esm --no-warnings scripts/phase4-contract.ts --require-final",
+    "postman:export": "node scripts/export-phase4-postman.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1163.0",
+    "@aws-sdk/s3-request-presigner": "^3.1163.0",
     "@nestjs/common": "^10",
     "@nestjs/config": "^3",
     "@nestjs/core": "^10",
@@ -40,20 +61,21 @@
     "pg": "^8.13.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "sharp": "^0.34.5",
     "socket.io": "^4",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^11.0.3",
-    "zod": "^3.23.8",
-    "swagger-ui-express": "^5.0.1"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@nestjs/cli": "^10",
     "@nestjs/schematics": "^10",
     "@nestjs/testing": "^10",
     "@types/pg": "^8.11.10",
+    "@types/swagger-ui-express": "^4.1.8",
     "drizzle-kit": "^0.27.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.6.3",
-    "@types/swagger-ui-express": "^4.1.8"
+    "typescript": "^5.6.3"
   }
 }

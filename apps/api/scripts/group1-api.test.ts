@@ -2,7 +2,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CatalogsService } from "../src/modules/catalogs/catalogs.service.js";
-import { OwnerApplicationsService } from "../src/modules/owner-applications/owner-applications.service.js";
+import { applicationDecision } from "../src/modules/owner-applications/owner-application.rules.js";
 import { VenuesService } from "../src/modules/venues/venues.service.js";
 import { CourtsService } from "../src/modules/courts/courts.service.js";
 
@@ -97,26 +97,46 @@ test("Group 1 OwnerApplicationsService handles application flow and transitions"
       );
     },
   );
-
   await t.test(
-    "rejects reviewing application that is not in pending status",
-    async () => {
-      const mockRepo: any = {
-        findById: async () => ({ id: "app-1", status: "approved" }),
-      };
-      const service = new OwnerApplicationsService(mockRepo);
-      await assert.rejects(
-        async () =>
-          service.review("app-1", "admin-1", {
-            status: "approved",
-            reviewNote: "Duyệt lại",
+    "conflicting decision or note cannot rewrite a terminal application",
+    () => {
+      assert.throws(
+        () =>
+          applicationDecision(app, target, {
+            status: "rejected",
+            reviewNote: "reason",
           }),
-        (err: any) =>
-          err.status === 400 &&
-          err.response?.code === "INVALID_STATUS_TRANSITION",
+        (error: any) => error.status === 400,
+      );
+      assert.throws(
+        () =>
+          applicationDecision(app, target, {
+            status: "approved",
+            reviewNote: "new note",
+          }),
+        (error: any) => error.status === 400,
       );
     },
   );
+  await t.test("pending application requires active customer", () => {
+    assert.equal(
+      applicationDecision(
+        { ...app, status: "pending" },
+        { ...target, role: "customer" },
+        { status: "approved" },
+      ),
+      "write",
+    );
+    assert.throws(
+      () =>
+        applicationDecision(
+          { ...app, status: "pending" },
+          { ...target, status: "suspended" },
+          { status: "approved" },
+        ),
+      (error: any) => error.status === 409,
+    );
+  });
 });
 
 test("Group 1 VenuesService uses transactional area validation and UUID-suffixed slugs", async (t) => {

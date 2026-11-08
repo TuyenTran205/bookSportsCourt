@@ -1,6 +1,7 @@
 # CI – Lint, Typecheck, Test, Build
 # Chạy trên mọi PR vào develop hoặc main (develop là nhánh tích hợp, main là nhánh phát hành)
-# Ghi chú: Bản nháp – sẽ chạy được khi có code ứng dụng
+# Có test HTTP/PostgreSQL và gate contract Phase 4; CI remote chưa được nghiệm thu.
+# Lint vẫn cần ESLint/config theo docs/12; không coi task bị bỏ qua là pass.
 #
 # Tên job (lint / typecheck / test / build) PHẢI khớp đúng danh sách check
 # trong branch protection ở docs/14-github-workflow.md. Đổi tên job ở đây

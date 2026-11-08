@@ -15,8 +15,15 @@ export class AuthJwtService {
     );
   }
 
-  async sign(userId: string, kind: "access" | "refresh", persistent: boolean) {
-    return new SignJWT({ kind, persistent })
+  async sign(
+    userId: string,
+    kind: "access" | "refresh",
+    persistent: boolean,
+    sessionVersion = 0,
+  ) {
+    if (!Number.isSafeInteger(sessionVersion) || sessionVersion < 0)
+      throw new Error("Invalid session version");
+    return new SignJWT({ kind, persistent, sessionVersion })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setSubject(userId)
       .setJti(v7())
@@ -48,7 +55,19 @@ export class AuthJwtService {
         )
       )
         throw new Error("Invalid claims");
-      return { userId: payload.sub, persistent: payload.persistent === true };
+      const sessionVersion =
+        payload.sessionVersion === undefined ? 0 : payload.sessionVersion;
+      if (
+        typeof sessionVersion !== "number" ||
+        !Number.isSafeInteger(sessionVersion) ||
+        sessionVersion < 0
+      )
+        throw new Error("Invalid session version");
+      return {
+        userId: payload.sub,
+        persistent: payload.persistent === true,
+        sessionVersion,
+      };
     } catch (error) {
       throw new UnauthorizedException({
         code:

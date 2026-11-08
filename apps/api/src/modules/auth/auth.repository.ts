@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import {
   InjectDrizzle,
@@ -83,23 +83,46 @@ export class AuthRepository {
       .set({ revoked: true })
       .where(eq(refreshTokens.userId, userId));
   }
+  /** Caller holds the user row lock; version and refresh revocation share its transaction. */
+  async invalidateSessions(tx: AuthTransaction, userId: string) {
+    await tx
+      .update(users)
+      .set({
+        sessionVersion: sql`${users.sessionVersion} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+    await this.revokeAll(tx, userId);
+  }
 
   async insertToken(tx: AuthTransaction, data: typeof authTokens.$inferInsert) {
     await tx.insert(authTokens).values(data);
   }
 
-  async tokenByHash(hash: string, tx: DrizzleDb | AuthTransaction = this.db) {
-    const [token] = await tx
+  async tokenByHash(
+    hash: string,
+    tx: DrizzleDb | AuthTransaction = this.db,
+    lock = false,
+  ) {
+    const query = tx
       .select()
       .from(authTokens)
       .where(eq(authTokens.tokenHash, hash));
+    const [token] = await (lock ? query.for("update") : query);
     return token;
+  }
+
+  async now(tx: AuthTransaction) {
+    const result = await tx.execute<{ now: string }>(
+      sql`select clock_timestamp() as now`,
+    );
+    return new Date(result.rows[0]!.now);
   }
 
   async consumeTokens(tx: AuthTransaction, userId: string, type: string) {
     await tx
       .update(authTokens)
-      .set({ usedAt: new Date() })
+      .set({ usedAt: sql`clock_timestamp()` })
       .where(
         and(
           eq(authTokens.userId, userId),

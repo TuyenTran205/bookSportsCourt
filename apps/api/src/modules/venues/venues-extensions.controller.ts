@@ -1,4 +1,6 @@
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe.js";
+import { RequestOriginGuard } from "../../common/guards/request-origin.guard.js";
+import { paymentAccountInputSchema } from "../../../../../packages/shared/src/phase4-schemas.js";
 import {
   publicVenueSearchQuerySchema,
   venueMapQuerySchema,
@@ -18,10 +20,17 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBody,
+  ApiCookieAuth,
+  ApiHeader,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { bankAccountOpenApi } from "../payments/payments.swagger.js";
 import {
   addVenueImageSchema,
-  bankAccountSchema,
   cancellationPolicySchema,
   reorderVenueImagesSchema,
 } from "../../../../../packages/shared/src/schemas.js";
@@ -106,6 +115,11 @@ export class VenueExtensionsController {
 
 @ApiTags("Venue Extensions")
 @Controller("owner/venues")
+@ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
+@ApiResponse({ status: 401, description: "UNAUTHORIZED / TOKEN_EXPIRED" })
+@ApiResponse({ status: 403, description: "FORBIDDEN / ACCOUNT_SUSPENDED" })
+@ApiResponse({ status: 404, description: "NOT_FOUND" })
+@ApiResponse({ status: 500, description: "INTERNAL_ERROR" })
 export class OwnerVenueSettingsController {
   constructor(private readonly service: VenuesService) {}
 
@@ -140,22 +154,52 @@ export class OwnerVenueSettingsController {
   @CheckOwnership("venue", "id")
   @ApiCookieAuth("access_token")
   @ApiOperation({ summary: "[Owner] Xem tài khoản nhận tiền" })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: "object",
+      required: ["data"],
+      properties: {
+        data: {
+          oneOf: [
+            bankAccountOpenApi,
+            { type: "object", nullable: true, enum: [null] },
+          ],
+        },
+      },
+    },
+  })
   getPaymentAccount(@Param("id") id: string) {
     return this.service.getPaymentAccount(id);
   }
 
   @Put(":id/payment-account")
-  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, RequestOriginGuard, OwnershipGuard)
   @Roles("owner")
   @CheckOwnership("venue", "id")
   @ApiCookieAuth("access_token")
   @ApiOperation({ summary: "[Owner] Cập nhật tài khoản nhận tiền" })
+  @ApiHeader({ name: "X-Request-Origin", required: true })
+  @ApiBody({ schema: bankAccountOpenApi })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      type: "object",
+      required: ["data"],
+      properties: { data: bankAccountOpenApi },
+    },
+  })
+  @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
+  @ApiResponse({
+    status: 403,
+    description: "FORBIDDEN / NOT_VENUE_OWNER / ACCOUNT_SUSPENDED",
+  })
   updatePaymentAccount(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
     @Body() body: unknown,
   ) {
-    const input = parseBody(bankAccountSchema, body);
+    const input = parseBody(paymentAccountInputSchema, body);
     return this.service.updatePaymentAccount(user.id, id, input);
   }
 }

@@ -106,6 +106,7 @@ test("merged AppModule boots all modules with isolated PostgreSQL", async (t) =>
         fetch(base + path, {
           method,
           headers: {
+            'X-Request-Origin': 'http://localhost:3000',
             ...(tokens[who] ? { Cookie: `access_token=${tokens[who]}` } : {}),
             ...(body !== undefined
               ? { "Content-Type": "application/json" }
