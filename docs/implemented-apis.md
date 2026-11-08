@@ -90,6 +90,19 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sá
 
 POST Venue dùng strict allowlist; ownerId/status/slug do server quyết định. Kiểm tra địa lý và danh mục, tạo Venue cùng liên kết trong một transaction; lỗi 400 VALIDATION_ERROR, 401 UNAUTHORIZED/TOKEN_EXPIRED, 403 FORBIDDEN/ACCOUNT_SUSPENDED, 409 ALREADY_EXISTS. Giải thích: [Bước 5](bsc-014-step-05-create-venue.md), [Bước 6](bsc-014-step-06-read-venues.md), [Bước 7](bsc-014-step-07-update-and-delete.md), [Bước 8](bsc-014-step-08-admin-moderation.md). Public search/map chưa triển khai.
 
+### 6. Bookings & Slots (9 endpoints)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| GET | `/api/v1/venues/:id/slots` | Công khai (tuỳ chọn cookie) | Query `date=YYYY-MM-DD` | 200, ma trận slot 30 phút theo ngày (`available/past/blocked/booked/held`, `mine: true/false`, giá) |
+| POST | `/api/v1/bookings/hold` | Customer | `CreateHoldInput` (`courtId`, `slots`, `idempotencyKey`, `note?`) | 201 (hoặc 200 nếu idempotent), booking `held` 10 phút + `transferCode` + thông tin ngân hàng |
+| GET | `/api/v1/bookings` | Customer | Query `status?`, `page`, `limit` | 200, danh sách booking của khách kèm phân trang |
+| GET | `/api/v1/bookings/:id` | Customer (chính chủ) / Owner / Admin | Không có | 200, chi tiết booking (court, venue, customer mask phone, payment) |
+| GET | `/api/v1/bookings/:id/cancellation-preview` | Customer / Owner | Không có | 200, xem trước điều kiện huỷ và số tiền cọc được hoàn |
+| PATCH | `/api/v1/bookings/:id/cancel` | Customer (chính chủ) / Owner | `CancelBookingInput` (`reason?`) | 200, huỷ booking (cập nhật payments sang `cancelled` hoặc `refunded`) |
+| GET | `/api/v1/owner/bookings` | Owner | Query `venueId?`, `courtId?`, `status?`, `from?`, `to?`, `page`, `limit` | 200, danh sách booking tại các sân của chủ sân |
+| POST | `/api/v1/owner/bookings/manual` | Owner | `CreateManualBookingInput` (`courtId`, `slots`, `guestName`, `guestPhone`, `note?`) | 201, tạo booking `confirmed`, thanh toán `cash` completed |
+| PATCH | `/api/v1/bookings/:id/no-show` | Owner | Không có | 200, đánh dấu khách không đến (sau giờ bắt đầu) |
+
 ## Input và hành vi từng API
 
 ### 1. Đăng ký
