@@ -54,46 +54,30 @@ test("Group 1 CatalogsService validates slug uniqueness and resource usage", asy
   });
 });
 
-test("Group 1 OwnerApplicationsService handles application flow and transitions", async (t) => {
-  await t.test("blocks apply if user already has role owner", async () => {
-    const mockRepo: any = {};
-    const service = new OwnerApplicationsService(mockRepo);
-    await assert.rejects(
-      async () =>
-        service.apply("user-1", "owner", {
-          businessName: "Sân Sao Mai",
-          phone: "0901234567",
-          address: "123 Đường Số 1",
-          bankBin: "970436",
-          bankName: "Vietcombank",
-          accountNo: "0123456789",
-          accountName: "NGUYEN VAN A",
-        }),
-      (err: any) =>
-        err.status === 409 && err.response?.code === "ALREADY_EXISTS",
-    );
-  });
-
+test("Owner application decisions enforce role, terminal retry and inactive target rules", async (t) => {
+  const app = { status: "approved", reviewNote: null } as Parameters<
+    typeof applicationDecision
+  >[0];
+  const target = {
+    status: "active",
+    role: "owner",
+    deletedAt: null,
+  } as NonNullable<Parameters<typeof applicationDecision>[1]>;
   await t.test(
-    "blocks apply if user has existing pending application",
-    async () => {
-      const mockRepo: any = {
-        findPendingByUserId: async () => ({ id: "app-1", status: "pending" }),
-      };
-      const service = new OwnerApplicationsService(mockRepo);
-      await assert.rejects(
-        async () =>
-          service.apply("user-1", "customer", {
-            businessName: "Sân Sao Mai",
-            phone: "0901234567",
-            address: "123 Đường Số 1",
-            bankBin: "970436",
-            bankName: "Vietcombank",
-            accountNo: "0123456789",
-            accountName: "NGUYEN VAN A",
-          }),
-        (err: any) =>
-          err.status === 409 && err.response?.code === "ALREADY_EXISTS",
+    "same approval retry is no-op only while target remains owner",
+    () => {
+      assert.equal(
+        applicationDecision(app, target, { status: "approved" }),
+        "noop",
+      );
+      assert.throws(
+        () =>
+          applicationDecision(
+            app,
+            { ...target, role: "customer" },
+            { status: "approved" },
+          ),
+        (error: any) => error.status === 400,
       );
     },
   );

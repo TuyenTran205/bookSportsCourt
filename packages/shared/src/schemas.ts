@@ -284,52 +284,6 @@ export const updateVenueSchema = z
     },
   );
 
-// This validates the payload only; state transitions belong in apps/api.
-export const venueStatusUpdateSchema = z
-  .object({
-    status: z.enum(VENUE_STATUSES),
-    reason: z.string().trim().min(1).max(500).optional(),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    if ((value.status === "rejected") !== (value.reason !== undefined)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["reason"],
-        message: "Chỉ trạng thái rejected yêu cầu lý do từ chối",
-      });
-    }
-  });
-
-export type UpdateVenueInput = z.infer<typeof updateVenueSchema>;
-export type VenueStatusUpdateInput = z.infer<typeof venueStatusUpdateSchema>;
-
-// HTTP query strings may be strings; reject arrays, blanks, booleans and exponents.
-const venueQueryInteger = z.union([
-  z.number().int().positive().safe(),
-  z
-    .string()
-    .regex(/^[0-9]+$/)
-    .transform(Number)
-    .pipe(z.number().int().positive().safe()),
-]);
-export const venuePageFields = {
-  page: venueQueryInteger.default(1),
-  limit: venueQueryInteger
-    .refine((value) => value <= 100, "Tối đa 100 mục")
-    .default(20),
-};
-export const ownerVenueQuerySchema = z.object(venuePageFields).strict();
-export const adminVenueQuerySchema = z
-  .object({
-    ...venuePageFields,
-    status: z.enum(VENUE_STATUSES).default("pending"),
-    q: z.string().trim().max(200).optional(),
-  })
-  .strict();
-export type OwnerVenueQueryInput = z.infer<typeof ownerVenueQuerySchema>;
-export type AdminVenueQueryInput = z.infer<typeof adminVenueQuerySchema>;
-
 export const createCourtSchema = z.object({
     name: z.string().min(1, "Vui lòng nhập tên sân").max(100).trim(),
     description: z.string().max(1000).optional(),
@@ -574,7 +528,7 @@ const venueQueryInteger = z.union([
         .pipe(z.number().int().positive().safe()),
 ]);
 
-const venuePageFields = {
+export const venuePageFields = {
     page: venueQueryInteger.default(1),
     limit: venueQueryInteger
         .refine((value) => value <= 100, "Tối đa 100 mục")
