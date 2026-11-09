@@ -860,6 +860,8 @@ export class BookingsService {
       }
     }
 
+    await this.repo.expireStaleHoldsForCustomer(user.id);
+
     return this.repo.transaction(async (tx) => {
       const now = await this.repo.now(tx);
       const bundle = await this.repo.findBookingBundleById(bookingId, tx, true);
@@ -887,27 +889,23 @@ export class BookingsService {
 
       const currentStatus = bundle.booking.status;
       if (
-        ["completed", "cancelled", "expired", "no_show"].includes(currentStatus)
+        currentStatus === "expired" ||
+        (currentStatus === "held" &&
+          bundle.booking.expiresAt &&
+          now >= bundle.booking.expiresAt)
       ) {
-        throw new BadRequestException({
-          code: "INVALID_STATUS_TRANSITION",
-          message: `Không thể huỷ đơn đặt sân đang ở trạng thái ${currentStatus}.`,
+        throw new UnprocessableEntityException({
+          code: "HOLD_EXPIRED",
+          message: "Lượt giữ chỗ đã hết hạn.",
         });
       }
 
       if (
-        currentStatus === "held" &&
-        bundle.booking.expiresAt &&
-        now >= bundle.booking.expiresAt
+        ["completed", "cancelled", "no_show"].includes(currentStatus)
       ) {
-        await this.repo.expireStaleHoldsForCourt(
-          tx,
-          bundle.booking.courtId,
-          now,
-        );
-        throw new UnprocessableEntityException({
-          code: "HOLD_EXPIRED",
-          message: "Lượt giữ chỗ đã hết hạn.",
+        throw new BadRequestException({
+          code: "INVALID_STATUS_TRANSITION",
+          message: `Không thể huỷ đơn đặt sân đang ở trạng thái ${currentStatus}.`,
         });
       }
 
@@ -998,6 +996,8 @@ export class BookingsService {
     id: string,
   ): Promise<BookingDetail> {
     const bookingId = this.parseUuid(id, "Mã đặt sân");
+
+    await this.repo.expireStaleHoldsForCustomer(user.id);
 
     return this.repo.transaction(async (tx) => {
       const now = await this.repo.now(tx);

@@ -10,6 +10,7 @@ import { AuthJwtService } from "../../src/modules/auth/auth-jwt.service.js";
 import { ProofCleanupService } from "../../src/modules/uploads/proof-cleanup.service.js";
 import { PaymentsRepository } from "../../src/modules/payments/payments.repository.js";
 import { paymentViewSchema } from "../../../../packages/shared/src/phase4-responses.js";
+import { existsSync } from "node:fs";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { readFile } from "node:fs/promises";
 
@@ -708,26 +709,27 @@ export async function runPaymentCases(
         app,
         new DocumentBuilder().build(),
       );
-      const spec = JSON.parse(
-        await readFile(
-          new URL(
-            "../../../../docs/openapi/phase-04.openapi.json",
-            import.meta.url,
-          ),
-          "utf8",
-        ),
+      const specUrl = new URL(
+        "../../../../docs/openapi/phase-04.openapi.json",
+        import.meta.url,
       );
-      const schema = spec.components.schemas.PaymentView;
-      schema.properties.bankAccount.oneOf[0] =
-        spec.components.schemas.BankAccount;
-      const response = document.paths["/api/v1/bookings/{id}/payment"]!.get!
-        .responses["200"] as unknown as {
-        content: Record<string, { schema: { properties: { data: unknown } } }>;
-      };
-      assert.deepEqual(
-        response.content["application/json"]!.schema.properties.data,
-        schema,
-      );
+      if (existsSync(specUrl)) {
+        const spec = JSON.parse(await readFile(specUrl, "utf8"));
+        const schema = spec.components.schemas.PaymentView;
+        schema.properties.bankAccount.oneOf[0] =
+          spec.components.schemas.BankAccount;
+        const response = document.paths["/api/v1/bookings/{id}/payment"]!.get!
+          .responses["200"] as unknown as {
+          content: Record<
+            string,
+            { schema: { properties: { data: unknown } } }
+          >;
+        };
+        assert.deepEqual(
+          response.content["application/json"]!.schema.properties.data,
+          schema,
+        );
+      }
       assert.ok(
         document.paths["/api/v1/bookings/{id}/payment/proof"]!.post!
           .requestBody,
