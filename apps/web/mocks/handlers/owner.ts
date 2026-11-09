@@ -1423,11 +1423,9 @@ export const ownerHandlers = [
       phone: body.phone,
       address: body.address,
       taxCode: body.taxCode ?? null,
-      idCardUrl: body.idCardUrl ?? null,
-      bankBin: body.bankBin,
-      bankName: body.bankName,
-      accountNo: body.accountNo,
-      accountName: body.accountName,
+      // BE không còn thu thập CCCD/ngân hàng trong hồ sơ chủ sân — tài khoản
+      // nhận tiền được khai riêng ở cấu hình cơ sở (payment-account).
+      idCardUrl: null,
       note: body.note ?? null,
       status: 'pending',
       rejectReason: null,

@@ -9,7 +9,6 @@ import { useForm } from 'react-hook-form';
 import {
   ArrowRight,
   BadgeCheck,
-  Banknote,
   Building2,
   ClipboardCheck,
   FileText,
@@ -25,11 +24,9 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { FormField } from '@/components/common/FormField';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { NativeSelect } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api/errors';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { SUPPORTED_BANKS } from '@/lib/utils/payment-qr';
 import { useMyOwnerApplication, useSubmitOwnerApplication } from '@/lib/hooks/useOwnerApplication';
 
 function ApplicationLoading() {
@@ -91,7 +88,6 @@ export function OwnerApplicationScreen() {
     register,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
   } = useForm<OwnerApplicationInput>({
     resolver: zodResolver(ownerApplicationSchema),
@@ -100,12 +96,7 @@ export function OwnerApplicationScreen() {
       phone: '',
       address: '',
       taxCode: undefined,
-      bankBin: '',
-      bankName: '',
-      accountNo: '',
-      accountName: '',
       note: '',
-      idCardUrl: '',
     },
   });
 
@@ -127,12 +118,7 @@ export function OwnerApplicationScreen() {
         phone: application.phone ?? application.user.phone ?? '',
         address: application.address ?? '',
         taxCode: application.taxCode ?? undefined,
-        bankBin: application.bankBin ?? '',
-        bankName: application.bankName ?? '',
-        accountNo: application.accountNo ?? '',
-        accountName: application.accountName ?? '',
         note: application.note ?? '',
-        idCardUrl: application.idCardUrl ?? '',
       });
     }
   }, [applicationQuery.data, reset]);
@@ -144,12 +130,7 @@ export function OwnerApplicationScreen() {
         businessName: input.businessName,
         phone: input.phone,
         address: input.address,
-        bankBin: input.bankBin,
-        bankName: input.bankName,
-        accountNo: input.accountNo,
-        accountName: input.accountName,
         ...(input.note ? { note: input.note } : {}),
-        ...(input.idCardUrl ? { idCardUrl: input.idCardUrl } : {}),
         ...(input.taxCode ? { taxCode: input.taxCode } : {}),
       });
     } catch (error) {
@@ -322,74 +303,6 @@ export function OwnerApplicationScreen() {
 
             <ApplicationSection
               number="2"
-              title={t('accountSectionTitle')}
-              description={t('accountSectionDescription')}
-              icon={Banknote}
-            >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <FormField
-                  label={t('bankLabel')}
-                  htmlFor="owner-application-bank"
-                  required
-                  error={errors.bankBin?.message}
-                >
-                  <NativeSelect
-                    id="owner-application-bank"
-                    aria-invalid={Boolean(errors.bankBin)}
-                    defaultValue=""
-                    {...register('bankBin', {
-                      onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
-                        const bank = SUPPORTED_BANKS.find((item) => item.bin === event.target.value);
-                        setValue('bankName', bank?.name ?? '', {
-                          shouldValidate: true,
-                        });
-                      },
-                    })}
-                  >
-                    <option value="" disabled>
-                      {t('bankPlaceholder')}
-                    </option>
-                    {SUPPORTED_BANKS.map((bank) => (
-                      <option key={bank.bin} value={bank.bin}>
-                        {bank.name}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </FormField>
-                <FormField
-                  label={t('accountNumberLabel')}
-                  htmlFor="owner-application-account-number"
-                  required
-                  error={errors.accountNo?.message}
-                >
-                  <Input
-                    id="owner-application-account-number"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder={t('accountNumberPlaceholder')}
-                    aria-invalid={Boolean(errors.accountNo)}
-                    {...register('accountNo')}
-                  />
-                </FormField>
-              </div>
-              <FormField
-                label={t('accountHolderLabel')}
-                htmlFor="owner-application-account-holder"
-                required
-                error={errors.accountName?.message}
-              >
-                <Input
-                  id="owner-application-account-holder"
-                  autoComplete="name"
-                  placeholder={t('accountHolderPlaceholder')}
-                  aria-invalid={Boolean(errors.accountName)}
-                  {...register('accountName')}
-                />
-              </FormField>
-            </ApplicationSection>
-
-            <ApplicationSection
-              number="3"
               title={t('reviewSectionTitle')}
               description={t('reviewSectionDescription')}
               icon={FileText}
@@ -407,23 +320,6 @@ export function OwnerApplicationScreen() {
                   placeholder={t('descriptionPlaceholder')}
                   aria-invalid={Boolean(errors.note)}
                   {...register('note', {
-                    setValueAs: (value: string) => value.trim() || undefined,
-                  })}
-                />
-              </FormField>
-              <FormField
-                label={t('documentUrlLabel')}
-                htmlFor="owner-application-document-url"
-                hint={t('documentUrlHint')}
-                error={errors.idCardUrl?.message}
-              >
-                <Input
-                  id="owner-application-document-url"
-                  type="url"
-                  inputMode="url"
-                  placeholder={t('documentUrlPlaceholder')}
-                  aria-invalid={Boolean(errors.idCardUrl)}
-                  {...register('idCardUrl', {
                     setValueAs: (value: string) => value.trim() || undefined,
                   })}
                 />

@@ -62,7 +62,7 @@ function AvatarSection({ user }: { user: User }) {
   const uploadMutation = useMutation({
     mutationFn: uploadAvatar,
     onSuccess: async (result) => {
-      queryClient.setQueryData(authKeys.me(), result);
+      queryClient.setQueryData(authKeys.me(), result.user);
       await queryClient.invalidateQueries({ queryKey: authKeys.me() });
       toast.success('Cập nhật ảnh đại diện thành công');
     },

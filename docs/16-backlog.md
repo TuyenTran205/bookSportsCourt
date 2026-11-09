@@ -1,6 +1,6 @@
 ﻿# 16 – Backlog
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.2.1 | **Cập nhật lần cuối:** 2026-11-06
 >
 > Danh sách issue sẵn sàng tạo trên GitHub. Mã tính năng khớp với `02-features-by-role.md`.
 
@@ -115,7 +115,7 @@
 | BSC-064 | Yêu thích sân API + FE | CUS-12 | `type:feature` `area:api` `area:web` `prio:P1` `phase:2` | TV3 | S | BSC-059 |
 | BSC-065 | Chính sách huỷ & cọc (cấu hình Owner + áp dụng khi huỷ) | OWN-10 CUS-11 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV2 | M | BSC-057 |
 | BSC-066 | Báo cáo tỷ lệ lấp đầy (Owner) | OWN-12 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV4 | M | BSC-036 |
-| BSC-067 | Owner quản lý đánh giá (ẩn/hiện, phản hồi) | OWN-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV3 | M | BSC-059 |
+| BSC-067 | Owner xem và phản hồi đánh giá (không ẩn/hiện; kiểm duyệt thuộc Admin BSC-072) | OWN-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV3 | M | BSC-059 |
 | BSC-068 | Admin: xem toàn bộ booking + lọc | ADM-07 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
 | BSC-069 | Admin: thống kê toàn hệ thống | ADM-08 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
 | BSC-070 | Admin API: khoá / mở khoá tài khoản | ADM-03 | `type:feature` `area:api` `prio:P0` `phase:4` | TV1 | S | BSC-010 |

@@ -1,4 +1,15 @@
-import { Module } from "@nestjs/common";
+import {
+  Module,
+  type NestModule,
+  type MiddlewareConsumer,
+} from "@nestjs/common";
+import { sessionScope } from "./session-context.js";
+import { GoogleOAuthController } from "./google-oauth.controller.js";
+import { GoogleOAuthService } from "./google-oauth.service.js";
+import { GoogleOAuthRepository } from "./google-oauth.repository.js";
+import { GoogleIdentityProvider } from "./google-identity.provider.js";
+import { MailModule } from "../mail/mail.module.js";
+import { RealtimeSessionsService } from "./realtime-sessions.service.js";
 import { AuthController, CurrentUserController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { AuthRepository } from "./auth.repository.js";
@@ -10,11 +21,18 @@ import { RolesGuard } from "../../common/guards/roles.guard.js";
 import { OwnershipGuard } from "../../common/guards/ownership.guard.js";
 import { OwnershipService } from "./ownership.service.js";
 import { OwnershipRepository } from "./ownership.repository.js";
+import { RequestOriginGuard } from "../../common/guards/request-origin.guard.js";
 
 @Module({
-  controllers: [AuthController, CurrentUserController],
+  imports: [MailModule],
+  controllers: [AuthController, CurrentUserController, GoogleOAuthController],
   providers: [
+    GoogleOAuthService,
+    GoogleOAuthRepository,
+    GoogleIdentityProvider,
+    RealtimeSessionsService,
     AuthService,
+    RequestOriginGuard,
     AuthRepository,
     AuthJwtService,
     AuthMailService,
@@ -27,6 +45,8 @@ import { OwnershipRepository } from "./ownership.repository.js";
     OwnershipRepository,
   ],
   exports: [
+    RealtimeSessionsService,
+    RequestOriginGuard,
     AuthService,
     JwtAuthGuard,
     RolesGuard,
@@ -34,4 +54,8 @@ import { OwnershipRepository } from "./ownership.repository.js";
     OwnershipService,
   ],
 })
-export class AuthModule {}
+export class AuthModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(sessionScope).forRoutes("*");
+  }
+}

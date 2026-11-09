@@ -4,6 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { BookingsModule } from "./modules/bookings/bookings.module.js";
+import { BusinessMailModule } from "./modules/mail/business-mail.module.js";
+import { ReviewsModule } from "./modules/reviews/reviews.module.js";
+import { AdminModule } from "./modules/admin/admin.module.js";
+import { UsersModule } from "./modules/users/users.module.js";
+import { ScheduleModule } from "@nestjs/schedule";
+import { PaymentsModule } from "./modules/payments/payments.module.js";
+import { AuditModule } from "./modules/audit/audit.module.js";
 import { CatalogsModule } from "./modules/catalogs/catalogs.module.js";
 import { CourtsModule } from "./modules/courts/courts.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
@@ -27,6 +34,13 @@ import { validateConfig } from "./config/app-config.js";
     DatabaseModule,
     HealthModule,
     AuthModule,
+    AdminModule,
+    UsersModule,
+    ScheduleModule.forRoot(),
+    BusinessMailModule,
+    ReviewsModule,
+    PaymentsModule,
+    AuditModule,
     CatalogsModule,
     OwnerApplicationsModule,
     VenuesModule,

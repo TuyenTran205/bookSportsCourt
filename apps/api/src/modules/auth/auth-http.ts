@@ -67,9 +67,25 @@ export class AuthCookies {
       path: "/api/v1",
     };
   }
+  /**
+   * Cookie gợi ý phiên cho `apps/web/middleware.ts`.
+   *
+   * `access_token`/`refresh_token` là httpOnly và chỉ gửi kèm `/api/v1`, nên
+   * middleware của Next (chạy trên route trang như `/owner/*`) không đọc được.
+   * Hai cookie này KHÔNG chứa bí mật — chỉ để chặn route sớm cho UX; mọi
+   * kiểm tra quyền thật vẫn do guard của API thực hiện.
+   */
+  private hintOptions(): CookieOptions {
+    return { ...this.options(), httpOnly: false, path: "/" };
+  }
   set(
     response: AuthResponse,
-    session: { accessToken: string; refreshToken: string; persistent: boolean },
+    session: {
+      accessToken: string;
+      refreshToken: string;
+      persistent: boolean;
+      user?: { id: string; role: string };
+    },
   ) {
     const options = this.options();
     response.cookie("access_token", session.accessToken, {
@@ -80,10 +96,34 @@ export class AuthCookies {
       ...options,
       ...(session.persistent ? { maxAge: 30 * 86400_000 } : {}),
     });
+    if (session.user) {
+      // Cùng vòng đời với refresh_token: access_token hết hạn thì FE tự refresh.
+      const hint = {
+        ...this.hintOptions(),
+        ...(session.persistent ? { maxAge: 30 * 86400_000 } : {}),
+      };
+      response.cookie("bsc_session", session.user.id, hint);
+      response.cookie("bsc_role", session.user.role, hint);
+    }
   }
   clear(response: AuthResponse) {
     response.clearCookie("access_token", this.options());
     response.clearCookie("refresh_token", this.options());
+    response.clearCookie("bsc_session", this.hintOptions());
+    response.clearCookie("bsc_role", this.hintOptions());
+  }
+  setGoogleBinding(response: AuthResponse, binding: string) {
+    response.cookie("google_oauth_binding", binding, {
+      ...this.options(),
+      path: "/api/v1/auth/google",
+      maxAge: 600000,
+    });
+  }
+  clearGoogleBinding(response: AuthResponse) {
+    response.clearCookie("google_oauth_binding", {
+      ...this.options(),
+      path: "/api/v1/auth/google",
+    });
   }
 }
 

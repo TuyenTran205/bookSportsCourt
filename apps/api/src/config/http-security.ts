@@ -12,7 +12,13 @@ export function configureHttpSecurity(app: INestApplication): void {
   );
   app.use(
     (request: IncomingMessage, response: ServerResponse, next: () => void) => {
-    const path = (request.url?.split("?")[0] ?? "").replace(/\/+$/u, "");
+      const path = (request.url?.split("?")[0] ?? "").replace(/\/+$/u, "");
+      if (
+        path === "/api/v1/auth/google" ||
+        path === "/api/v1/auth/google/callback"
+      ) {
+        response.setHeader("Referrer-Policy", "no-referrer");
+      }
       if (path.startsWith("/api/v1/auth/") || path === "/api/v1/users/me") {
         response.setHeader("Cache-Control", "no-store");
       }

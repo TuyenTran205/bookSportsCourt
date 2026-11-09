@@ -1,6 +1,6 @@
 # Lộ trình triển khai Backend BookSportsCourt
 
-> **Phiên bản:** 1.12.0 | **Cập nhật lần cuối:** 2026-11-05
+> **Phiên bản:** 1.12.14 | **Cập nhật lần cuối:** 2026-11-08
 
 ## Checklist theo dõi tiến độ BE
 
@@ -49,7 +49,8 @@ Checklist từng Phase theo dõi riêng **triển khai BE** và **nghiệm thu**
 - [x] BSC-029 — Test đồng thời chống trùng lịch.
 - [ ] BSC-064 — Favorites API (P1).
 - [x] BSC-077 — Cron auto-complete booking.
-- [ ] BSC-078 — Cron nhắc lịch trước 24 giờ (P1).
+- [x] BSC-078 — Đã triển khai cron 15 phút bắt kịp 24h, intent/notification nguyên tử, unique chống trùng và marker theo ACK; kiểm thử PostgreSQL ở Bước 10 Phase 4.
+- [ ] BSC-078 — Nghiệm thu với hold/auto-complete thật của Phase 2 và mail provider test.
 - [ ] Chốt OpenAPI-2 theo mốc giữa Phase 2.
 - [ ] Nghiệm thu Phase 2: hold, expire, slots, realtime và race condition.
 
@@ -66,23 +67,37 @@ Checklist từng Phase theo dõi riêng **triển khai BE** và **nghiệm thu**
 
 ### Phase 4 – Thanh toán, Admin, email
 
-- [x] Phần nền cho BSC-042 — Đã triển khai GET/PUT tài khoản nhận tiền Venue; xem mục API chưa có issue BE riêng.
-- [ ] BSC-042 — Thông tin thanh toán theo hold và nhận bằng chứng thanh toán.
-- [ ] BSC-043 — Owner duyệt/từ chối idempotent, cron huỷ quá hạn.
+Kế hoạch chính: triển khai đầy đủ BE Phase 4 theo tài liệu dự án, gồm P0/P1, quy tắc bắt buộc và AC từng bước. Phase 2 do thành viên khác phụ trách: dùng thêm hướng dẫn làm độc lập. Chốt contract → fixture PostgreSQL → code/test độc lập; các ca với hold/cron/realtime thật và OpenAPI-3 để nghiệm thu sau tích hợp.
+
+- [x] Phần API/test độc lập BSC-042 — GET/PUT tài khoản nhận tiền, GET payment snapshot và POST proof private, deadline/transaction/outbox/cleanup; HTTP/PostgreSQL đạt. Bước 4 Phase 4.
+- [ ] BSC-042 — Nghiệm thu với hold thật Phase 2, bucket R2 private/TTL thật và consumer realtime sau commit; không coi fixture/storage double là E2E.
+- [x] BSC-043 — Đã triển khai/test độc lập BE Owner list/duyệt/từ chối idempotent và cron huỷ quá hạn; audit/outbox cùng transaction, PostgreSQL concurrency/rollback. Giải thích Bước 5.
+- [ ] Nghiệm thu tích hợp BSC-043 với hold/payment Phase 2 và email/realtime consumer thực; fixture không thay nghiệm thu vòng đời cuối Phase 4.
 - [x] Đã triển khai API Admin xem/duyệt/từ chối hồ sơ Owner, phục vụ BSC-040; approved cập nhật hồ sơ và cấp role trong transaction.
-- [ ] Nghiệm thu Admin duyệt Owner: approve/reject đồng thời, kiểm tra lại quyền trong transaction và contract hồ sơ đầy đủ.
-- [ ] BSC-068 — Admin xem/lọc toàn bộ booking.
-- [ ] BSC-069 — Thống kê toàn hệ thống.
-- [ ] BSC-070 — Admin khoá/mở khoá tài khoản.
-- [x] Phần nền cho BSC-071 — Đã triển khai audit nguyên tử cho Admin kiểm duyệt Venue.
-- [ ] BSC-071 — Cơ chế audit dùng chung, các hành động Admin khác và GET /admin/audit-logs.
-- [ ] BSC-045 — Email nghiệp vụ booking (P1).
-- [ ] BSC-046 — Khách đánh giá sân sau booking completed (P1).
-- [ ] BSC-047 — Google OAuth (P1).
-- [ ] BSC-072 — Admin kiểm duyệt đánh giá (P1).
-- [x] BSC-076 — Đã triển khai forgot/reset password và tích hợp gửi email auth; test HTTP/PostgreSQL đạt (P1).
-- [ ] BSC-076 — Nghiệm thu gửi/nhận email thật, cấu hình môi trường và tích hợp luồng nhận link.
+- [x] Nghiệm thu BE Admin duyệt Owner: approve/reject đồng thời, kiểm tra lại Admin/target trong transaction, retry, role+hồ sơ+audit rollback và contract hồ sơ/taxCode/projection. Bước 6.
+- [ ] Nghiệm thu FE Dashboard BSC-040 và Gateway/sessionVersion theo bước tương ứng; API duyệt xong không hoàn thành phần FE.
+- [x] BSC-068 — Đã triển khai/test BE Admin xem/lọc booking, lịch sử Venue/Court xoá mềm, projection và snapshot pagination. Bước8–9.
+- [x] BSC-069 — Đã triển khai/test BE stats toàn hệ thống, VN day/week/month, thu/hoàn/cọc/cash, legacy quality và số nguyên an toàn.
+- [ ] Nghiệm thu FE Dashboard/dữ liệu booking-payment Phase2 thật; backend test không thay nghiệm thu tích hợp. Migration0009 đã áp dụng vào DB ứng dụng local.
+- [x] BSC-070 — Đã triển khai/test BE Admin list/detail/khoá/mở user, bảo vệ Admin, audit/version/revoke nguyên tử và kiểm thử token/payment concurrency. Bước 7.
+- [ ] Nghiệm thu adapter session với Gateway BSC-026/room/private emitter thực và FE quản lý user BSC-041; hiện chỉ HTTP/session và adapter đã kiểm thử độc lập.
+- [x] Phần nền BSC-071 — Audit nguyên tử Venue dùng helper chung; GET /admin/audit-logs Admin-only, filter/pagination/projection/Swagger; test PostgreSQL đạt. Xem Bước 3 Phase 4.
+- [x] BSC-071 — Đã gắn/test writer chung cho Owner application, user status, review visibility, payment approve/reject/review-timeout và Venue moderation; rollback/no-op kiểm chứng theo từng mutation.
+- [ ] BSC-071 — Producer payment.refunded còn phụ thuộc API refund chưa triển khai; coverage tài chính toàn Phase chưa hoàn tất.
+- [x] BSC-045 — Đã triển khai email MVP: transport dùng chung Auth, năm template VN/VND, worker outbox/lease/retry/key ổn định, unknown và cron reminder; migration0010 đã áp dụng local. Code/test/phạm vi.
+- [ ] BSC-045 — Smoke provider tới mailbox test; producer hold/cancel/Owner notification Phase2, Gateway và API notification/FE còn theo subtask, chưa đóng toàn bộ CUS-14/OWN-14.
+- [x] BSC-046 — Đã triển khai BE POST review từ booking completed đúng Customer và GET public visible, unique booking/cache/transaction/kiểm thử đồng thời. Bước11–12.
+- [ ] BSC-046 — FE CUS-13 và nghiệm thu cùng booking/auto-complete Phase2 thật; không coi API là toàn bộ issue API+FE.
+- [x] BSC-047 — Đã triển khai BE Google OIDC code/PKCE/state một lần, JWKS/nonce/verified email, không auto-link, session chung và test PostgreSQL/RS256. Bước13.
+- [ ] BSC-047 — Cấu hình Google Cloud client/callback/key và smoke tài khoản test/FE; chưa xác nhận provider thật hoặc đóng issue full-stack.
+- [x] BSC-072 — Đã triển khai BE Admin list/filter và visibility, no-op/audit/cache nguyên tử, kiểm thử quyền Owner403/rollback/snapshot/concurrency. Bước11–12.
+- [ ] BSC-072 — FE ADM-10 và nghiệm thu màn hình kiểm duyệt; Owner xem/phản hồi BSC-067 là phạm vi riêng.
+- [x] BSC-076 — Nghiệm thu BE forgot/reset hiện có: 204 không dò email, hash-only/1 giờ/one-use, reset/session nguyên tử, PostgreSQL race/rollback/login/refresh; 14/14 test mới đạt (P1).
+- [x] BSC-076 — Smoke email Auth/Resend thật, đúng origin local; người dùng xác nhận đã nhận trong inbox. Token smoke không đổi mật khẩu tài khoản thật.
+- [ ] BSC-076 — FE mở link và reset end-to-end bằng tài khoản test; chưa đóng issue full-stack.
 - [ ] Nghiệm thu vòng đời booking/payment và chốt OpenAPI-3 cuối Phase 4.
+- [x] Bước15 — Đã kiểm tra BE độc lập275/275/shared14/14/typecheck/compiler build, xuất runtime candidate24 paths/25 operations, report và Postman.
+- [ ] Bước15 — Gate final: route refund còn planned, lint/toolchain/CI remote, Phase2/Gateway/provider/FE và vòng đời thật còn thiếu; không tick toàn Phase4 từ snapshot candidate.
 
 ### Các API trong contract chưa có issue BE riêng
 
@@ -236,7 +251,7 @@ Schema liên quan: BSC-010, 053–058. Các bảng đã xuất hiện trong migr
 | Khoá/mở sân bảo trì | BSC-038 | Không đè booking đang hoạt động; test cạnh tranh với tạo booking |
 | Chính sách huỷ và cọc | BSC-065, P1 | Cấu hình Owner, áp dụng tại BE, hoàn tiền thủ công theo thiết kế |
 | Doanh thu và tỷ lệ lấp đầy | BSC-039, 066, P1 | Phạm vi Venue của Owner; cần dữ liệu trạng thái booking/payment đầy đủ |
-| Owner phản hồi/quản lý đánh giá | BSC-067, P1 | Phase 3 theo backlog; quyền ẩn/hiện đang mâu thuẫn với contract, xem mục 9 |
+| Owner phản hồi/quản lý đánh giá | BSC-067, P1 | Phase3: xem/phản hồi; backlog đã đồng bộ, ẩn/hiện chỉ Admin BSC-072 |
 
 **Tiêu chí hoàn thành:** Owner xem lịch và tạo booking tại quầy, khoá/mở giờ sân mà không gây trùng lịch. Kiểm thử Owner khác chủ và thao tác đồng thời. Báo cáo P1 có thể hoàn thiện sau thanh toán Phase 4.
 
@@ -281,7 +296,7 @@ Các việc chưa có issue BE riêng (timeline, tài khoản nhận tiền, not
 |---|---|
 | Bảng mốc đầu docs/15 ghi OpenAPI-3 đầu Phase 4, phần đính chính ghi cuối Phase 4 | Dùng mốc **cuối Phase 4** theo đính chính; OpenAPI-1 cuối Phase 1, OpenAPI-2 giữa Phase 2 theo bảng mốc |
 | BSC-081 phụ thuộc BSC-050 trong backlog, nhưng docs/15 yêu cầu staging trước deploy production | Giữ cả hai mã ở Phase 5; thực hiện staging trước nghiệm thu/production theo hướng dẫn rõ trong docs/15 |
-| BSC-067 ghi Owner ẩn/hiện review; docs/06 và docs/11 dành kiểm duyệt ẩn/hiện cho Admin | Không tự cấp quyền ẩn/hiện cho Owner; cần đồng bộ acceptance criteria trước khi code |
+| BSC-067 từng ghi Owner ẩn/hiện trái docs/06 và docs/11 | Đã đồng bộ backlog thành xem/phản hồi; API Owner visibility403, quyền kiểm duyệt chỉ Admin BSC-072 |
 | BSC-067 ở Phase 3, BSC-046 tạo review ở Phase 4 | Giữ Phase gốc; nghiệm thu luồng đầy đủ sau khi có API tạo review |
 | BSC-028 huỷ booking ở Phase 2, BSC-065 cấu hình chính sách ở Phase 3 | Giữ Phase gốc; phải thống nhất chính sách áp dụng trước khi nghiệm thu chức năng huỷ |
 | Tài khoản nhận tiền, timeline, đọc booking cá nhân, notifications và no-show có trong contract nhưng chưa có issue BE riêng | Những dòng tương ứng trong roadmap là phạm vi cần phủ theo contract; cần làm rõ issue/Phase, không xem là mã backlog đã tồn tại |

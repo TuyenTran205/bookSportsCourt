@@ -8,16 +8,15 @@
 
 import { z } from "zod";
 import {
-    API_ERROR_CODES,
-    BOOKING_STATUSES,
-    COURT_STATUSES,
-    PAYMENT_STATUSES,
-    SLOT_MINUTES,
-    UPLOAD_ACCEPTED_TYPES,
-    UPLOAD_MAX_BYTES,
-    USER_ROLES,
-    USER_STATUSES,
-    VENUE_STATUSES,
+  API_ERROR_CODES,
+  BOOKING_STATUSES,
+  COURT_STATUSES,
+  PAYMENT_STATUSES,
+  SLOT_MINUTES,
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_BYTES,
+  USER_ROLES,
+  VENUE_STATUSES,
 } from "./constants.js";
 
 // ===== Nguyên thuỷ dùng lại nhiều nơi =====
@@ -87,21 +86,22 @@ export const loginSchema = z.object({
     rememberMe: z.boolean().default(false),
 });
 
-export const forgotPasswordSchema = z.object({ email: emailSchema });
+export const forgotPasswordSchema = z.object({ email: emailSchema }).strict();
 export const verifyEmailSchema = z.object({
     token: z.string().min(1, "Thiếu token xác thực email"),
 });
 
 export const resetPasswordSchema = z
-    .object({
-        token: z.string().min(1, "Thiếu token đặt lại mật khẩu"),
-        password: passwordSchema,
-        confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu"),
-    })
-    .refine((d) => d.password === d.confirmPassword, {
-        message: "Mật khẩu nhập lại không khớp",
-        path: ["confirmPassword"],
-    });
+  .object({
+    token: z.string().min(1, "Thiếu token đặt lại mật khẩu"),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu"),
+  })
+  .strict()
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Mật khẩu nhập lại không khớp",
+    path: ["confirmPassword"],
+  });
 
 export const changePasswordSchema = z
     .object({
@@ -127,8 +127,8 @@ export const updateUserRoleSchema = z.object({
 });
 
 export const updateUserStatusSchema = z.object({
-    status: z.enum(USER_STATUSES),
-});
+  status: z.enum(["active", "suspended"]),
+}).strict();
 
 // ===== Đơn vị Hành chính =====
 
@@ -229,10 +229,10 @@ export const proofUploadSchema = z.object({
 // ===== Đánh giá =====
 
 export const createReviewSchema = z.object({
-    bookingId: uuidSchema,
-    rating: z.coerce.number().int().min(1, "Vui lòng chọn số sao").max(5),
-    comment: z.string().max(2000, "Nội dung tối đa 2000 ký tự").optional(),
-});
+  bookingId: uuidSchema.transform((value) => value.toLowerCase()),
+  rating: z.number().int().min(1, "Vui lòng chọn số sao").max(5),
+  comment: z.string().trim().max(2000, "Nội dung tối đa 2000 ký tự").optional(),
+}).strict();
 
 export const replyReviewSchema = z.object({
     ownerReply: z.string().trim().min(1, "Vui lòng nhập nội dung trả lời").max(2000, "Nội dung tối đa 2000 ký tự"),
@@ -274,13 +274,15 @@ export const createVenueSchema = z
 
 // PATCH không kế thừa default mảng của POST: bỏ trống nghĩa là giữ nguyên liên kết.
 export const updateVenueSchema = z
-    .object(venueEditableFields)
-    .partial()
-    .strict()
-    .refine(
-        (value) => Object.values(value).some((field) => field !== undefined),
-        { message: "Cần ít nhất một trường cập nhật" },
-    );
+  .object(venueEditableFields)
+  .partial()
+  .strict()
+  .refine(
+    (value) => Object.values(value).some((field) => field !== undefined),
+    {
+      message: "Cần ít nhất một trường cập nhật",
+    },
+  );
 
 export const createCourtSchema = z.object({
     name: z.string().min(1, "Vui lòng nhập tên sân").max(100).trim(),
@@ -358,24 +360,20 @@ export const cancellationPolicySchema = z.object({
 // ===== Owner: đăng ký làm chủ sân =====
 
 export const ownerApplicationSchema = z.object({
-    businessName: z.string().min(2, "Vui lòng nhập tên cơ sở kinh doanh").max(200).trim(),
-    phone: phoneSchema,
-    address: z.string().min(5, "Vui lòng nhập địa chỉ cơ sở").max(500).trim(),
-    taxCode: z
-        .string()
-        .regex(/^(?:\d{10}|\d{12}|\d{13})$/, "MST gồm 10 hoặc 13 chữ số, CCCD gồm 12 chữ số")
-        .optional(),
-    bankBin: z.string().min(6, "Vui lòng chọn ngân hàng").max(20),
-    bankName: z.string().min(1, "Vui lòng chọn ngân hàng").max(200).trim(),
-    accountNo: z
-        .string()
-        .min(6, "Số tài khoản quá ngắn")
-        .max(30, "Số tài khoản quá dài")
-        .regex(/^\d+$/, "Số tài khoản chỉ gồm chữ số"),
-    accountName: z.string().min(2, "Vui lòng nhập tên chủ tài khoản").max(200).trim(),
-    note: z.string().max(2000, "Giới thiệu tối đa 2.000 ký tự").optional(),
-    idCardUrl: z.string().url("Đường dẫn giấy tờ không hợp lệ").optional(),
-});
+  businessName: z
+    .string()
+    .trim()
+    .min(2, "Vui lòng nhập tên cơ sở kinh doanh")
+    .max(200),
+  phone: phoneSchema,
+  address: z.string().trim().min(5, "Vui lòng nhập địa chỉ").max(500),
+  note: z.string().trim().max(1000).optional(),
+  taxCode: z
+    .string()
+    .trim()
+    .regex(/^\d{10}(\d{3})?$/, "Mã số thuế gồm 10 hoặc 13 chữ số")
+    .optional(),
+}).strict();
 
 export const rejectSchema = z.object({
     rejectReason: z.string().min(5, "Vui lòng nhập lý do từ chối (ít nhất 5 ký tự)").max(500, "Lý do tối đa 500 ký tự"),
@@ -520,8 +518,10 @@ export const updateOpeningHoursSchema = z.array(openingHourSchema);
 export const updatePricingRuleSchema = pricingRuleBaseSchema.partial();
 
 export const updateOwnerApplicationStatusSchema = z.object({
-    status: z.enum(["approved", "rejected"]),
-    reviewNote: z.string().max(500).optional(),
+  status: z.enum(["approved", "rejected"]),
+  reviewNote: z.string().trim().min(1).max(500).optional(),
+}).strict().refine((value) => value.status !== "rejected" || value.reviewNote !== undefined, {
+  message: "Từ chối hồ sơ cần lý do", path: ["reviewNote"],
 });
 
 export type AddVenueImageInput = z.infer<typeof addVenueImageSchema>;
@@ -548,7 +548,7 @@ const venueQueryInteger = z.union([
         .pipe(z.number().int().positive().safe()),
 ]);
 
-const venuePageFields = {
+export const venuePageFields = {
     page: venueQueryInteger.default(1),
     limit: venueQueryInteger
         .refine((value) => value <= 100, "Tối đa 100 mục")

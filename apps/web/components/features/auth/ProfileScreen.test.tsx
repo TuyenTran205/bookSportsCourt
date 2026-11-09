@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import type { User } from '@bsc/shared';
 import { ProfileScreen } from './ProfileScreen';
-import { uploadAvatar } from '@/lib/api/endpoints/auth';
+import { uploadAvatar, type AuthResult } from '@/lib/api/endpoints/auth';
 
 const mockUserWithoutAvatar: User = {
   id: 'user-1',
@@ -135,9 +135,8 @@ describe('ProfileScreen Avatar Upload (TC-AVATAR)', () => {
   });
 
   it('TC-AVATAR-05: chọn file hợp lệ (PNG <= 2MB) gọi uploadAvatar', async () => {
-    const mockAuthResult: User = {
-      ...mockUserWithoutAvatar,
-      avatarUrl: 'https://example.com/new-avatar.png',
+    const mockAuthResult: AuthResult = {
+      user: { ...mockUserWithoutAvatar, avatarUrl: 'https://example.com/new-avatar.png' },
     };
     vi.mocked(uploadAvatar).mockResolvedValueOnce(mockAuthResult);
 

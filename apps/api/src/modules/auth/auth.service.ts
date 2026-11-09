@@ -4,10 +4,16 @@ import {
   ForbiddenException,
   HttpException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
+import {
+  bindSession,
+  expectedSessionVersion,
+  invalidateLocalSockets,
+} from "./session-context.js";
 import { z } from "zod";
 import {
   USER_ROLES,
@@ -113,8 +119,18 @@ export class AuthService {
     user: AuthUser,
     persistent: boolean,
   ) {
-    const accessToken = await this.jwt.sign(user.id, "access", persistent);
-    const refreshToken = await this.jwt.sign(user.id, "refresh", persistent);
+    const accessToken = await this.jwt.sign(
+      user.id,
+      "access",
+      persistent,
+      user.sessionVersion,
+    );
+    const refreshToken = await this.jwt.sign(
+      user.id,
+      "refresh",
+      persistent,
+      user.sessionVersion,
+    );
     await this.repo.insertRefresh(tx, {
       userId: user.id,
       tokenHash: hashToken(refreshToken),
@@ -143,11 +159,19 @@ export class AuthService {
     });
   }
 
+  /** Only called after server-side Google verification, inside the account transaction. */
+  async sessionForGoogle(tx: AuthTransaction, userId: string) {
+    const user = await this.repo.lockUser(tx, userId);
+    this.active(user);
+    return this.session(tx, user, false);
+  }
+
   async refresh(raw: string | undefined) {
     const claims = await this.jwt.verify(raw, "refresh");
     const result = await this.repo.transaction(async (tx) => {
       const user = await this.repo.lockUser(tx, claims.userId);
       this.active(user);
+      this.checkVersion(user, claims.sessionVersion);
       const token = await this.repo.refreshByHash(hashToken(raw ?? ""), tx);
       if (!token || token.userId !== user.id) return null;
       if (token.revoked) {
@@ -198,24 +222,31 @@ export class AuthService {
 
   private async deliverReset(email: string) {
     const user = await this.repo.byEmail(email);
-    if (!user || user.status !== "active") return;
+    if (!user || user.status !== "active" || !user.passwordHash) return;
+    this.mail.assertConfigured();
     const token = generateOneTimeToken();
     const issued = await this.repo.transaction(async (tx) => {
       const current = await this.repo.lockUser(tx, user.id);
-      if (!current || current.deletedAt || current.status !== "active")
+      if (
+        !current ||
+        current.deletedAt ||
+        current.status !== "active" ||
+        !current.passwordHash ||
+        current.email !== email
+      )
         return false;
       await this.repo.consumeTokens(tx, user.id, "password_reset");
       await this.repo.insertToken(tx, {
         userId: user.id,
         type: "password_reset",
         tokenHash: token.tokenHash,
-        expiresAt: new Date(Date.now() + 3600_000),
+        expiresAt: new Date((await this.repo.now(tx)).getTime() + 3600_000),
       });
       return true;
     });
     if (issued) {
       try {
-        await this.mail.send(user.email, token.token, "password_reset");
+        await this.mail.send(email, token.token, "password_reset");
       } catch {
         /* Same 204 for existing/non-existing addresses, including delivery failures. */
       }
@@ -237,37 +268,51 @@ export class AuthService {
     const hash = hashToken(raw);
     const found = await this.repo.tokenByHash(hash);
     if (!found) return this.invalidToken();
-    await this.repo.transaction(async (tx) => {
+    const invalidatedUser = await this.repo.transaction(async (tx) => {
       const user = await this.repo.lockUser(tx, found.userId);
-      const token = await this.repo.tokenByHash(hash, tx);
+      const token = await this.repo.tokenByHash(hash, tx, true);
+      const now = await this.repo.now(tx);
       if (
         !user ||
         user.deletedAt ||
         user.status !== "active" ||
         !token ||
+        token.userId !== user.id ||
         token.type !== type ||
         token.usedAt ||
-        token.expiresAt.getTime() <= Date.now()
+        token.expiresAt.getTime() <= now.getTime()
       )
         return this.invalidToken();
       await this.repo.consumeTokens(tx, user.id, type);
       if (type === "password_reset" && passwordHash) {
+        if (!user.passwordHash) return this.invalidToken();
         await this.repo.updateUser(tx, user.id, { passwordHash });
-        await this.repo.revokeAll(tx, user.id);
+        await this.repo.invalidateSessions(tx, user.id);
+        return user.id;
       } else {
         await this.repo.updateUser(tx, user.id, {
           emailVerifiedAt: new Date(),
         });
       }
     });
+    if (invalidatedUser) invalidateLocalSockets(invalidatedUser);
   }
 
   async resetPassword(dto: z.infer<typeof resetPasswordSchema>) {
-    await this.consume(
-      dto.token,
-      "password_reset",
-      await hashPassword(dto.password),
-    );
+    try {
+      await this.consume(
+        dto.token,
+        "password_reset",
+        await hashPassword(dto.password),
+      );
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      // Do not propagate Drizzle errors with password hashes/token parameters into request logs.
+      throw new InternalServerErrorException({
+        code: "INTERNAL_ERROR",
+        message: "Không thể đặt lại mật khẩu lúc này.",
+      });
+    }
   }
 
   async verifyEmail(token: string) {
@@ -276,7 +321,12 @@ export class AuthService {
 
   async me(raw: string | undefined) {
     const claims = await this.jwt.verify(raw, "access");
-    return this.requireActiveUser(claims.userId);
+    bindSession(claims.userId, claims.sessionVersion);
+    return this.requireActiveUser(
+      claims.userId,
+      undefined,
+      claims.sessionVersion,
+    );
   }
 
   async updateProfile(
@@ -298,9 +348,10 @@ export class AuthService {
     userId: string,
     dto: z.infer<typeof changePasswordSchema>,
   ): Promise<void> {
-    return this.repo.transaction(async (tx) => {
+    await this.repo.transaction(async (tx) => {
       const user = await this.repo.lockUser(tx, userId);
       this.active(user);
+      this.checkVersion(user, expectedSessionVersion(userId));
       if (!user.passwordHash) {
         throw new BadRequestException({
           code: "VALIDATION_ERROR",
@@ -319,19 +370,32 @@ export class AuthService {
       }
       const newHash = await hashPassword(dto.newPassword);
       await this.repo.updateUser(tx, userId, { passwordHash: newHash });
-      await this.repo.revokeAll(tx, userId);
+      await this.repo.invalidateSessions(tx, userId);
     });
+    invalidateLocalSockets(userId);
+  }
+  private checkVersion(user: AuthUser, expected: number | undefined) {
+    if (expected !== undefined && user.sessionVersion !== expected)
+      throw new UnauthorizedException({
+        code: "UNAUTHORIZED",
+        message: "Phiên đăng nhập đã bị thu hồi.",
+      });
+  }
+  invalidateSessions(tx: AuthTransaction, userId: string) {
+    return this.repo.invalidateSessions(tx, userId);
   }
 
   /** Re-read account state; lock it when called inside a sensitive mutation. */
   async requireActiveUser(
     userId: string,
     tx?: AuthTransaction,
+    expected = expectedSessionVersion(userId),
   ): Promise<AuthenticatedUser> {
     const user = tx
       ? await this.repo.lockUser(tx, userId)
       : await this.repo.byId(userId);
     this.active(user);
+    this.checkVersion(user, expected);
     return this.profile(user);
   }
 }

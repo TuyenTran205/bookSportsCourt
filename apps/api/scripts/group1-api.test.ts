@@ -2,7 +2,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CatalogsService } from "../src/modules/catalogs/catalogs.service.js";
-import { OwnerApplicationsService } from "../src/modules/owner-applications/owner-applications.service.js";
+import { applicationDecision } from "../src/modules/owner-applications/owner-application.rules.js";
 import { VenuesService } from "../src/modules/venues/venues.service.js";
 import { CourtsService } from "../src/modules/courts/courts.service.js";
 
@@ -54,69 +54,73 @@ test("Group 1 CatalogsService validates slug uniqueness and resource usage", asy
   });
 });
 
-test("Group 1 OwnerApplicationsService handles application flow and transitions", async (t) => {
-  await t.test("blocks apply if user already has role owner", async () => {
-    const mockRepo: any = {};
-    const service = new OwnerApplicationsService(mockRepo);
-    await assert.rejects(
-      async () =>
-        service.apply("user-1", "owner", {
-          businessName: "Sân Sao Mai",
-          phone: "0901234567",
-          address: "123 Đường Số 1",
-          bankBin: "970436",
-          bankName: "Vietcombank",
-          accountNo: "0123456789",
-          accountName: "NGUYEN VAN A",
-        }),
-      (err: any) =>
-        err.status === 409 && err.response?.code === "ALREADY_EXISTS",
+test("Owner application decisions enforce role, terminal retry and inactive target rules", async (t) => {
+  const app = { status: "approved", reviewNote: null } as Parameters<
+    typeof applicationDecision
+  >[0];
+  const target = {
+    status: "active",
+    role: "owner",
+    deletedAt: null,
+  } as NonNullable<Parameters<typeof applicationDecision>[1]>;
+  await t.test(
+    "same approval retry is no-op only while target remains owner",
+    () => {
+      assert.equal(
+        applicationDecision(app, target, { status: "approved" }),
+        "noop",
+      );
+      assert.throws(
+        () =>
+          applicationDecision(
+            app,
+            { ...target, role: "customer" },
+            { status: "approved" },
+          ),
+        (error: any) => error.status === 400,
+      );
+    },
+  );
+  await t.test(
+    "conflicting decision or note cannot rewrite a terminal application",
+    () => {
+      assert.throws(
+        () =>
+          applicationDecision(app, target, {
+            status: "rejected",
+            reviewNote: "reason",
+          }),
+        (error: any) => error.status === 400,
+      );
+      assert.throws(
+        () =>
+          applicationDecision(app, target, {
+            status: "approved",
+            reviewNote: "new note",
+          }),
+        (error: any) => error.status === 400,
+      );
+    },
+  );
+  await t.test("pending application requires active customer", () => {
+    assert.equal(
+      applicationDecision(
+        { ...app, status: "pending" },
+        { ...target, role: "customer" },
+        { status: "approved" },
+      ),
+      "write",
+    );
+    assert.throws(
+      () =>
+        applicationDecision(
+          { ...app, status: "pending" },
+          { ...target, status: "suspended" },
+          { status: "approved" },
+        ),
+      (error: any) => error.status === 409,
     );
   });
-
-  await t.test(
-    "blocks apply if user has existing pending application",
-    async () => {
-      const mockRepo: any = {
-        findPendingByUserId: async () => ({ id: "app-1", status: "pending" }),
-      };
-      const service = new OwnerApplicationsService(mockRepo);
-      await assert.rejects(
-        async () =>
-          service.apply("user-1", "customer", {
-            businessName: "Sân Sao Mai",
-            phone: "0901234567",
-            address: "123 Đường Số 1",
-            bankBin: "970436",
-            bankName: "Vietcombank",
-            accountNo: "0123456789",
-            accountName: "NGUYEN VAN A",
-          }),
-        (err: any) =>
-          err.status === 409 && err.response?.code === "ALREADY_EXISTS",
-      );
-    },
-  );
-
-  await t.test(
-    "rejects reviewing application that is not in pending status",
-    async () => {
-      const mockRepo: any = {
-        findById: async () => ({ id: "app-1", status: "approved" }),
-      };
-      const service = new OwnerApplicationsService(mockRepo);
-      await assert.rejects(
-        async () =>
-          service.review("app-1", "admin-1", {
-            status: "approved",
-            reviewNote: "Duyệt lại",
-          }),
-        (err: any) =>
-          err.status === 400 &&
-          err.response?.code === "INVALID_STATUS_TRANSITION",
-      );
-    },
-  );
 });
 
 test("Group 1 VenuesService uses transactional area validation and UUID-suffixed slugs", async (t) => {

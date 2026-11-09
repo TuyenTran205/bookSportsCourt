@@ -32,6 +32,7 @@ function fixture() {
     phone: null,
     avatarUrl: null,
     passwordHash: null,
+    sessionVersion: 0,
     role: "owner",
     status: "active",
     emailVerifiedAt: null,
@@ -170,4 +171,30 @@ test("JwtAuthGuard rejects current inactive or deleted accounts and clears old p
       assert.equal(req.user, undefined);
     });
   assert.equal(f.state.reads, 4);
+});
+
+test("JwtAuthGuard rejects old session versions after reactivation and accepts legacy zero only at zero", async () => {
+  const f = fixture();
+  const legacy = await f.signed();
+  const current = await f.jwt.sign(f.user.id, "access", false);
+  assert.equal(await f.run(f.request(`access_token=${legacy}`)), true);
+  f.user.sessionVersion = 1;
+  for (const token of [legacy, current])
+    await assert.rejects(
+      f.run(f.request(`access_token=${token}`)),
+      status(401, "UNAUTHORIZED"),
+    );
+  assert.equal(
+    await f.run(
+      f.request(
+        `access_token=${await f.jwt.sign(f.user.id, "access", false, 1)}`,
+      ),
+    ),
+    true,
+  );
+  for (const sessionVersion of [-1, 1.5, "1", null])
+    await assert.rejects(
+      f.run(f.request(`access_token=${await f.signed({ sessionVersion })}`)),
+      status(401, "UNAUTHORIZED"),
+    );
 });

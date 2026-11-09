@@ -2,6 +2,7 @@ import type {
   ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
+  OwnerProfile,
   RegisterInput,
   ResetPasswordInput,
   UpdateProfileInput,
@@ -14,53 +15,88 @@ import { apiFetch, jsonBody } from '../client';
  * Endpoint module – Auth & hồ sơ.
  * Khớp `mocks/handlers/auth.ts` và `docs/11-api-contract.md` mục "Auth".
  *
- * Hợp đồng với BE (`docs/implemented-apis.md`): `data` của các endpoint
- * register/login/refresh/`GET /users/me`/`PATCH /users/me` CHÍNH LÀ hồ sơ
- * người dùng (không bọc thêm `{ user }`). Các endpoint còn lại trả 204 nên
- * không có body.
- *
  * Ghi chú: phần lớn endpoint ở đây gắn cookie phiên qua `Set-Cookie`, nên khi
  * gọi từ Server Component phải đi qua `lib/api/server.ts`.
  */
 
+export interface AuthResult {
+  user: User;
+}
+
+/** `GET /users/me` trả kèm hồ sơ chủ sân để header biết có hiện menu "Kênh chủ sân". */
+export interface MeResult {
+  user: User;
+  ownerProfile: OwnerProfile | null;
+}
+
+/**
+ * Như `toAuthResult`, nhưng cho `GET /users/me`: mock trả `{ user, ownerProfile }`,
+ * NestJS trả `AuthenticatedUser` trực tiếp và **không** kèm `ownerProfile`.
+ */
+function toMeResult(payload: MeResult | User): MeResult {
+  if (payload && typeof payload === 'object' && 'user' in payload && payload.user) {
+    const withProfile = payload as MeResult;
+    return { user: withProfile.user, ownerProfile: withProfile.ownerProfile ?? null };
+  }
+  return { user: payload as User, ownerProfile: null };
+}
+
+/**
+ * Backend NestJS trả hồ sơ **trực tiếp** (`{ id, email, fullName, role, ... }`)
+ * cho `/auth/login`, `/auth/register`, `PATCH /users/me`, `POST /users/me/avatar`,
+ * trong khi mock MSW bọc `{ user }`. Chuẩn hoá cả hai về `AuthResult` để tầng
+ * UI không phải đoán hình dạng.
+ */
+function toAuthResult(payload: AuthResult | User): AuthResult {
+  if (payload && typeof payload === 'object' && 'user' in payload && payload.user) {
+    return payload as AuthResult;
+  }
+  return { user: payload as User };
+}
+
 export function register(input: RegisterInput) {
-  return apiFetch<User>('/auth/register', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<AuthResult | User>('/auth/register', {
+    method: 'POST',
+    ...jsonBody(input),
+  }).then(toAuthResult);
 }
 
 export function login(input: LoginInput) {
-  return apiFetch<User>('/auth/login', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<AuthResult | User>('/auth/login', {
+    method: 'POST',
+    ...jsonBody(input),
+  }).then(toAuthResult);
 }
 
-/** `POST /auth/logout` trả 204 – không có body. */
 export function logout() {
-  return apiFetch<void>('/auth/logout', { method: 'POST' });
+  return apiFetch<{ success: true }>('/auth/logout', { method: 'POST' });
 }
 
 /** Ném `ApiError` 401 khi chưa đăng nhập — dùng làm nguồn sự thật cho phiên. */
 export function me() {
-  return apiFetch<User>('/users/me');
+  return apiFetch<MeResult | User>('/users/me').then(toMeResult);
 }
 
 /**
- * Luôn trả 204 kể cả khi email không tồn tại — server cố ý không tiết lộ
+ * Luôn trả 200 kể cả khi email không tồn tại — server cố ý không tiết lộ
  * danh sách tài khoản. UI vì thế cũng không được báo "email không tồn tại".
  */
 export function forgotPassword(input: ForgotPasswordInput) {
-  return apiFetch<void>('/auth/forgot-password', {
+  return apiFetch<{ success: true; message: string }>('/auth/forgot-password', {
     method: 'POST',
     ...jsonBody(input),
   });
 }
 
 export function resetPassword(input: ResetPasswordInput) {
-  return apiFetch<void>('/auth/reset-password', {
+  return apiFetch<{ success: true }>('/auth/reset-password', {
     method: 'POST',
     ...jsonBody(input),
   });
 }
 
 export function verifyEmail(token: string) {
-  return apiFetch<void>('/auth/verify-email', {
+  return apiFetch<{ success: true }>('/auth/verify-email', {
     method: 'POST',
     ...jsonBody({ token }),
   });
@@ -73,14 +109,17 @@ export function verifyEmail(token: string) {
  * không nhận trường này.
  */
 export function changePassword({ confirmPassword: _ignored, ...input }: ChangePasswordInput) {
-  return apiFetch<void>('/users/me/password', {
+  return apiFetch<{ success: true }>('/users/me/password', {
     method: 'PATCH',
     ...jsonBody(input),
   });
 }
 
 export function updateProfile(input: UpdateProfileInput) {
-  return apiFetch<User>('/users/me', { method: 'PATCH', ...jsonBody(input) });
+  return apiFetch<AuthResult | User>('/users/me', {
+    method: 'PATCH',
+    ...jsonBody(input),
+  }).then(toAuthResult);
 }
 
 /**
@@ -90,7 +129,9 @@ export function updateProfile(input: UpdateProfileInput) {
 export function uploadAvatar(file: File) {
   const form = new FormData();
   form.append('avatar', file);
-  return apiFetch<User>('/users/me/avatar', { method: 'POST', body: form });
+  return apiFetch<AuthResult | User>('/users/me/avatar', { method: 'POST', body: form }).then(
+    toAuthResult,
+  );
 }
 
 /** Trả URL chuyển hướng sang Google OAuth. */
