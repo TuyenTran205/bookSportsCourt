@@ -371,8 +371,13 @@ export const ownerApplicationSchema = z.object({
   taxCode: z
     .string()
     .trim()
-    .regex(/^\d{10}(\d{3})?$/, "Mã số thuế gồm 10 hoặc 13 chữ số")
+    .regex(/^(?:\d{10}|\d{12}|\d{13})$/, "MST gồm 10 hoặc 13 chữ số, CCCD gồm 12 chữ số")
     .optional(),
+  bankBin: z.string().optional(),
+  bankName: z.string().optional(),
+  accountNo: z.string().optional(),
+  accountName: z.string().optional(),
+  idCardUrl: z.string().optional(),
 }).strict();
 
 export const rejectSchema = z.object({

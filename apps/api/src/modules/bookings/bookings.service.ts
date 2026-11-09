@@ -11,15 +11,17 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
 import type {
+  BookingSource,
+  BookingStatus,
+} from "../../../../../packages/shared/src/constants.js";
+import { BOOKING_STATUSES } from "../../../../../packages/shared/src/constants.js";
+import type {
   AuthenticatedUser,
   Booking,
   BookingDetail,
-  BookingSource,
-  BookingStatus,
   CourtSlots,
   HoldBookingResponse,
-} from "../../../../../packages/shared/src/index.js";
-import { BOOKING_STATUSES } from "../../../../../packages/shared/src/constants.js";
+} from "../../../../../packages/shared/src/types.js";
 import { BookingsRepository } from "./bookings.repository.js";
 import {
   addDaysToDateString,

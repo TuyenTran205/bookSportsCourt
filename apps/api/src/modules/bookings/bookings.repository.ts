@@ -12,16 +12,18 @@ import {
 } from "drizzle-orm";
 import { v7 } from "uuid";
 import type {
+  BookingSource,
+  BookingStatus,
+  PaymentProvider,
+  PaymentStatus,
+} from "../../../../../packages/shared/src/constants.js";
+import type {
   BankAccountInfo,
   Booking,
   BookingDetail,
-  BookingSource,
-  BookingStatus,
   Payment,
-  PaymentProvider,
-  PaymentStatus,
   Review,
-} from "../../../../../packages/shared/src/index.js";
+} from "../../../../../packages/shared/src/types.js";
 import {
   InjectDrizzle,
   type DrizzleDb,
@@ -41,7 +43,6 @@ import {
   venuePaymentAccounts,
   venues,
 } from "../../database/schema/index.js";
-import { writeAudit } from "../audit/audit-writer.js";
 import type { AuthTransaction } from "../auth/auth.repository.js";
 import {
   DEFAULT_CANCELLATION_POLICY,
@@ -1240,25 +1241,6 @@ export class BookingsRepository {
         .where(eq(payments.id, payment.id));
     }
 
-    await writeAudit(tx, {
-      actorId,
-      action:
-        actorRole === "admin" ? "booking.force_cancelled" : "booking.cancelled",
-      entityId: booking.id,
-      before: {
-        bookingStatus: booking.status,
-        paymentStatus: payment?.status ?? null,
-      },
-      after: {
-        bookingStatus: "cancelled",
-        paymentStatus:
-          payment && ["pending", "submitted"].includes(payment.status)
-            ? "cancelled"
-            : (payment?.status ?? null),
-        hasReason: Boolean(reason),
-      },
-    });
-
     const eventKey = `booking:${booking.id}:cancelled`;
     if (booking.customerId && booking.customerId !== actorId) {
       await tx
@@ -1334,14 +1316,6 @@ export class BookingsRepository {
         .where(eq(payments.id, payment.id));
     }
 
-    await writeAudit(tx, {
-      actorId,
-      action: "booking.confirmed",
-      entityId: booking.id,
-      before: { bookingStatus: booking.status },
-      after: { bookingStatus: "confirmed" },
-    });
-
     const eventKey = `booking:${booking.id}:confirmed`;
     await tx
       .insert(outboxDeliveries)
@@ -1379,14 +1353,6 @@ export class BookingsRepository {
         updatedAt: now,
       })
       .where(eq(bookings.id, booking.id));
-
-    await writeAudit(tx, {
-      actorId,
-      action: "booking.no_show",
-      entityId: booking.id,
-      before: { bookingStatus: booking.status },
-      after: { bookingStatus: "no_show" },
-    });
 
     const updatedBundle = await this.findBookingBundleById(booking.id, tx);
     return this.toBookingDetail(updatedBundle!);

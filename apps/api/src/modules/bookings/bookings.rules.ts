@@ -7,9 +7,9 @@ import { z } from "zod";
 import type {
   BookingStatus,
   PaymentStatus,
-  Slot,
   SlotStatus,
-} from "../../../../../packages/shared/src/index.js";
+} from "../../../../../packages/shared/src/constants.js";
+import type { Slot } from "../../../../../packages/shared/src/types.js";
 
 export const SLOT_MINUTES = 30;
 export const SLOT_MS = SLOT_MINUTES * 60 * 1000; // 1_800_000 ms
