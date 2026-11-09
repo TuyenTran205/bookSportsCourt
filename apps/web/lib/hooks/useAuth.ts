@@ -13,6 +13,26 @@ export const authKeys = {
   me: () => [...authKeys.all, 'me'] as const,
 };
 
+/**
+ * Đồng bộ cookie gợi ý phiên mà `middleware.ts` dùng để chặn route.
+ *
+ * Backend thật đặt `access_token`/`refresh_token` httpOnly với path `/api/v1`,
+ * nên middleware (chạy trên `/owner/*`, `/admin/*`...) không thấy được. Backend
+ * đã ghi thêm `bsc_session`/`bsc_role`; ở đây ghi lại từ hồ sơ user để phòng
+ * trường hợp phiên cũ (đăng nhập trước khi backend có cookie này). Cookie không
+ * chứa bí mật — quyền thật vẫn do API kiểm tra.
+ */
+function syncSessionHint(user: Pick<User, 'id' | 'role'> | null) {
+  if (typeof document === 'undefined') return;
+  if (user) {
+    document.cookie = `bsc_session=${encodeURIComponent(user.id)}; path=/; samesite=lax`;
+    document.cookie = `bsc_role=${encodeURIComponent(user.role)}; path=/; samesite=lax`;
+  } else {
+    document.cookie = 'bsc_session=; path=/; max-age=0; samesite=lax';
+    document.cookie = 'bsc_role=; path=/; max-age=0; samesite=lax';
+  }
+}
+
 export function useAuth() {
   const queryClient = useQueryClient();
   const router = useAppRouter();
@@ -22,14 +42,13 @@ export function useAuth() {
     queryKey: authKeys.me(),
     queryFn: async () => {
       try {
-        return await apiMe();
+        const result = await apiMe();
+        syncSessionHint(result.user);
+        return result;
       } catch (err: unknown) {
         // 401 Unauthorized là bình thường khi chưa đăng nhập — dọn dẹp cookie phiên rác (nếu có)
         // để middleware không hiểu nhầm là đã đăng nhập và chặn truy cập /login, /register
-        if (typeof document !== 'undefined') {
-          document.cookie = 'bsc_session=; path=/; max-age=0; samesite=lax';
-          document.cookie = 'bsc_role=; path=/; max-age=0; samesite=lax';
-        }
+        syncSessionHint(null);
         return null;
       }
     },
@@ -40,6 +59,9 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: (input: LoginInput) => apiLogin(input),
     onSuccess: (result) => {
+      // Ghi cookie TRƯỚC khi LoginForm gọi router.push, để middleware cho qua ngay.
+      syncSessionHint(result.user);
+      // `apiLogin` đã chuẩn hoá cả `{ user }` (mock) lẫn hồ sơ trực tiếp (NestJS).
       queryClient.setQueryData(authKeys.me(), { user: result.user, ownerProfile: null });
       queryClient.invalidateQueries();
       toast.success(tAuth('loginSuccess'));
