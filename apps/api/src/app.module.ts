@@ -7,6 +7,7 @@ import { BookingsModule } from "./modules/bookings/bookings.module.js";
 import { CatalogsModule } from "./modules/catalogs/catalogs.module.js";
 import { CourtsModule } from "./modules/courts/courts.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { NotificationsModule } from "./modules/notifications/notifications.module.js";
 import { OwnerApplicationsModule } from "./modules/owner-applications/owner-applications.module.js";
 import { VenuesModule } from "./modules/venues/venues.module.js";
 import { SchedulesModule } from "./schedules/schedules.module.js";
@@ -31,6 +32,7 @@ import { validateConfig } from "./config/app-config.js";
     VenuesModule,
     CourtsModule,
     BookingsModule,
+    NotificationsModule,
     SchedulesModule,
   ],
 })
