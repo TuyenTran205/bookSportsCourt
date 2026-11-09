@@ -1,16 +1,37 @@
 # Tổng hợp API đã triển khai
 
-> **Phiên bản:** 1.15.1 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.16.0 | **Cập nhật lần cuối:** 2026-11-09
 
 ## Phạm vi
 
-Danh sách Auth/Users/Health/Venue CRUD dưới đây ghi nhận mốc 16 endpoint BSC-014. Sau tích hợp đã có thêm Catalogs/Courts/Owner applications/Venue extensions; Swagger runtime là nơi tra cứu toàn bộ route hiện tại. Bước 3 Phase 4 bổ sung API audit Admin bên dưới, đã kiểm thử HTTP/PostgreSQL; không phải xác nhận deploy/CI/PR.
+Danh sách Auth/Users/Health/Venue CRUD dưới đây ghi nhận mốc 16 endpoint BSC-014. Sau tích hợp đã có thêm Catalogs/Courts/Owner applications/Venue extensions; Swagger runtime là nơi tra cứu toàn bộ route hiện tại. Ngày 2026-11-09 hoàn thành Đợt 1 — Core Booking & Time Slot Grid Engine (`apps/api/src/modules/bookings/`), gồm 7 REST API chuẩn + 3 API bổ trợ, chống trùng lịch bằng PostgreSQL GiST `EXCLUDE` constraint + `pg_advisory_xact_lock(hashtext(courtId))`.
 
 - Base URL local mặc định: `http://localhost:3001/api/v1` (port theo cấu hình).
-- Body JSON, riêng POST proof dùng multipart/form-data; tên trường camelCase. Xác thực bằng cookie httpOnly, không bằng Bearer header.
+- Body JSON, riêng POST proof dùng multipart/form-data; tên trường camelCase. Xác thực bằng cookie httpOnly hoặc Bearer header (Optional JWT trên public slots).
 - Swagger UI: `/api/docs`, chỉ bật ở development/staging.
 - Response thành công có body được bọc `{ "data": ... }`; HTTP 204 không có body.
 - Lỗi: `{ "error": { "code": "...", "message": "...", "httpStatus": 400, "details": {} } }`; `details` tuỳ chọn.
+
+## Core Booking & Time Slot Grid Engine (Đợt 1 – 2026-11-09)
+
+Module `bookings` triển khai trọn vẹn tại `apps/api/src/modules/bookings/` gồm Repository (raw SQL/Drizzle + serializable retry + advisory lock), Rules domain, Service, Schedule Cron và Controller.
+
+| Method | Endpoint (/api/v1) | Quyền | Hành vi đã hoàn thiện |
+|---|---|---|---|
+| GET | /venues/:id/slots | Public (Optional JWT) | Lưới giờ 30 phút theo ngày. Tự động lazy-expire các hold quá hạn trước khi dựng lưới. Trả header `Cache-Control: no-store` và `X-Grid-Version`. Người dùng đăng nhập thấy `mine: true` và `bookingId` trên slot của mình, ẩn danh tính người đặt khác. |
+| POST | /bookings/hold | Customer | Giữ chỗ tạm 10 phút (`HOLD_TTL_MINUTES = 10`), tạo cặp `bookings` (`held`) và `payments` (`pending`). Hỗ trợ 3 định dạng body: contract `{ courtId, start, end }`, frontend `{ courtId, slots }`, blocks `{ courtId, startAt, blocks }`. Advisory lock theo `courtId`, chống trùng lịch tuyệt đối bằng GiST `EXCLUDE` constraint. Trả `200` nếu idempotent cùng user, `409 BOOKING_CONFLICT` nếu tranh chấp. |
+| DELETE | /bookings/holds/:holdId | Customer (chủ hold) | Nhả giữ chỗ ngay lập tức trong transaction (`204 No Content`), giải phóng slot về `available`. Hỗ trợ alias `/bookings/hold/:id`. |
+| POST | /bookings/:id/confirm | Customer (chủ hold) | Xác nhận đặt chỗ từ `held` sang `confirmed`, xóa hạn giữ chỗ `expires_at = NULL`. Trả `410 HOLD_EXPIRED` nếu hold đã hết hạn. |
+| GET | /bookings | Customer | Danh sách đặt sân của chính caller, phân trang `page`/`limit`, lọc theo `status`, `from`, `to`, sắp xếp `createdAt DESC`. |
+| GET | /bookings/:id | Customer / Owner / Admin | Chi tiết đơn đặt sân. Trả `404 NOT_FOUND` (chống dò ID) nếu Customer truy cập đơn của người khác. Hỗ trợ alias `/bookings/hold/:id` trả kèm `remainingMs`. |
+| PATCH | /bookings/:id/cancel | Customer / Owner / Admin | Hủy đơn đặt theo chính sách `cancellation_policies` (Customer chỉ hủy khi cách giờ chơi ≥ `cancelBeforeHours`, mặc định 24h; Owner/Admin kèm lý do). Hỗ trợ alias `POST /bookings/:id/cancel`. |
+| GET | /bookings/:id/cancellation-preview | Customer | Xem trước điều kiện hủy: khả năng hủy `canCancel`, hạn chót `deadline`, phần trăm và số tiền hoàn cọc. |
+| PATCH | /bookings/:id/no-show | Owner / Admin | Đánh dấu khách không đến sau khi giờ bắt đầu của đơn `confirmed` đã qua. |
+| POST | /bookings/quote | Authenticated | Báo giá trước khi đặt: kiểm tra giờ mở cửa, tính tổng tiền server-side từ `pricing_rules`, tiền cọc từ cấu hình `venues.deposit_type`. |
+
+Hệ thống Cron chạy nền trong module:
+- `@Cron(CronExpression.EVERY_MINUTE)`: Quét và giải phóng các hold quá hạn (`status = 'held' AND expires_at <= now()`), chuyển trạng thái payment sang `expired`, dùng `pg_try_advisory_xact_lock` an toàn trên môi trường nhiều instance.
+- `@Cron(CronExpression.EVERY_5_MINUTES)`: Tự động hoàn thành các booking `confirmed` đã kết thúc (`upper(during) <= now()`) sang `completed`.
 
 ## Nghiệm thu Bước15 và snapshot Phase4
 
