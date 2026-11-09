@@ -29,12 +29,43 @@ export interface MeResult {
   ownerProfile: OwnerProfile | null;
 }
 
+/**
+ * Như `toAuthResult`, nhưng cho `GET /users/me`: mock trả `{ user, ownerProfile }`,
+ * NestJS trả `AuthenticatedUser` trực tiếp và **không** kèm `ownerProfile`.
+ */
+function toMeResult(payload: MeResult | User): MeResult {
+  if (payload && typeof payload === 'object' && 'user' in payload && payload.user) {
+    const withProfile = payload as MeResult;
+    return { user: withProfile.user, ownerProfile: withProfile.ownerProfile ?? null };
+  }
+  return { user: payload as User, ownerProfile: null };
+}
+
+/**
+ * Backend NestJS trả hồ sơ **trực tiếp** (`{ id, email, fullName, role, ... }`)
+ * cho `/auth/login`, `/auth/register`, `PATCH /users/me`, `POST /users/me/avatar`,
+ * trong khi mock MSW bọc `{ user }`. Chuẩn hoá cả hai về `AuthResult` để tầng
+ * UI không phải đoán hình dạng.
+ */
+function toAuthResult(payload: AuthResult | User): AuthResult {
+  if (payload && typeof payload === 'object' && 'user' in payload && payload.user) {
+    return payload as AuthResult;
+  }
+  return { user: payload as User };
+}
+
 export function register(input: RegisterInput) {
-  return apiFetch<AuthResult>('/auth/register', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<AuthResult | User>('/auth/register', {
+    method: 'POST',
+    ...jsonBody(input),
+  }).then(toAuthResult);
 }
 
 export function login(input: LoginInput) {
-  return apiFetch<AuthResult>('/auth/login', { method: 'POST', ...jsonBody(input) });
+  return apiFetch<AuthResult | User>('/auth/login', {
+    method: 'POST',
+    ...jsonBody(input),
+  }).then(toAuthResult);
 }
 
 export function logout() {
@@ -43,7 +74,7 @@ export function logout() {
 
 /** Ném `ApiError` 401 khi chưa đăng nhập — dùng làm nguồn sự thật cho phiên. */
 export function me() {
-  return apiFetch<MeResult>('/users/me');
+  return apiFetch<MeResult | User>('/users/me').then(toMeResult);
 }
 
 /**
@@ -85,7 +116,10 @@ export function changePassword({ confirmPassword: _ignored, ...input }: ChangePa
 }
 
 export function updateProfile(input: UpdateProfileInput) {
-  return apiFetch<AuthResult>('/users/me', { method: 'PATCH', ...jsonBody(input) });
+  return apiFetch<AuthResult | User>('/users/me', {
+    method: 'PATCH',
+    ...jsonBody(input),
+  }).then(toAuthResult);
 }
 
 /**
@@ -95,7 +129,9 @@ export function updateProfile(input: UpdateProfileInput) {
 export function uploadAvatar(file: File) {
   const form = new FormData();
   form.append('avatar', file);
-  return apiFetch<AuthResult>('/users/me/avatar', { method: 'POST', body: form });
+  return apiFetch<AuthResult | User>('/users/me/avatar', { method: 'POST', body: form }).then(
+    toAuthResult,
+  );
 }
 
 /** Trả URL chuyển hướng sang Google OAuth. */

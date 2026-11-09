@@ -37,6 +37,7 @@ const DEMO_ACCOUNTS = [
 export function LoginForm() {
   const tAuth = useTranslations('auth');
   const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
   const router = useAppRouter();
   const searchParams = useSearchParams();
   const nextUrl = searchParams.get('next');
@@ -63,12 +64,14 @@ export function LoginForm() {
     setServerError(null);
     try {
       const res = await login(data);
+      // Backend trả hồ sơ trực tiếp, mock bọc `{ user }` — chấp nhận cả hai.
+      const role = res.user?.role ?? (res as unknown as { role?: string }).role;
       // Chuyển hướng theo vai trò hoặc query param
       if (nextUrl) {
         router.push(nextUrl);
-      } else if (res.user.role === 'admin') {
+      } else if (role === 'admin') {
         router.push('/admin/dashboard');
-      } else if (res.user.role === 'owner') {
+      } else if (role === 'owner') {
         router.push('/owner/timeline');
       } else {
         router.push('/');
@@ -77,7 +80,7 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setServerError(err.message);
       } else {
-        setServerError(tAuth('demoHint'));
+        setServerError(tErrors('generic'));
       }
     }
   };
