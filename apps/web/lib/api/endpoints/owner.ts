@@ -246,8 +246,8 @@ export function createManualBooking(input: {
  * Chuyển trạng thái đơn từ `confirmed` sang `no_show`.
  */
 export function markBookingNoShow(bookingId: string) {
-  return apiFetch<Booking>(`/owner/bookings/${encodeURIComponent(bookingId)}/no-show`, {
-    method: 'POST',
+  return apiFetch<Booking>(`/bookings/${encodeURIComponent(bookingId)}/no-show`, {
+    method: 'PATCH',
   });
 }
 

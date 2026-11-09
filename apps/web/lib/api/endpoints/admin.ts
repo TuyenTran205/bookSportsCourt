@@ -82,9 +82,12 @@ export function listAdminVenues(params: { status?: string; page?: number; limit?
 }
 
 export function reviewVenue(id: string, input: { status: "approved" | "rejected" | "suspended"; reviewNote?: string }) {
-    return apiFetch<AdminVenueRow>(`/admin/venues/${encodeURIComponent(id)}`, {
+    return apiFetch<AdminVenueRow>(`/venues/${encodeURIComponent(id)}/status`, {
         method: "PATCH",
-        ...jsonBody(input),
+        ...jsonBody({
+            status: input.status,
+            reason: input.reviewNote,
+        }),
     });
 }
 
@@ -98,7 +101,7 @@ export function listAdminUsers(
 
 /** Khoá hoặc mở khoá tài khoản. */
 export function setUserStatus(id: string, status: UserStatus) {
-    return apiFetch<User>(`/admin/users/${encodeURIComponent(id)}/status`, {
+    return apiFetch<User>(`/users/${encodeURIComponent(id)}/status`, {
         method: "PATCH",
         ...jsonBody({ status }),
     });
@@ -127,7 +130,7 @@ export function listAdminBookings(params: { status?: BookingStatus; q?: string; 
 
 /** Buộc huỷ một lượt đặt — kèm lý do để ghi vào nhật ký. */
 export function forceCancelBooking(id: string, reason: string) {
-    return apiFetch<Booking>(`/admin/bookings/${encodeURIComponent(id)}/cancel`, {
+    return apiFetch<Booking>(`/bookings/${encodeURIComponent(id)}/cancel`, {
         method: "PATCH",
         ...jsonBody({ reason }),
     });
@@ -136,17 +139,17 @@ export function forceCancelBooking(id: string, reason: string) {
 // ── Danh mục (ADM-05) ──────────────────────────────────────────────────────
 
 export function createSport(input: { name: string; icon?: string }) {
-    return apiFetch<Sport>("/admin/sports", { method: "POST", ...jsonBody(input) });
+    return apiFetch<Sport>("/sports", { method: "POST", ...jsonBody(input) });
 }
 
 export function deleteSport(id: string) {
-    return apiFetch<{ success: true }>(`/admin/sports/${encodeURIComponent(id)}`, {
+    return apiFetch<{ success: true }>(`/sports/${encodeURIComponent(id)}`, {
         method: "DELETE",
     });
 }
 
 export function createArea(input: { name: string; type: "province" | "ward" | "district"; parentId?: string }) {
-    return apiFetch<Area>("/admin/areas", { method: "POST", ...jsonBody(input) });
+    return apiFetch<Area>("/areas", { method: "POST", ...jsonBody(input) });
 }
 
 // ── Đánh giá (ADM-06, ADM-10) ──────────────────────────────────────────────
@@ -174,7 +177,7 @@ export function listAdminReviews(
 
 /** Ẩn/hiện một đánh giá. */
 export function setReviewVisibility(id: string, isVisible: boolean) {
-    return apiFetch<AdminReviewRow>(`/admin/reviews/${encodeURIComponent(id)}/visibility`, {
+    return apiFetch<AdminReviewRow>(`/reviews/${encodeURIComponent(id)}/visibility`, {
         method: "PATCH",
         ...jsonBody({ isVisible }),
     });

@@ -1075,6 +1075,24 @@ export const ownerHandlers = [
     return ok(booking, 201);
   }),
 
+  /** Đánh dấu khách không đến theo contract: PATCH /bookings/:id/no-show (OWN-09). */
+  http.patch('/api/v1/bookings/:id/no-show', async ({ params }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+
+    const record = db.bookings.find((b) => b.booking.id === params.id);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+
+    if (record.booking.status !== 'confirmed') {
+      return err(409, 'ALREADY_EXISTS', 'Chỉ có thể đánh dấu no-show với đơn đã xác nhận');
+    }
+
+    record.booking.status = 'no_show';
+    persist();
+    return ok(record.booking);
+  }),
+
   /** Đánh dấu khách không đến (OWN-09 No-Show). */
   http.post('/api/v1/owner/bookings/:id/no-show', async ({ params }) => {
     await simulateLatency(400);

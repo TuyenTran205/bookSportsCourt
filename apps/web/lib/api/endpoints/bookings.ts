@@ -89,7 +89,7 @@ export function getBooking(id: string) {
 
 export function cancelBooking(id: string, reason?: string) {
   return apiFetch<BookingDetail>(`/bookings/${encodeURIComponent(id)}/cancel`, {
-    method: 'POST',
+    method: 'PATCH',
     ...jsonBody({ reason }),
   });
 }
@@ -111,11 +111,11 @@ export function uploadPaymentProof(id: string, file: File) {
 
 // ===== Đánh giá =====
 
-/** `POST /bookings/:id/review` — đánh giá gắn với lượt đặt đã hoàn tất. */
+/** `POST /reviews` — đánh giá gắn với lượt đặt đã hoàn tất (CUS-12). */
 export function createReview(bookingId: string, input: Omit<CreateReviewInput, 'bookingId'>) {
-  return apiFetch<Review>(`/bookings/${encodeURIComponent(bookingId)}/review`, {
+  return apiFetch<Review>('/reviews', {
     method: 'POST',
-    ...jsonBody(input),
+    ...jsonBody({ bookingId, ...input }),
   });
 }
 
@@ -134,7 +134,7 @@ export function listFavorites() {
 
 export function addFavorite(venueId: string) {
   return apiFetch<{ favorited: true }>(`/favorites/${encodeURIComponent(venueId)}`, {
-    method: 'POST',
+    method: 'PUT',
   });
 }
 

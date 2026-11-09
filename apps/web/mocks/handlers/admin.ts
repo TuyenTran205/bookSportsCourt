@@ -158,6 +158,50 @@ export const adminHandlers = [
         return okList(data, meta);
     }),
 
+    /** Duyệt/từ chối cơ sở theo contract: PATCH /venues/:id/status (ADM-02). */
+    http.patch("/api/v1/venues/:id/status", async ({ params, request }) => {
+        await simulateLatency(450);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+
+        const venue = venues.find((v) => v.id === params.id);
+        if (!venue) return err(404, "NOT_FOUND", "Không tìm thấy cơ sở");
+
+        const body = (await request.json()) as {
+            status?: "approved" | "rejected" | "suspended";
+            reason?: string;
+            reviewNote?: string;
+        };
+        const status = body.status;
+        const reason = body.reason ?? body.reviewNote;
+        if (!status || !["approved", "rejected", "suspended"].includes(status)) {
+            return err(422, "VALIDATION_ERROR", "Trạng thái không hợp lệ");
+        }
+        if (status === "rejected" && !reason?.trim()) {
+            return err(422, "VALIDATION_ERROR", "Vui lòng nhập lý do từ chối");
+        }
+
+        venue.status = status;
+        writeAudit(`venue.${status}`, "venue", venue.id, {
+            reviewNote: reason ?? null,
+            venueName: venue.name,
+        });
+        persist();
+        if (status === "approved" || status === "rejected") {
+            createMockNotification(venue.ownerId, {
+                type: status === "approved" ? "venue_approved" : "venue_rejected",
+                title: status === "approved" ? "Cơ sở đã được duyệt" : "Cơ sở chưa được duyệt",
+                body:
+                    status === "approved"
+                        ? `${venue.name} đã hiển thị với khách hàng.`
+                        : (reason?.trim() ?? `Vui lòng cập nhật thông tin của ${venue.name}.`),
+                payload: { venueId: venue.id },
+            });
+        }
+
+        return ok(venue);
+    }),
+
     /** Duyệt/từ chối cơ sở — cùng quy ước gộp route như hồ sơ chủ sân. */
     http.patch("/api/v1/admin/venues/:id", async ({ params, request }) => {
         await simulateLatency(450);
@@ -245,6 +289,23 @@ export const adminHandlers = [
         return ok(user);
     }),
 
+    http.patch("/api/v1/users/:id/status", async ({ params, request }) => {
+        await simulateLatency(400);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+
+        const user = db.users.find((u) => u.id === params.id);
+        if (!user) return err(404, "NOT_FOUND", "Không tìm thấy người dùng");
+        if (user.role === "admin") {
+            return err(403, "FORBIDDEN", "Không thể khoá tài khoản quản trị viên");
+        }
+
+        const body = (await request.json()) as { status: typeof user.status };
+        user.status = body.status;
+        persist();
+        return ok(user);
+    }),
+
     http.patch("/api/v1/admin/users/:id/status", async ({ params, request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
@@ -263,6 +324,24 @@ export const adminHandlers = [
     }),
 
     // ── Danh mục hệ thống (A-03) ─────────────────────────────────────────────
+    http.post("/api/v1/sports", async ({ request }) => {
+        await simulateLatency(400);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+
+        const body = (await request.json()) as { name: string; icon?: string };
+        const newSport = {
+            id: `019273c5-7f00-7001-0000-${String(Date.now()).slice(-12)}`,
+            name: body.name,
+            slug: body.name.toLowerCase().replace(/\s+/g, "-"),
+            icon: body.icon ?? "activity",
+        };
+        sports.push(newSport);
+        writeAudit("catalog.sport_create", "sport", newSport.name, { name: newSport.name });
+        persist();
+        return ok(newSport, 201);
+    }),
+
     http.post("/api/v1/admin/sports", async ({ request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
@@ -294,6 +373,21 @@ export const adminHandlers = [
         return ok({ ...body, id: params.id });
     }),
 
+    http.delete("/api/v1/sports/:id", async ({ params }) => {
+        await simulateLatency(350);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+        const idx = sports.findIndex((s) => s.id === params.id);
+        if (idx !== -1) {
+            const removed = sports.splice(idx, 1)[0];
+            if (removed) {
+                writeAudit("catalog.sport_delete", "sport", removed.name, { name: removed.name });
+            }
+        }
+        persist();
+        return ok({ success: true });
+    }),
+
     http.delete("/api/v1/admin/sports/:id", async ({ params }) => {
         await simulateLatency(350);
         const guard = requireAdmin();
@@ -307,6 +401,25 @@ export const adminHandlers = [
         }
         persist();
         return ok({ success: true });
+    }),
+
+    http.post("/api/v1/areas", async ({ request }) => {
+        await simulateLatency(400);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+
+        const body = (await request.json()) as { name: string; type: "province" | "ward" | "district"; parentId?: string };
+        const newArea = {
+            id: `019273c5-7f00-7000-0000-${String(Date.now()).slice(-12)}`,
+            name: body.name,
+            slug: body.name.toLowerCase().replace(/\s+/g, "-"),
+            type: body.type,
+            parentId: body.parentId ?? null,
+        };
+        areas.push(newArea);
+        writeAudit("catalog.area_create", "area", newArea.name, { name: newArea.name, type: newArea.type });
+        persist();
+        return ok(newArea, 201);
     }),
 
     http.post("/api/v1/admin/areas", async ({ request }) => {
