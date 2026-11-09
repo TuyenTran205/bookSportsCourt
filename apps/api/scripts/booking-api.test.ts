@@ -26,10 +26,10 @@ import { readVenueTestMigration } from "./fixtures/venue-test-db.js";
 test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 rounds), idempotency, TTL & cron against PostgreSQL", async (t) => {
   const connectionString =
     process.env.VENUE_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
-  assert.ok(
-    connectionString,
-    "Set VENUE_TEST_DATABASE_URL or DATABASE_URL to local PostgreSQL",
-  );
+  if (!connectionString) {
+    t.skip("Set VENUE_TEST_DATABASE_URL or DATABASE_URL to local PostgreSQL");
+    return;
+  }
   assert.ok(
     ["localhost", "127.0.0.1", "[::1]"].includes(
       new URL(connectionString).hostname,

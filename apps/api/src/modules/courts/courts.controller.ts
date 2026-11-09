@@ -101,8 +101,40 @@ export class CourtsController {
     @Param("id") id: string,
     @Body() body: unknown,
   ) {
-    const input = parseBody(updateOpeningHoursSchema, body);
+    const rawHours =
+      body && typeof body === "object" && "hours" in body
+        ? (body as { hours: unknown }).hours
+        : body;
+    const input = parseBody(updateOpeningHoursSchema, rawHours);
     return this.service.updateOpeningHours(id, input);
+  }
+
+  @Get("owner/venues/:id/opening-hours")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("venue", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xem giờ mở cửa của cơ sở" })
+  getVenueOpeningHours(@Param("id") venueId: string) {
+    return this.service.getVenueOpeningHours(venueId);
+  }
+
+  @Put("owner/venues/:id/opening-hours")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("venue", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Cập nhật giờ mở cửa đồng loạt cho cơ sở" })
+  updateVenueOpeningHours(
+    @Param("id") venueId: string,
+    @Body() body: unknown,
+  ) {
+    const rawHours =
+      body && typeof body === "object" && "hours" in body
+        ? (body as { hours: unknown }).hours
+        : body;
+    const input = parseBody(updateOpeningHoursSchema, rawHours);
+    return this.service.updateVenueOpeningHours(venueId, input);
   }
 
   // ===== Pricing Rules =====
@@ -154,5 +186,42 @@ export class CourtsController {
     @Param("ruleId") ruleId: string,
   ) {
     return this.service.deletePricingRule(courtId, ruleId);
+  }
+
+  @Get("owner/venues/:id/pricing-rules")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("venue", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xem bảng giá của cơ sở" })
+  getVenuePricingRules(@Param("id") venueId: string) {
+    return this.service.getVenuePricingRules(venueId);
+  }
+
+  @Post("owner/venues/:id/pricing-rules")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("venue", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Tạo khung giá cho cơ sở" })
+  createVenuePricingRule(
+    @Param("id") venueId: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseBody(pricingRuleSchema, body);
+    return this.service.createVenuePricingRule(venueId, input);
+  }
+
+  @Delete("owner/pricing-rules/:ruleId")
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("owner")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xoá khung giá theo ruleId" })
+  deleteOwnerPricingRule(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("ruleId") ruleId: string,
+  ) {
+    return this.service.deletePricingRuleByOwner(user.id, ruleId);
   }
 }

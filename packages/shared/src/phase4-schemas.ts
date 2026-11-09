@@ -35,7 +35,12 @@ function validRange(value: { from?: string; to?: string }, inclusive: boolean): 
   return elapsed >= (inclusive ? 0 : 1) && elapsed <= (inclusive ? 365 : 366) * 86400000;
 }
 export const adminBookingQuerySchema = z.object({
-  ...venuePageFields, ...dateFields, status: z.enum(BOOKING_STATUSES).optional(), venueId: phase4IdSchema.optional(), customerId: phase4IdSchema.optional(),
+  ...venuePageFields,
+  ...dateFields,
+  status: z.enum(BOOKING_STATUSES).optional(),
+  venueId: phase4IdSchema.optional(),
+  customerId: phase4IdSchema.optional(),
+  q: z.string().trim().max(200).optional(),
 }).strict().refine((value) => validRange(value, true), 'Both dates required, ordered, at most 366 inclusive days');
 export const adminStatsQuerySchema = z.object({ ...dateFields, groupBy: z.enum(['day', 'week', 'month']).default('day') }).strict()
   .refine((value) => validRange(value, true), 'Both dates required, ordered, at most 366 inclusive days');
@@ -45,8 +50,16 @@ export const adminAuditQuerySchema = z.object({
 }).strict().refine((value) => validRange(value, false), 'Both timestamps required, increasing, at most 366 days');
 export const publicReviewQuerySchema = z.object(venuePageFields).strict();
 export const adminReviewQuerySchema = z.object({
-  ...venuePageFields, venueId: phase4IdSchema.optional(),
+  ...venuePageFields,
+  venueId: phase4IdSchema.optional(),
   isVisible: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  rating: z
+    .union([
+      z.number().int().min(1).max(5),
+      z.enum(['1', '2', '3', '4', '5']).transform((value) => Number(value)),
+    ])
+    .optional(),
+  q: z.string().trim().max(200).optional(),
 }).strict();
 export const reviewVisibilitySchema = z.object({ isVisible: z.boolean() }).strict();
 export const googleCallbackQuerySchema = z.object({

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -50,6 +51,7 @@ export class CourtsService {
         closeTime: "22:00",
         isClosed: false,
       })),
+      venueId,
     );
 
     return court;
@@ -86,7 +88,7 @@ export class CourtsService {
         message: "Sân con không tồn tại.",
       });
     }
-    return this.repo.getOpeningHours(courtId);
+    return this.repo.getOpeningHours(courtId, court.venueId);
   }
 
   async updateOpeningHours(courtId: string, input: UpdateOpeningHoursInput) {
@@ -97,7 +99,29 @@ export class CourtsService {
         message: "Sân con không tồn tại.",
       });
     }
-    return this.repo.upsertOpeningHours(courtId, input);
+    return this.repo.upsertOpeningHours(courtId, input, court.venueId);
+  }
+
+  async getVenueOpeningHours(venueId: string) {
+    const venue = await this.venuesRepo.findById(venueId);
+    if (!venue) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Cơ sở thể thao không tồn tại.",
+      });
+    }
+    return this.repo.getVenueOpeningHours(venueId);
+  }
+
+  async updateVenueOpeningHours(venueId: string, input: UpdateOpeningHoursInput) {
+    const venue = await this.venuesRepo.findById(venueId);
+    if (!venue) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Cơ sở thể thao không tồn tại.",
+      });
+    }
+    return this.repo.upsertVenueOpeningHours(venueId, input);
   }
 
   // Pricing Rules
@@ -109,7 +133,18 @@ export class CourtsService {
         message: "Sân con không tồn tại.",
       });
     }
-    return this.repo.getPricingRules(courtId);
+    return this.repo.getPricingRules(courtId, court.venueId);
+  }
+
+  async getVenuePricingRules(venueId: string) {
+    const venue = await this.venuesRepo.findById(venueId);
+    if (!venue) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Cơ sở thể thao không tồn tại.",
+      });
+    }
+    return this.repo.getVenuePricingRules(venueId);
   }
 
   async createPricingRule(courtId: string, input: PricingRuleInput) {
@@ -128,7 +163,41 @@ export class CourtsService {
       });
     }
 
-    return this.repo.createPricingRule(courtId, input);
+    return this.repo.createPricingRule(courtId, input, court.venueId);
+  }
+
+  async createVenuePricingRule(
+    venueId: string,
+    input: PricingRuleInput & { courtId?: string | null },
+  ) {
+    const venue = await this.venuesRepo.findById(venueId);
+    if (!venue) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Cơ sở thể thao không tồn tại.",
+      });
+    }
+    if (input.startTime >= input.endTime) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Giờ kết thúc phải lớn hơn giờ bắt đầu.",
+      });
+    }
+    if (input.courtId) {
+      return this.createPricingRule(input.courtId, input);
+    }
+    const venueCourts = await this.repo.findCourtsByVenueId(venueId, false);
+    if (venueCourts.length === 0) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Cơ sở chưa có sân con để áp dụng bảng giá.",
+      });
+    }
+    let created = null;
+    for (const court of venueCourts) {
+      created = await this.repo.createPricingRule(court.id, input, venueId);
+    }
+    return created;
   }
 
   async updatePricingRule(
@@ -153,7 +222,13 @@ export class CourtsService {
       });
     }
 
-    return this.repo.updatePricingRule(courtId, ruleId, input);
+    const court = await this.repo.findCourtById(courtId);
+    return this.repo.updatePricingRule(
+      courtId,
+      ruleId,
+      input,
+      court?.venueId ?? "",
+    );
   }
 
   async deletePricingRule(courtId: string, ruleId: string) {
@@ -165,5 +240,23 @@ export class CourtsService {
       });
     }
     await this.repo.deletePricingRule(courtId, ruleId);
+  }
+
+  async deletePricingRuleByOwner(userId: string, ruleId: string) {
+    const found = await this.repo.findPricingRuleByRuleId(ruleId);
+    if (!found) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Khung giá không tồn tại.",
+      });
+    }
+    const venue = await this.venuesRepo.findById(found.venueId);
+    if (!venue || venue.ownerId !== userId) {
+      throw new ForbiddenException({
+        code: "NOT_VENUE_OWNER",
+        message: "Bạn không sở hữu cơ sở chứa khung giá này.",
+      });
+    }
+    await this.repo.deletePricingRule(found.rule.courtId, ruleId);
   }
 }

@@ -66,6 +66,17 @@ export async function apiFetchWithMeta<T>(
 
   // FormData phải để trình duyệt tự đặt Content-Type kèm boundary.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const mergedHeaders = new Headers(headers);
+  if (!isFormData && !mergedHeaders.has('Content-Type')) {
+    mergedHeaders.set('Content-Type', 'application/json');
+  }
+  if (
+    typeof window !== 'undefined' &&
+    window.location?.origin &&
+    !mergedHeaders.has('X-Request-Origin')
+  ) {
+    mergedHeaders.set('X-Request-Origin', window.location.origin);
+  }
 
   let res: Response;
   try {
@@ -73,10 +84,7 @@ export async function apiFetchWithMeta<T>(
       ...rest,
       body,
       credentials: 'include', // gửi cookie httpOnly
-      headers: {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...headers,
-      },
+      headers: mergedHeaders,
     });
   } catch (err) {
     // fetch chỉ ném khi lỗi mạng thật (DNS, mất kết nối, CORS).

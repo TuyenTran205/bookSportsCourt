@@ -8,6 +8,7 @@ import {
   type VenueMapQueryInput,
 } from "../../../../../packages/shared/src/schemas.js";
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,19 +16,28 @@ import {
   HttpCode,
   Param,
   Patch,
+  PayloadTooLargeException,
   Post,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiBody,
+  ApiConsumes,
   ApiCookieAuth,
   ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import {
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_BYTES,
+} from "../../../../../packages/shared/src/constants.js";
 import { bankAccountOpenApi } from "../payments/payments.swagger.js";
 import {
   addVenueImageSchema,
@@ -43,6 +53,18 @@ import { Roles } from "../../common/decorators/roles.decorator.js";
 import { CheckOwnership } from "../../common/decorators/check-ownership.decorator.js";
 import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
 import { VenuesService } from "./venues.service.js";
+import { invalidImage, type ProofFile } from "../uploads/proof-image.js";
+
+const VenueImageUploadInterceptor = FileInterceptor("file", {
+  limits: { fileSize: UPLOAD_MAX_BYTES, files: 1 },
+  fileFilter: (_request, file, callback) =>
+    callback(
+      UPLOAD_ACCEPTED_TYPES.some((type) => type === file.mimetype)
+        ? null
+        : invalidImage(),
+      true,
+    ),
+});
 
 @ApiTags("Venue Extensions")
 @Controller("venues")
@@ -71,13 +93,37 @@ export class VenueExtensionsController {
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
   @Roles("owner")
   @CheckOwnership("venue", "id")
+  @UseInterceptors(VenueImageUploadInterceptor)
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Thêm ảnh cho cơ sở" })
+  @ApiConsumes("multipart/form-data", "application/json")
+  @ApiOperation({ summary: "[Owner] Thêm ảnh cho cơ sở (multipart file hoặc JSON url)" })
   addImage(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
+    @UploadedFile() file: ProofFile | undefined,
     @Body() body: unknown,
   ) {
+    if (file) {
+      if (file.size > UPLOAD_MAX_BYTES || file.buffer.length > UPLOAD_MAX_BYTES) {
+        throw new PayloadTooLargeException({
+          code: "FILE_TOO_LARGE",
+          message: "Ảnh cơ sở tối đa 5 MB.",
+        });
+      }
+      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const rawOrder =
+        body && typeof body === "object" && "sortOrder" in body
+          ? Number((body as { sortOrder?: unknown }).sortOrder)
+          : 0;
+      const sortOrder = Number.isInteger(rawOrder) && rawOrder >= 0 ? rawOrder : 0;
+      return this.service.addImage(user.id, id, dataUrl, sortOrder);
+    }
+    if (!body || typeof body !== "object" || !("url" in body)) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Vui lòng tải lên tệp ảnh (field 'file') hoặc truyền đường dẫn ảnh.",
+      });
+    }
     const input = parseBody(addVenueImageSchema, body);
     return this.service.addImage(user.id, id, input.url, input.sortOrder);
   }

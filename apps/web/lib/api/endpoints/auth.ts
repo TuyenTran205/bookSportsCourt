@@ -9,7 +9,7 @@ import type {
   User,
 } from '@bsc/shared';
 
-import { apiFetch, jsonBody } from '../client';
+import { API_BASE_URL, API_PREFIX, apiFetch, jsonBody } from '../client';
 
 /**
  * Endpoint module – Auth & hồ sơ.
@@ -128,13 +128,13 @@ export function updateProfile(input: UpdateProfileInput) {
  */
 export function uploadAvatar(file: File) {
   const form = new FormData();
-  form.append('avatar', file);
+  form.append('file', file);
   return apiFetch<AuthResult | User>('/users/me/avatar', { method: 'POST', body: form }).then(
     toAuthResult,
   );
 }
 
-/** Trả URL chuyển hướng sang Google OAuth. */
-export function googleAuthUrl() {
-  return apiFetch<{ url: string }>('/auth/google');
+/** Trả URL chuyển hướng trực tiếp sang Google OAuth (HTTP 302 tại Backend). */
+export function googleAuthUrl(): string {
+  return `${API_BASE_URL}${API_PREFIX}/auth/google`;
 }

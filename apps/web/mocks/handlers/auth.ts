@@ -175,7 +175,7 @@ export const authHandlers = [
     if (!user) return err(401, 'UNAUTHORIZED', 'Chưa đăng nhập');
 
     const form = await request.formData();
-    const file = form.get('avatar');
+    const file = form.get('file') ?? form.get('avatar');
     if (!(file instanceof File)) {
       return err(422, 'VALIDATION_ERROR', 'Thiếu tệp ảnh đại diện');
     }

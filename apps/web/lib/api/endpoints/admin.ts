@@ -33,6 +33,23 @@ import { apiFetch, apiFetchWithMeta, jsonBody } from "../client";
  * làm). Khi backend bổ sung phần còn thiếu thì mở rộng type này và chuyển vào
  * `packages/shared` cùng lúc.
  */
+export interface AdminStatsSummary {
+    bookingCountsByStatus: Record<BookingStatus, number>;
+    grossRevenue: number;
+    refundedAmount: number;
+    netRevenue: number;
+    userCountsByRole: Record<UserRole, number>;
+    venueCountsByStatus: Record<string, number>;
+}
+
+export interface AdminStatsSeriesPoint {
+    date: string;
+    bookingCountsByStatus: Record<BookingStatus, number>;
+    grossRevenue: number;
+    refundedAmount: number;
+    netRevenue: number;
+}
+
 export interface AdminStats {
     totalUsers: number;
     totalVenues: number;
@@ -40,6 +57,13 @@ export interface AdminStats {
     totalRevenue: number;
     pendingOwnerApplications: number;
     pendingVenues: number;
+    generatedAt?: string;
+    from?: string;
+    to?: string;
+    groupBy?: "day" | "week" | "month";
+    summary?: AdminStatsSummary;
+    series?: AdminStatsSeriesPoint[];
+    dataQuality?: { excludedPaymentCount: number };
 }
 
 export interface AdminAnalytics {
@@ -48,15 +72,91 @@ export interface AdminAnalytics {
     byVenue: Array<{ venueId: string; name: string; bookings: number; revenue: number }>;
 }
 
-export function getAdminAnalytics() {
-    return apiFetch<AdminAnalytics>("/admin/analytics");
+function normalizeAdminStats(raw: AdminStats | Record<string, unknown>): AdminStats {
+    if ("totalUsers" in raw && typeof raw.totalUsers === "number") {
+        return raw as AdminStats;
+    }
+    const contract = raw as {
+        generatedAt?: string;
+        from?: string;
+        to?: string;
+        groupBy?: "day" | "week" | "month";
+        summary?: AdminStatsSummary;
+        series?: AdminStatsSeriesPoint[];
+        dataQuality?: { excludedPaymentCount: number };
+        pendingOwnerApplications?: number;
+    };
+    const summary = contract.summary;
+    const totalUsers = summary
+        ? Object.values(summary.userCountsByRole ?? {}).reduce((a, b) => a + b, 0)
+        : 0;
+    const totalVenues = summary
+        ? Object.values(summary.venueCountsByStatus ?? {}).reduce((a, b) => a + b, 0)
+        : 0;
+    const totalBookings = summary
+        ? Object.values(summary.bookingCountsByStatus ?? {}).reduce((a, b) => a + b, 0)
+        : 0;
+    const totalRevenue = summary?.netRevenue ?? summary?.grossRevenue ?? 0;
+    const pendingVenues = summary?.venueCountsByStatus?.pending ?? 0;
+
+    return {
+        totalUsers,
+        totalVenues,
+        totalBookings,
+        totalRevenue,
+        pendingOwnerApplications: contract.pendingOwnerApplications ?? 0,
+        pendingVenues,
+        generatedAt: contract.generatedAt,
+        from: contract.from,
+        to: contract.to,
+        groupBy: contract.groupBy,
+        summary,
+        series: contract.series,
+        dataQuality: contract.dataQuality,
+    };
+}
+
+export async function getAdminAnalytics(): Promise<AdminAnalytics> {
+    try {
+        return await apiFetch<AdminAnalytics>("/admin/analytics");
+    } catch {
+        const stats = await getAdminStats();
+        const counts: Partial<Record<BookingStatus, number>> =
+            stats.summary?.bookingCountsByStatus ?? {};
+        const statuses: BookingStatus[] = [
+            "held",
+            "pending_payment",
+            "confirmed",
+            "completed",
+            "cancelled",
+            "expired",
+            "no_show",
+        ];
+        const byStatus = statuses.map((status) => ({
+            status,
+            count: counts[status] ?? 0,
+        }));
+        return { byStatus, bySport: [], byVenue: [] };
+    }
 }
 
 /** Cơ sở kèm tên chủ sân — dữ liệu chỉ có ở màn quản trị. */
 export type AdminVenueRow = VenueListItem & { ownerName: string };
 
-export function getAdminStats() {
-    return apiFetch<AdminStats>("/admin/stats");
+export function getAdminStats(): Promise<AdminStats> {
+    return apiFetch<AdminStats | Record<string, unknown>>("/admin/stats").then(
+        normalizeAdminStats,
+    );
+}
+
+export function getAdminStatsByRange(params: {
+    from?: string;
+    to?: string;
+    groupBy?: "day" | "week" | "month";
+}): Promise<AdminStats> {
+    return apiFetch<AdminStats | Record<string, unknown>>("/admin/stats", {
+        query: { ...params },
+    }).then(normalizeAdminStats);
 }
 
 // ── Hồ sơ chủ sân (ADM-01) ─────────────────────────────────────────────────

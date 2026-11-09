@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api/errors';
+import { googleAuthUrl } from '@/lib/api/endpoints/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { DEMO_PASSWORD } from '@/mocks/fixtures/users';
 
@@ -223,8 +224,8 @@ export function LoginForm() {
           size="md"
           className="w-full"
           onClick={() => {
-            // Chuyển hướng sang Google Auth endpoint theo hợp đồng
-            window.location.href = '/api/v1/auth/google';
+            // Chuyển hướng sang Google Auth endpoint theo hợp đồng (HTTP 302)
+            window.location.href = googleAuthUrl();
           }}
         >
           <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">

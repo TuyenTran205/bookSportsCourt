@@ -195,9 +195,11 @@ Xây dựng `EventsGateway` (namespace `/api/v1/realtime` hoặc root `/`) tích
 
 ---
 
-## 5. Bảng chuẩn hoá đường dẫn giữa Frontend và Backend
+## 5. Bảng chuẩn hoá & Đồng bộ giữa Frontend, Backend và Hợp đồng API
 
-Đối chiếu giữa `apps/web/lib/api/endpoints/` và `docs/11-api-contract.md` cho thấy một số hàm Frontend trước đây gọi đường dẫn hoặc phương thức chưa khớp với REST contract chuẩn của Backend. Dưới đây là tình trạng rà soát và chuẩn hóa:
+### 5.1. Các đường dẫn đã chuẩn hoá xong
+
+Đối chiếu giữa `apps/web/lib/api/endpoints/` và `docs/11-api-contract.md` cho thấy một số hàm Frontend trước đây gọi đường dẫn hoặc phương thức chưa khớp với REST contract chuẩn của Backend. Dưới đây là các mục đã hoàn tất chuẩn hóa:
 
 | Hàm ở Frontend (`apps/web`) | Đường dẫn FE cũ | Đường dẫn chuẩn theo Backend Contract | Tình trạng chuẩn hoá |
 |---|---|---|---|
@@ -207,21 +209,36 @@ Xây dựng `EventsGateway` (namespace `/api/v1/realtime` hoặc root `/`) tích
 | `createSport` | `POST /admin/sports` | `POST /sports` | **Đã chuẩn hoá** trong `admin.ts`: gọi `POST /sports`. |
 | `deleteSport` | `DELETE /admin/sports/:id` | `DELETE /sports/:id` | **Đã chuẩn hoá** trong `admin.ts`: gọi `DELETE /sports/:id`. |
 | `createArea` | `POST /admin/areas` | `POST /areas` | **Đã chuẩn hoá** trong `admin.ts`: gọi `POST /areas`. |
-| `cancelBooking` | `POST /bookings/:id/cancel` | `PATCH /bookings/:id/cancel` | **Đã chuẩn hoá** trong `bookings.ts`: chuyển method thành `PATCH`. |
+| `cancelBooking` | `POST /bookings/:id/cancel` | `PATCH /bookings/:id/cancel` | **Đã chuẩn hoá** trong `bookings.ts` (BE hỗ trợ cả `PATCH` và `POST`). |
 | `forceCancelBooking` | `PATCH /admin/bookings/:id/cancel` | `PATCH /bookings/:id/cancel` | **Đã chuẩn hoá** trong `admin.ts`: chuyển sang dùng chung `PATCH /bookings/:id/cancel`. |
 | `createReview` | `POST /bookings/:bookingId/review` | `POST /reviews` | **Đã chuẩn hoá** trong `bookings.ts`: gọi `POST /reviews` với body `{ bookingId, rating, comment? }`. |
-| `addFavorite` | `POST /favorites/:venueId` | `PUT /favorites/:venueId` | **Đã chuẩn hoá** trong `bookings.ts`: chuyển method thành `PUT` (idempotent). |
+| `addFavorite` | `POST /favorites/:venueId` | `PUT /favorites/:venueId` | **Đã chuẩn hoá** trong `venues.ts`: chuyển method thành `PUT` (idempotent). |
 | `markBookingNoShow` | `POST /owner/bookings/:bookingId/no-show` | `PATCH /bookings/:id/no-show` | **Đã chuẩn hoá** trong `owner.ts`: chuyển method thành `PATCH` và path `/bookings/:id/no-show`. |
 | `getBankAccount` | `GET /owner/venues/:venueId/payment-account` | `GET /owner/venues/:id/payment-account` | **Đã khớp**: segment `:id` đại diện venueId. |
 | `getCancellationPolicy` | `GET /owner/venues/:venueId/cancellation-policy` | `GET /owner/venues/:id/cancellation-policy` | **Đã khớp**: segment `:id` đại diện venueId. |
-| `getOpeningHours` | `GET /owner/venues/:id/opening-hours` | `GET /courts/:id/opening-hours` | Giờ mở cửa DB và Contract gắn với từng sân con (`courts`). Backend hỗ trợ thêm endpoint cấp Venue hoặc FE đổi sang gọi theo Court. |
-| `replaceOpeningHours` | `PUT /owner/venues/:id/opening-hours` | `PUT /courts/:id/opening-hours` | Tương tự; chuẩn hóa theo Court hoặc thêm alias cấp Venue để cập nhật hàng loạt. |
-| `listPricingRules` | `GET /owner/venues/:id/pricing-rules` | `GET /courts/:id/pricing-rules` | Bảng giá gắn với từng sân con (`courts`). |
-| `createPricingRule` | `POST /owner/venues/:id/pricing-rules` | `POST /courts/:id/pricing-rules` | Chuẩn hóa theo Court. |
-| `deletePricingRule` | `DELETE /owner/pricing-rules/:id` | `DELETE /courts/:id/pricing-rules/:ruleId` | Chuẩn hoá param gồm `courtId` và `ruleId`. |
-| `setUserRole` | `PATCH /admin/users/:id/role` | Chưa có trong contract | Nâng quyền Owner thực hiện qua luồng duyệt hồ sơ `PATCH /admin/owner-applications/:id`; không mở route đổi role tuỳ tiện. |
 | `quoteBooking` | `POST /bookings/quote` | `POST /bookings/quote` | **Đã triển khai** ở Backend tại Đợt 1 để FE tính trước tổng tiền/tiền cọc mà không tin cậy client. |
 | `getHold` | `GET /bookings/hold/:id` | `GET /bookings/:id` | **Đã hỗ trợ cả hai:** route chuẩn `GET /bookings/:id` và alias `GET /bookings/hold/:id` trả kèm trường `remainingMs`. |
+
+### 5.2. Danh sách các điểm lệch giữa FE, BE và Hợp đồng API đã đồng bộ xong
+
+| # | Hạng mục | Hợp đồng API (`11-api-contract.md`) | Hiện trạng Backend (`apps/api`) | Hiện trạng Frontend (`apps/web`) | Trạng thái đồng bộ |
+|---|---|---|---|---|---|
+| 1 | **Header bảo mật `X-Request-Origin`** | Bắt buộc trên các thao tác thanh toán nhạy cảm | `RequestOriginGuard` bắt buộc header `X-Request-Origin` khớp `ALLOWED_ORIGINS` trên: `POST /bookings/:id/payment/proof`, `PATCH /owner/payments/:id/approve`, `PATCH /owner/payments/:id/reject`, `PUT /owner/venues/:id/payment-account`. | `apiFetchWithMeta` trong `apps/web/lib/api/client.ts` tự động đính kèm `'X-Request-Origin': window.location.origin` khi chạy trên trình duyệt. | **Đã hoàn thành** trong `apps/web/lib/api/client.ts`. |
+| 2 | **Giờ mở cửa (`Opening Hours`)** | Theo từng sân con (`Court`): `GET /courts/:id/opening-hours`, `PUT /courts/:id/opening-hours` | `CourtsController` hỗ trợ đầy đủ cả `/courts/:id/opening-hours` và alias cấp Venue `/owner/venues/:id/opening-hours`, chuẩn hoá cấu trúc 7 ngày trong tuần. | `owner.ts` cung cấp cả `getCourtOpeningHours` / `replaceCourtOpeningHours` (`/courts/:id/opening-hours`) và `getOpeningHours` / `replaceOpeningHours` (`/owner/venues/:id/opening-hours`). | **Đã hoàn thành** ở cả FE (`owner.ts`, `mocks/handlers/owner.ts`) và BE (`courts.controller.ts`, `courts.service.ts`, `courts.repository.ts`). |
+| 3 | **Bảng giá (`Pricing Rules`)** | Theo từng sân con (`Court`): `GET /courts/:id/pricing-rules`, `POST /courts/:id/pricing-rules`, `PATCH /courts/:id/pricing-rules/:ruleId`, `DELETE /courts/:id/pricing-rules/:ruleId` | `CourtsController` hỗ trợ đầy đủ cả `/courts/:id/pricing-rules...` và alias cấp Venue `/owner/venues/:id/pricing-rules`, `DELETE /owner/pricing-rules/:ruleId`, đồng thời ánh xạ `label`/`weekdays`. | `owner.ts` cung cấp cả hàm theo Court và theo Venue; `deletePricingRule(ruleId, courtId)` tự động gọi `/courts/:courtId/pricing-rules/:ruleId` khi có `courtId`. | **Đã hoàn thành** ở cả FE (`owner.ts`, `OwnerPricingScreen.tsx`, `mocks/handlers/owner.ts`) và BE (`courts.controller.ts`, `courts.service.ts`, `courts.repository.ts`). |
+| 4 | **Upload ảnh cơ sở (`POST /venues/:id/images`)** | `multipart/form-data` (field `file`, tối đa 10 ảnh/venue, <= 5 MB) | `VenueExtensionsController` sử dụng `FileInterceptor('file')` hỗ trợ cả `multipart/form-data` (field `file`) lẫn JSON `{ url, sortOrder }`, kiểm tra giới hạn tối đa 10 ảnh/cơ sở. | `uploadVenueImage` trong `owner.ts` gửi `FormData` với `formData.append('file', optimizedImage)`. | **Đã hoàn thành** trong `venues-extensions.controller.ts` và `venues.service.ts`. |
+| 5 | **Upload Avatar (`POST /users/me/avatar`)** | `multipart/form-data` với field `file` | Chưa làm (thuộc Đợt 3 — khi triển khai sẽ nhận field `file`). | `uploadAvatar` trong `auth.ts` đã đổi sang gửi `form.append('file', file)`; MSW mock chấp nhận cả `file` lẫn `avatar`. | **Đã chuẩn hoá FE & Mock** trong `auth.ts` và `mocks/handlers/auth.ts`. |
+| 6 | **Google OAuth (`GET /auth/google`)** | Trả `302 Redirect` sang Google kèm cookie `google_oauth_binding` | `GoogleOAuthController` thực hiện `res.redirect(302, url)`. | `googleAuthUrl()` trong `auth.ts` trả URL điều hướng trực tiếp `${API_BASE_URL}${API_PREFIX}/auth/google`, dùng trong `LoginForm.tsx` và `RegisterForm.tsx`. | **Đã hoàn thành** trong `auth.ts`, `LoginForm.tsx`, `RegisterForm.tsx`. |
+| 7 | **Query params của Admin Bookings & Reviews** | `GET /admin/bookings`: `status, venueId, customerId, from, to, q, page, limit`<br>`GET /admin/reviews`: `venueId, isVisible, rating, q, page, limit` | `adminBookingQuerySchema` và `adminReviewQuerySchema` đã mở rộng nhận `q` và `rating`, đồng thời `AdminReportingRepository` và `ReviewsRepository` thực thi lọc tương ứng. | `admin.ts` truyền `q` và `rating` đồng bộ với schema Backend. | **Đã hoàn thành** trong `phase4-schemas.ts`, `admin-reporting.repository.ts`, `reviews.repository.ts`. |
+| 8 | **Cấu trúc trả về `GET /admin/stats`** | Trả về `AdminStats` (`{ summary, population, series, dataQuality }`) | `AdminReportingController` trả đúng cấu trúc `AdminStats` của `phase4-responses.ts`. | `getAdminStats` trong `admin.ts` chuẩn hoá cả dữ liệu `AdminStats` từ Backend lẫn MSW mock về cấu trúc thống nhất có đủ `summary`, `series` và các trường KPI tổng hợp; `getAdminAnalytics` tự fallback từ `getAdminStats` khi chạy với Backend thật. | **Đã hoàn thành** trong `apps/web/lib/api/endpoints/admin.ts`. |
+| 9 | **Payload tạo booking thủ công (`POST /owner/bookings/manual`)** | Body: `{ courtId, start, end, guestName, guestPhone, note? }` | Chưa làm (thuộc Đợt 2). | `createManualBooking` trong `owner.ts` gửi `{ courtId, slots: [{ start, end }], guestName, guestPhone?, note? }`. | **Lưu ý cho Đợt 2:** Khi triển khai ở BE sẽ hỗ trợ cả 2 định dạng `{ start, end }` và `{ slots: [{ start, end }] }` (giống `POST /bookings/hold`). |
+| 10 | **Query lọc loại thông báo (`GET /notifications`)** | Query: `unreadOnly?`, `type?`, `page`, `limit` | Chưa làm (thuộc Đợt 3). | `listNotifications` trong `notifications.ts` có truyền thêm `type?: string`. | **Lưu ý cho Đợt 3:** Khi triển khai ở BE sẽ hỗ trợ query param `type?: string` trong DTO lọc thông báo. |
+
+### 5.3. Các hàm chỉ dùng riêng cho chế độ Mock ở Frontend (Không nằm trong Hợp đồng API)
+
+- `setUserRole` (`PATCH /admin/users/:id/role` trong `admin.ts`): Hợp đồng quy định nâng quyền Owner thông qua luồng duyệt hồ sơ `PATCH /admin/owner-applications/:id`.
+- `getAdminAnalytics` (`GET /admin/analytics` trong `admin.ts`): Chỉ dùng cho MSW mock, hợp đồng đã gộp chuỗi thời gian vào `GET /admin/stats`.
+- `resetMockData` (`POST /admin/reset-mock` trong `admin.ts`): Nút reset dữ liệu MSW mock trên trình duyệt.
 
 ---
 

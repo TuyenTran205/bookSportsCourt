@@ -95,6 +95,20 @@ export function deleteCourt(courtId: string) {
 
 // ── Giờ mở cửa ─────────────────────────────────────────────────────────────
 
+export function getCourtOpeningHours(courtId: string) {
+  return apiFetch<OpeningHour[]>(`/courts/${encodeURIComponent(courtId)}/opening-hours`);
+}
+
+export function replaceCourtOpeningHours(
+  courtId: string,
+  hours: Omit<OpeningHour, 'id' | 'venueId'>[],
+) {
+  return apiFetch<OpeningHour[]>(`/courts/${encodeURIComponent(courtId)}/opening-hours`, {
+    method: 'PUT',
+    ...jsonBody({ hours }),
+  });
+}
+
 export function getOpeningHours(venueId: string) {
   return apiFetch<OpeningHour[]>(`/owner/venues/${encodeURIComponent(venueId)}/opening-hours`);
 }
@@ -109,6 +123,43 @@ export function replaceOpeningHours(venueId: string, hours: Omit<OpeningHour, 'i
 
 // ── Bảng giá ───────────────────────────────────────────────────────────────
 
+export function listCourtPricingRules(courtId: string) {
+  return apiFetch<PricingRule[]>(`/courts/${encodeURIComponent(courtId)}/pricing-rules`);
+}
+
+export function createCourtPricingRule(
+  courtId: string,
+  input: Omit<PricingRule, 'id' | 'venueId'>,
+) {
+  return apiFetch<PricingRule>(`/courts/${encodeURIComponent(courtId)}/pricing-rules`, {
+    method: 'POST',
+    ...jsonBody(input),
+  });
+}
+
+export function updateCourtPricingRule(
+  courtId: string,
+  ruleId: string,
+  input: Partial<Omit<PricingRule, 'id' | 'venueId'>>,
+) {
+  return apiFetch<PricingRule>(
+    `/courts/${encodeURIComponent(courtId)}/pricing-rules/${encodeURIComponent(ruleId)}`,
+    {
+      method: 'PATCH',
+      ...jsonBody(input),
+    },
+  );
+}
+
+export function deleteCourtPricingRule(courtId: string, ruleId: string) {
+  return apiFetch<{ success: true }>(
+    `/courts/${encodeURIComponent(courtId)}/pricing-rules/${encodeURIComponent(ruleId)}`,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
 export function listPricingRules(venueId: string) {
   return apiFetch<PricingRule[]>(`/owner/venues/${encodeURIComponent(venueId)}/pricing-rules`);
 }
@@ -117,13 +168,19 @@ export function createPricingRule(
   venueId: string,
   input: Omit<PricingRule, 'id' | 'venueId'>,
 ) {
+  if (input.courtId) {
+    return createCourtPricingRule(input.courtId, input);
+  }
   return apiFetch<PricingRule>(`/owner/venues/${encodeURIComponent(venueId)}/pricing-rules`, {
     method: 'POST',
     ...jsonBody(input),
   });
 }
 
-export function deletePricingRule(ruleId: string) {
+export function deletePricingRule(ruleId: string, courtId?: string | null) {
+  if (courtId) {
+    return deleteCourtPricingRule(courtId, ruleId);
+  }
   return apiFetch<{ success: true }>(`/owner/pricing-rules/${encodeURIComponent(ruleId)}`, {
     method: 'DELETE',
   });

@@ -549,6 +549,10 @@ export class VenuesService {
   async addImage(userId: string, venueId: string, url: string, sortOrder = 0) {
     return this.repository.transaction(async (tx) => {
       const venue = await this.lockOwnedVenue(tx, userId, venueId);
+      const currentImages = await this.repository.imageList(venueId, tx);
+      if (currentImages.length >= 10) {
+        throw invalid("Mỗi cơ sở chỉ được tải lên tối đa 10 ảnh.");
+      }
       const image = await this.repository.addImage(venueId, url, sortOrder, tx);
       await this.imageContentChanged(tx, venue);
       return image;

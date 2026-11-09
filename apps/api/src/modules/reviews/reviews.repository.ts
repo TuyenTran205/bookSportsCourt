@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq, ilike, isNull, or } from "drizzle-orm";
 import {
   InjectDrizzle,
   type DrizzleDb,
@@ -115,11 +115,18 @@ export class ReviewsRepository {
     return row ?? null;
   }
   async list(tx: AuthTransaction, query: AdminReviewQueryInput) {
+    const qPattern = query.q
+      ? `%${query.q.replace(/[\\%_]/g, "\\$&")}%`
+      : undefined;
     const where = and(
       query.venueId ? eq(reviews.venueId, query.venueId) : undefined,
       query.isVisible === undefined
         ? undefined
         : eq(reviews.isVisible, query.isVisible),
+      query.rating !== undefined ? eq(reviews.rating, query.rating) : undefined,
+      qPattern
+        ? or(ilike(reviews.content, qPattern), ilike(reviews.ownerReply, qPattern))
+        : undefined,
     );
     const [total] = await tx.select({ n: count() }).from(reviews).where(where);
     const offset = (query.page - 1) * query.limit;
