@@ -1,0 +1,9 @@
+=== BANG ===
+amenities, areas, audit_logs, auth_tokens, blackout_periods, bookings, cancellation_policies, courts, favorites, notifications, oauth_accounts, opening_hours, owner_applications, payments, pricing_rules, refresh_tokens, reviews, schema_migrations, sports, users, venue_amenities, venue_images, venue_payment_accounts, venue_sports, venues
+=== MIGRATION DA AP DUNG ===
+0
+ERROR:  relation "drizzle.__drizzle_migrations" does not exist
+LINE 1: select * from drizzle.__drizzle_migrations order by id
+                      ^
+=== SO DONG DU LIEU ===
+users=3 venues=1 courts=1 sports=1 areas=2 bookings=0 opening_hours=1 pricing_rules=1

@@ -1,0 +1,4 @@
+=== KIEM TRA DATABASE ===
+DA_CO_DATABASE booksportscourt
+=== DANH SACH BANG HIEN CO ===
+25 bang trong schema public

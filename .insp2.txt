@@ -1,0 +1,26 @@
+=== SCHEMA_MIGRATIONS ===
+                      filename                       |          applied_at           
+-----------------------------------------------------+-------------------------------
+ 0001_init-users-and-auth.sql                        | 2026-11-04 22:50:40.570017+07
+ 0002_init-catalogs-and-venues.sql                   | 2026-11-04 22:50:40.600592+07
+ 0003_init-courts-pricing-and-blackouts.sql          | 2026-11-04 22:50:40.63096+07
+ 0004_init-bookings-and-payments.sql                 | 2026-11-04 22:50:40.790051+07
+ 0005_init-reviews-notifications-and-constraints.sql | 2026-11-04 22:50:40.806025+07
+ 0006_add-integrity-constraints.sql                  | 2026-11-04 22:50:40.837343+07
+ 0007_add-venue-rejection-reason.sql                 | 2026-11-09 00:37:43.828234+07
+(7 rows)
+
+=== TAI KHOAN DEMO ===
+                email                |   role   | status |     full_name      
+-------------------------------------+----------+--------+--------------------
+ admin.demo@booksportscourt.local    | admin    | active | Quản trị viên Demo
+ customer.demo@booksportscourt.local | customer | active | Khách hàng Demo
+ owner.demo@booksportscourt.local    | owner    | active | Chủ sân Demo
+(3 rows)
+
+=== CO SO / SAN ===
+       name        |       slug        |  status  | court | gio_mo_cua 
+-------------------+-------------------+----------+-------+------------
+ Sân cầu lông Demo | san-cau-long-demo | approved | Sân A |          1
+(1 row)
+

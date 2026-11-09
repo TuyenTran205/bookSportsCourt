@@ -1,0 +1,5 @@
+
+> @bsc/api@ db:migrate D:\BTL_Chuyende\bookSportsCourt\apps\api
+> node --loader ts-node/esm --no-warnings scripts/migrate.ts
+
+MIG_EXIT=0  

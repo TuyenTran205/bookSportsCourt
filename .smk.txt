@@ -1,0 +1,4 @@
+---HEALTH--- 
+health=%{http_code}{"data":{"status":"ok","database":"ok"}} 
+---LOGIN--- 
+login=%{http_code}{"data":{"id":"01a1a744-ad01-704e-ad4b-0ce92dd869a1","email":"customer.demo@booksportscourt.local","fullName":"Khách hàng Demo","phone":null,"avatarUrl":null,"role":"customer","status":"active","emailVerifiedAt":"2026-11-04T15:54:18.237Z","createdAt":"2026-11-04T15:54:18.237Z","updatedAt":"2026-11-04T15:54:18.237Z"}}

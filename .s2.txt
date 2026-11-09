@@ -1,0 +1,17 @@
+===MIGFILES=== 
+.gitkeep
+0001_init-users-and-auth.sql
+0002_init-catalogs-and-venues.sql
+0003_init-courts-pricing-and-blackouts.sql
+0004_init-bookings-and-payments.sql
+0005_init-reviews-notifications-and-constraints.sql
+0006_add-integrity-constraints.sql
+0007_add-venue-rejection-reason.sql
+===SEEDPASS=== 
+8:import { hashPassword } from "../src/modules/auth/auth-secrets.js";
+52:const seedPassword =
+54:const passwordHash = await hashPassword(seedPassword);
+74:        id, email, password_hash, full_name, role, status, email_verified_at
+79:        password_hash = EXCLUDED.password_hash,
+88:    [v7(), email, passwordHash, fullName, role],
+315:        VALUES ($1, '970422', '0000000000', 'BOOKSPORTSCOURT DEMO')

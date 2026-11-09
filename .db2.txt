@@ -1,0 +1,9 @@
+===ADMIN=== 
+KHONG_PHAI_ADMIN 
+===BIN=== 
+createdb.exe
+initdb.exe
+pg_ctl.exe
+postgres.exe
+===DISK=== 
+              45 Dir(s)  107,870,203,904 bytes free

@@ -1,0 +1,9 @@
+===PSQL=== 
+===PGBIN=== 
+17
+===SERVICE=== 
+SERVICE_NAME: postgresql-x64-17
+DISPLAY_NAME: postgresql-x64-17 - PostgreSQL Server 17
+===PORT=== 
+  TCP    0.0.0.0:5432           0.0.0.0:0              LISTENING       7516
+  TCP    [::]:5432              [::]:0                 LISTENING       7516
