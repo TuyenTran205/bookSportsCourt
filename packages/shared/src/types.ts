@@ -265,6 +265,7 @@ export interface OwnerVenueResponse {
   districtId?: string | null;
   lat: number | null;
   lng: number | null;
+  coverUrl?: string | null;
   sportIds: string[];
   sports?: Array<{ id: string; name: string; slug: string; icon?: string | null }>;
   amenityIds: string[];

@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ChevronsLeft, ChevronsRight, LogOut, Menu, Store, X } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, LogOut, Menu, Store, User as UserIcon, X } from 'lucide-react';
 
 import { NotificationBell } from '@/components/layout/NotificationBell';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
@@ -136,6 +137,7 @@ export function DashboardShell({
 
   const [collapsed, setCollapsed] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [avatarError, setAvatarError] = React.useState(false);
 
   React.useEffect(() => {
     setCollapsed(readCollapsed());
@@ -276,17 +278,59 @@ export function DashboardShell({
                   className="flex h-10 items-center gap-2 rounded-btn px-2 text-sm text-text-primary hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   aria-label={t('account')}
                 >
-                  <span className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
-                    {(user?.fullName ?? '?').trim().charAt(0).toUpperCase()}
-                  </span>
-                  <span className="hidden max-w-[140px] truncate font-medium text-text-primary sm:block">
-                    {user?.fullName}
-                  </span>
+                  {user?.avatarUrl && !avatarError ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.fullName ?? ''}
+                      width={32}
+                      height={32}
+                      unoptimized
+                      onError={() => setAvatarError(true)}
+                      className="size-8 rounded-full border border-border object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
+                      {(user?.fullName ?? '?').trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="hidden flex-col items-start text-left sm:flex">
+                    <span className="max-w-[140px] truncate text-xs font-semibold text-text-primary">
+                      {user?.fullName}
+                    </span>
+                    <span className="text-[10px] text-text-secondary">
+                      {area === 'admin' ? 'Quản trị viên' : 'Chủ sân'}
+                    </span>
+                  </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="truncate">{user?.email}</DropdownMenuLabel>
+                <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
+                  {user?.avatarUrl && !avatarError ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={user.fullName ?? ''}
+                      width={36}
+                      height={36}
+                      unoptimized
+                      className="size-9 rounded-full border border-border object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700 dark:bg-primary-950/60 dark:text-primary-300">
+                      {(user?.fullName ?? '?').trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate font-semibold text-text-primary">{user?.fullName}</span>
+                    <span className="truncate text-xs font-normal text-text-secondary">{user?.email}</span>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center gap-2">
+                    <UserIcon className="size-4" />
+                    <span>{t('profile')}</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/">{t('backToSite')}</Link>
                 </DropdownMenuItem>

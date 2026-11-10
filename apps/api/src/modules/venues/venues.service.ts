@@ -193,20 +193,75 @@ export class VenuesService {
           targetOwnerId = targetOwner.id;
         }
 
+        let resolvedProvinceId = input.provinceId?.toLowerCase() ?? venue.provinceId;
+        let resolvedWardId =
+          input.wardId !== undefined
+            ? (input.wardId ? input.wardId.toLowerCase() : null)
+            : venue.wardId;
+        let resolvedDistrictId =
+          input.districtId !== undefined
+            ? (input.districtId ? input.districtId.toLowerCase() : null)
+            : venue.districtId;
+
+        const areaIdsToCheck = [
+          resolvedProvinceId,
+          resolvedWardId,
+          resolvedDistrictId,
+        ].filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+        const areas = await this.repository.areas(tx, areaIdsToCheck);
+        let province = areas.find((area) => area.id === resolvedProvinceId);
+        if (!province && input.provinceCode) {
+          const found = await this.repository.findAreaByCode(input.provinceCode, "province");
+          if (found) {
+            resolvedProvinceId = found.id;
+            const refetched = await this.repository.areas(tx, [resolvedProvinceId]);
+            province = refetched[0];
+          }
+        }
+        if (province?.type !== "province") {
+          throw invalid("Tỉnh/thành phố không hợp lệ.");
+        }
+        if (resolvedWardId || input.wardCode) {
+          let ward = resolvedWardId ? areas.find((area) => area.id === resolvedWardId) : undefined;
+          if (!ward && input.wardCode) {
+            const found = await this.repository.findAreaByCode(input.wardCode, "ward");
+            if (found) {
+              resolvedWardId = found.id;
+              const refetched = await this.repository.areas(tx, [resolvedWardId]);
+              ward = refetched[0];
+            }
+          }
+          if (
+            !ward ||
+            ward.type !== "ward" ||
+            ward.parentId !== resolvedProvinceId
+          ) {
+            throw invalid(
+              "Xã/phường không hợp lệ hoặc không thuộc tỉnh đã chọn.",
+            );
+          }
+        }
+        if (resolvedDistrictId) {
+          const district = areas.find((area) => area.id === resolvedDistrictId);
+          if (
+            !district ||
+            district.type !== "district" ||
+            district.parentId !== resolvedProvinceId
+          ) {
+            throw invalid("Tỉnh/quận không hợp lệ hoặc quận không thuộc tỉnh.");
+          }
+        }
+
         const values = {
           ownerId: targetOwnerId,
           name: input.name ?? venue.name,
           address: input.address ?? venue.address,
           description: input.description ?? venue.description,
-          provinceId: input.provinceId?.toLowerCase() ?? venue.provinceId,
-          wardId:
-            input.wardId !== undefined
-              ? (input.wardId ? input.wardId.toLowerCase() : null)
-              : venue.wardId,
-          districtId:
-            input.districtId !== undefined
-              ? (input.districtId ? input.districtId.toLowerCase() : null)
-              : venue.districtId,
+          provinceId: resolvedProvinceId,
+          wardId: resolvedWardId,
+          districtId: resolvedDistrictId,
           lat:
             input.lat === undefined
               ? venue.lat
@@ -216,40 +271,6 @@ export class VenuesService {
               ? venue.lng
               : Number(input.lng.toFixed(7)).toFixed(7),
         };
-        const areaIdsToCheck = [
-          values.provinceId,
-          values.wardId,
-          values.districtId,
-        ].filter(
-          (id): id is string => typeof id === "string" && id.length > 0,
-        );
-        const areas = await this.repository.areas(tx, areaIdsToCheck);
-        const province = areas.find((area) => area.id === values.provinceId);
-        if (province?.type !== "province") {
-          throw invalid("Tỉnh/thành phố không hợp lệ.");
-        }
-        if (values.wardId) {
-          const ward = areas.find((area) => area.id === values.wardId);
-          if (
-            !ward ||
-            ward.type !== "ward" ||
-            ward.parentId !== values.provinceId
-          ) {
-            throw invalid(
-              "Xã/phường không hợp lệ hoặc không thuộc tỉnh đã chọn.",
-            );
-          }
-        }
-        if (values.districtId) {
-          const district = areas.find((area) => area.id === values.districtId);
-          if (
-            !district ||
-            district.type !== "district" ||
-            district.parentId !== values.provinceId
-          ) {
-            throw invalid("Tỉnh/quận không hợp lệ hoặc quận không thuộc tỉnh.");
-          }
-        }
         if (
           (await this.repository.catalogIds(tx, "sports", sportIds)).length !==
           sportIds.length
@@ -350,6 +371,7 @@ export class VenuesService {
       districtId: venue.districtId,
       lat: venue.lat === null ? null : Number(venue.lat),
       lng: venue.lng === null ? null : Number(venue.lng),
+      coverUrl: venue.coverUrl ?? null,
       sportIds: result.sports
         .filter((link) => link.venueId === venue.id)
         .map((link) => link.sportId),
@@ -464,10 +486,10 @@ export class VenuesService {
     const amenityIds = [
       ...new Set(input.amenityIds.map((id) => id.toLowerCase())),
     ].sort();
-    const provinceId = input.provinceId.toLowerCase();
-    const wardId = input.wardId ? input.wardId.toLowerCase() : null;
+    const initialProvinceId = input.provinceId.toLowerCase();
+    const initialWardId = input.wardId ? input.wardId.toLowerCase() : null;
     const districtId = input.districtId ? input.districtId.toLowerCase() : null;
-    if (!wardId && !districtId)
+    if (!initialWardId && !districtId && !input.wardCode)
       throw invalid("Vui lòng chọn xã/phường cho cơ sở.");
     try {
       return await this.repository.transaction(async (tx) => {
@@ -492,16 +514,35 @@ export class VenuesService {
           }
           targetOwnerId = targetOwner.id;
         }
+
+        let provinceId = initialProvinceId;
+        let wardId = initialWardId;
         const areaIdsToCheck = [provinceId, wardId, districtId].filter(
           (id): id is string => typeof id === "string" && id.length > 0,
         );
         const rows = await this.repository.areas(tx, areaIdsToCheck);
-        const province = rows.find((area) => area.id === provinceId);
+        let province = rows.find((area) => area.id === provinceId);
+        if (!province && input.provinceCode) {
+          const found = await this.repository.findAreaByCode(input.provinceCode, "province");
+          if (found) {
+            provinceId = found.id;
+            const refetched = await this.repository.areas(tx, [provinceId]);
+            province = refetched[0];
+          }
+        }
         if (province?.type !== "province") {
           throw invalid("Tỉnh/thành phố không hợp lệ.");
         }
-        if (wardId) {
-          const ward = rows.find((area) => area.id === wardId);
+        if (wardId || input.wardCode) {
+          let ward = wardId ? rows.find((area) => area.id === wardId) : undefined;
+          if (!ward && input.wardCode) {
+            const found = await this.repository.findAreaByCode(input.wardCode, "ward");
+            if (found) {
+              wardId = found.id;
+              const refetched = await this.repository.areas(tx, [wardId]);
+              ward = refetched[0];
+            }
+          }
           if (!ward || ward.type !== "ward" || ward.parentId !== provinceId) {
             throw invalid(
               "Xã/phường không hợp lệ hoặc không thuộc tỉnh đã chọn.",
@@ -703,6 +744,11 @@ export class VenuesService {
         throw invalid("Mỗi cơ sở chỉ được tải lên tối đa 10 ảnh.");
       }
       const image = await this.repository.addImage(venueId, url, sortOrder, tx);
+      if (!venue.coverUrl || sortOrder === 0) {
+        await this.repository.update(tx, venueId, {
+          coverUrl: url,
+        });
+      }
       await this.imageContentChanged(tx, venue);
       return image;
     });
@@ -729,6 +775,12 @@ export class VenuesService {
       )
         return before;
       const images = await this.repository.reorderImages(venueId, ids, tx);
+      const firstImage = images.find((img) => img.sortOrder === 0) ?? images[0];
+      if (firstImage && venue.coverUrl !== firstImage.url) {
+        await this.repository.update(tx, venueId, {
+          coverUrl: firstImage.url,
+        });
+      }
       await this.imageContentChanged(tx, venue);
       return images;
     });
