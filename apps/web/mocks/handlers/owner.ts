@@ -20,7 +20,7 @@ import type {
 import { createMockNotification, db, currentUser, persist } from '../db';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { buildSlots, timeToMinutes, toDateOnly, weekdayOf } from '../fixtures/slots';
-import { areas, sports } from '../fixtures/catalogs';
+import { amenities, areas, sports } from '../fixtures/catalogs';
 import { publish } from '../realtime';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency } from '../utils';
 
@@ -236,6 +236,7 @@ export const ownerHandlers = [
       wardId?: string;
       districtId?: string;
       sportIds?: string[];
+      amenityIds?: string[];
       description?: string;
       lat?: number;
       lng?: number;
@@ -307,7 +308,9 @@ export const ownerHandlers = [
       reviewCount: 0,
       fromPrice: 0,
       images: [],
-      amenities: [],
+      amenities: Array.isArray(body.amenityIds)
+        ? amenities.filter((a) => body.amenityIds?.includes(a.id))
+        : [],
       courts: [],
       sports: selectedSports,
       cancellationPolicy: null,
@@ -330,6 +333,7 @@ export const ownerHandlers = [
       wardId?: string | null;
       districtId?: string | null;
       sportIds?: string[];
+      amenityIds?: string[];
       description?: string | null;
       lat?: number;
       lng?: number;
@@ -433,6 +437,9 @@ export const ownerHandlers = [
       : null;
     if (body.sportIds !== undefined) {
       venue.sports = selectedSports;
+    }
+    if (body.amenityIds !== undefined) {
+      venue.amenities = amenities.filter((a) => body.amenityIds?.includes(a.id));
     }
     persist();
     return ok(venue);

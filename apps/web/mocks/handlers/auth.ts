@@ -108,6 +108,14 @@ export const authHandlers = [
     return ok({ success: true });
   }),
 
+  http.post('/api/v1/auth/refresh', async () => {
+    await simulateLatency(150);
+    const user = db.users.find((u) => u.id === db.currentUserId);
+    if (!user) return err(401, 'UNAUTHORIZED', 'Phiên đăng nhập đã hết hạn');
+    setSession(user.id);
+    return ok({ user: publicUser(user) });
+  }),
+
   /**
    * Trả về người dùng đang đăng nhập, hoặc 401 nếu chưa.
    *
