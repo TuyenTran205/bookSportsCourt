@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   InjectDrizzle,
   type DrizzleDb,
 } from "../../database/database.module.js";
 import {
+  blackoutPeriods,
   courts,
   openingHours,
   pricingRules,
@@ -309,6 +310,85 @@ export class CourtsRepository {
       .delete(pricingRules)
       .where(
         and(eq(pricingRules.id, ruleId), eq(pricingRules.courtId, courtId)),
+      )
+      .returning();
+    return row ?? null;
+  }
+
+  // ===== Blackouts =====
+
+  async createBlackout(
+    courtId: string,
+    input: { start: string; end: string; reason?: string },
+  ) {
+    const [row] = await this.db
+      .insert(blackoutPeriods)
+      .values({
+        courtId,
+        during: sql`tstzrange(${input.start}::timestamptz, ${input.end}::timestamptz)`,
+        reason: input.reason ?? null,
+      })
+      .returning();
+    return row
+      ? {
+          id: row.id,
+          courtId: row.courtId,
+          start: input.start,
+          end: input.end,
+          reason: row.reason ?? undefined,
+          createdAt: row.createdAt
+            ? new Date(row.createdAt).toISOString()
+            : new Date().toISOString(),
+        }
+      : null;
+  }
+
+  async listBlackouts(courtId: string, from?: string, to?: string) {
+    const conditions = [eq(blackoutPeriods.courtId, courtId)];
+    if (from && to) {
+      conditions.push(
+        sql`${blackoutPeriods.during} && tstzrange(${from}::timestamptz, ${to}::timestamptz)`,
+      );
+    } else if (from) {
+      conditions.push(
+        sql`upper(${blackoutPeriods.during}) >= ${from}::timestamptz`,
+      );
+    } else if (to) {
+      conditions.push(
+        sql`lower(${blackoutPeriods.during}) <= ${to}::timestamptz`,
+      );
+    }
+    const rows = await this.db
+      .select({
+        id: blackoutPeriods.id,
+        courtId: blackoutPeriods.courtId,
+        reason: blackoutPeriods.reason,
+        start: sql<Date>`lower(${blackoutPeriods.during})`,
+        end: sql<Date>`upper(${blackoutPeriods.during})`,
+        createdAt: blackoutPeriods.createdAt,
+      })
+      .from(blackoutPeriods)
+      .where(and(...conditions))
+      .orderBy(asc(sql`lower(${blackoutPeriods.during})`));
+
+    return rows.map((r) => ({
+      id: r.id,
+      courtId: r.courtId,
+      start: r.start ? new Date(r.start).toISOString() : "",
+      end: r.end ? new Date(r.end).toISOString() : "",
+      reason: r.reason ?? undefined,
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : undefined,
+    }));
+  }
+
+  async deleteBlackout(courtId: string, blackoutId: string) {
+    const [row] = await this.db
+      .delete(blackoutPeriods)
+      .where(
+        and(
+          eq(blackoutPeriods.id, blackoutId),
+          eq(blackoutPeriods.courtId, courtId),
+        ),
       )
       .returning();
     return row ?? null;

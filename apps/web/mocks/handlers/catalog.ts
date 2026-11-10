@@ -1,18 +1,31 @@
 import { http } from 'msw';
 import { matchUnaccent } from '@bsc/shared';
 import { areas, amenities, districts, provinces, sports, wards } from '../fixtures/catalogs';
+import { venues } from '../fixtures/venues';
 import { ok, simulateLatency } from '../utils';
 
 /** Danh mục công khai — ai cũng gọi được, dùng cho bộ lọc tìm kiếm & quản lý. */
 export const catalogHandlers = [
   http.get('/api/v1/sports', async () => {
     await simulateLatency(150);
-    return ok(sports);
+    const sportsWithCount = sports.map((sport) => {
+      const venueCount = venues.filter((v) =>
+        v.sports.some((s) => s.id === sport.id || s.slug === sport.slug || s.name === sport.name),
+      ).length;
+      return { ...sport, venueCount };
+    });
+    return ok(sportsWithCount);
   }),
 
   http.get('/api/v1/amenities', async () => {
     await simulateLatency(150);
-    return ok(amenities);
+    const amenitiesWithCount = amenities.map((amenity) => {
+      const venueCount = venues.filter((v) =>
+        v.amenities.some((a) => a.id === amenity.id || a.slug === amenity.slug || a.name === amenity.name),
+      ).length;
+      return { ...amenity, venueCount };
+    });
+    return ok(amenitiesWithCount);
   }),
 
   http.get('/api/v1/areas', async ({ request }) => {

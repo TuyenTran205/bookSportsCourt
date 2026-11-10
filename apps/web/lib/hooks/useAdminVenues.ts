@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listAdminVenues, reviewVenue } from '@/lib/api/endpoints/admin';
+import { deleteVenue } from '@/lib/api/endpoints/owner';
 import { adminQueryKeys } from './useAdminDashboard';
 
 export const adminVenuesQueryKeys = {
@@ -33,6 +34,18 @@ export function useReviewVenue() {
     }) => reviewVenue(id, { status, reviewNote }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminVenuesQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: adminQueryKeys.stats() });
+    },
+  });
+}
+
+export function useDeleteVenue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteVenue(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminVenuesQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['venues'] });
       queryClient.invalidateQueries({ queryKey: adminQueryKeys.stats() });
     },
   });

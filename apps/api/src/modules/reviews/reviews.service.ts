@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   HttpException,
@@ -7,6 +8,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from "@nestjs/common";
+import type { AuthenticatedUser } from "../../../../../packages/shared/src/types.js";
 import { createReviewSchema } from "../../../../../packages/shared/src/schemas.js";
 import {
   adminReviewQuerySchema,
@@ -227,5 +229,79 @@ export class ReviewsService {
         );
       }),
     );
+  }
+
+  async ownerList(
+    user: AuthenticatedUser,
+    query: {
+      venueId?: string;
+      replied?: boolean | string;
+      page?: number | string;
+      limit?: number | string;
+    },
+  ) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
+    const replied =
+      query.replied === true || query.replied === "true"
+        ? true
+        : query.replied === false || query.replied === "false"
+          ? false
+          : undefined;
+
+    const { rows, total } = await this.repo.ownerList(user.id, {
+      venueId: query.venueId,
+      replied,
+      page,
+      limit,
+    });
+    const totalPages = Math.ceil(total / limit);
+    const data = rows.map((r) => ({
+      id: r.id,
+      venueId: r.venueId,
+      venueName: r.venueName,
+      courtId: r.courtId,
+      courtName: r.courtName,
+      customerId: r.customerId,
+      customerName: r.customerName || "Khách hàng",
+      rating: r.rating,
+      comment: r.comment,
+      content: r.comment,
+      ownerReply: r.ownerReply,
+      ownerRepliedAt: r.ownerRepliedAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+    return { data, meta: { page, limit, total, totalPages } };
+  }
+
+  async ownerReply(user: AuthenticatedUser, reviewId: string, reply: string) {
+    if (!reply || !reply.trim()) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Nội dung phản hồi không được để trống.",
+      });
+    }
+    const result = await this.repo.ownerReply(user.id, reviewId, reply.trim());
+    if (!result) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy đánh giá.",
+      });
+    }
+    if (result === "FORBIDDEN") {
+      throw new ForbiddenException({
+        code: "NOT_VENUE_OWNER",
+        message: "Bạn không phải chủ sở hữu của cơ sở được đánh giá.",
+      });
+    }
+    return {
+      id: result.id,
+      venueId: result.venueId,
+      rating: result.rating,
+      comment: result.content,
+      ownerReply: result.ownerReply,
+      ownerRepliedAt: result.ownerRepliedAt?.toISOString() ?? null,
+      createdAt: result.createdAt.toISOString(),
+    };
   }
 }

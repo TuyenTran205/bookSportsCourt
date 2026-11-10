@@ -96,4 +96,18 @@ describe('MockProvider (TC-MOCK-PROVIDER)', () => {
     );
     consoleWarnSpy.mockRestore();
   });
+
+  it('TC-MOCK-04: render lớp nền tĩnh (splash-static-boot) để zero-flicker từ HTML SSR', () => {
+    process.env.NEXT_PUBLIC_API_MOCKING = 'disabled';
+
+    render(
+      <MockProvider>
+        <div data-testid="test-child">App Ready</div>
+      </MockProvider>
+    );
+
+    // Nền tĩnh có mặt trong markup SSR; CSS quyết định hiện/ẩn theo html.bsc-splash-active
+    expect(screen.getByTestId('splash-static-boot')).not.toBeNull();
+    expect(screen.getByTestId('test-child')).not.toBeNull();
+  });
 });

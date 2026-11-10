@@ -280,11 +280,41 @@ describe('SplashBrandReveal (TC-SPLASH)', () => {
       vi.advanceTimersByTime(1);
     });
     expect(overlay.classList.contains('opacity-0')).toBe(true);
+  });
 
-    // Sau exitDuration (400ms)
+  it('TC-SPLASH-11: inline script của layout gắn bsc-splash-active trên <html> thì splash hiển thị ngay', () => {
+    // Mô phỏng inline script trong app/layout.tsx (đã chạy trước paint)
+    document.documentElement.classList.add('bsc-splash-active');
+
+    render(<SplashBrandReveal />);
+
+    expect(screen.getByTestId('splash-brand-reveal')).not.toBeNull();
+  });
+
+  it('TC-SPLASH-12: dọn class bsc-splash-active khi mount mà không cần hiển thị (F5 giữa phiên)', () => {
+    sessionStorage.setItem('bsc_welcome_splash_shown', 'true');
+    document.documentElement.classList.add('bsc-splash-active');
+
+    render(<SplashBrandReveal />);
+
+    expect(screen.queryByTestId('splash-brand-reveal')).toBeNull();
+    // Không được treo giao diện: class ẩn nội dung phải bị gỡ
+    expect(document.documentElement.classList.contains('bsc-splash-active')).toBe(false);
+  });
+
+  it('TC-SPLASH-13: gỡ class bsc-splash-active ngay khi bắt đầu fade-out để hé lộ trang khách', () => {
+    vi.useFakeTimers();
+    document.documentElement.classList.add('bsc-splash-active');
+
+    render(<SplashBrandReveal forceShow={true} />);
+    expect(document.documentElement.classList.contains('bsc-splash-active')).toBe(true);
+
     act(() => {
-      vi.advanceTimersByTime(400);
+      vi.advanceTimersByTime(1850);
     });
-    expect(onFinished).toHaveBeenCalledTimes(1);
+
+    // Fade-out đã bắt đầu: class ẩn nội dung được gỡ, nền trang khách được paint
+    // bên dưới lớp phủ trắng đang mờ dần.
+    expect(document.documentElement.classList.contains('bsc-splash-active')).toBe(false);
   });
 });

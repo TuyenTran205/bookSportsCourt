@@ -21,6 +21,7 @@ import type {
 } from '@bsc/shared';
 
 import { apiFetch, apiFetchWithMeta, jsonBody } from '../client';
+import { ApiError } from '../errors';
 import { optimizeVenueImage } from '@/lib/utils/optimize-venue-image';
 
 /**
@@ -33,8 +34,26 @@ import { optimizeVenueImage } from '@/lib/utils/optimize-venue-image';
 
 // ── Cơ sở & sân con ────────────────────────────────────────────────────────
 
-export function listOwnerVenues() {
-  return apiFetch<VenueDetail[]>('/owner/venues');
+export async function listOwnerVenues(): Promise<VenueDetail[]> {
+  const data = await apiFetch<Array<Record<string, unknown>>>('/owner/venues');
+  if (!Array.isArray(data)) return [];
+  return data.map((v) => {
+    const rawSports = Array.isArray(v.sports) ? v.sports : [];
+    const sportIds = Array.isArray(v.sportIds) ? (v.sportIds as string[]) : [];
+    const sportsList =
+      rawSports.length > 0
+        ? rawSports
+        : sportIds.map((id) => ({ id, name: id, slug: id }));
+    return {
+      ...v,
+      sports: sportsList,
+      courts: Array.isArray(v.courts) ? v.courts : [],
+      ratingAvg: typeof v.ratingAvg === 'number' ? v.ratingAvg : 0,
+      reviewCount: typeof v.reviewCount === 'number' ? v.reviewCount : 0,
+      coverUrl: typeof v.coverUrl === 'string' ? v.coverUrl : null,
+      images: Array.isArray(v.images) ? v.images : [],
+    } as unknown as VenueDetail;
+  });
 }
 
 export function createOwnerVenue(input: {
@@ -46,9 +65,11 @@ export function createOwnerVenue(input: {
   wardCode?: string;
   districtId?: string;
   sportIds: string[];
+  amenityIds?: string[];
   description?: string;
   lat: number;
   lng: number;
+  ownerId?: string;
 }) {
   return apiFetch<VenueDetail>('/venues', { method: 'POST', ...jsonBody(input) });
 }
@@ -59,11 +80,19 @@ export function updateOwnerVenue(
     provinceCode?: string;
     wardCode?: string;
     sportIds?: string[];
+    amenityIds?: string[];
+    ownerId?: string;
   },
 ) {
   return apiFetch<VenueDetail>(`/venues/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     ...jsonBody(input),
+  });
+}
+
+export function deleteVenue(id: string) {
+  return apiFetch<void>(`/venues/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   });
 }
 
@@ -232,10 +261,47 @@ export interface OwnerPaymentItem {
   };
 }
 
-export function listOwnerPayments(
+export async function listOwnerPayments(
   params: { page?: number; limit?: number; status?: string } = {},
 ) {
-  return apiFetchWithMeta<OwnerPaymentItem[]>('/owner/payments', { query: { ...params } });
+  const res = await apiFetchWithMeta<Array<Record<string, unknown>>>(
+    '/owner/payments',
+    { query: { ...params } },
+  );
+  const data = (res.data ?? []).map((p) => {
+    const bookingStart = (p.bookingStart as string) || '';
+    const bookingEnd = (p.bookingEnd as string) || '';
+    const rawBooking = (p.booking as Record<string, unknown>) || {};
+    const during = (rawBooking.during as { start: string; end: string }) || {
+      start: bookingStart || (rawBooking.start as string) || '',
+      end: bookingEnd || (rawBooking.end as string) || '',
+    };
+    return {
+      id: p.id,
+      bookingId: p.bookingId,
+      amount: Number(p.amount) || 0,
+      provider: p.provider,
+      transferCode: (p.transferCode as string) ?? null,
+      proofUrl: (p.proofUrl as string) ?? null,
+      proofUploadedAt: (p.proofUploadedAt as string) ?? null,
+      status: p.status,
+      rejectReason: (p.rejectReason as string) ?? null,
+      booking: {
+        id: (rawBooking.id as string) || (p.bookingId as string),
+        during,
+        status:
+          (rawBooking.status as BookingStatus) ||
+          (p.bookingStatus as BookingStatus) ||
+          'confirmed',
+        totalPrice: Number(rawBooking.totalPrice) || Number(p.amount) || 0,
+        courtName: (rawBooking.courtName as string) || 'Sân thi đấu',
+        venueName: (rawBooking.venueName as string) || 'Cơ sở',
+        customerName: (rawBooking.customerName as string) || 'Khách hàng',
+        customerPhone: (rawBooking.customerPhone as string) ?? null,
+      },
+    } as OwnerPaymentItem;
+  });
+  return { data, meta: res.meta };
 }
 
 /** Duyệt biên lai → booking chuyển sang `confirmed`. */
@@ -261,7 +327,7 @@ export interface OwnerBookingItem extends Booking {
   paymentStatus: PaymentStatus | null;
 }
 
-export function listOwnerBookings(
+export async function listOwnerBookings(
   params: {
     page?: number;
     limit?: number;
@@ -273,7 +339,33 @@ export function listOwnerBookings(
     to?: string;
   } = {},
 ) {
-  return apiFetchWithMeta<OwnerBookingItem[]>('/owner/bookings', { query: { ...params } });
+  const res = await apiFetchWithMeta<Array<Record<string, unknown>>>(
+    '/owner/bookings',
+    { query: { ...params } },
+  );
+  const data = (res.data ?? []).map((b) => {
+    const start =
+      (b.start as string) ||
+      (b.during as { start?: string })?.start ||
+      '';
+    const end =
+      (b.end as string) ||
+      (b.during as { end?: string })?.end ||
+      '';
+    return {
+      ...b,
+      during: { start, end },
+      courtName: (b.courtName as string) || 'Sân thi đấu',
+      customerName:
+        (b.customerName as string) ||
+        (b.guestName as string) ||
+        'Khách hàng',
+      customerPhone:
+        (b.customerPhone as string) ?? (b.guestPhone as string) ?? null,
+      paymentStatus: (b.paymentStatus as PaymentStatus) ?? null,
+    } as unknown as OwnerBookingItem;
+  });
+  return { data, meta: res.meta };
 }
 
 /**
@@ -338,13 +430,29 @@ export function getOccupancy(params: {
   return apiFetch<OccupancyReport>('/owner/reports/occupancy', { query: { ...params } });
 }
 
-export function listOwnerReviews(params: {
-  page?: number;
-  limit?: number;
-  replied?: boolean;
-  venueId?: string;
-} = {}) {
-  return apiFetchWithMeta<OwnerReview[]>('/owner/reviews', { query: { ...params } });
+export async function listOwnerReviews(
+  params: {
+    page?: number;
+    limit?: number;
+    replied?: boolean;
+    venueId?: string;
+  } = {},
+) {
+  const res = await apiFetchWithMeta<Array<Record<string, unknown>>>(
+    '/owner/reviews',
+    { query: { ...params } },
+  );
+  const data = (res.data ?? []).map((r) => {
+    return {
+      ...r,
+      customerName:
+        (r.customerName as string) ||
+        ((r.customer as { fullName?: string })?.fullName) ||
+        'Khách hàng',
+      comment: (r.comment as string) || (r.content as string) || '',
+    } as unknown as OwnerReview;
+  });
+  return { data, meta: res.meta };
 }
 
 export function replyToReview(id: string, reply: string) {
@@ -390,5 +498,10 @@ export function submitOwnerApplication(input: OwnerApplicationInput) {
 
 /** `null` khi chưa từng nộp — UI hiện form trống thay vì lỗi. */
 export function getMyOwnerApplication() {
-  return apiFetch<OwnerApplication | null>('/owner-applications/me');
+  return apiFetch<OwnerApplication | null>('/owner-applications/me').catch((err) => {
+    if (err instanceof ApiError && (err.status === 404 || err.code === 'NOT_FOUND')) {
+      return null;
+    }
+    throw err;
+  });
 }

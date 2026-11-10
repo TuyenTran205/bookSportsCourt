@@ -134,7 +134,7 @@ export class BookingsRepository {
   ): Promise<string[]> {
     const expiredBookings = await tx
       .update(bookings)
-      .set({ status: "expired", updatedAt: now })
+      .set({ status: "expired", expiresAt: null, updatedAt: now })
       .where(
         and(
           eq(bookings.courtId, courtId),
@@ -171,7 +171,7 @@ export class BookingsRepository {
 
       const expired = await tx
         .update(bookings)
-        .set({ status: "expired", updatedAt: now })
+        .set({ status: "expired", expiresAt: null, updatedAt: now })
         .where(
           and(
             inArray(bookings.courtId, courtIds),
@@ -204,7 +204,7 @@ export class BookingsRepository {
       const now = await this.now(tx);
       const expired = await tx
         .update(bookings)
-        .set({ status: "expired", updatedAt: now })
+        .set({ status: "expired", expiresAt: null, updatedAt: now })
         .where(
           and(
             eq(bookings.customerId, customerId),
@@ -277,7 +277,7 @@ export class BookingsRepository {
 
       await tx
         .update(bookings)
-        .set({ status: "expired", updatedAt: now })
+        .set({ status: "expired", expiresAt: null, updatedAt: now })
         .where(inArray(bookings.id, bookingIds));
 
       await tx

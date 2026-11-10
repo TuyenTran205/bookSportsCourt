@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createArea, createSport, deleteSport } from '@/lib/api/endpoints/admin';
+import { createAmenity, createArea, createSport, deleteAmenity, deleteSport } from '@/lib/api/endpoints/admin';
 import { listAmenities, listAreas, listProvinces, listSports } from '@/lib/api/endpoints/venues';
 
 export const adminCatalogsQueryKeys = {
@@ -60,6 +60,26 @@ export function useDeleteSport() {
     mutationFn: (id: string) => deleteSport(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminCatalogsQueryKeys.sports() });
+    },
+  });
+}
+
+export function useCreateAmenity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; icon?: string; slug?: string }) => createAmenity(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminCatalogsQueryKeys.amenities() });
+    },
+  });
+}
+
+export function useDeleteAmenity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAmenity(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminCatalogsQueryKeys.amenities() });
     },
   });
 }

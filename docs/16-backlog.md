@@ -1,4 +1,4 @@
-﻿# 16 – Backlog
+# 16 – Backlog
 
 > **Phiên bản:** 1.2.1 | **Cập nhật lần cuối:** 2026-11-06
 >
@@ -28,7 +28,7 @@
 | BSC-013 | JWT Guard + RolesGuard + OwnershipGuard | — | `type:task` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-012 |
 | BSC-014 | Venue CRUD API (Owner tạo, Admin duyệt) | OWN-02 ADM-02 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-013 |
 | BSC-015 | Court CRUD + Opening Hours + Pricing Rules API | OWN-03 OWN-04 OWN-05 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | L | BSC-014 |
-| BSC-016 | Sports + Amenities + Areas CRUD (Admin) | ADM-04 ADM-05 ADM-06 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-013 |
+| BSC-016 | Sports + Amenities CRUD (Admin) & Seed Master Data Areas | ADM-04 ADM-05 ADM-06 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-013 |
 | BSC-017 | Venue search API (filter: sport, district, price) | CUS-04 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-014 |
 | BSC-018 | FE: Trang đăng nhập / đăng ký | CUS-01 CUS-02 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | M | BSC-011 |
 | BSC-019 | FE: Header + Footer + Layout trang khách | — | `type:task` `area:web` `prio:P0` `phase:1` | TV4 | M | BSC-009 |

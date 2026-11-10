@@ -265,9 +265,7 @@
         "verifyTitle": "Xác thực email",
         "verifySubtitle": "Chúng tôi đã gửi link xác thực tới email của bạn.",
         "loginSuccess": "Đăng nhập thành công",
-        "logoutSuccess": "Đã đăng xuất",
-        "demoAccounts": "Tài khoản dùng thử",
-        "demoHint": "Mật khẩu cho mọi tài khoản: Password123"
+        "logoutSuccess": "Đã đăng xuất"
     },
     "profile": {
         "title": "Tài khoản của tôi",
@@ -528,8 +526,7 @@
         "venueAddressPlaceholder": "Số nhà, đường, phường/xã...",
         "venueLocationTitle": "Ghim vị trí trên bản đồ",
         "venueLocationHint": "Địa chỉ chỉ giúp khách nhận biết khu vực; hãy ghim đúng vị trí cổng vào để khách tìm đường.",
-        "venuePinAction": "Ghim vị trí",
-        "venuePinSelecting": "Chọn điểm trên bản đồ",
+        "venuePinClear": "Bỏ ghim",
         "venuePinCoordinates": "Đã ghim: {lat}, {lng}",
         "venueCoverLabel": "Ảnh bìa cơ sở",
         "venueImageHint": "JPG, PNG hoặc WebP, tối đa 5 MB. Ảnh sẽ được tối ưu trước khi tải lên.",

@@ -36,7 +36,7 @@ test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 ro
     ),
   );
 
-  const schemaName = `bsc_booking_test_${randomBytes(6).toString("hex")}`;
+  const schemaName = `bsc014_test_${randomBytes(6).toString("hex")}`;
   const admin = new Pool({ connectionString, connectionTimeoutMillis: 5000 });
   const pool = new Pool({
     connectionString,
@@ -74,6 +74,10 @@ test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 ro
     const client = await pool.connect();
     try {
       await seedPhase4Fixtures(client, "$argon2id$test-fixture-not-for-login");
+      // Đẩy created_at của các bản ghi fixture cũ lùi về 2 ngày trước để không chạm ngưỡng rate-limit 1 giờ của test mới
+      await client.query(
+        `UPDATE bookings SET created_at = now() - interval '2 days'`,
+      );
       // Seed opening hours for all 7 weekdays on Court A & Court B
       for (let day = 0; day <= 6; day++) {
         await client.query(
@@ -356,6 +360,16 @@ test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 ro
               19,
               `Round ${round}: expected 19 status 409, got ${count409}`,
             );
+
+            // Giải phóng hold thắng cuộc của vòng này để không cộng dồn chạm trần HOLD_LIMIT=3 ở các vòng sau
+            const winnerIdx = statuses.findIndex((s) => s === 201);
+            const winnerJson = (await responses[winnerIdx]!.json()) as {
+              data: { booking: { id: string } };
+            };
+            await api(`/bookings/holds/${winnerJson.data.booking.id}`, {
+              method: "DELETE",
+              token: raceCustomerTokens[winnerIdx],
+            });
           }
         },
       );

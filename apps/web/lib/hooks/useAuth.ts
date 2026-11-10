@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import type { LoginInput, RegisterInput, User, OwnerProfile } from '@bsc/shared';
 import { login as apiLogin, logout as apiLogout, me as apiMe, register as apiRegister } from '@/lib/api/endpoints/auth';
+import { ApiError } from '@/lib/api/errors';
 import { useAppRouter } from '@/lib/navigation/navigate';
 
 export const authKeys = {
@@ -25,8 +26,8 @@ export const authKeys = {
 function syncSessionHint(user: Pick<User, 'id' | 'role'> | null) {
   if (typeof document === 'undefined') return;
   if (user) {
-    document.cookie = `bsc_session=${encodeURIComponent(user.id)}; path=/; samesite=lax`;
-    document.cookie = `bsc_role=${encodeURIComponent(user.role)}; path=/; samesite=lax`;
+    document.cookie = `bsc_session=${encodeURIComponent(user.id)}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+    document.cookie = `bsc_role=${encodeURIComponent(user.role)}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
   } else {
     document.cookie = 'bsc_session=; path=/; max-age=0; samesite=lax';
     document.cookie = 'bsc_role=; path=/; max-age=0; samesite=lax';
@@ -46,13 +47,17 @@ export function useAuth() {
         syncSessionHint(result.user);
         return result;
       } catch (err: unknown) {
-        // 401 Unauthorized là bình thường khi chưa đăng nhập — dọn dẹp cookie phiên rác (nếu có)
-        // để middleware không hiểu nhầm là đã đăng nhập và chặn truy cập /login, /register
-        syncSessionHint(null);
+        // Chỉ dọn dẹp cookie phiên khi server trả về 401 Unauthorized thật sự
+        // (tức là đã thử refresh token nhưng không hợp lệ / đã hết hạn).
+        // Không xóa cookie khi lỗi mạng tạm thời hoặc server đang khởi động.
+        if (err instanceof ApiError && err.status === 401) {
+          syncSessionHint(null);
+        }
         return null;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
     retry: false,
   });
 

@@ -439,17 +439,14 @@ export function subscribeToStorage(): () => void {
     return () => window.removeEventListener("storage", onStorage);
 }
 
-// Khi chuyển tab, đồng bộ lại cookie phiên tương ứng với user của tab đó
-if (typeof window !== "undefined") {
+// Khi chuyển tab trong chế độ Mocking, đồng bộ lại cookie phiên tương ứng với user của tab đó
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_MOCKING === "enabled") {
     window.addEventListener("focus", () => {
         if (db.currentUserId) {
             const user = db.users.find((u) => u.id === db.currentUserId);
             const role = user?.role ?? "customer";
             document.cookie = `bsc_session=${db.currentUserId}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
             document.cookie = `bsc_role=${role}; path=/; max-age=${7 * 24 * 60 * 60}; samesite=lax`;
-        } else {
-            document.cookie = `bsc_session=; path=/; max-age=0; samesite=lax`;
-            document.cookie = `bsc_role=; path=/; max-age=0; samesite=lax`;
         }
     });
 }

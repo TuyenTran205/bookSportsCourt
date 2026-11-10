@@ -189,10 +189,20 @@ export function AdminBookingsScreen() {
                         <p className="text-xs text-neutral-500">{booking.courtName}</p>
                       </td>
                       <td className="py-3 px-4 text-xs text-neutral-600">
-                        <p className="font-medium">
-                          {formatTimeRange(booking.during.start, booking.during.end)}
-                        </p>
-                        <p className="text-neutral-500">{formatDate(booking.during.start)}</p>
+                        {(() => {
+                          const start = booking.during?.start || (booking as unknown as { start?: string }).start || '';
+                          const end = booking.during?.end || (booking as unknown as { end?: string }).end || '';
+                          return (
+                            <>
+                              <p className="font-medium">
+                                {start ? formatTimeRange(start, end) : '—'}
+                              </p>
+                              <p className="text-neutral-500">
+                                {start ? formatDate(start) : '—'}
+                              </p>
+                            </>
+                          );
+                        })()}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <span className="font-semibold tabular-nums text-neutral-900">

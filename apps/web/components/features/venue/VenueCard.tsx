@@ -105,9 +105,9 @@ export function VenueCard({
           </p>
 
           {/* Môn thể thao — tối đa 3 thẻ để hàng không xuống dòng. */}
-          {venue.sports.length > 0 && (
-            <ul className="flex flex-wrap gap-1">
-              {venue.sports.slice(0, 3).map((sport) => (
+          {(venue.sports ?? []).length > 0 && (
+            <ul className="flex min-h-6 flex-wrap gap-1">
+              {(venue.sports ?? []).slice(0, 3).map((sport) => (
                 <li
                   key={sport.id}
                   className="rounded-full bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary"
@@ -115,9 +115,9 @@ export function VenueCard({
                   {sport.name}
                 </li>
               ))}
-              {venue.sports.length > 3 && (
+              {(venue.sports ?? []).length > 3 && (
                 <li className="rounded-full bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
-                  +{venue.sports.length - 3}
+                  +{(venue.sports ?? []).length - 3}
                 </li>
               )}
             </ul>
@@ -129,7 +129,7 @@ export function VenueCard({
                 {venue.fromPrice === null ? 'Liên hệ' : formatCurrency(venue.fromPrice)}
               </span>
             </p>
-            <RatingValue rating={venue.ratingAvg} count={venue.reviewCount} />
+            <RatingValue rating={venue.ratingAvg ?? 0} count={venue.reviewCount ?? 0} />
           </div>
         </div>
       </Link>
@@ -143,19 +143,22 @@ export function VenueCard({
  * Chưa có đánh giá thì hiện "Chưa có đánh giá" thay vì "0.0 ★" — số 0 gây
  * hiểu nhầm là bị đánh giá thấp.
  */
-function RatingValue({ rating, count }: { rating: number; count: number }) {
-  if (count === 0) {
+function RatingValue({ rating = 0, count = 0 }: { rating?: number | null; count?: number | null }) {
+  const safeCount = count ?? 0;
+  const safeRating = rating ?? 0;
+
+  if (safeCount === 0) {
     return <span className="text-xs text-text-disabled">Chưa có đánh giá</span>;
   }
 
   return (
     <span
       className="flex items-center gap-1 text-sm"
-      aria-label={`${rating} trên 5, ${formatNumber(count)} đánh giá`}
+      aria-label={`${safeRating} trên 5, ${formatNumber(safeCount)} đánh giá`}
     >
       <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden="true" />
-      <span className="font-medium text-text-primary">{rating.toFixed(1)}</span>
-      <span className="text-xs text-text-secondary">({formatNumber(count)})</span>
+      <span className="font-medium text-text-primary">{safeRating.toFixed(1)}</span>
+      <span className="text-xs text-text-secondary">({formatNumber(safeCount)})</span>
     </span>
   );
 }

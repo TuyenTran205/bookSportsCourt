@@ -71,12 +71,20 @@ export function AdminBookingDetailDrawer({
             <div className="flex items-start gap-2">
               <Clock className="mt-0.5 size-4 shrink-0 text-primary-600" />
               <div>
-                <p className="font-semibold text-neutral-900">
-                  {formatTimeRange(booking.during.start, booking.during.end)}
-                </p>
-                <p className="text-xs text-neutral-600">
-                  Ngày chơi: {formatDate(booking.during.start)}
-                </p>
+                {(() => {
+                  const start = booking.during?.start || (booking as unknown as { start?: string }).start || '';
+                  const end = booking.during?.end || (booking as unknown as { end?: string }).end || '';
+                  return (
+                    <>
+                      <p className="font-semibold text-neutral-900">
+                        {start ? formatTimeRange(start, end) : '—'}
+                      </p>
+                      <p className="text-xs text-neutral-600">
+                        Ngày chơi: {start ? formatDate(start) : '—'}
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>

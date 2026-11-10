@@ -7,6 +7,7 @@ import {
 import { VenuesRepository } from "../venues/venues.repository.js";
 import { CourtsRepository } from "./courts.repository.js";
 import type {
+  BlackoutInput,
   CreateCourtInput,
   PricingRuleInput,
   UpdateCourtInput,
@@ -258,5 +259,48 @@ export class CourtsService {
       });
     }
     await this.repo.deletePricingRule(found.rule.courtId, ruleId);
+  }
+
+  // ===== Blackouts =====
+
+  async createBlackout(courtId: string, input: BlackoutInput) {
+    const court = await this.repo.findCourtById(courtId);
+    if (!court) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Sân con không tồn tại.",
+      });
+    }
+    const start = new Date(input.start);
+    const end = new Date(input.end);
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
+      throw new BadRequestException({
+        code: "INVALID_TIME_RANGE",
+        message: "Thời gian bắt đầu phải trước thời gian kết thúc.",
+      });
+    }
+    return this.repo.createBlackout(courtId, input);
+  }
+
+  async listBlackouts(courtId: string, from?: string, to?: string) {
+    const court = await this.repo.findCourtById(courtId);
+    if (!court) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Sân con không tồn tại.",
+      });
+    }
+    return this.repo.listBlackouts(courtId, from, to);
+  }
+
+  async deleteBlackout(courtId: string, blackoutId: string) {
+    const deleted = await this.repo.deleteBlackout(courtId, blackoutId);
+    if (!deleted) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Khoảng khoá sân không tồn tại.",
+      });
+    }
+    return deleted;
   }
 }

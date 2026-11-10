@@ -182,6 +182,68 @@
 
 @layer utilities {
   /**
+   * Zero-Flicker Splash coordination – xem docs/specs/web-splash-welcome-screen-spec.md
+   *
+   * Inline script trong `<head>` (`apps/web/app/layout.tsx`) gắn class
+   * `bsc-splash-active` lên `<html>` TRƯỚC lần paint đầu tiên khi phiên chưa
+   * xem Splash. Khi class còn hiệu lực:
+   * - Chặn cuộn và sơn nền đúng màu nền Splash (tránh chớp trắng/xám).
+   * - Ẩn toàn bộ nội dung trang khách (Header, Banner, Danh sách sân) để
+   *   người dùng không thấy giao diện bị lộ ở 0–200ms trước khi hydrate.
+   * - Lớp Splash tự bật lại `visibility` để vẫn hiển thị dù nằm trong
+   *   cây con đang bị ẩn.
+   * `SplashBrandReveal` gỡ class ngay khi bắt đầu fade-out.
+   */
+  html.bsc-splash-active,
+  html.bsc-splash-active body {
+    overflow: hidden !important;
+    background-color: var(--color-neutral-0);
+  }
+
+  html.bsc-splash-active body > *:not(script):not(style):not(link):not(template) {
+    visibility: hidden;
+  }
+
+  html.bsc-splash-active [data-testid="splash-brand-reveal"],
+  html.bsc-splash-active [data-testid="splash-static-boot"] {
+    visibility: visible;
+  }
+
+  /**
+   * Nền thương hiệu tĩnh render ngay trong SSR HTML (không phụ thuộc hydrate).
+   * Chỉ hiển thị khi `<html>` mang class `bsc-splash-active`; Splash thật
+   * (`data-testid="splash-brand-reveal"`) phủ lên trên với z-index cao hơn.
+   */
+  .bsc-splash-static-boot {
+    display: none;
+  }
+
+  html.bsc-splash-active .bsc-splash-static-boot {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background-color: var(--color-neutral-0);
+  }
+
+  html.bsc-splash-active .bsc-splash-static-boot-glow {
+    position: absolute;
+    top: -30vw;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80vw;
+    height: 80vw;
+    max-width: 850px;
+    max-height: 850px;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle,
+      rgba(240, 253, 244, 0.85) 0%,
+      rgba(255, 255, 255, 0) 70%
+    );
+  }
+
+  /**
    * Nhấp nháy khi slot đổi qua WebSocket – docs/07 mục 12
    * ("Realtime slot update | 300ms | ease-in-out | Flash highlight → màu mới").
    * Biên độ nhẹ để không gây choáng; tự tắt nếu người dùng giảm chuyển động.

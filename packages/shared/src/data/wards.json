@@ -2010,7 +2010,7 @@
     "id": "019273c5-7f00-7000-0001-000000000224",
     "code": "00224",
     "name": "Phường Tân Quý",
-    "slug": "tan-quy",
+    "slug": "tan-quy-tan-phu",
     "provinceCode": "79",
     "type": "ward",
     "unaccentName": "phuong tan quy"
@@ -2253,7 +2253,7 @@
     "id": "019273c5-7f00-7000-0001-000000000251",
     "code": "00251",
     "name": "Xã Tân Phú",
-    "slug": "tan-phu",
+    "slug": "xa-tan-phu",
     "provinceCode": "79",
     "type": "commune",
     "unaccentName": "xa tan phu"

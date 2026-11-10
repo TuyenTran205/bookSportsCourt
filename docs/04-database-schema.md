@@ -4,6 +4,10 @@
 
 ## Quy ước chung
 
+### Bổ sung ĐVHC 2 cấp (34 Tỉnh / 3.321 Xã) – migration 0012
+
+`0012_add-administrative-units-columns.sql` bổ sung cột `areas.code VARCHAR(10)`, `areas.unaccent_name TEXT`, nới lỏng `venues.district_id DROP NOT NULL` và thêm `venues.ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT`. Mở rộng ràng buộc `areas_type_check` chấp nhận `('province', 'ward', 'district')` và cập nhật ràng buộc phân cấp `areas_check` cho phép `ward` có `parent_id IS NOT NULL`. Bổ sung index `idx_areas_code`, `idx_areas_type_parent`, `idx_areas_unaccent_trgm` và `idx_venues_province_ward`. Xem [ADR-022, ADR-023](18-decision-log.md).
+
 ### BSC-046/072 – tái sử dụng schema review
 
 Bước11–12 không thêm migration: reviews/unique booking_id/trigger hiện có từ0005, average NUMERIC(3,2) và ROUND2 từ0008 đã đáp ứng contract. Tên unique thực tế là reviews_booking_id_key; handler cũng hỗ trợ uq_reviews_booking theo metadata Drizzle. Không sửa migration cũ hoặc tạo unique thứ hai. API tạo/đổi visibility khoá Venue FOR UPDATE trong statement riêng trước INSERT/UPDATE review để các writer cùng cơ sở tuần tự và statement trigger đọc được dữ liệu vừa commit. Trigger vẫn là nơi ghi cache, không cộng/trừ rating bằng tay trong service. SQL/seed ghi cạnh tranh cũng phải tuân thủ protocol khoá này; không suy ra trigger đơn lẻ đã chứng minh an toàn với mọi writer bỏ qua protocol. Giải thích/test.
@@ -200,6 +204,8 @@ erDiagram
         string business_name
         string phone
         string address
+        numeric lat "nullable, vĩ độ ghim bản đồ"
+        numeric lng "nullable, kinh độ ghim bản đồ"
         string note
         string status "pending, approved, rejected"
         string review_note
@@ -466,6 +472,8 @@ erDiagram
         TEXT business_name
         TEXT phone
         TEXT address
+        NUMERIC_10_7 lat "nullable, vĩ độ ghim bản đồ"
+        NUMERIC_10_7 lng "nullable, kinh độ ghim bản đồ"
         TEXT note
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected"
         TEXT review_note
@@ -892,6 +900,8 @@ CREATE TABLE owner_applications (
   tax_code TEXT CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{13})$'),
   phone         TEXT NOT NULL,
   address       TEXT NOT NULL,
+  lat           NUMERIC(10, 7),
+  lng           NUMERIC(10, 7),
   note          TEXT,
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   review_note   TEXT,
@@ -907,7 +917,7 @@ CREATE INDEX idx_owner_app_status ON owner_applications(status);
 
 ### areas
 
-Danh mục khu vực hai cấp (ADM-06, ADR-022, ADR-023 mốc 03/11/2026): Tỉnh/Thành phố trực thuộc TW và Xã/Phường/Đặc khu trực thuộc (bãi bỏ cấp huyện từ 01/07/2025; giữ `district` làm legacy). Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
+Danh mục khu vực hai cấp (Master Data phục vụ tìm kiếm/lọc sân CUS-04 và chọn địa chỉ sân OWN-02 theo ADR-022, ADR-023, ADR-025 mốc 03/11/2026): Tỉnh/Thành phố trực thuộc TW và Xã/Phường/Đặc khu trực thuộc (bãi bỏ cấp huyện từ 01/07/2025; giữ `district` làm legacy). Đây là dữ liệu tham chiếu hệ thống, không hiển thị thành tab CRUD thủ công trên trang Danh mục của Admin (`/admin/catalogs`). Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
 
 ```sql
 CREATE TABLE areas (

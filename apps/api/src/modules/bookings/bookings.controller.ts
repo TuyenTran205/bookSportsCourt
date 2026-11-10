@@ -24,6 +24,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -35,7 +36,10 @@ import {
 import type { AuthenticatedUser } from "../../../../../packages/shared/src/types.js";
 import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
 import { Roles } from "../../common/decorators/roles.decorator.js";
-import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard.js";
+import {
+  JwtAuthGuard,
+  type AuthenticatedRequest,
+} from "../../common/guards/jwt-auth.guard.js";
 import { OptionalJwtAuthGuard } from "../../common/guards/optional-jwt-auth.guard.js";
 import { RolesGuard } from "../../common/guards/roles.guard.js";
 import { BookingsService } from "./bookings.service.js";
@@ -60,7 +64,7 @@ export class BookingsController {
     @Param("id") venueIdOrSlug: string,
     @Query() query: unknown,
     @Res({ passthrough: true }) res: PassthroughResponse,
-    @CurrentUser() user?: AuthenticatedUser,
+    @Req() req: AuthenticatedRequest,
   ) {
     const queryObj =
       query && typeof query === "object"
@@ -69,7 +73,7 @@ export class BookingsController {
     const result = await this.service.getVenueSlots(
       venueIdOrSlug,
       queryObj,
-      user,
+      req.user,
     );
     res.setHeader("X-Grid-Version", result.gridVersion);
     return result.data;

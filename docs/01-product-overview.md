@@ -1,4 +1,4 @@
-﻿# 01 – Tổng quan sản phẩm
+# 01 – Tổng quan sản phẩm
 
 > **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 
@@ -96,8 +96,8 @@ API trả `status` ∈ **`available | held | booked | blocked | past`** (enum du
 - [ ] Admin duyệt Owner (ADM-01) và Venue (ADM-02); khoá/mở khoá tài khoản (ADM-03)
 
 **Sân & giá**
-- [ ] Quản lý Venue / Court / Sport / Amenity (OWN-02, OWN-03, ADM-04, ADM-05)
-- [ ] Quản lý danh mục khu vực 2 cấp (34 Tỉnh/Thành & 3.321 Xã/Phường mốc 03/11/2026, bãi bỏ cấp huyện từ 01/07/2025; hỗ trợ legacy quận/huyện) (ADM-06)
+- [ ] Quản lý Venue / Court / Sport / Amenity (OWN-02, OWN-03, ADM-04, ADM-05). Lưu ý: Tab Danh mục Admin chỉ quản lý Môn thể thao và Tiện ích.
+- [ ] Dữ liệu ĐVHC 2 cấp (34 Tỉnh/Thành & 3.321 Xã/Phường mốc 03/11/2026, bãi bỏ cấp huyện từ 01/07/2025; hỗ trợ legacy quận/huyện) được chuẩn hóa làm Master Data phục vụ lọc sân cho khách hàng (CUS-04) và chọn địa chỉ sân (OWN-02), không cần đưa vào tab Danh mục quản trị Admin.
 - [ ] Thiết lập giờ mở cửa theo từng court (OWN-04)
 - [ ] Giá theo khung giờ (Pricing Rule) (OWN-05)
 - [ ] Khoá giờ bảo trì & Mở khoá sân (Blackout Period) (OWN-08)

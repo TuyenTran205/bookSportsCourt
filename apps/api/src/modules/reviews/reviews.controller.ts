@@ -154,4 +154,37 @@ export class ReviewsController {
   ) {
     return this.service.visibility(user.id, id, body, query);
   }
+
+  @Get("owner/reviews")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("owner", "admin")
+  @ApiCookieAuth("access_token")
+  @Header("Cache-Control", "no-store")
+  @ApiOperation({ summary: "[Owner] Danh sách đánh giá tại cơ sở của mình" })
+  ownerList(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query()
+    query: {
+      venueId?: string;
+      replied?: boolean | string;
+      page?: number | string;
+      limit?: number | string;
+    },
+  ) {
+    return this.service.ownerList(user, query);
+  }
+
+  @Patch("owner/reviews/:id/reply")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("owner", "admin")
+  @ApiCookieAuth("access_token")
+  @Header("Cache-Control", "no-store")
+  @ApiOperation({ summary: "[Owner] Trả lời đánh giá" })
+  ownerReply(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body("ownerReply") reply: string,
+  ) {
+    return this.service.ownerReply(user, id, reply);
+  }
 }

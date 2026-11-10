@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, ShieldCheck, X } from 'lucide-react';
+import { Check, ExternalLink, MapPin, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { OwnerApplication, OwnerApplicationStatus } from '@bsc/shared';
 
@@ -42,7 +42,8 @@ export function AdminOwnerApplicationsScreen() {
   const meta = applicationsQuery.data?.meta;
 
   const handleApprove = async (app: OwnerApplication) => {
-    if (!window.confirm(`Xác nhận duyệt hồ sơ đối tác của ${app.user.fullName}?`)) return;
+    const applicantName = app.user?.fullName || app.businessName;
+    if (!window.confirm(`Xác nhận duyệt hồ sơ đối tác của ${applicantName}?`)) return;
     try {
       await reviewMutation.mutateAsync({
         id: app.id,
@@ -143,13 +144,39 @@ export function AdminOwnerApplicationsScreen() {
                   {applications.map((app) => (
                     <tr key={app.id} className="hover:bg-neutral-50/50">
                       <td className="py-3 px-4">
-                        <p className="font-semibold text-neutral-900">{app.user.fullName}</p>
+                        <p className="font-semibold text-neutral-900">
+                          {app.user?.fullName || app.businessName}
+                        </p>
                         <p className="text-xs text-neutral-500">
-                          {app.user.email} · {app.user.phone ?? 'Chưa có SĐT'}
+                          {app.user?.email
+                            ? `${app.user.email} · ${app.user.phone ?? app.phone ?? 'Chưa có SĐT'}`
+                            : (app.phone ?? 'Chưa có SĐT')}
                         </p>
                       </td>
                       <td className="py-3 px-4">
                         <p className="font-medium text-neutral-800">{app.businessName}</p>
+                        {app.address && (
+                          <p className="line-clamp-2 text-xs text-neutral-500" title={app.address}>
+                            {app.address}
+                          </p>
+                        )}
+                        {app.lat != null && app.lng != null && (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <a
+                              href={`https://www.google.com/maps?q=${app.lat},${app.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-700 hover:text-primary-800 hover:underline"
+                              title="Mở vị trí trên Google Maps"
+                            >
+                              <MapPin className="size-3 text-primary-600" aria-hidden="true" />
+                              <span>
+                                {Number(app.lat).toFixed(4)}, {Number(app.lng).toFixed(4)}
+                              </span>
+                              <ExternalLink className="size-2.5 opacity-70" aria-hidden="true" />
+                            </a>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 font-mono text-xs text-neutral-600">
                         {app.taxCode ?? <span className="text-neutral-400">Không có</span>}

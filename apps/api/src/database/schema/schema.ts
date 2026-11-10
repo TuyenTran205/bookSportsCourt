@@ -17,6 +17,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { v7 } from 'uuid';
 import type { BankAccountInfo } from '../../../../../packages/shared/src/types.js';
@@ -123,6 +124,8 @@ export const ownerApplications = pgTable(
     taxCode: text('tax_code'),
     phone: text().notNull(),
     address: text().notNull(),
+    lat: numeric({ precision: 10, scale: 7 }),
+    lng: numeric({ precision: 10, scale: 7 }),
     note: text(),
     status: text().notNull().default('pending'),
     reviewNote: text('review_note'),
@@ -145,9 +148,11 @@ export const areas = pgTable(
   'areas',
   {
     id: id(),
+    code: varchar({ length: 10 }),
     type: text().notNull(),
     name: text().notNull(),
     slug: text().notNull(),
+    unaccentName: text('unaccent_name'),
     parentId: uuid('parent_id').references((): AnyPgColumn => areas.id, {
       onDelete: 'restrict',
     }),
@@ -156,6 +161,8 @@ export const areas = pgTable(
   },
   (table) => [
     index('idx_areas_parent').on(table.parentId),
+    index('idx_areas_code').on(table.code),
+    index('idx_areas_type_parent').on(table.type, table.parentId),
     uniqueIndex('uq_areas_parent_slug').on(table.parentId, table.slug),
   ],
 );
@@ -194,9 +201,12 @@ export const venues = pgTable(
     provinceId: uuid('province_id')
       .notNull()
       .references(() => areas.id, { onDelete: 'restrict' }),
-    districtId: uuid('district_id')
-      .notNull()
-      .references(() => areas.id, { onDelete: 'restrict' }),
+    wardId: uuid('ward_id').references((): AnyPgColumn => areas.id, {
+      onDelete: 'restrict',
+    }),
+    districtId: uuid('district_id').references((): AnyPgColumn => areas.id, {
+      onDelete: 'restrict',
+    }),
     lat: numeric({ precision: 10, scale: 7 }),
     lng: numeric({ precision: 10, scale: 7 }),
     status: text().notNull().default('pending'),
@@ -217,6 +227,9 @@ export const venues = pgTable(
     index('idx_venues_status').on(table.status).where(isNull(table.deletedAt)),
     index('idx_venues_area')
       .on(table.provinceId, table.districtId)
+      .where(isNull(table.deletedAt)),
+    index('idx_venues_province_ward')
+      .on(table.provinceId, table.wardId)
       .where(isNull(table.deletedAt)),
     index('idx_venues_rating')
       .on(table.ratingAvg)

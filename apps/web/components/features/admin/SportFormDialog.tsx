@@ -20,10 +20,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { ApiError } from '@/lib/api/errors';
 import { useCreateSport } from '@/lib/hooks/useAdminCatalogs';
+import { IconPicker } from './IconPicker';
+import { SPORT_ICON_OPTIONS } from './catalog-icons';
 
 const sportFormSchema = z.object({
   name: z.string().min(2, 'Tên môn thể thao ít nhất 2 ký tự').max(50),
-  icon: z.string().optional(),
+  icon: z.string().default('activity'),
 });
 
 type SportFormData = z.infer<typeof sportFormSchema>;
@@ -40,6 +42,8 @@ export function SportFormDialog({ open, onClose }: SportFormDialogProps) {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     reset,
     formState: { errors },
   } = useForm<SportFormData>({
@@ -49,6 +53,8 @@ export function SportFormDialog({ open, onClose }: SportFormDialogProps) {
       icon: 'activity',
     },
   });
+
+  const selectedIcon = watch('icon');
 
   React.useEffect(() => {
     if (open) {
@@ -88,21 +94,20 @@ export function SportFormDialog({ open, onClose }: SportFormDialogProps) {
           >
             <Input
               id="sport-name"
-              placeholder="Ví dụ: Bóng bàn, Cầu lông, Bơi lội..."
+              placeholder="Ví dụ: Bóng bàn, Bơi lội, Cầu mây..."
               {...register('name')}
             />
           </FormField>
 
           <FormField
-            label="Tên icon Lucide (tuỳ chọn)"
+            label="Chọn biểu tượng (Icon)"
             htmlFor="sport-icon"
-            error={errors.icon?.message}
-            hint="Tên biểu tượng Lucide (ví dụ: activity, trophy, dumbbell, target)"
+            hint="Chọn một biểu tượng phù hợp với bộ môn thể thao từ danh sách có sẵn"
           >
-            <Input
-              id="sport-icon"
-              placeholder="activity"
-              {...register('icon')}
+            <IconPicker
+              options={SPORT_ICON_OPTIONS}
+              value={selectedIcon}
+              onChange={(iconId) => setValue('icon', iconId)}
             />
           </FormField>
 

@@ -14,8 +14,8 @@ export type MapCoordinates = [number, number];
 interface VenueLocationMapProps {
   center: MapCoordinates;
   marker: MapCoordinates | null;
-  placingPin?: boolean;
   onPlacePin?: (coordinates: MapCoordinates) => void;
+  scrollWheelZoom?: boolean;
   className?: string;
 }
 
@@ -26,13 +26,10 @@ const locationPinIcon = L.divIcon({
   iconAnchor: [14, 34],
 });
 
-function MapClickHandler({
-  placingPin,
-  onPlacePin,
-}: Pick<VenueLocationMapProps, 'placingPin' | 'onPlacePin'>) {
+function MapClickHandler({ onPlacePin }: Pick<VenueLocationMapProps, 'onPlacePin'>) {
   useMapEvents({
     click(event: LeafletMouseEvent) {
-      if (placingPin) onPlacePin?.([event.latlng.lat, event.latlng.lng]);
+      onPlacePin?.([event.latlng.lat, event.latlng.lng]);
     },
   });
 
@@ -64,8 +61,8 @@ function MapViewport({ center, marker }: Pick<VenueLocationMapProps, 'center' | 
 export function VenueLocationMap({
   center,
   marker,
-  placingPin = false,
   onPlacePin,
+  scrollWheelZoom = false,
   className,
 }: VenueLocationMapProps) {
   return (
@@ -73,7 +70,7 @@ export function VenueLocationMap({
       <div
         className={cn(
           'relative isolate z-0 size-full overflow-hidden rounded-btn',
-          placingPin && 'cursor-crosshair',
+          onPlacePin && 'cursor-crosshair',
           className,
         )}
       >
@@ -81,12 +78,12 @@ export function VenueLocationMap({
           center={marker ?? center}
           zoom={marker ? 16 : 13}
           maxZoom={19}
-          scrollWheelZoom={false}
+          scrollWheelZoom={scrollWheelZoom}
           className="size-full"
         >
           <ResilientTileLayer />
           <MapViewport center={center} marker={marker} />
-          <MapClickHandler placingPin={placingPin} onPlacePin={onPlacePin} />
+          <MapClickHandler onPlacePin={onPlacePin} />
           {marker && <Marker position={marker} icon={locationPinIcon} />}
         </MapContainer>
 
