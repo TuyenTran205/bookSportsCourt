@@ -32,6 +32,7 @@
 | 024 | Contract Phase 4: snapshot, proof private, lock protocol, session và outbox PostgreSQL |
 | 025 | SDK S3 cho proof R2 private và Sharp để giải mã/chuẩn hoá ảnh |
 | 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
+| 027 | Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) |
 
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
@@ -459,10 +460,13 @@ interface PaymentAdapter {
 - Chuyển `district_id` thành `UUID NULL` (nullable legacy).
 - Nghiệp vụ tạo mới sân (`POST /venues`) và bộ lọc chính của người dùng (`VenueFilters`) chuyển dịch sang cặp `provinceId` + `wardId`.
 - Quy tắc toàn vẹn nghiệp vụ: Bắt buộc xác thực `ward.parent_id === venue.province_id` (hoặc `ward.provinceCode === venue.provinceCode`) trước khi lưu.
+- **Phân định phạm vi sử dụng:** Bộ dữ liệu ĐVHC 2 cấp (34 Tỉnh/Thành phố & 3.321 Xã/Phường) là dữ liệu tham chiếu hệ thống chuẩn hóa (Master Data), phục vụ độc quyền tính năng lọc sân của Khách hàng (`VenueFilters`, `LocationSelector`) và chọn địa chỉ sân của Chủ sân (`VenueFormDialog`). **KHÔNG đưa ĐVHC vào tab quản trị thủ công trên giao diện Danh mục của Admin (`/admin/catalogs`)**. Giao diện Danh mục của Admin chỉ quản lý đúng 2 danh mục nghiệp vụ vận hành: Môn thể thao (Sports) và Tiện ích cơ sở (Amenities).
 
-**Lý do:** Tuân thủ đúng thực tế địa giới hành chính quốc gia, đồng thời không phá vỡ tính tương thích ngược cho dữ liệu hiện có trong hệ thống.
+**Lý do:** Tuân thủ đúng thực tế địa giới hành chính quốc gia, tối ưu cho nghiệp vụ cốt lõi là tìm kiếm và lọc sân; bảo vệ tính toàn vẹn của dữ liệu địa bàn quốc gia cố định, tránh việc Admin sửa đổi/tạo mới tùy tiện gây sai lệch mã GSO và làm rối màn hình quản trị danh mục.
 
-**Loại bỏ:** Xóa bỏ hoàn toàn cột `district_id` ngay lập tức (sẽ làm crash dữ liệu lịch sử và các booking cũ).
+**Loại bỏ:**
+- Xóa bỏ hoàn toàn cột `district_id` ngay lập tức (sẽ làm crash dữ liệu lịch sử và các booking cũ).
+- Đưa tab CRUD Địa bàn & Khu vực vào trang Quản trị danh mục của Admin (`/admin/catalogs`).
 
 **Hệ quả:** Cần migration có version cho Database; các API cũ vẫn nhận `districtId` nếu client phiên bản cũ gửi lên nhưng sẽ ưu tiên xử lý `wardId`.
 
@@ -561,6 +565,35 @@ Liên kết bằng (google,sub), không bằng email. Provider đã liên kết 
 **Hệ quả:** không cần migration/dependency; callback schema mở rộng code XOR error và metadata Google hữu hạn, không dùng metadata làm danh tính. Key rotation làm pending flow cũ hết hiệu lực, không đổi JWT session hiện có. Test real RS256/local JWKS và PostgreSQL không thay smoke Google thật. Không tự sửa cloud credentials/consent hoặc account linking để vượt lỗi email trùng.
 
 **Nguồn:** [Google OIDC](https://developers.google.com/identity/openid-connect/openid-connect), [Google ID-token claims](https://developers.google.com/identity/openid-connect/reference), [PKCE RFC7636](https://www.rfc-editor.org/rfc/rfc7636).
+
+## ADR-027: Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application)
+
+**Ngày:** 2026-11-10 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+Khi khách hàng đăng ký trở thành chủ sân (`/owner/apply`), trước đây chỉ có ô text nhập địa chỉ cơ sở kinh doanh, không có tọa độ GPS. Khi cơ sở được duyệt, khách hàng tìm kiếm sân trên bản đồ sẽ không có tọa độ chính xác để ghim mốc định vị. Chủ sân cần có giao diện bản đồ trực quan để cắm ghim mốc và đồng bộ hai chiều với ô nhập địa chỉ, đồng thời cho phép mở ngoặc ghi chú bổ sung (`(* ...)`). Hệ thống yêu cầu ưu tiên chi phí 0đ (không tốn chi phí Google Maps API key).
+
+**Quyết định:**
+1. **Database & API:**
+   - Thêm hai cột `lat` và `lng` (`NUMERIC(10, 7)`) vào bảng `owner_applications` thông qua migration `0011_add-owner-applications-coordinates.sql`.
+   - Cập nhật `@bsc/shared` (`ownerApplicationSchema`, `OwnerApplication`, `ownerApplicationViewSchema`) và NestJS DTO, Repository, Service, Swagger để tiếp nhận và trả về tọa độ GPS.
+2. **Bản đồ Frontend:**
+   - Tái sử dụng component `VenueLocationMapWrapper` sử dụng Leaflet và hệ thống ngói bản đồ chuyển đổi dự phòng miễn phí (`ResilientTileLayer`: Esri World Street Map, OpenStreetMap France, Carto, OpenTopoMap) không yêu cầu API key.
+3. **Geocoding & Reverse Geocoding miễn phí:**
+   - Sử dụng Photon API (`photon.komoot.io`) dựa trên dữ liệu OpenStreetMap và fallback Nominatim.
+   - Khi gõ địa chỉ: Debounce 700ms tự động định vị và di chuyển tâm bản đồ tới địa chỉ.
+   - Khi cắm ghim trên bản đồ: Tự động đảo ngược tọa độ thành địa chỉ tiếng Việt điền vào input, giữ nguyên phần ghi chú mở ngoặc `(* Ghi chú...)` của người dùng.
+4. **Hiển thị Admin:**
+   - Bảng quản trị hồ sơ (`/admin/owner-applications`) hiển thị địa chỉ chi tiết và tọa độ GPS kèm liên kết xem vị trí trên bản đồ.
+
+**Lý do:**
+- Chi phí 0đ, không phụ thuộc vào quota trả phí Google Maps Platform.
+- Trải nghiệm đăng ký thuận tiện, chính xác cho chủ sân; dữ liệu tọa độ sẵn sàng cho các tính năng tìm sân theo bán kính và hiển thị map tìm kiếm của người chơi (CUS-04).
+
+**Hệ quả:**
+- Cần xử lý cẩn thận độ trễ và tỷ lệ giới hạn (rate limiting) của các dịch vụ geocoding công cộng; sử dụng debounce và fallback.
+
+---
 
 ## Template ADR mới
 

@@ -66,11 +66,12 @@ export interface Province {
 
 export interface Ward {
   id: string;              // UUID
-  code: string;            // '00001'..'33210' (chuỗi 5 chữ số bảo toàn số 0)
+  code?: string;           // '00001'..'33210' (chuỗi 5 chữ số bảo toàn số 0)
   name: string;            // 'Phường Phúc Xá', 'Xã Tân Triều', 'Đặc khu Vân Đồn'
   slug: string;            // 'phuc-xa'
-  provinceCode: string;    // '01' (mã tỉnh trực thuộc)
+  provinceCode?: string;   // '01' (mã tỉnh trực thuộc)
   provinceId?: string;     // UUID của tỉnh
+  parentId?: string | null;// UUID của tỉnh (trùng khớp với DB parent_id)
   provinceName?: string;   // Tên tỉnh (khi trả về từ search)
   type: WardType;          // 'ward' | 'commune' | 'special_zone'
   unaccentName?: string;   // 'phuong phuc xa'
@@ -107,6 +108,8 @@ export interface Sport {
   slug: string;
   /** Tên icon Lucide, ví dụ "activity". */
   icon: string | null;
+  /** Số lượng cơ sở thể thao kinh doanh môn này. */
+  venueCount?: number;
 }
 
 export interface Amenity {
@@ -114,6 +117,8 @@ export interface Amenity {
   name: string;
   slug: string;
   icon: string | null;
+  /** Số lượng cơ sở thể thao áp dụng tiện ích này. */
+  venueCount?: number;
 }
 
 // ===== Người dùng =====
@@ -163,6 +168,8 @@ export interface OwnerApplication {
   businessName: string;
   phone?: string;
   address?: string;
+  lat?: number | null;
+  lng?: number | null;
   taxCode: string | null;
   idCardUrl: string | null;
   bankBin?: string;
@@ -248,16 +255,21 @@ export interface VenueDetail extends VenueListItem {
 export interface OwnerVenueResponse {
   id: string;
   ownerId: string;
+  ownerName?: string | null;
   slug: string;
   name: string;
   description: string | null;
   address: string;
   provinceId: string;
-  districtId: string;
+  wardId?: string | null;
+  districtId?: string | null;
   lat: number | null;
   lng: number | null;
   sportIds: string[];
+  sports?: Array<{ id: string; name: string; slug: string; icon?: string | null }>;
   amenityIds: string[];
+  amenities?: Array<{ id: string; name: string; slug: string; icon?: string | null }>;
+  courts?: Array<{ id: string; name: string; sportId: string | null; status: string; description: string | null }>;
   status: VenueStatus;
   rejectionReason: string | null;
   createdAt: string;

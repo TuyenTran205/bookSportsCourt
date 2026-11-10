@@ -1,4 +1,4 @@
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import {
   cancellationPolicySchema,
   ownerApplicationSchema,
@@ -240,6 +240,7 @@ export const ownerHandlers = [
       description?: string;
       lat?: number;
       lng?: number;
+      ownerId?: string;
     };
     const province = areas.find((area) => area.id === body.provinceId && area.type === 'province');
     const ward = body.wardId
@@ -275,9 +276,11 @@ export const ownerHandlers = [
 
     const id = newId();
     const slugBase = slugify(body.name);
+    const targetOwnerId =
+      guard.user!.role === 'admin' && body.ownerId ? body.ownerId : guard.user!.id;
     const venue = {
       id,
-      ownerId: guard.user!.id,
+      ownerId: targetOwnerId,
       name: body.name.trim(),
       slug: `${slugBase}-${id.slice(-6)}`,
       description: body.description?.trim() || null,
@@ -302,7 +305,7 @@ export const ownerHandlers = [
         : null,
       lat: body.lat,
       lng: body.lng,
-      status: 'pending' as const,
+      status: guard.user!.role === 'admin' ? ('approved' as const) : ('pending' as const),
       coverUrl: null,
       ratingAvg: 0,
       reviewCount: 0,
@@ -318,6 +321,30 @@ export const ownerHandlers = [
     db.venues.push(venue);
     persist();
     return ok(venue, 201);
+  }),
+
+  http.delete('/api/v1/venues/:id', async ({ params }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+    const venueIndex = db.venues.findIndex((item) => item.id === params.id);
+    if (venueIndex === -1) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    const venue = db.venues[venueIndex];
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    if (guard.user!.role !== 'admin' && venue.ownerId !== guard.user!.id) {
+      return err(403, 'FORBIDDEN', 'Bạn không có quyền xoá cơ sở này');
+    }
+    const hasActiveBooking = db.bookings.some(
+      (b) =>
+        venueIdForCourt(b.booking.courtId) === venue.id &&
+        ['pending', 'confirmed'].includes(b.booking.status),
+    );
+    if (hasActiveBooking) {
+      return err(409, 'RESOURCE_IN_USE', 'Địa điểm còn booking đang hoạt động');
+    }
+    db.venues.splice(venueIndex, 1);
+    persist();
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.patch('/api/v1/venues/:id', async ({ params, request }) => {
@@ -337,6 +364,7 @@ export const ownerHandlers = [
       description?: string | null;
       lat?: number;
       lng?: number;
+      ownerId?: string;
     };
     if (body.name !== undefined && body.name.trim().length < 2) {
       return err(422, 'VALIDATION_ERROR', 'Tên cơ sở phải có ít nhất 2 ký tự');
@@ -440,6 +468,9 @@ export const ownerHandlers = [
     }
     if (body.amenityIds !== undefined) {
       venue.amenities = amenities.filter((a) => body.amenityIds?.includes(a.id));
+    }
+    if (body.ownerId && guard.user!.role === 'admin') {
+      venue.ownerId = body.ownerId;
     }
     persist();
     return ok(venue);

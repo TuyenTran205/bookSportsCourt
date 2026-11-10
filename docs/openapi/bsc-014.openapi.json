@@ -647,8 +647,7 @@
                 "approved",
                 "rejected",
                 "suspended"
-              ],
-              "default": "pending"
+              ]
             }
           },
           {

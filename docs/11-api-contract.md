@@ -163,8 +163,8 @@ PATCH  /api/v1/users/me/password      Đổi mật khẩu (cần mật khẩu c�
 
 ### Venues
 ```
-GET    /api/v1/venues                 Tìm kiếm venue (public)
-GET    /api/v1/venues/map             Venue cho bản đồ (public, GST-02): chỉ id, slug, name, lat, lng, giá thấp nhất, điểm TB; lọc cùng bộ lọc /venues + `bbox`
+GET    /api/v1/venues                 Tìm kiếm venue (public, query: q, provinceId, provinceCode, wardId, wardCode, districtId, sportId, sportIds, amenityIds, minPrice, maxPrice, minRating, sort, page, limit)
+GET    /api/v1/venues/map             Venue cho bản đồ (public, GST-02): chỉ id, slug, name, lat, lng, giá thấp nhất, điểm TB; lọc cùng bộ lọc /venues + bbox (minLat, maxLat, minLng, maxLng, wardId, wardCode)
 GET    /api/v1/venues/:slug           Chi tiết venue (public, URL SEO — nhận cả slug lẫn UUID)
 POST   /api/v1/venues                 [Owner] Tạo venue
 PATCH  /api/v1/venues/:id             [Owner] Cập nhật venue (gồm sportIds, amenityIds)
@@ -405,6 +405,8 @@ GET    /api/v1/owner-applications/me     [Customer/Owner] Trạng thái hồ sơ
   "businessName": "Sân thể thao Phú Nhuận",
   "phone": "0901234567",
   "address": "12 Nguyễn Văn Trỗi, Phường 8, Phú Nhuận, TP. Hồ Chí Minh",
+  "lat": 10.793261,
+  "lng": 106.678129,
   "taxCode": "0312345678",
   "bankBin": "970436",
   "bankName": "Vietcombank",
@@ -414,18 +416,18 @@ GET    /api/v1/owner-applications/me     [Customer/Owner] Trạng thái hồ sơ
   "idCardUrl": "https://example.com/owner-document.jpg"
 }
 ```
-`taxCode`, `note` và `idCardUrl` không bắt buộc. `phone` phải là số Việt Nam 10 chữ số; `bankBin` là mã BIN ngân hàng VietQR. Endpoint trả `OwnerApplication` kèm trạng thái hồ sơ. Các trường ngân hàng, mã số thuế và giấy tờ cần được bổ sung vào database bằng migration có version trước khi backend triển khai hợp đồng này; mock FE lưu hồ sơ trong trình duyệt để phục vụ demo.
+`lat`, `lng`, `taxCode`, `note` và `idCardUrl` không bắt buộc. `lat` (-90 đến 90), `lng` (-180 đến 180) lưu tọa độ ghim mốc trên bản đồ định vị (tận dụng OpenStreetMap/Photon miễn phí). `phone` phải là số Việt Nam 10 chữ số; `bankBin` là mã BIN ngân hàng VietQR. Endpoint trả `OwnerApplication` kèm trạng thái hồ sơ. Các trường ngân hàng, mã số thuế và giấy tờ cần được bổ sung vào database bằng migration có version trước khi backend triển khai hợp đồng này; mock FE lưu hồ sơ trong trình duyệt để phục vụ demo.
 Chỉ tài khoản `customer` được gửi hồ sơ; request của Guest trả `401 UNAUTHORIZED`, request của Owner/Admin trả `403 FORBIDDEN`.
 
 > **Schema:** bảng `owner_applications` đã có trong `04-database-schema.md`. Khi Admin duyệt, `users.role` đổi từ `customer` sang `owner` trong cùng transaction.
 
 Phase 4 chốt payload strict businessName/phone/address/note?/taxCode?; taxCode phải được lưu qua migration, không nhận rồi bỏ. Rejected bắt buộc reviewNote; retry phải cùng quyết định/note, không cấp lại role nếu user đã đổi trạng thái. Khoá/mở tài khoản không cho sửa bất kỳ Admin nào qua endpoint status. Chi tiết input/projection và sessionVersion ở bản bổ sung Phase 4.
 
-### Catalogs (danh mục)
+### Catalogs & Master Reference Data (danh mục & dữ liệu tham chiếu)
 ```
 GET    /api/v1/sports                    Danh sách môn (public)
 GET    /api/v1/amenities                 Danh sách tiện ích (public)
-GET    /api/v1/areas                     Danh mục khu vực cây (public)
+GET    /api/v1/areas                     Danh mục khu vực cây (public - dữ liệu tham chiếu)
 GET    /api/v1/provinces                 Danh sách 34 Tỉnh/Thành phố trực thuộc TW (public)
 GET    /api/v1/provinces/:code/wards     Danh sách Xã/Phường theo mã hoặc id tỉnh (query: q)
 GET    /api/v1/wards/search              Tìm kiếm autocomplete xã/phường (query: q, provinceCode, limit)
@@ -436,12 +438,14 @@ DELETE /api/v1/sports/:id                [Admin] Xoá môn (409 RESOURCE_IN_USE 
 POST   /api/v1/amenities                 [Admin] Tạo tiện ích
 PATCH  /api/v1/amenities/:id             [Admin] Sửa tiện ích
 DELETE /api/v1/amenities/:id             [Admin] Xoá tiện ích
-POST   /api/v1/areas                     [Admin] Tạo khu vực (type: 'province' | 'ward' | 'district')
-PATCH  /api/v1/areas/:id                 [Admin] Sửa khu vực
-DELETE /api/v1/areas/:id                 [Admin] Xoá khu vực
+POST   /api/v1/areas                     [Internal/Migration] Nạp khu vực
+PATCH  /api/v1/areas/:id                 [Internal/Migration] Cập nhật khu vực
+DELETE /api/v1/areas/:id                 [Internal/Migration] Xoá khu vực
 ```
 
-> **Schema & ĐVHC 2 cấp (ADR-022, ADR-023):** Hệ thống phân định 34 Tỉnh/Thành phố và 3.321 Xã/Phường/Đặc khu (mốc 03/11/2026). `venues` sử dụng `province_id` và `ward_id` (cột `district_id` giữ nullable cho legacy). `GET /areas?type=province` hoặc `?parentId=` để lọc; `POST /areas` với `type=ward` hoặc `type=district` bắt buộc `parentId`.
+> **Phân định rõ Danh mục Admin vs Master Data ĐVHC (ADR-022, ADR-023, ADR-025):**
+> 1. **Giao diện Quản trị Danh mục (`/admin/catalogs`):** Chỉ gồm 2 tab nghiệp vụ do Admin quản lý: **Môn thể thao** (`sports`) và **Tiện ích cơ sở** (`amenities`).
+> 2. **Dữ liệu ĐVHC 2 cấp (34 Tỉnh/Thành phố & 3.321 Xã/Phường mốc 03/11/2026):** Là dữ liệu tham chiếu chuẩn quốc gia (Master Data) nạp qua migration/seed hoặc file dữ liệu chung. Dữ liệu này phục vụ độc quyền việc **Khách hàng lọc và tìm sân (`CUS-04`, `VenueFilters`)** cùng **Chủ sân chọn địa chỉ khi tạo sân (`OWN-02`)**, hoàn toàn không đưa vào tab quản trị thủ công trên giao diện Admin Danh mục. `venues` liên kết qua `province_id` và `ward_id` (`district_id` nullable legacy).
 
 ### Owner Reports
 ```
@@ -484,7 +488,7 @@ GET    /api/v1/health                    Kiểm tra sống (public, không cần
 ### Admin
 ```
 GET    /api/v1/admin/users               Danh sách user (query: role, status, q, page, limit)
-GET    /api/v1/admin/venues              Danh sách venue (query: status, q, page, limit; mặc định status=pending)
+GET    /api/v1/admin/venues              Danh sách venue (query: status, q, page, limit; để trống status lấy tất cả)
 GET    /api/v1/admin/owner-applications  Hồ sơ chủ sân (query: status, page, limit)
 PATCH  /api/v1/admin/owner-applications/:id  Duyệt/từ chối hồ sơ (body: status, reviewNote)
 GET    /api/v1/admin/bookings            Toàn bộ booking (query: status, venueId, customerId, from, to, page, limit)

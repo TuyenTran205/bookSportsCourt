@@ -240,10 +240,10 @@ export function VenueDetailScreen() {
               </span>
             </p>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              {venue.reviewCount > 0 ? (
+              {(venue.reviewCount ?? 0) > 0 ? (
                 <span className="inline-flex items-center gap-1">
                   <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden="true" />
-                  <strong>{venue.ratingAvg.toFixed(1)}</strong>
+                  <strong>{(venue.ratingAvg ?? 0).toFixed(1)}</strong>
                   <span className="text-neutral-500">
                     ({formatNumber(venue.reviewCount)} {t('reviews')})
                   </span>
@@ -259,9 +259,9 @@ export function VenueDetailScreen() {
                 {venue.fromPrice === null ? null : t('perBlock')}
               </span>
             </div>
-            {venue.sports.length > 0 && (
+            {(venue.sports ?? []).length > 0 && (
               <ul className="flex flex-wrap gap-1.5">
-                {venue.sports.map((s) => (
+                {(venue.sports ?? []).map((s) => (
                   <li key={s.id} className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700">
                     {s.name}
                   </li>

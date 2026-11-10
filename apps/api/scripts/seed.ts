@@ -246,18 +246,99 @@ try {
     );
 
     // -------------------------------------------------------------
-    // 2. AREAS (Tỉnh / Thành & Quận / Huyện)
+    // 2. AREAS (34 Tỉnh / Thành phố & 3.321 Xã / Phường + Legacy Districts)
     // -------------------------------------------------------------
-    const provinceHnId = await ensureArea(client, "province", "Hà Nội", "ha-noi", null);
+    const provincesPath = join(repositoryRoot, "packages", "shared", "src", "data", "provinces.json");
+    const wardsPath = join(repositoryRoot, "packages", "shared", "src", "data", "wards.json");
+    const rawProvinces = JSON.parse(await readFile(provincesPath, "utf8")) as Array<{
+      id: string;
+      code: string;
+      name: string;
+      slug: string;
+      unaccentName: string;
+      isMunicipality?: boolean;
+      sortOrder?: number;
+    }>;
+    const rawWards = JSON.parse(await readFile(wardsPath, "utf8")) as Array<{
+      id: string;
+      code: string;
+      name: string;
+      slug: string;
+      provinceCode: string;
+      type: string;
+      unaccentName: string;
+    }>;
+
+    const provinceCodeToId = new Map<string, string>();
+    for (const prov of rawProvinces) {
+      const res = await client.query<{ id: string }>(
+        `
+          INSERT INTO areas (id, code, type, name, slug, unaccent_name, parent_id)
+          VALUES ($1, $2, 'province', $3, $4, $5, NULL)
+          ON CONFLICT (parent_id, slug)
+          DO UPDATE SET
+            code = EXCLUDED.code,
+            name = EXCLUDED.name,
+            unaccent_name = EXCLUDED.unaccent_name,
+            updated_at = now()
+          RETURNING id
+        `,
+        [prov.id, prov.code, prov.name, prov.slug, prov.unaccentName],
+      );
+      const pid = res.rows[0]?.id ?? prov.id;
+      provinceCodeToId.set(prov.code, pid);
+    }
+
+    const provinceHnId = provinceCodeToId.get("01")!;
+    const provinceHcmId = provinceCodeToId.get("79")!;
+    const provinceDaNangId = provinceCodeToId.get("48")!;
+
+    // Legacy districts for backward compatibility
     const districtCauGiayId = await ensureArea(client, "district", "Quận Cầu Giấy", "cau-giay", provinceHnId);
     const districtNamTuLiemId = await ensureArea(client, "district", "Quận Nam Từ Liêm", "nam-tu-liem", provinceHnId);
 
-    const provinceHcmId = await ensureArea(client, "province", "Thành phố Hồ Chí Minh", "ho-chi-minh", null);
     const districtThuDucId = await ensureArea(client, "district", "Thành phố Thủ Đức", "thu-duc", provinceHcmId);
     const districtQuan7Id = await ensureArea(client, "district", "Quận 7", "quan-7", provinceHcmId);
 
-    const provinceDaNangId = await ensureArea(client, "province", "Đà Nẵng", "da-nang", null);
+    const provinceDaNangIdOld = await ensureArea(client, "province", "Đà Nẵng", "da-nang", null);
     const districtHaiChauId = await ensureArea(client, "district", "Quận Hải Châu", "hai-chau", provinceDaNangId);
+
+    // Seeding 3.321 Wards in chunks
+    const BATCH_SIZE = 200;
+    const wardMap = new Map<string, string>();
+    for (let i = 0; i < rawWards.length; i += BATCH_SIZE) {
+      const chunk = rawWards.slice(i, i + BATCH_SIZE);
+      const validChunk = chunk.filter((w) => provinceCodeToId.has(w.provinceCode));
+      if (!validChunk.length) continue;
+
+      const values: string[] = [];
+      const params: unknown[] = [];
+      let pIdx = 1;
+
+      for (const w of validChunk) {
+        const parentId = provinceCodeToId.get(w.provinceCode)!;
+        values.push(`($${pIdx++}, $${pIdx++}, 'ward', $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
+        params.push(w.id, w.code, w.name, w.slug, w.unaccentName, parentId);
+      }
+
+      const insertedWards = await client.query<{ id: string; slug: string }>(
+        `
+          INSERT INTO areas (id, code, type, name, slug, unaccent_name, parent_id)
+          VALUES ${values.join(", ")}
+          ON CONFLICT (parent_id, slug)
+          DO UPDATE SET
+            code = EXCLUDED.code,
+            name = EXCLUDED.name,
+            unaccent_name = EXCLUDED.unaccent_name,
+            updated_at = now()
+          RETURNING id, slug
+        `,
+        params,
+      );
+      for (const row of insertedWards.rows) {
+        wardMap.set(row.slug, row.id);
+      }
+    }
 
     // -------------------------------------------------------------
     // 3. SPORTS
@@ -338,15 +419,16 @@ try {
       fromPrice: number,
       status: "approved" | "pending",
       description: string,
+      wardId?: string | null,
     ): Promise<string> {
       const result = await client.query<{ id: string }>(
         `
           INSERT INTO venues (
             id, owner_id, name, slug, description, address,
-            province_id, district_id, lat, lng, status, cover_url, from_price
+            province_id, ward_id, district_id, lat, lng, status, cover_url, from_price
           )
           VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
           )
           ON CONFLICT (slug)
           DO UPDATE SET
@@ -355,6 +437,7 @@ try {
             description = EXCLUDED.description,
             address = EXCLUDED.address,
             province_id = EXCLUDED.province_id,
+            ward_id = EXCLUDED.ward_id,
             district_id = EXCLUDED.district_id,
             lat = EXCLUDED.lat,
             lng = EXCLUDED.lng,
@@ -373,6 +456,7 @@ try {
           description,
           address,
           provinceId,
+          wardId ?? null,
           districtId,
           lat,
           lng,
@@ -397,6 +481,7 @@ try {
       120000,
       "approved",
       "Cụm sân cầu lông thảm Yonex chuẩn quốc tế và sân Pickleball ngoài trời thoáng mát, hệ thống ánh sáng chống chói mắt.",
+      wardMap.get("dich-vong-hau"),
     );
 
     const venue2Id = await ensureVenue(
@@ -412,6 +497,7 @@ try {
       150000,
       "approved",
       "Hệ thống sân cỏ nhân tạo nhập khẩu tiêu chuẩn FIFA và 2 sân quần vợt chuyên nghiệp có khán đài.",
+      wardMap.get("tan-phu"),
     );
 
     const venue3Id = await ensureVenue(
@@ -427,6 +513,7 @@ try {
       100000,
       "approved",
       "Khu phức hợp thể thao đa năng bên bờ sông Hàn thơ mộng, phục vụ cầu lông, bóng rổ và thể thao cộng đồng.",
+      wardMap.get("thuan-phuoc"),
     );
 
     const venue4Id = await ensureVenue(
@@ -442,6 +529,7 @@ try {
       140000,
       "pending",
       "Sân mới đang hoàn thiện đăng ký hồ sơ kiểm duyệt.",
+      wardMap.get("my-dinh-1"),
     );
 
     // Gắn môn thể thao cho Venues

@@ -36,11 +36,12 @@
    - Mọi địa chỉ hành chính chuẩn hóa trực tiếp: `[Số nhà/Tên đường/Khu vực], [Xã/Phường/Đặc khu], [Tỉnh/Thành phố]`.
 
 ### 1.2. Mục tiêu kỹ thuật & Nghiệp vụ
-1. Chuẩn hóa toàn bộ schema, API, shared types, form và UI sang mô hình **2 cấp (Tỉnh/Thành -> Xã/Phường/Đặc khu)**.
+1. Chuẩn hóa toàn bộ schema, API, shared types, form và UI sang mô hình **2 cấp (Tỉnh/Thành -> Xã/Phường/Đặc khu)** nhằm phục vụ tối đa việc **tìm kiếm và lọc sân của khách hàng (`CUS-04`)** và **khai báo địa chỉ sân của chủ sân (`OWN-02`)**.
 2. Giữ `district` chỉ ở vai trò **legacy (deprecated)** để tương thích ngược cho dữ liệu cũ và các bản ghi lịch sử, không xóa dữ liệu đột ngột.
-3. Cung cấp bộ dữ liệu đầy đủ **34 Tỉnh/Thành** và **3.321 Xã/Phường/Đặc khu** với mã số chính thức của Tổng cục Thống kê (dạng chuỗi có số 0 ở đầu).
-4. Tối ưu bundle size: File 3.321 xã/phường (`wards.json` ~320KB) **KHÔNG ĐƯỢC bundle trực tiếp vào client bundle**, chỉ nạp qua API backend/MSW mock theo tỉnh hoặc tìm kiếm có debounce.
-5. Xây dựng component `LocationSelector` chuẩn Anti-AI (Radix Popover + Tailwind có sẵn, zero-dependency mới, hỗ trợ unaccent search, keyboard accessible, đủ 6 trạng thái UI).
+3. Cung cấp bộ dữ liệu đầy đủ **34 Tỉnh/Thành** và **3.321 Xã/Phường/Đặc khu** với mã số chính thức của Tổng cục Thống kê (dạng chuỗi có số 0 ở đầu) dưới dạng **Master Reference Data** nạp cố định cho toàn hệ thống.
+4. **Không đưa ĐVHC vào tab Quản lý Danh mục của Admin:** Màn hình Quản trị danh mục (`/admin/catalogs`) chỉ quản lý các danh mục vận hành nghiệp vụ gồm **Môn thể thao (`sports`)** và **Tiện ích cơ sở (`amenities`)**. Dữ liệu địa giới hành chính quốc gia là dữ liệu chuẩn định danh, không phải danh mục do Admin thêm/sửa/xoá thủ công.
+5. Tối ưu bundle size: File 3.321 xã/phường (`wards.json` ~320KB) **KHÔNG ĐƯỢC bundle trực tiếp vào client bundle**, chỉ nạp qua API backend/MSW mock theo tỉnh hoặc tìm kiếm có debounce.
+6. Xây dựng component `LocationSelector` chuẩn Anti-AI (Radix Popover + Tailwind có sẵn, zero-dependency mới, hỗ trợ unaccent search, keyboard accessible, đủ 6 trạng thái UI) tích hợp vào bộ lọc sân `VenueFilters` và form tạo sân `VenueFormDialog`.
 
 ---
 
@@ -625,14 +626,12 @@ export interface LocationSelectorProps {
   - Khi người dùng chọn Tỉnh, nếu chưa có tọa độ ghim cụ thể, bản đồ tự động di chuyển về tọa độ trung tâm của Tỉnh đó (ví dụ Hà Nội: `[21.0285, 105.8542]`, TP.HCM: `[10.7769, 106.7008]`, Đà Nẵng: `[16.0471, 108.2068]`, Huế: `[16.4637, 107.5909]`, Cần Thơ: `[10.0452, 105.7469]`).
 - Validate trước khi submit: Bắt buộc chọn cả Tỉnh và Xã/Phường. Kiểm tra `ward.provinceCode === province.code`.
 
-#### 6.2.3. `AreaFormDialog.tsx` & `AreasCatalogTab.tsx` (Phân hệ Admin)
-- Trong `AreaFormDialog.tsx`: Cung cấp 2 lựa chọn loại địa bàn chính:
-  1. `province`: Tỉnh / Thành phố trực thuộc Trung ương.
-  2. `ward`: Xã / Phường / Đặc khu trực thuộc.
-  3. Lựa chọn `district` được gắn nhãn `[Legacy] Quận / Huyện`.
-- Trong `AreasCatalogTab.tsx`:
-  - Hiển thị thống kê tổng quan: **34 Tỉnh/Thành phố**, **3.321 Xã/Phường/Đặc khu**.
-  - Cho phép Admin lọc xã/phường theo từng Tỉnh, tìm kiếm nhanh theo mã hoặc tên không dấu.
+#### 6.2.3. Quy định về Màn hình Danh mục Admin (`/admin/catalogs`)
+- **Loại bỏ tab Địa bàn & Khu vực khỏi màn hình Quản lý Danh mục Admin:** 
+  - Màn hình `/admin/catalogs` chỉ duy trì **2 tab danh mục nghiệp vụ:**
+    1. **Môn thể thao (`sports`):** CRUD môn thể thao, icon, slug.
+    2. **Tiện ích cơ sở (`amenities`):** CRUD tiện ích, icon.
+  - **Lý do:** Địa giới hành chính quốc gia (34 Tỉnh, 3.321 Xã) là dữ liệu cố định, không phải danh mục kinh doanh để Admin thêm/xóa/sửa tự do. Dữ liệu này được duy trì làm Master Reference Data nạp tự động vào hệ thống phục vụ trực tiếp cho Khách lọc sân (`VenueFilters`) và Chủ sân khai báo (`VenueFormDialog`). Component `AreasCatalogTab.tsx` không nằm trong luồng chức năng chính của Quản trị danh mục.
 
 #### 6.2.4. `AdminVenuesScreen.tsx` & `VenueReviewDrawer.tsx`
 - Cập nhật hiển thị địa chỉ của cơ sở theo định dạng chuẩn hóa:
@@ -707,8 +706,8 @@ Bảng test matrix bắt buộc dành cho Subagent `auto-tester` và `qa-inspect
 - `apps/web/components/features/venue/VenueFilters.tsx`: Tích hợp `LocationSelector`, thêm footer mốc thời gian.
 - `apps/web/components/features/venue/VenueFilters.test.tsx`: Cập nhật unit test khớp với 34 tỉnh và xã.
 - `apps/web/components/features/owner/venues/VenueFormDialog.tsx`: Cập nhật form tạo sân 2 cấp.
-- `apps/web/components/features/admin/AreaFormDialog.tsx`: Cập nhật form tạo địa bàn.
-- `apps/web/components/features/admin/AreasCatalogTab.tsx`: Cập nhật giao diện quản lý danh mục địa bàn.
+- `apps/web/components/features/admin/AreaFormDialog.tsx`: (Deprecated) Loại bỏ khỏi luồng chính Admin Catalogs.
+- `apps/web/components/features/admin/AreasCatalogTab.tsx`: (Deprecated) Loại bỏ tab Địa bàn khỏi `/admin/catalogs`, giao diện chỉ giữ lại 2 tab: Môn thể thao và Tiện ích.
 - `apps/web/app/(public)/venues/page.tsx`: Cập nhật query URL đồng bộ xã/phường.
 - `apps/web/mocks/fixtures/catalogs.ts`: Cập nhật mock 34 tỉnh và xã/phường.
 - `apps/web/mocks/fixtures/venues.ts`: Cập nhật fixtures venue với `wardId`.

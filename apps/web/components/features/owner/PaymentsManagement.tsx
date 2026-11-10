@@ -200,19 +200,21 @@ export function PaymentsManagement() {
                       {payment.bookingId.slice(0, 8)}…
                     </td>
                     <td className="px-3 py-3">
-                      <div className="font-medium text-text-primary">{payment.booking.customerName}</div>
-                      {payment.booking.customerPhone && (
+                      <div className="font-medium text-text-primary">{payment.booking?.customerName || 'Khách hàng'}</div>
+                      {payment.booking?.customerPhone && (
                         <div className="mt-0.5 text-xs text-text-secondary">{payment.booking.customerPhone}</div>
                       )}
                     </td>
                     <td className="max-w-56 px-3 py-3">
-                      <div className="font-medium text-text-primary">{payment.booking.courtName}</div>
-                      <div className="truncate text-xs text-text-secondary" title={payment.booking.venueName}>
-                        {payment.booking.venueName}
+                      <div className="font-medium text-text-primary">{payment.booking?.courtName || 'Sân thi đấu'}</div>
+                      <div className="truncate text-xs text-text-secondary" title={payment.booking?.venueName || ''}>
+                        {payment.booking?.venueName || 'Cơ sở'}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-primary">
-                      {formatDateTimeRangeInVietnam(payment.booking.during.start, payment.booking.during.end)}
+                      {payment.booking?.during?.start && payment.booking?.during?.end
+                        ? formatDateTimeRangeInVietnam(payment.booking.during.start, payment.booking.during.end)
+                        : '—'}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-text-primary">
                       {formatCurrency(payment.amount)}
