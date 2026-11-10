@@ -21,12 +21,39 @@ export interface SplashBrandRevealProps {
 const STORAGE_KEY = "bsc_welcome_splash_shown";
 
 /**
- * Kiểm tra xem có cần hiển thị màn hình chào mừng thương hiệu không
+ * Class gắn trên `<html>` bởi inline script đồng bộ trong `<head>`
+ * (`apps/web/app/layout.tsx`) TRƯỚC lần paint đầu tiên.
+ * CSS trong `globals.css` dùng class này để ẩn nội dung trang khách.
+ */
+export const SPLASH_ACTIVE_CLASS = "bsc-splash-active";
+
+/**
+ * Đồng bộ class trên `<html>` — nguồn sự thật duy nhất cho việc ẩn/hiện tầng Splash.
+ * Inline script trong `<head>` bật class trước lần paint đầu tiên (zero-flicker);
+ * component chỉ giữ đồng bộ khi dismiss hoặc khi mount mà không cần hiển thị.
+ */
+export function setSplashActiveDocument(active: boolean): void {
+    if (typeof document === "undefined") return;
+
+    try {
+        document.documentElement.classList.toggle(SPLASH_ACTIVE_CLASS, active);
+    } catch {
+        // bỏ qua
+    }
+}
+
+/**
+ * Kiểm tra xem có cần hiển thị màn hình chào mừng thương hiệu không.
+ *
+ * Class `bsc-splash-active` do inline script đặt là tín hiệu ưu tiên cao nhất vì
+ * nó đã được tính TRƯỚC lần paint đầu tiên (đọc sessionStorage + query string).
+ * Nếu inline script không chạy (test, CSP chặn), rơi về kiểm tra trực tiếp.
  */
 function checkShouldShow(forceShow?: boolean): boolean {
     if (forceShow) return true;
-    if (typeof window === "undefined") return false;
+    if (typeof window === "undefined" || typeof document === "undefined") return false;
 
+    // Ưu tiên query param ép hiển thị để dev/test
     try {
         const searchParams = new URLSearchParams(window.location.search);
         if (searchParams.get("splash") === "force" || searchParams.get("welcome") === "1") {
@@ -36,13 +63,26 @@ function checkShouldShow(forceShow?: boolean): boolean {
         // Không thể đọc searchParams: bỏ qua
     }
 
+    // Nếu đã hiển thị trong session: dọn class và không hiển thị lại
     try {
         const hasShown = sessionStorage.getItem(STORAGE_KEY);
-        return hasShown !== "true";
+        if (hasShown === "true") {
+            setSplashActiveDocument(false);
+            return false;
+        }
     } catch {
-        // sessionStorage bị chặn: an toàn bỏ qua
         return false;
     }
+
+    try {
+        if (document.documentElement.classList.contains(SPLASH_ACTIVE_CLASS)) {
+            return true;
+        }
+    } catch {
+        // bỏ qua
+    }
+
+    return true;
 }
 
 /**
@@ -68,9 +108,17 @@ export function SplashBrandReveal({
     const [isExiting, setIsExiting] = React.useState(false);
     const [isDismissed, setIsDismissed] = React.useState(false);
 
-    React.useEffect(() => {
+        React.useEffect(() => {
         setMounted(true);
-    }, []);
+        // Đồng bộ lại class: bật khi cần hiển thị, gỡ ngay khi không cần.
+        // Trường hợp không cần hiển thị chính là F5 giữa phiên → tránh treo giao diện.
+        setSplashActiveDocument(shouldShow);
+
+        return () => {
+            // Rời trang khi class còn bật: dọn để không che trang kế tiếp.
+            setSplashActiveDocument(false);
+        };
+    }, [shouldShow]);
 
     const isExitingRef = React.useRef(false);
     const isDismissedRef = React.useRef(false);
@@ -93,6 +141,10 @@ export function SplashBrandReveal({
         if (isExitingRef.current || isDismissedRef.current) return;
         isExitingRef.current = true;
         setIsExiting(true);
+
+        // Gỡ class ẩn ngay khi bắt đầu fade-out: trang khách được paint dưới
+        // lớp phủ trắng đục trong suốt quá trình mờ dần → hé lộ mượt, không chớp.
+        setSplashActiveDocument(false);
 
         try {
             document.body.style.overflow = "";

@@ -57,6 +57,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `(function(){try{var t=localStorage.getItem('bsc-theme-mode');var d=t==='dark'||(!t||t==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})();`,
           }}
         />
+        {/*
+          Zero-Flicker Splash – chạy đồng bộ trong <head> TRƯỚC lần paint đầu tiên.
+          sessionStorage chỉ đọc được ở browser, nên nếu chờ React hydrate mới quyết
+          định thì SSR HTML (Header, Banner, danh sách sân) đã bị vẽ ra trước và người
+          dùng thấy chớp giật. Script gắn `bsc-splash-active` lên <html> để CSS trong
+          globals.css ẩn ngay nội dung trang khách. `SplashBrandReveal` gỡ class khi
+          bắt đầu fade-out. Xem docs/specs/web-splash-welcome-screen-spec.md.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var r=document.documentElement;try{var shown=sessionStorage.getItem('bsc_welcome_splash_shown');var q=new URLSearchParams(window.location.search);var forced=q.get('splash')==='force'||q.get('welcome')==='1';if(!forced&&shown==='true'){r.classList.remove('bsc-splash-active');return;}r.classList.add('bsc-splash-active');setTimeout(function(){r.classList.remove('bsc-splash-active');},8000);}catch(e){r.classList.remove('bsc-splash-active');}})();`,
+          }}
+        />
         {/* Tối ưu kết nối trước đến các CDN Tile của Bản đồ (Ưu tiên Esri mặc định) */}
         <link rel="preconnect" href="https://server.arcgisonline.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://a.tile.openstreetmap.fr" crossOrigin="anonymous" />

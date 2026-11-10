@@ -69,7 +69,7 @@ export function AdminUsersScreen() {
       return;
     }
 
-    if (!window.confirm(`Bạn có chắc chắn muốn ${actionLabel} tài khoản "${user.fullName}"?`)) {
+    if (!window.confirm(`Bạn có chắc chắn muốn ${actionLabel} tài khoản "${user.fullName || user.email}"?`)) {
       return;
     }
 
@@ -214,10 +214,10 @@ export function AdminUsersScreen() {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
-                            {user.fullName.charAt(0).toUpperCase()}
+                            {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-semibold text-neutral-900">{user.fullName}</p>
+                            <p className="font-semibold text-neutral-900">{user.fullName || 'Người dùng'}</p>
                             <p className="text-xs text-neutral-500">{user.email}</p>
                           </div>
                         </div>
