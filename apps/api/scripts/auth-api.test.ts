@@ -1390,7 +1390,7 @@ test("auth origin check and per-IP rate limit", () => {
       }),
     }) as ExecutionContext;
   assert.throws(() => guard.canActivate(context("https://invalid.example")));
-  for (let i = 0; i < 10; i++)
+  for (let i = 0; i < 20; i++)
     assert.equal(guard.canActivate(context("http://localhost:3000")), true);
   assert.throws(() => guard.canActivate(context("http://localhost:3000")));
 });

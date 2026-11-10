@@ -55,9 +55,7 @@ const stringFields = (names: string[]) =>
 
 @ApiTags("Auth")
 @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
-@ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
 @ApiResponse({ status: 500, description: "INTERNAL_ERROR" })
-@UseGuards(AuthRequestGuard)
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -66,6 +64,7 @@ export class AuthController {
   ) {}
 
   @Post("register")
+  @UseGuards(AuthRequestGuard)
   @ApiOperation({ summary: "Đăng ký Customer và gửi email xác thực" })
   @ApiBody({
     schema: {
@@ -85,12 +84,14 @@ export class AuthController {
     description: "Hồ sơ Customer; không cấp phiên tự động",
   })
   @ApiResponse({ status: 409, description: "EMAIL_ALREADY_EXISTS" })
+  @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
   register(@Body() body: unknown) {
     return this.auth.register(parseBody(registerSchema, body));
   }
 
   @Post("login")
   @HttpCode(200)
+  @UseGuards(AuthRequestGuard)
   @ApiOperation({ summary: "Đăng nhập bằng cookie httpOnly" })
   @ApiBody({
     schema: {
@@ -107,6 +108,7 @@ export class AuthController {
     description: "Hồ sơ user và Set-Cookie access_token/refresh_token",
   })
   @ApiResponse({ status: 401, description: "INVALID_CREDENTIALS" })
+  @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
   async login(
     @Body() body: unknown,
     @Res({ passthrough: true }) response: AuthResponse,
@@ -154,9 +156,11 @@ export class AuthController {
 
   @Post("forgot-password")
   @HttpCode(204)
+  @UseGuards(AuthRequestGuard)
   @ApiOperation({
     summary: "Yêu cầu đặt lại mật khẩu, không tiết lộ email tồn tại",
   })
+  @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
   @ApiBody({
     schema: {
       type: "object",

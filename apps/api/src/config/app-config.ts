@@ -49,6 +49,7 @@ export const AppConfigSchema = z
       (value) => (value === "" ? undefined : value),
       z.string().url().optional(),
     ),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
     NODE_ENV: z
       .enum(["development", "test", "staging", "production"])
       .default("development"),
