@@ -178,6 +178,7 @@ export class VenuesRepository {
             districtId: venues.districtId,
             lat: venues.lat,
             lng: venues.lng,
+            coverUrl: venues.coverUrl,
             status: venues.status,
             rejectionReason: venues.rejectionReason,
             createdAt: venues.createdAt,

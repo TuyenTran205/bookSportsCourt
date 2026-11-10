@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module.js";
+import { UploadsModule } from "../uploads/uploads.module.js";
 import { VenuesController } from "./venues.controller.js";
 import { VenuesRepository } from "./venues.repository.js";
 import { VenuesService } from "./venues.service.js";
@@ -15,7 +16,7 @@ import {
 } from "./venues-read.controller.js";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, UploadsModule],
   controllers: [
     VenueExtensionsController,
     OwnerVenueSettingsController,

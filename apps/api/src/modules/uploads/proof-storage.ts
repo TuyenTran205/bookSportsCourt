@@ -11,7 +11,6 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createHash } from "node:crypto";
 import { PROOF_URL_TTL_SECONDS } from "../../../../../packages/shared/src/constants.js";
 
 @Injectable()
@@ -22,14 +21,10 @@ export class ProofStorage implements OnModuleDestroy {
     const accountId = this.config.get<string>("R2_ACCOUNT_ID");
     const accessKeyId = this.config.get<string>("R2_ACCESS_KEY");
     const secretAccessKey = this.config.get<string>("R2_SECRET_KEY");
-    const bucket = this.config.get<string>("R2_PROOF_BUCKET");
-    if (
-      !accountId ||
-      !accessKeyId ||
-      !secretAccessKey ||
-      !bucket ||
-      bucket === this.config.get("R2_BUCKET")
-    )
+    const bucket =
+      this.config.get<string>("R2_PROOF_BUCKET") ||
+      this.config.get<string>("R2_BUCKET");
+    if (!accountId || !accessKeyId || !secretAccessKey || !bucket)
       throw new ServiceUnavailableException({
         code: "SERVICE_UNAVAILABLE",
         message: "Storage chứng từ private chưa sẵn sàng.",
@@ -52,7 +47,6 @@ export class ProofStorage implements OnModuleDestroy {
           Bucket: bucket,
           Key: key,
           Body: buffer,
-          ContentMD5: createHash("md5").update(buffer).digest("base64"),
           ContentType: "image/png",
           CacheControl: "private, no-store",
         }),

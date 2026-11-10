@@ -372,9 +372,19 @@ export const ownerApplicationSchema = z.object({
   lng: z.number().min(-180).max(180).optional().nullable(),
   note: z.string().trim().max(1000).optional(),
   taxCode: z
-    .string()
-    .trim()
-    .regex(/^(?:\d{10}|\d{12}|\d{13})$/, "MST gồm 10 hoặc 13 chữ số, CCCD gồm 12 chữ số")
+    .union([
+      z
+        .string()
+        .trim()
+        .regex(
+          /^(?:\d{10}|\d{12}|\d{13})$/,
+          "MST gồm 10 hoặc 13 chữ số, CCCD gồm 12 chữ số",
+        ),
+      z.literal(""),
+      z.null(),
+      z.undefined(),
+    ])
+    .transform((v) => (v ? v : undefined))
     .optional(),
   bankBin: z.string().optional(),
   bankName: z.string().optional(),

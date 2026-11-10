@@ -25,6 +25,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decodeAvatar, type AvatarFile } from "../uploads/avatar-image.js";
+import { PublicStorage } from "../uploads/public-storage.js";
 
 import {
   changePasswordSchema,
@@ -254,6 +255,7 @@ export class CurrentUserController {
   constructor(
     private readonly auth: AuthService,
     private readonly cookies: AuthCookies,
+    private readonly storage: PublicStorage,
   ) {}
 
   @Get("me")
@@ -306,13 +308,7 @@ export class CurrentUserController {
       });
     }
     const webpBuffer = await decodeAvatar(file);
-    const filename = `avatar-${user.id}-${Date.now()}.webp`;
-    const uploadDir = fileURLToPath(
-      new URL("../../../../web/public/uploads/avatars", import.meta.url),
-    );
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), webpBuffer);
-    const avatarUrl = `/uploads/avatars/${filename}`;
+    const avatarUrl = await this.storage.saveAvatar(user.id, webpBuffer, "image/webp");
     return this.auth.updateAvatar(user.id, avatarUrl);
   }
 
