@@ -83,15 +83,22 @@ export class GoogleOAuthRepository {
       .where(and(eq(users.email, email), isNull(users.deletedAt)));
     return !!row;
   }
+  async setAvatarIfMissing(tx: AuthTransaction, userId: string, avatarUrl: string) {
+    await tx
+      .update(users)
+      .set({ avatarUrl })
+      .where(and(eq(users.id, userId), isNull(users.avatarUrl)));
+  }
   async create(
     tx: AuthTransaction,
-    identity: { subject: string; email: string; fullName: string },
+    identity: { subject: string; email: string; fullName: string; picture?: string | null },
   ) {
     const [user] = await tx
       .insert(users)
       .values({
         email: identity.email,
         fullName: identity.fullName,
+        avatarUrl: identity.picture ?? null,
         passwordHash: null,
         role: "customer",
         status: "active",

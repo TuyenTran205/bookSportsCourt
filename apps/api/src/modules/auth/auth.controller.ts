@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -7,15 +8,23 @@ import {
   Post,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import {
   ApiBody,
+  ApiConsumes,
   ApiCookieAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { decodeAvatar, type AvatarFile } from "../uploads/avatar-image.js";
 
 import {
   changePasswordSchema,
@@ -259,6 +268,52 @@ export class CurrentUserController {
   @ApiResponse({ status: 403, description: "ACCOUNT_SUSPENDED hoặc FORBIDDEN" })
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  @Post("me/avatar")
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+      fileFilter: (_request, file, callback) =>
+        callback(
+          ["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)
+            ? null
+            : new BadRequestException({
+                code: "VALIDATION_ERROR",
+                message:
+                  "Định dạng tệp không được hỗ trợ. Vui lòng chọn ảnh JPG, PNG hoặc WebP.",
+              }),
+          true,
+        ),
+    }),
+  )
+  @ApiConsumes("multipart/form-data")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "Upload ảnh đại diện người dùng hiện tại" })
+  @ApiResponse({
+    status: 200,
+    description: "Hồ sơ người dùng sau khi cập nhật ảnh đại diện",
+  })
+  async uploadAvatar(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: AvatarFile | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Thiếu tệp ảnh đại diện.",
+      });
+    }
+    const webpBuffer = await decodeAvatar(file);
+    const filename = `avatar-${user.id}-${Date.now()}.webp`;
+    const uploadDir = fileURLToPath(
+      new URL("../../../../web/public/uploads/avatars", import.meta.url),
+    );
+    await mkdir(uploadDir, { recursive: true });
+    await writeFile(path.join(uploadDir, filename), webpBuffer);
+    const avatarUrl = `/uploads/avatars/${filename}`;
+    return this.auth.updateAvatar(user.id, avatarUrl);
   }
 
   @Patch("me")

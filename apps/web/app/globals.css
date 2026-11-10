@@ -364,4 +364,80 @@
   .animate-bsc-badge-fade {
     animation: bsc-badge-fade 450ms ease-out forwards;
   }
+
+  /* Infinite horizontal court marquee */
+  @keyframes bsc-marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-bsc-marquee {
+    display: flex;
+    width: max-content;
+    animation: bsc-marquee 32s linear infinite;
+  }
+
+  .animate-bsc-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  /* Mặt nạ làm mờ dần 2 mép trái phải siêu mượt (Smooth Edge Fade Mask) */
+  .bsc-marquee-mask {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 48px,
+      black calc(100% - 48px),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 48px,
+      black calc(100% - 48px),
+      transparent 100%
+    );
+  }
+
+  @media (min-width: 640px) {
+    .bsc-marquee-mask {
+      mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        black 120px,
+        black calc(100% - 120px),
+        transparent 100%
+      );
+      -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        black 120px,
+        black calc(100% - 120px),
+        transparent 100%
+      );
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .bsc-marquee-mask {
+      mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        black 200px,
+        black calc(100% - 200px),
+        transparent 100%
+      );
+      -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0%,
+        black 200px,
+        black calc(100% - 200px),
+        transparent 100%
+      );
+    }
+  }
 }
