@@ -42,6 +42,36 @@ function buildUrl(path: string, query?: ApiFetchOptions['query']): string {
   return API_BASE_URL ? url.toString() : `${url.pathname}${url.search}`;
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Xoay vòng token khi gặp lỗi 401 Unauthorized.
+ * Đảm bảo chỉ 1 request refresh chạy tại một thời điểm dù có nhiều request song song.
+ */
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(buildUrl('/auth/refresh'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof window !== 'undefined' && window.location?.origin
+            ? { 'X-Request-Origin': window.location.origin }
+            : {}),
+        },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
 /**
  * Gọi API và trả về **phần `data`** đã bóc envelope.
  *
@@ -89,6 +119,23 @@ export async function apiFetchWithMeta<T>(
   } catch (err) {
     // fetch chỉ ném khi lỗi mạng thật (DNS, mất kết nối, CORS).
     throw ApiError.network(err instanceof Error ? err.message : undefined);
+  }
+
+  // Tự động xoay vòng refresh token khi gặp 401 trên các endpoint thông thường
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      try {
+        res = await fetch(buildUrl(path, query), {
+          ...rest,
+          body,
+          credentials: 'include',
+          headers: mergedHeaders,
+        });
+      } catch (err) {
+        throw ApiError.network(err instanceof Error ? err.message : undefined);
+      }
+    }
   }
 
   if (!res.ok) throw await ApiError.fromResponse(res);

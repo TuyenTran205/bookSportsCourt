@@ -113,6 +113,7 @@ export class VenuesService {
         description: updated.description,
         address: updated.address,
         provinceId: updated.provinceId,
+        wardId: updated.wardId,
         districtId: updated.districtId,
         lat: updated.lat === null ? null : Number(updated.lat),
         lng: updated.lng === null ? null : Number(updated.lng),
@@ -131,10 +132,10 @@ export class VenuesService {
     id: string,
   ) {
     const user = await this.auth.requireActiveUser(userId, tx);
-    if (user.role !== "owner")
+    if (user.role !== "owner" && user.role !== "admin")
       throw new ForbiddenException({
         code: "FORBIDDEN",
-        message: "Chỉ Owner được sửa địa điểm.",
+        message: "Chỉ Owner hoặc Admin được thao tác địa điểm.",
       });
     if (!uuidSchema.safeParse(id).success)
       throw invalid("ID địa điểm không hợp lệ.");
@@ -148,8 +149,8 @@ export class VenuesService {
     await this.ownership.assertOwnership(
       userId,
       id,
-      { resource: "venue", param: "id", allowAdmin: false },
-      ["owner"],
+      { resource: "venue", param: "id", allowAdmin: true },
+      ["owner", "admin"],
       tx,
     );
     return venue;
@@ -163,6 +164,7 @@ export class VenuesService {
     try {
       return await this.repository.transaction(async (tx) => {
         const venue = await this.lockOwnedVenue(tx, userId, id);
+        const user = await this.auth.requireActiveUser(userId, tx);
         const previous = await this.repository.links(tx, venue.id);
         const unique = (ids: string[]) =>
           [...new Set(ids.map((value) => value.toLowerCase()))].sort();
@@ -174,12 +176,37 @@ export class VenuesService {
           input.amenityIds === undefined
             ? previous.amenityIds
             : unique(input.amenityIds);
+
+        let targetOwnerId = venue.ownerId;
+        if (
+          user.role === "admin" &&
+          input.ownerId &&
+          input.ownerId !== venue.ownerId
+        ) {
+          const targetOwner = await this.auth.requireActiveUser(
+            input.ownerId,
+            tx,
+          );
+          if (targetOwner.role !== "owner") {
+            throw invalid("Chủ sân được chọn không hợp lệ.");
+          }
+          targetOwnerId = targetOwner.id;
+        }
+
         const values = {
+          ownerId: targetOwnerId,
           name: input.name ?? venue.name,
           address: input.address ?? venue.address,
           description: input.description ?? venue.description,
           provinceId: input.provinceId?.toLowerCase() ?? venue.provinceId,
-          districtId: input.districtId?.toLowerCase() ?? venue.districtId,
+          wardId:
+            input.wardId !== undefined
+              ? (input.wardId ? input.wardId.toLowerCase() : null)
+              : venue.wardId,
+          districtId:
+            input.districtId !== undefined
+              ? (input.districtId ? input.districtId.toLowerCase() : null)
+              : venue.districtId,
           lat:
             input.lat === undefined
               ? venue.lat
@@ -189,18 +216,40 @@ export class VenuesService {
               ? venue.lng
               : Number(input.lng.toFixed(7)).toFixed(7),
         };
-        const areas = await this.repository.areas(tx, [
+        const areaIdsToCheck = [
           values.provinceId,
+          values.wardId,
           values.districtId,
-        ]);
+        ].filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+        const areas = await this.repository.areas(tx, areaIdsToCheck);
         const province = areas.find((area) => area.id === values.provinceId);
-        const district = areas.find((area) => area.id === values.districtId);
-        if (
-          province?.type !== "province" ||
-          district?.type !== "district" ||
-          district.parentId !== values.provinceId
-        )
-          throw invalid("Tỉnh/quận không hợp lệ hoặc quận không thuộc tỉnh.");
+        if (province?.type !== "province") {
+          throw invalid("Tỉnh/thành phố không hợp lệ.");
+        }
+        if (values.wardId) {
+          const ward = areas.find((area) => area.id === values.wardId);
+          if (
+            !ward ||
+            ward.type !== "ward" ||
+            ward.parentId !== values.provinceId
+          ) {
+            throw invalid(
+              "Xã/phường không hợp lệ hoặc không thuộc tỉnh đã chọn.",
+            );
+          }
+        }
+        if (values.districtId) {
+          const district = areas.find((area) => area.id === values.districtId);
+          if (
+            !district ||
+            district.type !== "district" ||
+            district.parentId !== values.provinceId
+          ) {
+            throw invalid("Tỉnh/quận không hợp lệ hoặc quận không thuộc tỉnh.");
+          }
+        }
         if (
           (await this.repository.catalogIds(tx, "sports", sportIds)).length !==
           sportIds.length
@@ -220,6 +269,7 @@ export class VenuesService {
         ).some((key) => values[key] !== venue[key]);
         const changed = scalarChanged || sportsChanged || amenitiesChanged;
         const needsReview =
+          user.role !== "admin" &&
           changed &&
           (venue.status === "approved" || venue.status === "rejected");
         const updated = changed
@@ -244,6 +294,7 @@ export class VenuesService {
           description: updated.description,
           address: updated.address,
           provinceId: updated.provinceId,
+          wardId: updated.wardId,
           districtId: updated.districtId,
           lat: updated.lat === null ? null : Number(updated.lat),
           lng: updated.lng === null ? null : Number(updated.lng),
@@ -289,20 +340,37 @@ export class VenuesService {
     const data: OwnerVenueResponse[] = result.rows.map((venue) => ({
       id: venue.id,
       ownerId: venue.ownerId,
+      ownerName: venue.ownerName ?? null,
       slug: venue.slug,
       name: venue.name,
       description: venue.description,
       address: venue.address,
       provinceId: venue.provinceId,
+      wardId: venue.wardId,
       districtId: venue.districtId,
       lat: venue.lat === null ? null : Number(venue.lat),
       lng: venue.lng === null ? null : Number(venue.lng),
       sportIds: result.sports
         .filter((link) => link.venueId === venue.id)
         .map((link) => link.sportId),
+      sports: result.sports
+        .filter((link) => link.venueId === venue.id)
+        .map((link) => ({ id: link.sportId, name: link.name, slug: link.slug, icon: link.icon })),
       amenityIds: result.amenities
         .filter((link) => link.venueId === venue.id)
         .map((link) => link.amenityId),
+      amenities: result.amenities
+        .filter((link) => link.venueId === venue.id)
+        .map((link) => ({ id: link.amenityId, name: link.name, slug: link.slug, icon: link.icon })),
+      courts: (result.courts ?? [])
+        .filter((court) => court.venueId === venue.id)
+        .map((court) => ({
+          id: court.id,
+          name: court.name,
+          sportId: court.sportId,
+          status: court.status,
+          description: court.description,
+        })),
       status: z.enum(VENUE_STATUSES).parse(venue.status),
       rejectionReason: venue.rejectionReason,
       createdAt: venue.createdAt.toISOString(),
@@ -333,6 +401,7 @@ export class VenuesService {
     const province = result.areaRows.find(
       (area) => area.id === venue.provinceId,
     );
+    const ward = result.areaRows.find((area) => area.id === venue.wardId);
     const district = result.areaRows.find(
       (area) => area.id === venue.districtId,
     );
@@ -344,9 +413,20 @@ export class VenuesService {
       description: venue.description,
       address: venue.address,
       provinceId: venue.provinceId,
+      wardId: venue.wardId,
       districtId: venue.districtId,
       province: province
         ? { id: province.id, name: province.name, slug: province.slug }
+        : null,
+      ward: ward
+        ? {
+            id: ward.id,
+            code: ward.code ?? undefined,
+            name: ward.name,
+            slug: ward.slug,
+            type: "ward" as const,
+            parentId: ward.parentId,
+          }
         : null,
       district: district
         ? {
@@ -385,29 +465,58 @@ export class VenuesService {
       ...new Set(input.amenityIds.map((id) => id.toLowerCase())),
     ].sort();
     const provinceId = input.provinceId.toLowerCase();
-    // `districtId` là optional trong schema dùng chung (giữ tương thích mô hình 2 cấp),
-    // nhưng luồng tạo cơ sở của API vẫn bắt buộc có quận/huyện.
-    if (!input.districtId)
-      throw invalid("Vui lòng chọn quận/huyện cho cơ sở.");
-    const districtId = input.districtId.toLowerCase();
+    const wardId = input.wardId ? input.wardId.toLowerCase() : null;
+    const districtId = input.districtId ? input.districtId.toLowerCase() : null;
+    if (!wardId && !districtId)
+      throw invalid("Vui lòng chọn xã/phường cho cơ sở.");
     try {
       return await this.repository.transaction(async (tx) => {
         // The guard ran before this transaction; lock and check the current DB state again.
         const user = await this.auth.requireActiveUser(userId, tx);
-        if (user.role !== "owner")
+        if (user.role !== "owner" && user.role !== "admin")
           throw new ForbiddenException({
             code: "FORBIDDEN",
-            message: "Chỉ Owner được tạo địa điểm.",
+            message: "Chỉ Owner hoặc Admin được tạo địa điểm.",
           });
-        const rows = await this.repository.areas(tx, [provinceId, districtId]);
+        let targetOwnerId = user.id;
+        if (user.role === "admin") {
+          if (!input.ownerId) {
+            throw invalid("Admin tạo cơ sở cần chỉ định chủ sân (ownerId).");
+          }
+          const targetOwner = await this.auth.requireActiveUser(
+            input.ownerId,
+            tx,
+          );
+          if (targetOwner.role !== "owner") {
+            throw invalid("Chủ sân được chọn không hợp lệ.");
+          }
+          targetOwnerId = targetOwner.id;
+        }
+        const areaIdsToCheck = [provinceId, wardId, districtId].filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+        const rows = await this.repository.areas(tx, areaIdsToCheck);
         const province = rows.find((area) => area.id === provinceId);
-        const district = rows.find((area) => area.id === districtId);
-        if (
-          province?.type !== "province" ||
-          district?.type !== "district" ||
-          district.parentId !== provinceId
-        ) {
-          throw invalid("Tỉnh/quận không hợp lệ hoặc quận không thuộc tỉnh.");
+        if (province?.type !== "province") {
+          throw invalid("Tỉnh/thành phố không hợp lệ.");
+        }
+        if (wardId) {
+          const ward = rows.find((area) => area.id === wardId);
+          if (!ward || ward.type !== "ward" || ward.parentId !== provinceId) {
+            throw invalid(
+              "Xã/phường không hợp lệ hoặc không thuộc tỉnh đã chọn.",
+            );
+          }
+        }
+        if (districtId) {
+          const district = rows.find((area) => area.id === districtId);
+          if (
+            !district ||
+            district.type !== "district" ||
+            district.parentId !== provinceId
+          ) {
+            throw invalid("Tỉnh/quận không hợp lệ hoặc quận không thuộc tỉnh.");
+          }
         }
         if (
           (await this.repository.catalogIds(tx, "sports", sportIds)).length !==
@@ -424,16 +533,17 @@ export class VenuesService {
           tx,
           {
             id,
-            ownerId: user.id,
+            ownerId: targetOwnerId,
             slug: venueSlug(input.name, id),
             name: input.name,
             address: input.address,
             description: input.description ?? null,
             provinceId,
+            wardId,
             districtId,
             lat: input.lat.toFixed(7),
             lng: input.lng.toFixed(7),
-            status: "pending",
+            status: user.role === "admin" ? "approved" : "pending",
             rejectionReason: null,
           },
           sportIds,
@@ -447,12 +557,13 @@ export class VenuesService {
           description: venue.description,
           address: venue.address,
           provinceId: venue.provinceId,
+          wardId: venue.wardId,
           districtId: venue.districtId,
           lat: venue.lat === null ? null : Number(venue.lat),
           lng: venue.lng === null ? null : Number(venue.lng),
           sportIds,
           amenityIds,
-          status: "pending",
+          status: z.enum(VENUE_STATUSES).parse(venue.status),
           rejectionReason: venue.rejectionReason,
           createdAt: venue.createdAt.toISOString(),
           updatedAt: venue.updatedAt.toISOString(),
@@ -471,16 +582,54 @@ export class VenuesService {
     }
   }
   async searchVenues(params: PublicVenueSearchQueryInput) {
+    let provinceId = params.provinceId;
+    if (!provinceId && params.provinceCode) {
+      const p = await this.repository.findAreaByCode(
+        params.provinceCode,
+        "province",
+      );
+      if (p) provinceId = p.id;
+    }
+    let wardId = params.wardId;
+    if (!wardId && params.wardCode) {
+      const w = await this.repository.findAreaByCode(
+        params.wardCode,
+        "ward",
+      );
+      if (w) wardId = w.id;
+    }
+
     return this.repository.searchVenues({
       ...params,
+      provinceId,
+      wardId,
       sportIds:
         params.sportIds ?? (params.sportId ? [params.sportId] : undefined),
     });
   }
 
   async getMapVenues(filters: VenueMapQueryInput) {
+    let provinceId = filters.provinceId;
+    if (!provinceId && filters.provinceCode) {
+      const p = await this.repository.findAreaByCode(
+        filters.provinceCode,
+        "province",
+      );
+      if (p) provinceId = p.id;
+    }
+    let wardId = filters.wardId;
+    if (!wardId && filters.wardCode) {
+      const w = await this.repository.findAreaByCode(
+        filters.wardCode,
+        "ward",
+      );
+      if (w) wardId = w.id;
+    }
+
     const rows = await this.repository.getMapVenues({
       ...filters,
+      provinceId,
+      wardId,
       sportIds: filters.sportId ? [filters.sportId] : undefined,
     });
     return rows.map((row) => ({

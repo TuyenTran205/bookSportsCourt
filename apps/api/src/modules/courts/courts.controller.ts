@@ -8,10 +8,12 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
+  blackoutSchema,
   createCourtSchema,
   pricingRuleSchema,
   updateCourtSchema,
@@ -223,5 +225,46 @@ export class CourtsController {
     @Param("ruleId") ruleId: string,
   ) {
     return this.service.deletePricingRuleByOwner(user.id, ruleId);
+  }
+
+  // ===== Blackouts =====
+
+  @Post("courts/:id/blackouts")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("court", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Tạo khoảng khoá bảo trì trên sân" })
+  createBlackout(@Param("id") id: string, @Body() body: unknown) {
+    const input = parseBody(blackoutSchema, body);
+    return this.service.createBlackout(id, input);
+  }
+
+  @Get("courts/:id/blackouts")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("court", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Danh sách khoảng khoá bảo trì của sân" })
+  listBlackouts(
+    @Param("id") id: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ) {
+    return this.service.listBlackouts(id, from, to);
+  }
+
+  @Delete("courts/:id/blackouts/:blackoutId")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("court", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xoá khoảng khoá bảo trì (mở khoá sân)" })
+  async deleteBlackout(
+    @Param("id") id: string,
+    @Param("blackoutId") blackoutId: string,
+  ) {
+    await this.service.deleteBlackout(id, blackoutId);
+    return { success: true };
   }
 }

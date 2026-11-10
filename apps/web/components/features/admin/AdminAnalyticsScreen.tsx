@@ -90,7 +90,7 @@ export function AdminAnalyticsScreen() {
                       }
                       labelLine={false}
                     >
-                      {data?.bySport.map((_, index) => (
+                      {((data?.bySport ?? [])).map((_, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={SPORT_COLORS[index % SPORT_COLORS.length]}
@@ -119,10 +119,10 @@ export function AdminAnalyticsScreen() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={
-                      data?.byStatus.map((s) => ({
+                      (data?.byStatus ?? []).map((s) => ({
                         ...s,
                         name: STATUS_LABELS[s.status] ?? s.status,
-                      })) ?? []
+                      }))
                     }
                     margin={{ top: 10, right: 10, left: 0, bottom: 25 }}
                   >
@@ -172,24 +172,32 @@ export function AdminAnalyticsScreen() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
-                  {data?.byVenue
-                    .sort((a, b) => b.revenue - a.revenue)
-                    .map((venue, idx) => (
-                      <tr key={venue.venueId} className="hover:bg-neutral-50/50">
-                        <td className="py-2.5 px-3 font-medium text-neutral-500">
-                          #{idx + 1}
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-neutral-900">
-                          {venue.name}
-                        </td>
-                        <td className="py-2.5 px-3 text-right tabular-nums text-neutral-700">
-                          {venue.bookings} lượt
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-semibold tabular-nums text-primary-700">
-                          {formatCurrency(venue.revenue)}
-                        </td>
-                      </tr>
-                    ))}
+                  {(data?.byVenue ?? []).length > 0 ? (
+                    [...(data?.byVenue ?? [])]
+                      .sort((a, b) => b.revenue - a.revenue)
+                      .map((venue, idx) => (
+                        <tr key={venue.venueId} className="hover:bg-neutral-50/50">
+                          <td className="py-2.5 px-3 font-medium text-neutral-500">
+                            #{idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-neutral-900">
+                            {venue.name}
+                          </td>
+                          <td className="py-2.5 px-3 text-right tabular-nums text-neutral-700">
+                            {venue.bookings} lượt
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-semibold tabular-nums text-primary-700">
+                            {formatCurrency(venue.revenue)}
+                          </td>
+                        </tr>
+                      ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-xs text-neutral-400">
+                        Chưa có dữ liệu hiệu suất cơ sở thể thao
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

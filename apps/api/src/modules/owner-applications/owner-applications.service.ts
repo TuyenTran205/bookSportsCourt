@@ -53,6 +53,8 @@ export class OwnerApplicationsService {
       businessName: app.businessName,
       phone: app.phone,
       address: app.address,
+      lat: app.lat !== null && app.lat !== undefined ? Number(app.lat) : null,
+      lng: app.lng !== null && app.lng !== undefined ? Number(app.lng) : null,
       note: app.note,
       taxCode: app.taxCode,
       status: app.status,

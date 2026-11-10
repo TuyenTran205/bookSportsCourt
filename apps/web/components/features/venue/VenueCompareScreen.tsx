@@ -279,8 +279,8 @@ export function VenueCompareScreen() {
               {venues.map((venue) => (
                 <td key={venue.id} className="p-4 align-top">
                   <div className="flex flex-wrap gap-1.5">
-                    {venue.sports.length > 0 ? (
-                      venue.sports.map((sport) => (
+                    {(venue.sports ?? []).length > 0 ? (
+                      (venue.sports ?? []).map((sport) => (
                         <span
                           key={sport.id}
                           className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"

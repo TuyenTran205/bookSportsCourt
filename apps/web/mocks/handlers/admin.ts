@@ -1,7 +1,7 @@
 import { http } from "msw";
 import type { AuditLog } from "@bsc/shared";
 import { createMockNotification, db, currentUser, persist } from "../db";
-import { areas, sports } from "../fixtures/catalogs";
+import { areas, amenities, sports } from "../fixtures/catalogs";
 import { venueIdByCourtId } from "../fixtures/bookings";
 import { venues } from "../fixtures/venues";
 import { err, ok, okList, paginate, readPaging, simulateLatency } from "../utils";
@@ -397,6 +397,41 @@ export const adminHandlers = [
             const removed = sports.splice(idx, 1)[0];
             if (removed) {
                 writeAudit("catalog.sport_delete", "sport", removed.name, { name: removed.name });
+            }
+        }
+        persist();
+        return ok({ success: true });
+    }),
+
+    http.post("/api/v1/amenities", async ({ request }) => {
+        await simulateLatency(350);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+        const body = (await request.json()) as { name?: string; icon?: string; slug?: string };
+        if (!body.name) {
+            return err(400, "BAD_REQUEST", "Tên tiện ích không được để trống");
+        }
+        const newAmenity = {
+            id: `amenity-${Date.now()}`,
+            name: body.name,
+            slug: body.slug ?? body.name.toLowerCase().replace(/\s+/g, "-"),
+            icon: body.icon ?? "sparkles",
+        };
+        amenities.push(newAmenity);
+        writeAudit("catalog.amenity_create", "amenity", newAmenity.name, { name: newAmenity.name });
+        persist();
+        return ok(newAmenity, 201);
+    }),
+
+    http.delete("/api/v1/amenities/:id", async ({ params }) => {
+        await simulateLatency(350);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+        const idx = amenities.findIndex((a) => a.id === params.id);
+        if (idx !== -1) {
+            const removed = amenities.splice(idx, 1)[0];
+            if (removed) {
+                writeAudit("catalog.amenity_delete", "amenity", removed.name, { name: removed.name });
             }
         }
         persist();

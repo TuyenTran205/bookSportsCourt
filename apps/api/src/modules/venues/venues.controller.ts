@@ -39,15 +39,15 @@ import { VenuesService } from "./venues.service.js";
 @ApiTags("Venues")
 @ApiCookieAuth("access_token")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles("owner")
+@Roles("owner", "admin")
 @Controller("venues")
 export class VenuesController {
   constructor(private readonly service: VenuesService) {}
 
   @Patch(":id")
-  @ApiOperation({ summary: "Owner updates own venue" })
+  @ApiOperation({ summary: "Owner updates own venue or Admin updates any venue" })
   @UseGuards(OwnershipGuard)
-  @CheckOwnership("venue")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @ApiParam({ name: "id", format: "uuid" })
   @ApiBody({ schema: updateVenueOpenApi })
   @ApiResponse({ status: 200, schema: privateVenueResponseOpenApi })
@@ -68,10 +68,10 @@ export class VenuesController {
   }
 
   @Delete(":id")
-  @ApiOperation({ summary: "Owner soft-deletes own venue" })
+  @ApiOperation({ summary: "Owner soft-deletes own venue or Admin soft-deletes any venue" })
   @HttpCode(204)
   @UseGuards(OwnershipGuard)
-  @CheckOwnership("venue")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @ApiParam({ name: "id", format: "uuid" })
   @ApiResponse({ status: 204, description: "Deleted; no body" })
   @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
@@ -87,7 +87,7 @@ export class VenuesController {
   }
 
   @Post()
-  @ApiOperation({ summary: "Owner tạo địa điểm chờ duyệt" })
+  @ApiOperation({ summary: "Owner tạo địa điểm chờ duyệt hoặc Admin tạo hộ chủ sân" })
   @ApiBody({ schema: createVenueOpenApi })
   @ApiResponse({ status: 201, schema: privateVenueResponseOpenApi })
   @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })

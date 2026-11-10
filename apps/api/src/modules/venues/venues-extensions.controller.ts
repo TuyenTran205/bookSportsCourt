@@ -91,12 +91,12 @@ export class VenueExtensionsController {
 
   @Post(":id/images")
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
+  @Roles("owner", "admin")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @UseInterceptors(VenueImageUploadInterceptor)
   @ApiCookieAuth("access_token")
   @ApiConsumes("multipart/form-data", "application/json")
-  @ApiOperation({ summary: "[Owner] Thêm ảnh cho cơ sở (multipart file hoặc JSON url)" })
+  @ApiOperation({ summary: "[Owner/Admin] Thêm ảnh cho cơ sở (multipart file hoặc JSON url)" })
   addImage(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
@@ -130,10 +130,10 @@ export class VenueExtensionsController {
 
   @Patch(":id/images/order")
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
+  @Roles("owner", "admin")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Sắp xếp lại thứ tự ảnh" })
+  @ApiOperation({ summary: "[Owner/Admin] Sắp xếp lại thứ tự ảnh" })
   reorderImages(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
@@ -146,10 +146,10 @@ export class VenueExtensionsController {
   @Delete(":id/images/:imageId")
   @HttpCode(204)
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
+  @Roles("owner", "admin")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Xoá ảnh" })
+  @ApiOperation({ summary: "[Owner/Admin] Xoá ảnh" })
   deleteImage(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,

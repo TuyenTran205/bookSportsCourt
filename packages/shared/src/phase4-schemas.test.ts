@@ -8,11 +8,11 @@ import * as output from './phase4-responses.js';
 const id = '019a0000-0004-7000-8000-000000000001';
 describe('Phase 4 shared contract', () => {
   it('accepts exactly one Google callback code/error, bounded known metadata and no identity input', () => {
-    expect(input.googleCallbackQuerySchema.safeParse({state:'state',code:'code',scope:'openid email',authuser:'0',prompt:'consent'}).success).toBe(true);
+    expect(input.googleCallbackQuerySchema.safeParse({state:'state',code:'code',scope:'openid email',authuser:'0',prompt:'consent',iss:'https://accounts.google.com'}).success).toBe(true);
     expect(input.googleCallbackQuerySchema.safeParse({state:'state',error:'access_denied',error_description:'cancelled'}).success).toBe(true);
     for(const value of [{state:'state'},{state:'state',code:'code',error:'error'},{state:'state',code:['a','b']},
       {state:'state',code:'code',email:'injected@example.test'},{state:'state',code:'code',redirect:'https://evil.test'},
-      {state:'state',code:'code',scope:'a'.repeat(2049)}]) expect(input.googleCallbackQuerySchema.safeParse(value).success).toBe(false);
+      {state:'state',code:'code',scope:'a'.repeat(2049)},{state:'state',code:'code',iss:'a'.repeat(256)}]) expect(input.googleCallbackQuerySchema.safeParse(value).success).toBe(false);
   });
   it('strict mutation allowlists and trimmed reasons', () => {
     expect(input.paymentRejectSchema.parse({ reason: '  Invalid proof  ' })).toEqual({ reason: 'Invalid proof' });

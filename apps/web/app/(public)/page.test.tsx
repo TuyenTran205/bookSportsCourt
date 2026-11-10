@@ -220,18 +220,16 @@ describe('D — Hành vi tìm kiếm và điều hướng', () => {
   });
 });
 
-describe('E — Tương phản nút trên banner CTA nền tối', () => {
-  it('E1: nút outline không giữ nền sáng bg-bg (chữ trắng trên nền trắng)', () => {
+describe('E — Tương phản nút trên banner CTA chủ sân', () => {
+  it('E1: nút outline không giữ nền sáng bg-bg (chữ xanh hiển thị rõ ràng trên nền lưới)', () => {
     const { container } = render(<HomePage />);
     const cta = container.querySelector('a[href="/owner/timeline"]');
     expect(cta).not.toBeNull();
 
     const classes = Array.from(cta?.classList ?? []);
-    // Variant `outline` mặc định mang bg-bg + text-neutral-900; trên banner
-    // primary-800 phải bị ghi đè thành nền trong suốt, nếu không chữ trắng
-    // sẽ chìm hẳn vào nền trắng của nút.
+    // Nút outline dùng bg-transparent và text-primary-800 trên nền lưới, không dùng bg-bg.
     expect(classes).not.toContain('bg-bg');
     expect(classes).toContain('bg-transparent');
-    expect(classes).toContain('text-white');
+    expect(classes).toContain('text-primary-800');
   });
 });

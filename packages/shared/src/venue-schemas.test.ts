@@ -21,7 +21,10 @@ describe("Venue input contract", () => {
     expect(ownerVenueQuerySchema.parse({})).toEqual({ page: 1, limit: 20 });
     expect(
       adminVenueQuerySchema.parse({ page: "2", limit: "100", q: "  Sân A  " }),
-    ).toEqual({ page: 2, limit: 100, status: "pending", q: "Sân A" });
+    ).toEqual({ page: 2, limit: 100, q: "Sân A" });
+    expect(
+      adminVenueQuerySchema.parse({ status: "pending" }),
+    ).toEqual({ page: 1, limit: 20, status: "pending" });
     expect(adminVenueQuerySchema.parse({ q: "   " }).q).toBe("");
   });
 

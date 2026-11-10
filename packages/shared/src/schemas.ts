@@ -258,6 +258,7 @@ const venueEditableFields = {
     lng: z.number().finite().min(-180).max(180),
     sportIds: z.array(uuidSchema),
     amenityIds: z.array(uuidSchema),
+    ownerId: uuidSchema.optional(),
 };
 
 export const createVenueSchema = z
@@ -367,6 +368,8 @@ export const ownerApplicationSchema = z.object({
     .max(200),
   phone: phoneSchema,
   address: z.string().trim().min(5, "Vui lòng nhập địa chỉ").max(500),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
   note: z.string().trim().max(1000).optional(),
   taxCode: z
     .string()
@@ -392,7 +395,8 @@ export const sportSchema = z.object({
         .string()
         .min(1, "Vui lòng nhập slug")
         .max(100)
-        .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối"),
+        .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối")
+        .optional(),
     icon: z.string().max(50).optional(),
 });
 
@@ -544,7 +548,7 @@ export const ownerVenueQuerySchema = z.object(venuePageFields).strict();
 export const adminVenueQuerySchema = z
     .object({
         ...venuePageFields,
-        status: z.enum(VENUE_STATUSES).default("pending"),
+        status: z.enum(VENUE_STATUSES).optional(),
         q: z.string().trim().max(200).optional(),
     })
     .strict();
@@ -580,6 +584,9 @@ export const publicVenueSearchQuerySchema = z
     .object({
         q: z.string().trim().max(100).optional(),
         provinceId: uuidSchema.optional(),
+        provinceCode: z.string().optional(),
+        wardId: uuidSchema.optional(),
+        wardCode: z.string().optional(),
         districtId: uuidSchema.optional(),
         sportId: uuidSchema.optional(),
         sportIds: venueQueryIds.optional(),
@@ -599,6 +606,9 @@ export const publicVenueSearchQuerySchema = z
 export const venueMapQuerySchema = z
     .object({
         provinceId: uuidSchema.optional(),
+        provinceCode: z.string().optional(),
+        wardId: uuidSchema.optional(),
+        wardCode: z.string().optional(),
         districtId: uuidSchema.optional(),
         sportId: uuidSchema.optional(),
         minLat: z.coerce.number().finite().min(-90).max(90).optional(),

@@ -126,6 +126,13 @@ export class GoogleOAuthService {
   async callback(raw: unknown, binding: string | undefined) {
     const settings = this.settings(),
       query = new ZodValidationPipe(googleCallbackQuerySchema).transform(raw);
+    if (
+      query.iss &&
+      query.iss !== "https://accounts.google.com" &&
+      query.iss !== "accounts.google.com"
+    ) {
+      throw invalidState();
+    }
     if (!binding || !/^[A-Za-z0-9_-]{43}$/.test(binding)) throw invalidState();
     let state: Awaited<ReturnType<GoogleOAuthRepository["takeState"]>>;
     try {
@@ -133,12 +140,16 @@ export class GoogleOAuthService {
         googleDigest(query.state),
         googleDigest(binding),
       );
-    } catch {
+    } catch (err) {
+      this.logger.error("takeState error:", err);
       throw oauthUnavailable();
     }
     if (!state) throw invalidState();
     // State consumption commits before external network. Every error requires a fresh authorization flow.
-    if (query.error) throw oauthUnavailable();
+    if (query.error) {
+      this.logger.error("query.error received from Google:", query.error, query.error_description);
+      throw oauthUnavailable();
+    }
     let verifier: string;
     try {
       verifier = this.open(
@@ -156,7 +167,12 @@ export class GoogleOAuthService {
         const session = await this.repo.transaction(async (tx) => {
           await this.repo.lockIdentity(tx, identity.subject, identity.email);
           const linked = await this.repo.linked(tx, identity.subject);
-          if (linked) return this.auth.sessionForGoogle(tx, linked.userId);
+          if (linked) {
+            if (identity.picture) {
+              await this.repo.setAvatarIfMissing(tx, linked.userId, identity.picture);
+            }
+            return this.auth.sessionForGoogle(tx, linked.userId);
+          }
           if (await this.repo.emailExists(tx, identity.email))
             throw new ConflictException({
               code: "EMAIL_ALREADY_EXISTS",

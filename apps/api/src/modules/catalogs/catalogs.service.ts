@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { CatalogsRepository } from "./catalogs.repository.js";
+import { slugify } from "../../../../../packages/shared/src/utils/unaccent.js";
 import type {
   AreaInput,
   SportInput,
@@ -20,14 +21,15 @@ export class CatalogsService {
   }
 
   async createSport(input: SportInput) {
-    const existing = await this.repo.findSportBySlug(input.slug);
+    const slug = input.slug || slugify(input.name);
+    const existing = await this.repo.findSportBySlug(slug);
     if (existing) {
       throw new ConflictException({
         code: "ALREADY_EXISTS",
         message: "Môn thể thao với slug này đã tồn tại.",
       });
     }
-    return this.repo.createSport(input);
+    return this.repo.createSport({ ...input, slug });
   }
 
   async updateSport(id: string, input: Partial<SportInput>) {
@@ -74,14 +76,15 @@ export class CatalogsService {
   }
 
   async createAmenity(input: SportInput) {
-    const existing = await this.repo.findAmenityBySlug(input.slug);
+    const slug = input.slug || slugify(input.name);
+    const existing = await this.repo.findAmenityBySlug(slug);
     if (existing) {
       throw new ConflictException({
         code: "ALREADY_EXISTS",
         message: "Tiện ích với slug này đã tồn tại.",
       });
     }
-    return this.repo.createAmenity(input);
+    return this.repo.createAmenity({ ...input, slug });
   }
 
   async updateAmenity(id: string, input: Partial<SportInput>) {
@@ -203,5 +206,52 @@ export class CatalogsService {
       });
     }
     await this.repo.deleteArea(id);
+  }
+
+  // ===== Provinces & Wards (ĐVHC 2 cấp) =====
+
+  async getProvinces() {
+    return this.repo.findAllProvinces();
+  }
+
+  async getWardsByProvince(
+    codeOrId: string,
+    options?: { q?: string; limit?: number },
+  ) {
+    const province = await this.repo.findProvinceByCodeOrId(codeOrId);
+    if (!province) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy tỉnh/thành phố.",
+      });
+    }
+    return this.repo.findWardsByProvince(
+      province.id,
+      province.code ?? "",
+      options,
+    );
+  }
+
+  async searchWards(options: {
+    q: string;
+    provinceCode?: string;
+    limit?: number;
+  }) {
+    let provinceId: string | undefined;
+    if (options.provinceCode) {
+      const province = await this.repo.findProvinceByCodeOrId(
+        options.provinceCode,
+      );
+      provinceId = province?.id;
+    }
+    return this.repo.searchWards({
+      q: options.q,
+      provinceId,
+      limit: options.limit,
+    });
+  }
+
+  async getDistrictsByProvince(provinceId: string) {
+    return this.repo.findDistrictsByProvince(provinceId);
   }
 }

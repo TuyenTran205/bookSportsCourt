@@ -82,7 +82,7 @@ export function RejectApplicationDialog({
         <DialogHeader>
           <DialogTitle>Từ chối hồ sơ đối tác</DialogTitle>
           <DialogDescription>
-            Nhập lý do từ chối hồ sơ của <strong>{application.user.fullName}</strong> ({application.businessName}). Người nộp sẽ nhận được thông báo để bổ sung thông tin.
+            Nhập lý do từ chối hồ sơ của <strong>{application.user?.fullName || application.businessName}</strong>. Người nộp sẽ nhận được thông báo để bổ sung thông tin.
           </DialogDescription>
         </DialogHeader>
 

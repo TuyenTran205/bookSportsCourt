@@ -171,7 +171,8 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
         ConfigModule.forRoot({
           isGlobal: true,
           ignoreEnvFile: true,
-          load: [() => config],
+          ignoreEnvVars: true,
+          load: [() => ({ ...config, _PROCESS_ENV_VALIDATED: config })],
         }),
         DatabaseModule,
         PermissionsConsumerTestModule,
@@ -279,9 +280,15 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
           });
           assert.equal(response.status, 200);
           const cookies = response.headers.getSetCookie();
-          assert.equal(cookies.length, 2);
+          assert.equal(cookies.length, 4);
+          const tokenCookies = cookies.filter(
+            (value) =>
+              value.startsWith("access_token=") ||
+              value.startsWith("refresh_token="),
+          );
+          assert.equal(tokenCookies.length, 2);
           assert.ok(
-            cookies.every(
+            tokenCookies.every(
               (value) =>
                 value.includes("HttpOnly") &&
                 value.includes("SameSite=Lax") &&
@@ -292,7 +299,12 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
           const header = cookieHeader(response);
           const loginBody = await response.text();
           for (const part of header.split("; ")) {
-            assert.ok(!loginBody.includes(part.slice(part.indexOf("=") + 1)));
+            if (
+              part.startsWith("access_token=") ||
+              part.startsWith("refresh_token=")
+            ) {
+              assert.ok(!loginBody.includes(part.slice(part.indexOf("=") + 1)));
+            }
           }
           assert.equal(response.headers.get("cache-control"), "no-store");
           assert.equal(
@@ -370,7 +382,7 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
           const response = await request("/auth/logout", {}, header);
           assert.equal(response.status, 204);
           assert.equal(await response.text(), "");
-          assert.equal(response.headers.getSetCookie().length, 2);
+          assert.equal(response.headers.getSetCookie().length, 4);
           assert.equal(
             (await request("/auth/refresh", {}, header)).status,
             401,
@@ -545,7 +557,12 @@ test("auth HTTP endpoints with isolated PostgreSQL schema", async (t) => {
             assert.ok(document.paths[`/api/v1${path}`]);
           }
           const options: unknown[] = [];
-          new AuthCookies(new ConfigService({ NODE_ENV: "production" })).set(
+          new AuthCookies(
+            new ConfigService({
+              NODE_ENV: "production",
+              _PROCESS_ENV_VALIDATED: { NODE_ENV: "production" },
+            }),
+          ).set(
             {
               cookie(_name, _value, option) {
                 options.push(option);
@@ -1373,7 +1390,7 @@ test("auth origin check and per-IP rate limit", () => {
       }),
     }) as ExecutionContext;
   assert.throws(() => guard.canActivate(context("https://invalid.example")));
-  for (let i = 0; i < 10; i++)
+  for (let i = 0; i < 20; i++)
     assert.equal(guard.canActivate(context("http://localhost:3000")), true);
   assert.throws(() => guard.canActivate(context("http://localhost:3000")));
 });

@@ -19,6 +19,17 @@ export function toUnaccent(str: string | null | undefined): string {
 export const normalizeText = toUnaccent;
 
 /**
+ * Tạo URL slug chuẩn từ chuỗi tiếng Việt (chữ thường, không dấu, ngăn cách bằng dấu gạch ngang).
+ * Ví dụ: "Bóng đá mini" -> "bong-da-mini", "Trạm sạc xe điện EV" -> "tram-sac-xe-dien-ev"
+ */
+export function slugify(str: string | null | undefined): string {
+  if (!str) return 'item';
+  return toUnaccent(str)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'item';
+}
+
+/**
  * Kiểm tra xem `target` có chứa chuỗi `query` hay không (không phân biệt dấu và hoa thường).
  */
 export function matchUnaccent(query: string, target: string): boolean {

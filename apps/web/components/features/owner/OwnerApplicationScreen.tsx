@@ -14,8 +14,13 @@ import {
   ClipboardCheck,
   FileText,
   Send,
+  MapPin,
+  LocateFixed,
+  Loader2,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { ownerApplicationSchema } from '@bsc/shared';
 import type { OwnerApplicationInput } from '@bsc/shared';
@@ -31,6 +36,11 @@ import { ApiError } from '@/lib/api/errors';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { SUPPORTED_BANKS } from '@/lib/utils/payment-qr';
 import { useMyOwnerApplication, useSubmitOwnerApplication } from '@/lib/hooks/useOwnerApplication';
+import {
+  VenueLocationMapWrapper,
+  type MapCoordinates,
+} from '@/components/features/venue/VenueLocationMapWrapper';
+import { geocodeAddress, reverseGeocode, extractAddressAndNote } from '@/lib/utils/geocoding';
 
 function ApplicationLoading() {
   const t = useTranslations('ownerApplication');
@@ -92,6 +102,7 @@ export function OwnerApplicationScreen() {
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<OwnerApplicationInput>({
     resolver: zodResolver(ownerApplicationSchema),
@@ -99,6 +110,8 @@ export function OwnerApplicationScreen() {
       businessName: '',
       phone: '',
       address: '',
+      lat: null,
+      lng: null,
       taxCode: undefined,
       bankBin: '',
       bankName: '',
@@ -108,6 +121,12 @@ export function OwnerApplicationScreen() {
       idCardUrl: '',
     },
   });
+
+  const [location, setLocation] = React.useState<MapCoordinates | null>(null);
+  const [isGeocoding, setIsGeocoding] = React.useState(false);
+  const [isLocating, setIsLocating] = React.useState(false);
+  const [mapStatus, setMapStatus] = React.useState<string | null>(null);
+  const isMapClickRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!isAuthLoading && !user) {
@@ -126,6 +145,8 @@ export function OwnerApplicationScreen() {
         businessName: application.businessName,
         phone: application.phone ?? application.user.phone ?? '',
         address: application.address ?? '',
+        lat: application.lat ?? null,
+        lng: application.lng ?? null,
         taxCode: application.taxCode ?? undefined,
         bankBin: application.bankBin ?? '',
         bankName: application.bankName ?? '',
@@ -135,7 +156,110 @@ export function OwnerApplicationScreen() {
         idCardUrl: application.idCardUrl ?? '',
       });
     }
+    if (application?.lat && application?.lng) {
+      setLocation([Number(application.lat), Number(application.lng)]);
+    }
   }, [applicationQuery.data, reset]);
+
+  const addressValue = watch('address');
+
+  // Khi người dùng gõ / sửa địa chỉ: Debounce tự động kéo map đến vị trí
+  React.useEffect(() => {
+    if (isMapClickRef.current) {
+      isMapClickRef.current = false;
+      return;
+    }
+    const { address } = extractAddressAndNote(addressValue || '');
+    if (!address || address.length < 4) return;
+
+    const timer = setTimeout(async () => {
+      setIsGeocoding(true);
+      setMapStatus('Đang định vị địa chỉ trên bản đồ...');
+      try {
+        const coords = await geocodeAddress(address);
+        if (coords) {
+          setLocation(coords);
+          setValue('lat', coords[0]);
+          setValue('lng', coords[1]);
+          setMapStatus(`Đã tự động kéo bản đồ đến vị trí: ${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}`);
+        } else {
+          setMapStatus(null);
+        }
+      } catch {
+        setMapStatus(null);
+      } finally {
+        setIsGeocoding(false);
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [addressValue, setValue]);
+
+  // Khi click cắm ghim trên map: Tự động đảo ngược tọa độ thành địa chỉ tiếng Việt
+  const handlePlacePin = async (coords: MapCoordinates) => {
+    setLocation(coords);
+    setValue('lat', coords[0]);
+    setValue('lng', coords[1]);
+    setIsGeocoding(true);
+    setMapStatus(`Đã ghim mốc: ${coords[0].toFixed(5)}, ${coords[1].toFixed(5)}. Đang tải địa chỉ...`);
+
+    try {
+      isMapClickRef.current = true;
+      const resolvedAddress = await reverseGeocode(coords[0], coords[1]);
+      if (resolvedAddress) {
+        const current = addressValue || '';
+        const match = current.match(/\(\*.*?\)/);
+        const extraNote = match ? ` ${match[0]}` : '';
+        const fullAddress = `${resolvedAddress}${extraNote}`.trim();
+        setValue('address', fullAddress, { shouldValidate: true });
+        setMapStatus('Đã tự động điền địa chỉ theo vị trí ghim trên bản đồ.');
+      } else {
+        setMapStatus(`Đã ghim vị trí tọa độ (${coords[0].toFixed(5)}, ${coords[1].toFixed(5)})`);
+      }
+    } catch {
+      setMapStatus(`Đã ghim vị trí tọa độ (${coords[0].toFixed(5)}, ${coords[1].toFixed(5)})`);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  // Khi nhấn nút "Định vị của tôi": Lấy GPS thiết bị và kéo bản đồ đến
+  const handleGetMyLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      toast.error('Trình duyệt của bạn không hỗ trợ định vị GPS.');
+      return;
+    }
+
+    setIsLocating(true);
+    setMapStatus('Đang lấy vị trí hiện tại từ thiết bị của bạn...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const coords: MapCoordinates = [pos.coords.latitude, pos.coords.longitude];
+        await handlePlacePin(coords);
+        setIsLocating(false);
+        toast.success('Đã định vị thành công vị trí hiện tại của bạn!');
+      },
+      (err) => {
+        setIsLocating(false);
+        let msg = 'Không thể lấy vị trí hiện tại.';
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = 'Vui lòng cho phép quyền truy cập vị trí trên trình duyệt để sử dụng tính năng này.';
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          msg = 'Tín hiệu vị trí thiết bị hiện không khả dụng.';
+        } else if (err.code === err.TIMEOUT) {
+          msg = 'Quá thời gian lấy vị trí GPS, vui lòng thử lại.';
+        }
+        setMapStatus(msg);
+        toast.error(msg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    );
+  };
 
   const onSubmit = async (input: OwnerApplicationInput) => {
     setServerError(null);
@@ -144,6 +268,8 @@ export function OwnerApplicationScreen() {
         businessName: input.businessName,
         phone: input.phone,
         address: input.address,
+        lat: location ? location[0] : (input.lat ?? null),
+        lng: location ? location[1] : (input.lng ?? null),
         bankBin: input.bankBin,
         bankName: input.bankName,
         accountNo: input.accountNo,
@@ -165,7 +291,11 @@ export function OwnerApplicationScreen() {
     );
   }
 
-  if (applicationQuery.error) {
+  const isNotFoundError =
+    applicationQuery.error instanceof ApiError &&
+    (applicationQuery.error.status === 404 || applicationQuery.error.code === 'NOT_FOUND');
+
+  if (applicationQuery.error && !isNotFoundError) {
     return (
       <main className="container max-w-4xl py-10 md:py-14">
         <ErrorState
@@ -318,6 +448,89 @@ export function OwnerApplicationScreen() {
                   {...register('address')}
                 />
               </FormField>
+
+              {/* Bản đồ định vị cơ sở thể thao */}
+              <div className="mt-3 flex flex-col gap-2 rounded-btn border border-neutral-200/80 bg-neutral-50/50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="size-4 text-primary-600" aria-hidden="true" />
+                    <span className="text-xs font-semibold text-neutral-800">
+                      Ghim vị trí cơ sở trên bản đồ
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {location && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs text-neutral-500 hover:text-danger"
+                        onClick={() => {
+                          setLocation(null);
+                          setValue('lat', null);
+                          setValue('lng', null);
+                          setMapStatus(null);
+                        }}
+                      >
+                        Bỏ ghim
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-neutral-500">
+                  Click vào bản đồ để cắm ghim tự động điền địa chỉ, hoặc nhập địa chỉ bên trên để bản đồ tự kéo đến.
+                  Để ghi chú thêm (như số tầng, cổng phụ...), chủ sân có thể mở ngoặc{' '}
+                  <code className="rounded bg-neutral-200 px-1 py-0.5 text-neutral-700">(* Ghi chú...)</code> ở cuối ô địa chỉ.
+                </p>
+
+                <div className="relative aspect-video w-full overflow-hidden rounded-btn border border-neutral-200 bg-neutral-100 sm:aspect-[21/9]">
+                  <VenueLocationMapWrapper
+                    className="size-full"
+                    center={location ?? [21.0285, 105.8542]}
+                    marker={location}
+                    onPlacePin={handlePlacePin}
+                    scrollWheelZoom={true}
+                  />
+
+                  {/* Nút định vị nổi trên bản đồ kiểu Google Maps */}
+                  <button
+                    type="button"
+                    onClick={handleGetMyLocation}
+                    disabled={isLocating}
+                    className="absolute right-3 top-3 z-[400] flex size-8 items-center justify-center rounded-btn bg-white/95 text-neutral-700 shadow-md ring-1 ring-black/10 transition-colors hover:bg-white hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
+                    title="Định vị của tôi (vị trí hiện tại)"
+                    aria-label="Định vị của tôi"
+                  >
+                    {isLocating ? (
+                      <Loader2 className="size-4 animate-spin text-primary-600" />
+                    ) : (
+                      <LocateFixed className="size-4 text-primary-600" />
+                    )}
+                  </button>
+
+                  {isGeocoding && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
+                      <div className="flex items-center gap-2 rounded-btn bg-white/95 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-md">
+                        <Loader2 className="size-4 animate-spin text-primary-600" />
+                        <span>Đang đồng bộ tọa độ & địa chỉ...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {mapStatus && (
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-primary-700">
+                    <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>{mapStatus}</span>
+                  </p>
+                )}
+                {location && (
+                  <p className="font-mono text-[11px] text-neutral-500">
+                    Tọa độ GPS: {location[0].toFixed(6)}, {location[1].toFixed(6)}
+                  </p>
+                )}
+              </div>
             </ApplicationSection>
 
             <ApplicationSection

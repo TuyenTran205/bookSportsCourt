@@ -42,7 +42,7 @@ export function OwnerDashboardScreen() {
   const bookingsQuery = useOwnerBookings({ limit: 5 });
 
   const stats = statsQuery.data?.summary;
-  const occupancy = occupancyQuery.data?.summary.occupancyRate;
+  const occupancy = occupancyQuery.data?.summary?.occupancyRate;
   const pendingCount = paymentsQuery.data?.meta?.total ?? paymentsQuery.data?.data?.length ?? 0;
   const recentBookings: OwnerBookingItem[] = bookingsQuery.data?.data ?? [];
 

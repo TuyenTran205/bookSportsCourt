@@ -1,4 +1,4 @@
-import type { Province } from '../types';
+import type { Province } from '../types.js';
 
 /**
  * Danh mục 34 Tỉnh / Thành phố trực thuộc Trung ương của Việt Nam.

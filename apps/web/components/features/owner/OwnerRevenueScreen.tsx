@@ -141,11 +141,11 @@ export function OwnerRevenueScreen() {
               value={courtId}
               onChange={(event) => setCourtId(event.target.value)}
               aria-label={t('reportCourt')}
-              disabled={!selectedVenue || selectedVenue.courts.length === 0}
+              disabled={!selectedVenue || (selectedVenue.courts ?? []).length === 0}
               className="sm:min-w-40"
             >
               <option value="">{t('allCourts')}</option>
-              {selectedVenue?.courts.map((court) => (
+              {(selectedVenue?.courts ?? []).map((court) => (
                 <option key={court.id} value={court.id}>{court.name}</option>
               ))}
             </NativeSelect>

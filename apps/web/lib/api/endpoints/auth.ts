@@ -72,6 +72,14 @@ export function logout() {
   return apiFetch<{ success: true }>('/auth/logout', { method: 'POST' });
 }
 
+/**
+ * Xoay vòng refresh token khi access token hết hạn.
+ * Trả về hồ sơ user và đặt cặp cookie mới qua Set-Cookie.
+ */
+export function refresh() {
+  return apiFetch<AuthResult | User>('/auth/refresh', { method: 'POST' }).then(toAuthResult);
+}
+
 /** Ném `ApiError` 401 khi chưa đăng nhập — dùng làm nguồn sự thật cho phiên. */
 export function me() {
   return apiFetch<MeResult | User>('/users/me').then(toMeResult);

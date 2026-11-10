@@ -67,6 +67,7 @@ export const googleCallbackQuerySchema = z.object({
   error: z.string().min(1).max(200).optional(), error_description: z.string().max(1000).optional(),
   scope: z.string().max(2048).optional(), authuser: z.string().max(100).optional(),
   prompt: z.string().max(100).optional(), hd: z.string().max(255).optional(),
+  iss: z.string().max(255).optional(),
 }).strict().refine((value) => (value.code !== undefined) !== (value.error !== undefined), 'Exactly one code or error required');
 
 // DTO aliases derive from the shared validation source; no controller-specific enums.

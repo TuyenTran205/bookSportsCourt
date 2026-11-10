@@ -111,6 +111,10 @@ test("production cookie and CORS on real HTTP transport", async (t) => {
         useValue: new ConfigService({
           NODE_ENV: "production",
           ALLOWED_ORIGINS: `${allowed},https://admin.example.test`,
+          _PROCESS_ENV_VALIDATED: {
+            NODE_ENV: "production",
+            ALLOWED_ORIGINS: `${allowed},https://admin.example.test`,
+          },
         }),
       },
     ],
@@ -227,8 +231,13 @@ test("production cookie and CORS on real HTTP transport", async (t) => {
         });
         assert.equal(logout.status, 204);
         assert.equal(await logout.text(), "");
-        assert.equal(logout.headers.getSetCookie().length, 2);
-        for (const header of logout.headers.getSetCookie()) {
+        const logoutCookies = logout.headers.getSetCookie();
+        assert.equal(logoutCookies.length, 4);
+        const tokenLogoutCookies = logoutCookies.filter(
+          (h) => h.startsWith("access_token=") || h.startsWith("refresh_token="),
+        );
+        assert.equal(tokenLogoutCookies.length, 2);
+        for (const header of tokenLogoutCookies) {
           for (const flag of [
             "HttpOnly",
             "Secure",

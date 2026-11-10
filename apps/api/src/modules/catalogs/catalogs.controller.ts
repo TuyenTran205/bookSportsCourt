@@ -146,4 +146,50 @@ export class CatalogsController {
   deleteArea(@Param("id") id: string) {
     return this.service.deleteArea(id);
   }
+
+  // ===== Đơn vị Hành chính 2 cấp (Provinces & Wards) =====
+
+  @Get("provinces")
+  @ApiOperation({
+    summary: "Danh sách 34 Tỉnh / Thành phố trực thuộc TW (public)",
+  })
+  getProvinces() {
+    return this.service.getProvinces();
+  }
+
+  @Get("provinces/:codeOrId/wards")
+  @ApiOperation({ summary: "Danh sách Xã / Phường theo Tỉnh (public)" })
+  getWardsByProvince(
+    @Param("codeOrId") codeOrId: string,
+    @Query("q") q?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.service.getWardsByProvince(codeOrId, {
+      q,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get("wards/search")
+  @ApiOperation({ summary: "Tìm kiếm Autocomplete Xã / Phường (public)" })
+  searchWards(
+    @Query("q") q?: string,
+    @Query("provinceCode") provinceCode?: string,
+    @Query("limit") limit?: string,
+  ) {
+    if (!q || !q.trim()) {
+      return [];
+    }
+    return this.service.searchWards({
+      q,
+      provinceCode,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get("provinces/:id/districts")
+  @ApiOperation({ summary: "Danh sách Quận / Huyện cũ (legacy support)" })
+  getDistrictsByProvince(@Param("id") id: string) {
+    return this.service.getDistrictsByProvince(id);
+  }
 }
