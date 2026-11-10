@@ -1,5 +1,6 @@
 import {
   ForbiddenException,
+  HttpException,
   Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -20,6 +21,7 @@ export interface GoogleIdentity {
   subject: string;
   email: string;
   fullName: string;
+  picture?: string | null;
 }
 export const oauthUnavailable = () =>
   new ServiceUnavailableException({
@@ -58,14 +60,24 @@ export class GoogleIdentityProvider {
         }),
         signal: AbortSignal.timeout(10000),
       });
-      if (!response.ok) throw oauthUnavailable();
+      if (!response.ok) {
+        const bodyText = await response.text().catch(() => "");
+        console.error(`[GoogleExchange] HTTP ${response.status}:`, bodyText);
+        throw oauthUnavailable();
+      }
+      const rawJson = await response.json().catch(() => null);
       const parsed = z
         .object({ id_token: z.string().min(1).max(16384) })
-        .safeParse(await response.json());
-      if (!parsed.success) throw oauthUnavailable();
+        .safeParse(rawJson);
+      if (!parsed.success) {
+        console.error("[GoogleExchange] JSON parse error:", parsed.error);
+        throw oauthUnavailable();
+      }
       // Deliberately discard Google's access/refresh token: only app sessions are persisted.
       return parsed.data.id_token;
-    } catch {
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      console.error("[GoogleExchange] Network/Fetch error:", err);
       throw oauthUnavailable();
     }
   }
@@ -126,6 +138,10 @@ export class GoogleIdentityProvider {
       typeof claims.name === "string" && claims.name.trim()
         ? claims.name.trim().slice(0, 100)
         : "Người dùng Google";
-    return { subject: claims.sub!, email: email.data, fullName };
+    const picture =
+      typeof claims.picture === "string" && claims.picture.startsWith("https://")
+        ? claims.picture
+        : null;
+    return { subject: claims.sub!, email: email.data, fullName, picture };
   }
 }
