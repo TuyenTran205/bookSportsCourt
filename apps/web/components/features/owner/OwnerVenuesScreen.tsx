@@ -194,14 +194,17 @@ export function OwnerVenuesScreen() {
               className="group overflow-hidden rounded-card border border-neutral-200 bg-white p-0 shadow-none transition-shadow hover:shadow-md"
             >
               <div className="relative aspect-video overflow-hidden bg-neutral-100">
-                {venue.coverUrl ? (
+                {venue.coverUrl || (venue as { images?: Array<{ url: string }> })?.images?.[0]?.url ? (
                   <Image
-                    src={venue.coverUrl}
+                    src={(venue.coverUrl || (venue as { images?: Array<{ url: string }> })?.images?.[0]?.url)!}
                     alt={t('venueCoverAlt', { name: venue.name })}
                     fill
                     priority={index === 0}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                    unoptimized={venue.coverUrl.startsWith('data:')}
+                    unoptimized={
+                      (venue.coverUrl || '').startsWith('data:') ||
+                      (venue.coverUrl || '').startsWith('blob:')
+                    }
                     className="object-cover"
                   />
                 ) : (

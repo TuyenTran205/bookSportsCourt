@@ -9,6 +9,7 @@ import { GoogleOAuthService } from "./google-oauth.service.js";
 import { GoogleOAuthRepository } from "./google-oauth.repository.js";
 import { GoogleIdentityProvider } from "./google-identity.provider.js";
 import { MailModule } from "../mail/mail.module.js";
+import { UploadsModule } from "../uploads/uploads.module.js";
 import { RealtimeSessionsService } from "./realtime-sessions.service.js";
 import { AuthController, CurrentUserController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
@@ -24,7 +25,7 @@ import { OwnershipRepository } from "./ownership.repository.js";
 import { RequestOriginGuard } from "../../common/guards/request-origin.guard.js";
 
 @Module({
-  imports: [MailModule],
+  imports: [MailModule, UploadsModule],
   controllers: [AuthController, CurrentUserController, GoogleOAuthController],
   providers: [
     GoogleOAuthService,

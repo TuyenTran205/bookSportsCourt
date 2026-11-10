@@ -8,16 +8,16 @@ import type { Province } from '../types.js';
 export const PROVINCES: Province[] = [
   // 6 Thành phố trực thuộc Trung ương
   {
-    id: '019273c5-7f00-7000-0000-000000000001',
+    id: '01a1c118-fc5a-72bb-aea1-f427fce2772a',
     code: '01',
     name: 'Thành phố Hà Nội',
     slug: 'ha-noi',
-    unaccentName: 'thanh pho ha noi',
+    unaccentName: 'thanh pho ha nội',
     isMunicipality: true,
     sortOrder: 1,
   },
   {
-    id: '019273c5-7f00-7000-0000-000000000079',
+    id: '01a1bb83-fd02-70d6-bc74-99a0d00936d3',
     code: '79',
     name: 'Thành phố Hồ Chí Minh',
     slug: 'ho-chi-minh',
@@ -26,7 +26,7 @@ export const PROVINCES: Province[] = [
     sortOrder: 2,
   },
   {
-    id: '019273c5-7f00-7000-0000-000000000048',
+    id: '01a1c118-fc64-71b1-abe0-de1a535b14bb',
     code: '48',
     name: 'Thành phố Đà Nẵng',
     slug: 'da-nang',

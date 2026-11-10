@@ -4,6 +4,7 @@ import * as React from 'react';
 import L from 'leaflet';
 import type { LeafletMouseEvent } from 'leaflet';
 import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { Loader2, LocateFixed } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { TileResilienceProvider } from './map/TileResilienceContext';
 import { ResilientTileLayer } from './map/ResilientTileLayer';
@@ -11,10 +12,12 @@ import { MapResilienceControl } from './map/MapResilienceControl';
 
 export type MapCoordinates = [number, number];
 
-interface VenueLocationMapProps {
+export interface VenueLocationMapProps {
   center: MapCoordinates;
   marker: MapCoordinates | null;
   onPlacePin?: (coordinates: MapCoordinates) => void;
+  onLocateMe?: () => void;
+  isLocatingMe?: boolean;
   scrollWheelZoom?: boolean;
   className?: string;
 }
@@ -62,7 +65,9 @@ export function VenueLocationMap({
   center,
   marker,
   onPlacePin,
-  scrollWheelZoom = false,
+  onLocateMe,
+  isLocatingMe = false,
+  scrollWheelZoom = true,
   className,
 }: VenueLocationMapProps) {
   return (
@@ -86,6 +91,27 @@ export function VenueLocationMap({
           <MapClickHandler onPlacePin={onPlacePin} />
           {marker && <Marker position={marker} icon={locationPinIcon} />}
         </MapContainer>
+
+        {onLocateMe && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onLocateMe();
+            }}
+            disabled={isLocatingMe}
+            className="absolute bottom-3 right-3 z-[1000] flex size-9 items-center justify-center rounded-btn border border-neutral-300 bg-white/95 backdrop-blur-xs shadow-md text-neutral-700 transition hover:bg-neutral-50 hover:text-primary-700 hover:border-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
+            title="Định vị vị trí của tôi"
+            aria-label="Định vị vị trí của tôi"
+          >
+            {isLocatingMe ? (
+              <Loader2 className="size-4 animate-spin text-primary-600" />
+            ) : (
+              <LocateFixed className="size-4 text-primary-700" />
+            )}
+          </button>
+        )}
 
         <MapResilienceControl />
       </div>

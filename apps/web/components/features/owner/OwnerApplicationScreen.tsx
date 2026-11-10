@@ -34,7 +34,7 @@ import { NativeSelect } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiError } from '@/lib/api/errors';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { SUPPORTED_BANKS } from '@/lib/utils/payment-qr';
+import { SUPPORTED_BANKS, bankNameFromBin } from '@/lib/utils/payment-qr';
 import { useMyOwnerApplication, useSubmitOwnerApplication } from '@/lib/hooks/useOwnerApplication';
 import {
   VenueLocationMapWrapper,
@@ -161,6 +161,13 @@ export function OwnerApplicationScreen() {
     }
   }, [applicationQuery.data, reset]);
 
+  // Tự động điền số điện thoại nếu tài khoản đã có sẵn SĐT
+  React.useEffect(() => {
+    if (user?.phone && !watch('phone') && !applicationQuery.data) {
+      setValue('phone', user.phone);
+    }
+  }, [user?.phone, setValue, watch, applicationQuery.data]);
+
   const addressValue = watch('address');
 
   // Khi người dùng gõ / sửa địa chỉ: Debounce tự động kéo map đến vị trí
@@ -261,9 +268,44 @@ export function OwnerApplicationScreen() {
     );
   };
 
+  const onInvalid = (fieldErrors: typeof errors) => {
+    const errorEntries = Object.entries(fieldErrors);
+    const firstEntry = errorEntries[0];
+    if (firstEntry) {
+      const [firstKey, firstError] = firstEntry;
+      const message =
+        (firstError && 'message' in firstError && typeof firstError.message === 'string'
+          ? firstError.message
+          : null) || 'Vui lòng kiểm tra lại các thông tin bắt buộc còn thiếu.';
+      toast.error(message);
+
+      // Cuộn mượt đến trường bị lỗi đầu tiên và focus
+      const idMap: Record<string, string> = {
+        businessName: 'owner-application-business-name',
+        phone: 'owner-application-phone',
+        taxCode: 'owner-application-tax-code',
+        address: 'owner-application-address',
+        bankBin: 'owner-application-bank',
+        accountNo: 'owner-application-account-number',
+        accountName: 'owner-application-account-holder',
+        note: 'owner-application-description',
+        idCardUrl: 'owner-application-document-url',
+      };
+      const elementId = idMap[firstKey];
+      const element = elementId ? document.getElementById(elementId) : null;
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
   const onSubmit = async (input: OwnerApplicationInput) => {
     setServerError(null);
     try {
+      const resolvedBankName = input.bankName || (input.bankBin ? bankNameFromBin(input.bankBin) : '');
       await submitMutation.mutateAsync({
         businessName: input.businessName,
         phone: input.phone,
@@ -271,7 +313,7 @@ export function OwnerApplicationScreen() {
         lat: location ? location[0] : (input.lat ?? null),
         lng: location ? location[1] : (input.lng ?? null),
         bankBin: input.bankBin,
-        bankName: input.bankName,
+        bankName: resolvedBankName,
         accountNo: input.accountNo,
         accountName: input.accountName,
         ...(input.note ? { note: input.note } : {}),
@@ -279,7 +321,10 @@ export function OwnerApplicationScreen() {
         ...(input.taxCode ? { taxCode: input.taxCode } : {}),
       });
     } catch (error) {
-      setServerError(error instanceof ApiError ? error.message : t('submitError'));
+      const msg = error instanceof ApiError ? error.message : t('submitError');
+      setServerError(msg);
+      toast.error(msg);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -354,7 +399,7 @@ export function OwnerApplicationScreen() {
             </CardContent>
           </Card>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
             {application?.status === 'rejected' && (
               <div
                 role="alert"
@@ -650,6 +695,15 @@ export function OwnerApplicationScreen() {
                 <span>{t('confirmation')}</span>
               </label>
             </ApplicationSection>
+
+            {serverError && (
+              <div
+                role="alert"
+                className="rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger"
+              >
+                {serverError}
+              </div>
+            )}
 
             <div className="flex flex-col gap-4 rounded-card border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
               <p className="flex gap-2 text-sm text-neutral-600">

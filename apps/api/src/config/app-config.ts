@@ -32,6 +32,7 @@ export const AppConfigSchema = z
     R2_SECRET_KEY: z.string().optional(),
     R2_BUCKET: z.string().optional(),
     R2_PROOF_BUCKET: z.string().optional(),
+    R2_PUBLIC_URL: z.string().optional(),
     OWNER_REVIEW_TIMEOUT_HOURS: z.coerce.number().int().positive().default(2),
     BUSINESS_MAIL_ENABLED: z
       .enum(["true", "false"])

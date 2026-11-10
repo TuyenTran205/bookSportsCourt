@@ -54,6 +54,7 @@ import { CheckOwnership } from "../../common/decorators/check-ownership.decorato
 import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
 import { VenuesService } from "./venues.service.js";
 import { invalidImage, type ProofFile } from "../uploads/proof-image.js";
+import { PublicStorage } from "../uploads/public-storage.js";
 
 const VenueImageUploadInterceptor = FileInterceptor("file", {
   limits: { fileSize: UPLOAD_MAX_BYTES, files: 1 },
@@ -69,7 +70,10 @@ const VenueImageUploadInterceptor = FileInterceptor("file", {
 @ApiTags("Venue Extensions")
 @Controller("venues")
 export class VenueExtensionsController {
-  constructor(private readonly service: VenuesService) {}
+  constructor(
+    private readonly service: VenuesService,
+    private readonly storage: PublicStorage,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "Tìm kiếm cơ sở thể thao (public)" })
@@ -97,7 +101,7 @@ export class VenueExtensionsController {
   @ApiCookieAuth("access_token")
   @ApiConsumes("multipart/form-data", "application/json")
   @ApiOperation({ summary: "[Owner/Admin] Thêm ảnh cho cơ sở (multipart file hoặc JSON url)" })
-  addImage(
+  async addImage(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
     @UploadedFile() file: ProofFile | undefined,
@@ -110,13 +114,13 @@ export class VenueExtensionsController {
           message: "Ảnh cơ sở tối đa 5 MB.",
         });
       }
-      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const imageUrl = await this.storage.saveVenueImage(id, file.buffer, file.mimetype);
       const rawOrder =
         body && typeof body === "object" && "sortOrder" in body
           ? Number((body as { sortOrder?: unknown }).sortOrder)
           : 0;
       const sortOrder = Number.isInteger(rawOrder) && rawOrder >= 0 ? rawOrder : 0;
-      return this.service.addImage(user.id, id, dataUrl, sortOrder);
+      return this.service.addImage(user.id, id, imageUrl, sortOrder);
     }
     if (!body || typeof body !== "object" || !("url" in body)) {
       throw new BadRequestException({
