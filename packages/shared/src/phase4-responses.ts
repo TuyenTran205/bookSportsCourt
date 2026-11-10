@@ -15,7 +15,9 @@ export const paymentViewSchema = z.object({
 }).strict();
 export const ownerPaymentItemSchema = paymentViewSchema.extend({ venueId: id, courtId: id, bookingStart: timestamp, bookingEnd: timestamp, customerId: id.nullable() });
 export const ownerApplicationViewSchema = z.object({
-  id, userId: id, businessName: z.string(), phone: z.string(), address: z.string(), note: nullableText, taxCode: nullableText,
+  id, userId: id, businessName: z.string(), phone: z.string(), address: z.string(),
+  lat: z.number().nullable().optional(), lng: z.number().nullable().optional(),
+  note: nullableText, taxCode: nullableText,
   status: z.enum(OWNER_APPLICATION_STATUSES), reviewNote: nullableText, reviewedBy: id.nullable(), reviewedAt: nullableTimestamp, ...timestamps,
 }).strict();
 export const userListItemSchema = z.object({

@@ -76,6 +76,8 @@ export class OwnerApplicationsRepository {
         businessName: input.businessName,
         phone: input.phone,
         address: input.address,
+        lat: input.lat !== undefined && input.lat !== null ? String(input.lat) : null,
+        lng: input.lng !== undefined && input.lng !== null ? String(input.lng) : null,
         note: input.note ?? null,
         taxCode: input.taxCode ?? null,
         status: "pending",

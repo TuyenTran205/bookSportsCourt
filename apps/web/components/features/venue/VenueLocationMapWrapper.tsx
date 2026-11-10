@@ -10,8 +10,8 @@ export type { MapCoordinates } from './VenueLocationMap';
 interface VenueLocationMapProps {
   center: MapCoordinates;
   marker: MapCoordinates | null;
-  placingPin?: boolean;
   onPlacePin?: (coordinates: MapCoordinates) => void;
+  scrollWheelZoom?: boolean;
   className?: string;
 }
 
