@@ -10,7 +10,7 @@ const migrationsDirectory = new URL(
 export async function readVenueTestMigration(
   filename: string,
 ): Promise<string> {
-  if (!/^\d{4}_[a-z0-9-]+\.sql$/.test(filename))
+  if (!/^\d{4}_[a-z0-9_-]+\.sql$/.test(filename))
     throw new Error("Invalid migration filename");
   return readFile(new URL(filename, migrationsDirectory), "utf8");
 }

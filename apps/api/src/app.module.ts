@@ -16,6 +16,9 @@ import { CourtsModule } from "./modules/courts/courts.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { NotificationsModule } from "./modules/notifications/notifications.module.js";
 import { OwnerApplicationsModule } from "./modules/owner-applications/owner-applications.module.js";
+import { OwnerModule } from "./modules/owner/owner.module.js";
+import { RealtimeModule } from "./modules/realtime/realtime.module.js";
+import { ReportsModule } from "./modules/reports/reports.module.js";
 import { VenuesModule } from "./modules/venues/venues.module.js";
 import { SchedulesModule } from "./schedules/schedules.module.js";
 import { FavoritesModule } from "./modules/favorites/favorites.module.js";
@@ -44,6 +47,9 @@ import { validateConfig } from "./config/app-config.js";
     AuditModule,
     CatalogsModule,
     OwnerApplicationsModule,
+    OwnerModule,
+    RealtimeModule,
+    ReportsModule,
     NotificationsModule,
     VenuesModule,
     CourtsModule,
