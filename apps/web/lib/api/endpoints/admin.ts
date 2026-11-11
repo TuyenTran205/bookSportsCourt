@@ -173,9 +173,12 @@ export function getAdminStatsByRange(params: {
 
 // ── Hồ sơ chủ sân (ADM-01) ─────────────────────────────────────────────────
 
-export function listOwnerApplications(params: { status?: OwnerApplicationStatus; page?: number; limit?: number } = {}) {
+export function listOwnerApplications(params: { status?: OwnerApplicationStatus | 'all'; page?: number; limit?: number } = {}) {
     return apiFetchWithMeta<OwnerApplication[]>("/admin/owner-applications", {
-        query: { ...params },
+        query: {
+            ...params,
+            status: params.status ?? 'all',
+        },
     }).then((res) => ({
         ...res,
         data: ((res.data ?? []) as unknown as Record<string, unknown>[]).map((app) => ({

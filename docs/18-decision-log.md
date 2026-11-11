@@ -618,6 +618,30 @@ Khi chạy **từng file test FE riêng lẻ** (`npx vitest run <file>.test.tsx`
 
 ---
 
+## ADR-029: Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số
+
+**Ngày:** 2026-11-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+1. Khách hàng khi đăng ký làm chủ sân (`/owner/apply`) đã điền đầy đủ thông tin tài khoản ngân hàng (VietinBank, STK, Chủ TK). Tuy nhiên khi được duyệt và tạo cơ sở, trang Cài đặt & Chính sách (`/owner/settings`) lại bị trống thông tin tài khoản ngân hàng nhận tiền chuyển khoản, buộc chủ sân phải nhập lại.
+2. Form đăng ký cho phép nhập số CCCD cá nhân (12 chữ số) thay cho Mã số thuế (MST 10 hoặc 13 chữ số), nhưng CSDL bảng `owner_applications` trước đó có CHECK constraint chỉ nhận 10 hoặc 13 chữ số, dẫn đến lỗi khi lưu.
+3. Khi Admin lọc hồ sơ duyệt chủ sân, tab "Tất cả" chỉ trả về hồ sơ "Chờ duyệt" do schema backend ép mặc định `status: 'pending'` và repo lọc cứng theo status.
+4. Màn hình chi tiết cơ sở (`/venues/[slug]`) hiển thị "Đang cập nhật giờ mở cửa" do API `publicDetail` chưa query bảng `opening_hours`.
+
+**Quyết định:**
+1. Tạo migration `0014_allow_12_digit_cccd_owner_applications.sql`: Nới lỏng CHECK constraint `chk_owner_app_tax_code` chấp nhận cả 10, 12, hoặc 13 chữ số: `CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$')`.
+2. Tạo migration `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin`, `bank_name`, `account_no`, `account_name` vào bảng `owner_applications`.
+3. Kế thừa dữ liệu: Khi cơ sở thể thao được tạo, hoặc khi gọi API `GET /owner/venues/:id/payment-account` mà cơ sở chưa từng cấu hình tài khoản riêng, hệ thống tự động fallback nạp thông tin ngân hàng từ hồ sơ chủ sân đã duyệt của người dùng đó.
+4. Mở rộng `adminOwnerApplicationQuerySchema` chấp nhận `status: 'all'` để hỗ trợ tab "Tất cả" hiển thị mọi trạng thái hồ sơ.
+5. Endpoint công khai `GET /venues/:idOrSlug` query thêm bảng `opening_hours` để trả về giờ mở cửa chi tiết cho từng ngày trong tuần.
+
+**Hệ quả:**
+- Không phát sinh dependency mới (tuân thủ Rule 9).
+- Đảm bảo tính nhất quán dữ liệu, người dùng không phải nhập lại thông tin ngân hàng.
+- Mọi thành viên khác khi pull code cần chạy migration: `pnpm --filter @bsc/api db:migrate` để đồng bộ DB.
+
+---
+
 ## Template ADR mới
 
 ```markdown

@@ -475,6 +475,15 @@ export class VenuesService {
         status: z.enum(COURT_STATUSES).parse(court.status),
       })),
       cancellationPolicy: result.policy ?? null,
+      openingHours: (result.openingHours ?? []).map((h) => ({
+        id: h.id,
+        venueId: venue.id,
+        courtId: h.courtId,
+        weekday: h.dayOfWeek,
+        openTime: h.openTime.slice(0, 5),
+        closeTime: h.closeTime.slice(0, 5),
+        isClosed: false,
+      })),
     };
   }
 
@@ -592,6 +601,21 @@ export class VenuesService {
           sportIds,
           amenityIds,
         );
+
+        // Tự động gán tài khoản ngân hàng từ hồ sơ đăng ký chủ sân nếu đã có
+        const ownerAppBank = await this.repository.findOwnerApplicationBank(venue.id, tx);
+        if (ownerAppBank?.bankBin && ownerAppBank.accountNo && ownerAppBank.accountName) {
+          await this.repository.upsertPaymentAccount(
+            venue.id,
+            {
+              bankBin: ownerAppBank.bankBin,
+              accountNo: ownerAppBank.accountNo,
+              accountName: ownerAppBank.accountName,
+            },
+            tx,
+          );
+        }
+
         return {
           id: venue.id,
           ownerId: venue.ownerId,
@@ -709,13 +733,36 @@ export class VenuesService {
 
   async getPaymentAccount(venueId: string) {
     const account = await this.repository.getPaymentAccount(venueId);
-    return account
-      ? {
-          bankBin: account.bankBin,
-          accountNo: account.accountNo,
-          accountName: account.accountName,
-        }
-      : null;
+    if (account) {
+      return {
+        bankBin: account.bankBin,
+        accountNo: account.accountNo,
+        accountName: account.accountName,
+      };
+    }
+
+    // Fallback: Nếu cơ sở chưa có tài khoản riêng, tự động nạp từ hồ sơ đăng ký chủ sân đã duyệt
+    const fallback = await this.repository.findOwnerApplicationBank(venueId);
+    if (fallback?.bankBin && fallback.accountNo && fallback.accountName) {
+      await this.repository.transaction(async (tx) => {
+        await this.repository.upsertPaymentAccount(
+          venueId,
+          {
+            bankBin: fallback.bankBin!,
+            accountNo: fallback.accountNo!,
+            accountName: fallback.accountName!,
+          },
+          tx,
+        );
+      });
+      return {
+        bankBin: fallback.bankBin,
+        accountNo: fallback.accountNo,
+        accountName: fallback.accountName,
+      };
+    }
+
+    return null;
   }
 
   async updatePaymentAccount(

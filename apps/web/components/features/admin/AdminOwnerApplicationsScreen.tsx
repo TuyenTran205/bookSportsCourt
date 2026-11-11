@@ -178,8 +178,16 @@ export function AdminOwnerApplicationsScreen() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-4 font-mono text-xs text-neutral-600">
-                        {app.taxCode ?? <span className="text-neutral-400">Không có</span>}
+                      <td className="py-3 px-4 text-xs">
+                        <div className="font-mono text-neutral-600">
+                          {app.taxCode ? `MST: ${app.taxCode}` : <span className="text-neutral-400">Không có MST</span>}
+                        </div>
+                        {app.accountNo && (
+                          <div className="mt-1 text-[11px] text-neutral-500">
+                            <span className="font-medium text-neutral-700">{app.bankName || app.bankBin}</span>: {app.accountNo}
+                            {app.accountName && <span className="block text-[10px] text-neutral-400">{app.accountName}</span>}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-xs text-neutral-600">
                         {formatDateTime(app.createdAt)}

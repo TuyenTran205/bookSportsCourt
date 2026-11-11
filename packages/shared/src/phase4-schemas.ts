@@ -17,7 +17,7 @@ export const paymentAccountInputSchema = z.object({
 export const ownerPaymentQuerySchema = z.object({
   ...venuePageFields, status: z.enum(PAYMENT_STATUSES).default('submitted'), venueId: phase4IdSchema.optional(),
 }).strict();
-export const adminOwnerApplicationQuerySchema = z.object({ ...venuePageFields, status: z.enum(OWNER_APPLICATION_STATUSES).default('pending') }).strict();
+export const adminOwnerApplicationQuerySchema = z.object({ ...venuePageFields, status: z.union([z.enum(OWNER_APPLICATION_STATUSES), z.literal('all')]).default('pending') }).strict();
 export const ownerApplicationDecisionSchema = updateOwnerApplicationStatusSchema;
 export const userStatusUpdateSchema = updateUserStatusSchema;
 export const adminUserQuerySchema = z.object({

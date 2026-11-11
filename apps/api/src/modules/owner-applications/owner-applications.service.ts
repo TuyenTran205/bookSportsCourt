@@ -6,6 +6,7 @@ import {
   HttpException,
   InternalServerErrorException,
   ServiceUnavailableException,
+  Logger,
 } from "@nestjs/common";
 import { OwnerApplicationsRepository } from "./owner-applications.repository.js";
 import { AuthService } from "../auth/auth.service.js";
@@ -29,6 +30,8 @@ function validate<T extends z.ZodTypeAny>(schema: T, raw: unknown) {
 
 @Injectable()
 export class OwnerApplicationsService {
+  private readonly logger = new Logger(OwnerApplicationsService.name);
+
   constructor(
     private readonly repo: OwnerApplicationsRepository,
     private readonly auth: AuthService,
@@ -57,6 +60,10 @@ export class OwnerApplicationsService {
       lng: app.lng !== null && app.lng !== undefined ? Number(app.lng) : null,
       note: app.note,
       taxCode: app.taxCode,
+      bankBin: app.bankBin ?? null,
+      bankName: app.bankName ?? null,
+      accountNo: app.accountNo ?? null,
+      accountName: app.accountName ?? null,
       status: app.status,
       reviewNote: app.reviewNote,
       reviewedBy: app.reviewedBy,
@@ -94,6 +101,7 @@ export class OwnerApplicationsService {
         }
         if (retry && attempt < 2) continue;
         if (error instanceof HttpException) throw error;
+        this.logger.error("Owner application processing failed:", error);
         if (retry)
           throw new ServiceUnavailableException({
             code: "SERVICE_UNAVAILABLE",
