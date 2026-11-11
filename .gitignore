@@ -48,3 +48,5 @@ uploads/
 !apps/api/src/modules/uploads/**
 tmp/
 .tmp/
+*.txt
+/.merge-backup/
