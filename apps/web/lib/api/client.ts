@@ -20,8 +20,14 @@ export const BACKEND_URL = (
   // Bỏ dấu `/` cuối để tránh URL `//api/v1/...` (backend trả 404).
   .replace(/\/+$/, '');
 
-/** Base URL mà trình duyệt gọi. Rỗng = cùng origin, để MSW chặn được khi đang dùng dữ liệu mẫu. */
-export const API_BASE_URL = MOCKING_ENABLED ? '' : BACKEND_URL;
+/**
+ * Base URL mà trình duyệt gọi. Rỗng = cùng origin:
+ * - Mock: để MSW chặn được request.
+ * - Production: đi qua rewrite `/api/v1/*` trong `next.config.mjs` để cookie
+ *   phiên (SameSite=Lax) là first-party trên domain FE, middleware đọc được.
+ */
+export const API_BASE_URL =
+  MOCKING_ENABLED || process.env.NODE_ENV === 'production' ? '' : BACKEND_URL;
 
 export const API_PREFIX = '/api/v1';
 
