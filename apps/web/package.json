@@ -2,6 +2,9 @@
   "name": "@bsc/web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.3.0 <=26.x"
+  },
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
