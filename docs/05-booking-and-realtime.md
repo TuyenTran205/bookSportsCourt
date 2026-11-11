@@ -146,7 +146,7 @@ async hold(courtId: string, during: TsTzRange, customerId: string): Promise<Book
   return this.db.transaction(async (tx) => {
     // 1. Expire các hold quá hạn của court này TRƯỚC (vì EXCLUDE áp dụng cho 'held')
     await tx.update(bookings)
-      .set({ status: 'expired', updated_at: new Date() })
+      .set({ status: 'expired', expires_at: null, updated_at: new Date() })
       .where(and(
         eq(bookings.court_id, courtId),
         eq(bookings.status, 'held'),
@@ -188,7 +188,7 @@ async hold(courtId: string, during: TsTzRange, customerId: string): Promise<Book
 async expireHolds() {
   await this.db.transaction(async (tx) => {
     const expired = await tx.update(bookings)
-      .set({ status: 'expired', updated_at: new Date() })
+      .set({ status: 'expired', expires_at: null, updated_at: new Date() })
       .where(and(
         eq(bookings.status, 'held'),
         lt(bookings.expires_at, new Date())
