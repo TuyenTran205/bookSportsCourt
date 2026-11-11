@@ -1,6 +1,6 @@
 ﻿# 17 – Dàn ý báo cáo đồ án
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
 
 ## Dàn ý các chương
 
@@ -130,7 +130,7 @@
 2. Cả 2 cùng vào trang chọn sân cùng ngày, cùng court
 3. Cả 2 chọn CÙNG block 08:00 – 08:30
 4. Nhấn "Giữ chỗ" gần như cùng lúc
-5. **Kết quả:** Tab 1 thành công (slot chuyển `my_hold` xanh nhạt), Tab 2 nhận thông báo "Slot vừa được người khác đặt"
+5. **Kết quả:** Tab 1 thành công (slot chuyển `my_hold` tím nhạt), Tab 2 nhận thông báo "Slot vừa được người khác đặt"
 6. Tab 1 thấy slot của mình; Tab 2 thấy slot đó là `held`
 7. Sau 10 phút khách không gửi ảnh chuyển khoản: slot trở lại `available` realtime trên cả 2 tab
 

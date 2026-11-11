@@ -1,24 +1,38 @@
-﻿# CODEOWNERS – Tự động request review theo thư mục
-# Thay TV1_USERNAME, TV2_USERNAME, TV3_USERNAME, TV4_USERNAME bằng GitHub username thực
+# CODEOWNERS – Tự động request review theo thư mục
+#
+# ⚠️ TRẠNG THÁI: CHƯA KÍCH HOẠT.
+#
+# Toàn bộ quy tắc dưới đây đang bị comment. Lý do: GitHub kiểm tra CODEOWNERS
+# khi merge và BỎ QUA IM LẶNG cả file nếu có username không tồn tại. Với các
+# placeholder như @TV1_USERNAME, file sẽ không hoạt động mà cũng không báo lỗi —
+# tệ hơn là không có CODEOWNERS, vì tưởng đã cấu hình rồi.
+#
+# CÁCH KÍCH HOẠT:
+#   1. Thay TV1_USERNAME … TV4_USERNAME bằng GitHub username thật (đúng 4 người).
+#   2. Bỏ dấu '#' ở đầu các dòng quy tắc bên dưới.
+#   3. Commit, rồi kiểm tra: mở một PR thử và xem có tự request review không.
+#
+# Hoặc chạy: GITHUB_REPO=<owner>/<repo> bash .github/scripts/setup-github.sh
+# (script sẽ tự sinh file này từ danh sách username truyền vào).
 
 # Mặc định: toàn bộ nhóm review
-*                       @TV1_USERNAME @TV2_USERNAME @TV3_USERNAME @TV4_USERNAME
+# *                       @TV1_USERNAME @TV2_USERNAME @TV3_USERNAME @TV4_USERNAME
 
 # Backend – TV1 + TV2 review
-apps/api/               @TV1_USERNAME @TV2_USERNAME
+# apps/api/               @TV1_USERNAME @TV2_USERNAME
 
-# Frontend – TV3 + TV4 review  
-apps/web/               @TV3_USERNAME @TV4_USERNAME
+# Frontend – TV3 + TV4 review
+# apps/web/               @TV3_USERNAME @TV4_USERNAME
 
 # Shared package – Cả nhóm review (ảnh hưởng FE + BE)
-packages/shared/        @TV1_USERNAME @TV2_USERNAME @TV3_USERNAME @TV4_USERNAME
+# packages/shared/        @TV1_USERNAME @TV2_USERNAME @TV3_USERNAME @TV4_USERNAME
 
 # Tài liệu – Tech Lead (TV4) chính
-docs/                   @TV4_USERNAME
+# docs/                   @TV4_USERNAME
 
 # GitHub config – Tech Lead
-.github/                @TV4_USERNAME
+# .github/                @TV4_USERNAME
 
 # Booking module – QUAN TRỌNG, TV2 + TV1 review
-apps/api/src/modules/bookings/  @TV2_USERNAME @TV1_USERNAME
-apps/api/src/database/          @TV1_USERNAME @TV2_USERNAME
+# apps/api/src/modules/bookings/  @TV2_USERNAME @TV1_USERNAME
+# apps/api/src/database/          @TV1_USERNAME @TV2_USERNAME

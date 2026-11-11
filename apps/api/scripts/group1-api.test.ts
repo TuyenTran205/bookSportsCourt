@@ -1,0 +1,265 @@
+import "reflect-metadata";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { CatalogsService } from "../src/modules/catalogs/catalogs.service.js";
+import { applicationDecision } from "../src/modules/owner-applications/owner-application.rules.js";
+import { VenuesService } from "../src/modules/venues/venues.service.js";
+import { CourtsService } from "../src/modules/courts/courts.service.js";
+
+test("Group 1 CatalogsService validates slug uniqueness and resource usage", async (t) => {
+  await t.test("rejects duplicate sport slug", async () => {
+    const mockRepo: any = {
+      findSportBySlug: async (slug: string) =>
+        slug === "badminton" ? { id: "1", slug } : null,
+    };
+    const service = new CatalogsService(mockRepo);
+    await assert.rejects(
+      async () => service.createSport({ name: "Cầu lông", slug: "badminton" }),
+      (err: any) =>
+        err.status === 409 && err.response?.code === "ALREADY_EXISTS",
+    );
+  });
+
+  await t.test("rejects deleting sport currently in use", async () => {
+    const mockRepo: any = {
+      findSportById: async (id: string) => ({
+        id,
+        name: "Cầu lông",
+        slug: "badminton",
+      }),
+      isSportInUse: async () => true,
+    };
+    const service = new CatalogsService(mockRepo);
+    await assert.rejects(
+      async () => service.deleteSport("1"),
+      (err: any) =>
+        err.status === 409 && err.response?.code === "RESOURCE_IN_USE",
+    );
+  });
+
+  await t.test("requires parentId when creating district", async () => {
+    const mockRepo: any = {};
+    const service = new CatalogsService(mockRepo);
+    await assert.rejects(
+      async () =>
+        service.createArea({
+          name: "Quận 1",
+          slug: "quan-1",
+          type: "district",
+          parentId: null,
+        }),
+      (err: any) =>
+        err.status === 400 && err.response?.code === "VALIDATION_ERROR",
+    );
+  });
+
+  await t.test("getProvinces returns provinces list from repository", async () => {
+    const mockRepo: any = {
+      findAllProvinces: async () => [
+        { id: "p1", code: "01", name: "Thành phố Hà Nội", slug: "ha-noi" },
+      ],
+    };
+    const service = new CatalogsService(mockRepo);
+    const result = await service.getProvinces();
+    assert.equal(result.length, 1);
+    assert.equal(result[0]?.code, "01");
+  });
+
+  await t.test("getWardsByProvince throws 404 when province not found", async () => {
+    const mockRepo: any = {
+      findProvinceByCodeOrId: async () => null,
+    };
+    const service = new CatalogsService(mockRepo);
+    await assert.rejects(
+      async () => service.getWardsByProvince("999"),
+      (err: any) => err.status === 404 && err.response?.code === "NOT_FOUND",
+    );
+  });
+
+  await t.test("getWardsByProvince returns wards when province exists", async () => {
+    const mockRepo: any = {
+      findProvinceByCodeOrId: async (codeOrId: string) => ({
+        id: "p79",
+        code: "79",
+        name: "Thành phố Hồ Chí Minh",
+      }),
+      findWardsByProvince: async (provinceId: string, provinceCode: string) => [
+        { id: "w1", code: "00001", name: "Phường Tân Phú", slug: "tan-phu", type: "ward", provinceCode, provinceId },
+      ],
+    };
+    const service = new CatalogsService(mockRepo);
+    const wards = await service.getWardsByProvince("79");
+    assert.equal(wards.length, 1);
+    assert.equal(wards[0]?.provinceCode, "79");
+  });
+});
+
+test("Owner application decisions enforce role, terminal retry and inactive target rules", async (t) => {
+  const app = { status: "approved", reviewNote: null } as Parameters<
+    typeof applicationDecision
+  >[0];
+  const target = {
+    status: "active",
+    role: "owner",
+    deletedAt: null,
+  } as NonNullable<Parameters<typeof applicationDecision>[1]>;
+  await t.test(
+    "same approval retry is no-op only while target remains owner",
+    () => {
+      assert.equal(
+        applicationDecision(app, target, { status: "approved" }),
+        "noop",
+      );
+      assert.throws(
+        () =>
+          applicationDecision(
+            app,
+            { ...target, role: "customer" },
+            { status: "approved" },
+          ),
+        (error: any) => error.status === 400,
+      );
+    },
+  );
+  await t.test(
+    "conflicting decision or note cannot rewrite a terminal application",
+    () => {
+      assert.throws(
+        () =>
+          applicationDecision(app, target, {
+            status: "rejected",
+            reviewNote: "reason",
+          }),
+        (error: any) => error.status === 400,
+      );
+      assert.throws(
+        () =>
+          applicationDecision(app, target, {
+            status: "approved",
+            reviewNote: "new note",
+          }),
+        (error: any) => error.status === 400,
+      );
+    },
+  );
+  await t.test("pending application requires active customer", () => {
+    assert.equal(
+      applicationDecision(
+        { ...app, status: "pending" },
+        { ...target, role: "customer" },
+        { status: "approved" },
+      ),
+      "write",
+    );
+    assert.throws(
+      () =>
+        applicationDecision(
+          { ...app, status: "pending" },
+          { ...target, status: "suspended" },
+          { status: "approved" },
+        ),
+      (error: any) => error.status === 409,
+    );
+  });
+});
+
+test("Group 1 VenuesService uses transactional area validation and UUID-suffixed slugs", async (t) => {
+  const ownerId = "01900000-0000-7000-8000-000000000001";
+  const provinceId = "01900000-0000-7000-8000-000000000002";
+  const districtId = "01900000-0000-7000-8000-000000000003";
+  let parentId = provinceId;
+  const transaction = {};
+  const repo: any = {
+    transaction: async (work: any) => work(transaction),
+    areas: async (tx: unknown) => {
+      assert.equal(tx, transaction);
+      return [
+        { id: provinceId, type: "province" },
+        { id: districtId, type: "district", parentId },
+      ];
+    },
+    catalogIds: async () => [],
+    create: async (tx: unknown, values: any) => {
+      assert.equal(tx, transaction);
+      return { ...values, createdAt: new Date(), updatedAt: new Date() };
+    },
+  };
+  const auth: any = {
+    requireActiveUser: async (_id: string, tx: unknown) => {
+      assert.equal(tx, transaction);
+      return { id: ownerId, role: "owner" };
+    },
+  };
+  const service = new VenuesService(repo, auth, {} as any);
+  const input = {
+    name: "San Test",
+    address: "123 Duong A",
+    provinceId,
+    districtId,
+    lat: 10,
+    lng: 106,
+    sportIds: [],
+    amenityIds: [],
+  };
+  await t.test("rejects a district belonging to another province", async () => {
+    parentId = "01900000-0000-7000-8000-000000000004";
+    await assert.rejects(
+      () => service.create(ownerId, input),
+      (err: any) =>
+        err.status === 400 && err.response?.code === "VALIDATION_ERROR",
+    );
+  });
+  await t.test(
+    "creates a pending Venue with immutable UUID-suffixed slug",
+    async () => {
+      parentId = provinceId;
+      const venue = await service.create(ownerId, input);
+      assert.equal(venue.slug, `san-test-${venue.id}`);
+      assert.equal(venue.status, "pending");
+    },
+  );
+});
+
+test("Group 1 CourtsService validates court creation and pricing rules", async (t) => {
+  const mockVenuesRepo: any = {
+    findById: async (id: string) => (id === "venue-1" ? { id } : null),
+  };
+  const mockCourtsRepo: any = {
+    createCourt: async (venueId: string, input: any) => ({
+      id: "court-1",
+      venueId,
+      ...input,
+    }),
+    upsertOpeningHours: async () => [],
+    findCourtById: async (id: string) => (id === "court-1" ? { id } : null),
+    createPricingRule: async (_courtId: string, input: any) => ({
+      id: "rule-1",
+      ...input,
+    }),
+  };
+
+  const service = new CourtsService(mockCourtsRepo, mockVenuesRepo);
+
+  await t.test(
+    "creates court and seeds 7-day default opening hours",
+    async () => {
+      const court = await service.createCourt("venue-1", { name: "Sân 1" });
+      assert.equal(court.id, "court-1");
+    },
+  );
+
+  await t.test("rejects pricing rule when startTime >= endTime", async () => {
+    await assert.rejects(
+      async () =>
+        service.createPricingRule("court-1", {
+          label: "Giờ vàng",
+          weekdays: [1, 2, 3],
+          startTime: "18:00",
+          endTime: "17:00",
+          pricePerSlot: 100000,
+        }),
+      (err: any) =>
+        err.status === 400 && err.response?.code === "VALIDATION_ERROR",
+    );
+  });
+});

@@ -1,8 +1,59 @@
-﻿# 04 – Database Schema
+# 04 – Database Schema
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-07
+> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-11-12
 
 ## Quy ước chung
+
+### Bổ sung thông tin tài khoản ngân hàng và CCCD hồ sơ chủ sân – migration 0014, 0015
+
+- `0014_allow_12_digit_cccd_owner_applications.sql`: Nới lỏng ràng buộc `chk_owner_app_tax_code` trên bảng `owner_applications` để chấp nhận 10 chữ số (MST doanh nghiệp ngắn), 12 chữ số (CCCD cá nhân chủ hộ) hoặc 13 chữ số (MST chi nhánh/hộ kinh doanh cá thể): `CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$')`.
+- `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin TEXT`, `bank_name TEXT`, `account_no TEXT`, `account_name TEXT` vào bảng `owner_applications`. Người dùng khi đăng ký làm chủ sân khai báo ngay số tài khoản nhận tiền chuyển khoản. Khi cơ sở đầu tiên được tạo hoặc khi xem tài khoản thanh toán cơ sở (`venue_payment_accounts`), hệ thống tự động kế thừa thông tin này để chủ sân không phải nhập lại từ đầu. Xem [ADR-029](18-decision-log.md).
+
+### Bổ sung ĐVHC 2 cấp (34 Tỉnh / 3.321 Xã) – migration 0012, 0013
+
+`0012_add-administrative-units-columns.sql` bổ sung cột `areas.code VARCHAR(10)`, `areas.unaccent_name TEXT`, nới lỏng `venues.district_id DROP NOT NULL` và thêm `venues.ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT`. Mở rộng ràng buộc `areas_type_check` chấp nhận `('province', 'ward', 'district')` và cập nhật ràng buộc phân cấp `areas_check` cho phép `ward` có `parent_id IS NOT NULL`. Bổ sung index `idx_areas_code`, `idx_areas_type_parent`, `idx_areas_unaccent_trgm` và `idx_venues_province_ward`. Xem [ADR-022, ADR-023](18-decision-log.md).
+
+### BSC-046/072 – tái sử dụng schema review
+
+Bước11–12 không thêm migration: reviews/unique booking_id/trigger hiện có từ0005, average NUMERIC(3,2) và ROUND2 từ0008 đã đáp ứng contract. Tên unique thực tế là reviews_booking_id_key; handler cũng hỗ trợ uq_reviews_booking theo metadata Drizzle. Không sửa migration cũ hoặc tạo unique thứ hai. API tạo/đổi visibility khoá Venue FOR UPDATE trong statement riêng trước INSERT/UPDATE review để các writer cùng cơ sở tuần tự và statement trigger đọc được dữ liệu vừa commit. Trigger vẫn là nơi ghi cache, không cộng/trừ rating bằng tay trong service. SQL/seed ghi cạnh tranh cũng phải tuân thủ protocol khoá này; không suy ra trigger đơn lẻ đã chứng minh an toàn với mọi writer bỏ qua protocol. Giải thích/test.
+
+### Bổ sung BSC-045 – migration0010
+
+`0010_email-delivery.sql` thêm nullable `outbox_deliveries.email_request JSONB`, `first_attempt_at TIMESTAMPTZ` và partial index lease cho email processing. CHECK giới hạn email_request là object và chỉ dùng channel email. Drizzle đồng bộ hai cột; không sửa migration cũ. Payload sự kiện vẫn chỉ chứa UUID allowlist; snapshot request private giữ chính xác nội dung/người nhận/from qua retry và được ghi trước network. Không trả snapshot qua API hoặc ghi log; xem giới hạn PII và retry trong [ADR-024](18-decision-log.md) và Bước10. Dữ liệu legacy giữ null, không dựng lại thông điệp đã gửi trước đó.
+
+### Bổ sung BSC-068/069 – migration0009
+
+`0009_admin-reporting-indexes.sql` thêm btree idx_bookings_start trên lower(during), partial idx_payments_collected_at trên paid_at cho completed/refunded có timestamp và partial idx_payments_refunded_at trên refunded_at cho refunded đủ refundAmount/refundedAt. Đồng bộ Drizzle; không đổi cột, dữ liệu, EXCLUDE/trigger hoặc migration cũ. Phục vụ range query UTC từ ngày Việt Nam; population/data quality vẫn là snapshot/global count theo contract. Fresh/upgrade từ0008 và index-only DOWN/UP đã có test riêng; không suy ra index đã áp dụng vào DB ứng dụng từ việc schema test đạt. Giải thích và EXPLAIN.
+
+Kiểm chứng ứng dụng riêng ngày2026-11-06: đã chạy runner chuẩn trên DB PostgreSQL local từ0008 lên0009; metadata xác nhận9 migration và đủ ba index mới. Không seed/đổi dữ liệu booking/payment hoặc triển khai staging/production.
+
+### Bổ sung Phase 4 – migration 0008
+
+Bước 1 đã chốt contract Phase 4. Bước 2 bổ sung `0008_phase4-foundation.sql` và Drizzle schema cho các phần sau. DB chỉ có các phần này sau khi chạy migration; không sửa migration 0001–0007. Xem giải thích và kiểm chứng Bước 2.
+
+| Bảng/phần | Thiết kế cần bổ sung | Ràng buộc bắt buộc |
+|---|---|---|
+| payments | bank_account_snapshot JSONB nullable; proof_object_key/proof_updated_at; refund_note nullable | Snapshot bank_transfer không thay sau hold; legacy null không bịa dữ liệu. proof_uploaded_at giữ lần đầu; không lưu signed URL làm key |
+| owner_applications | tax_code nullable | 10 hoặc 13 chữ số khi có; shared/repository roundtrip cùng contract |
+| users | session_version integer default0 | Không âm, tăng nguyên tử khi suspend/reset/change-password; JWT/guard/refresh phải triển khai cùng |
+| OAuth state | State hash, binding/nonce/PKCE secret được bảo vệ, expires/used timestamps | Một lần/10 phút, không lưu token/state plaintext không cần thiết; cleanup có version |
+| Outbox/delivery | eventKey/type/payload allowlist, delivery channel/recipient, status/attempts/nextAttempt/lease và result timestamps | Unique event+channel+recipient; claim lease, retry có kiểm soát, không chứa raw auth token/proof URL/bank snapshot |
+| notifications | event_key nullable cho legacy | Unique event_key/user_id khi event_key khác null; read/unread theo user |
+| Storage cleanup jobs | Object key và thời điểm dọn, lease/retry hoặc delivery job kind trong outbox | Chỉ xoá object không còn reference sau grace, không xoá ảnh vừa commit |
+
+Migration 0008 dùng nullable cho dữ liệu legacy, không suy snapshot từ tài khoản hiện tại, không đoán thời gian proof/paidAt. Snapshot có CHECK JSON đủ ba field đúng kiểu/định dạng; trigger cấm thay/xoá snapshot đã có. `proof_updated_at` không trước lần gửi đầu. `tax_code` có CHECK 10/13 chữ số; `session_version` không âm.
+
+`oauth_states`: UUID ứng dụng sinh; state_hash unique, binding_hash/nonce_hash là SHA-256 hex, pkce_verifier_ciphertext là dữ liệu mã hoá AES-256-GCM khi pending, expires_at/used_at/created_at; expiry tối đa10 phút/index expires_at. Bước13 đã có handler/encryption adapter, dùng schema0008 không thêm migration: state consume dưới row lock/clock DB, commit trước network, usedAt và verifier redaction thành consumed cùng statement. Cleanup hourly500 state expired quá24h, SKIP LOCKED. Fixture ciphertext không dùng trong production. Giải thích BSC-047.
+
+`outbox_deliveries`: id, event_key/event_type, channel email|realtime, recipient_id FK users RESTRICT, payload JSON object, status pending|processing|delivered|failed|delivery_unknown, attempts 0–5, next_attempt_at, lease_token/lease_expires_at, delivered_at, last_error_code, created_at/updated_at. Unique(event_key,channel,recipient_id), index(status,next_attempt_at). Processing bắt buộc đủ lease; trạng thái khác không giữ lease; chỉ delivered có delivered_at. Payload allowlist và loại bỏ secret do service tương lai kiểm soát, không phải CHECK JSON tổng quát đã chứng minh an toàn.
+
+`storage_cleanup_jobs`: id, object_key unique, not_before, status pending|processing|completed|failed, attempts 0–5, lease_token/lease_expires_at, last_error_code, created_at/updated_at; index(status,not_before), quy tắc lease như outbox. Worker phải kiểm tra reference và thời gian grace trước xoá; có bảng không đồng nghĩa đã có worker.
+
+`notifications.event_key` nullable cho legacy; unique(event_key,user_id) khi khác null. `venues.rating_avg` chuyển NUMERIC(3,2), trigger và backfill tính lại AVG từ review visible làm tròn hai chữ số. Constraint EXCLUDE, unique payment/review/OAuth có sẵn giữ nguyên. SQL là nguồn cho CHECK/trigger, Drizzle khai báo field/type/index; không dùng db:generate ghi đè custom SQL.
+
+SessionVersion/outbox/snapshot là nền schema theo ADR-024. JWT/guard/worker/service phải được triển khai và test ở bước tương ứng trước khi nghiệm thu tính năng; thêm cột không tự thu hồi token.
+
+### Quy ước áp dụng cho schema hiện tại
 
 - **snake_case** cho tất cả tên bảng và cột.
 - **Soft delete:** thêm cột `deleted_at TIMESTAMPTZ DEFAULT NULL`; query luôn filter `deleted_at IS NULL`.
@@ -36,8 +87,8 @@ flowchart LR
 
     USER["<b>NGƯỜI DÙNG</b><br/><u>id</u> · email · họ tên<br/>SĐT · vai trò · trạng thái"]:::entity
     VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug · địa chỉ<br/>trạng thái"]:::entity
-    AREA["<b>KHU VỰC</b><br/><u>id</u> · loại (tỉnh/quận) · tên"]:::entity
-    APP["<b>HỒ SƠ CHỦ SÂN</b><br/><u>id</u> · tên doanh nghiệp · SĐT<br/>trạng thái duyệt"]:::entity
+    AREA["<b>KHU VỰC</b><br/><u>id</u> · mã GSO · loại (tỉnh/xã) · tên"]:::entity
+    APP["<b>HỒ SƠ CHỦ SÂN</b><br/><u>id</u> · tên doanh nghiệp · SĐT · MST/CCCD<br/>tọa độ · tài khoản ngân hàng · trạng thái duyệt"]:::entity
     BANK["<b>TÀI KHOẢN NHẬN TIỀN</b><br/>ngân hàng · số tài khoản<br/>tên chủ tài khoản"]:::entity
     POLICY["<b>CHÍNH SÁCH HỦY & CỌC</b><br/>hủy trước (giờ) · % hoàn · % cọc"]:::entity
     COURT["<b>SÂN</b><br/><u>id</u> · tên · mô tả<br/>trạng thái"]:::entity
@@ -156,8 +207,15 @@ erDiagram
         id user_id FK
         id reviewed_by FK "nullable"
         string business_name
+        string tax_code "nullable, 10/12/13 chữ số"
         string phone
         string address
+        numeric lat "nullable, vĩ độ ghim bản đồ"
+        numeric lng "nullable, kinh độ ghim bản đồ"
+        string bank_bin "nullable, mã BIN ngân hàng"
+        string bank_name "nullable, tên ngân hàng"
+        string account_no "nullable, số tài khoản"
+        string account_name "nullable, tên chủ tài khoản"
         string note
         string status "pending, approved, rejected"
         string review_note
@@ -166,9 +224,11 @@ erDiagram
     areas {
         id id PK
         id parent_id FK "nullable, NULL = tỉnh/thành"
-        string type "province, district"
+        string code "UK, mã GSO tỉnh/xã"
+        string type "province, ward, district"
         string name
         string slug "UK cùng parent_id"
+        string unaccent_name "tìm kiếm không dấu"
     }
     venue_payment_accounts {
         id venue_id PK, FK
@@ -203,7 +263,8 @@ erDiagram
         text description
         string address
         id province_id FK "areas.type = province"
-        id district_id FK "areas.type = district, con của province_id"
+        id ward_id FK "areas.type = ward, trực thuộc province_id (mới)"
+        id district_id FK "areas.type = district, nullable legacy"
         decimal lat
         decimal lng
         string status "pending, approved, rejected, suspended"
@@ -421,8 +482,15 @@ erDiagram
         UUID id PK
         UUID user_id FK
         TEXT business_name
+        TEXT tax_code "CHECK 10/12/13 chữ số"
         TEXT phone
         TEXT address
+        NUMERIC_10_7 lat "nullable, vĩ độ ghim bản đồ"
+        NUMERIC_10_7 lng "nullable, kinh độ ghim bản đồ"
+        TEXT bank_bin "nullable, mã BIN ngân hàng"
+        TEXT bank_name "nullable, tên ngân hàng"
+        TEXT account_no "nullable, số tài khoản"
+        TEXT account_name "nullable, tên chủ tài khoản"
         TEXT note
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected"
         TEXT review_note
@@ -433,9 +501,11 @@ erDiagram
     }
     areas {
         UUID id PK
-        TEXT type "CHECK province, district"
+        VARCHAR_10 code UK "Mã GSO: '01'..'92' (tỉnh), '00001'..'33210' (xã)"
+        TEXT type "CHECK province, ward, district (legacy)"
         TEXT name
         TEXT slug "UNIQUE NULLS NOT DISTINCT (parent_id, slug)"
+        TEXT unaccent_name "Tên không dấu cho tìm kiếm"
         UUID parent_id FK "NULL nếu là tỉnh, ON DELETE RESTRICT"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -448,7 +518,8 @@ erDiagram
         TEXT description
         TEXT address
         UUID province_id FK "areas, type = province"
-        UUID district_id FK "areas, type = district"
+        UUID ward_id FK "areas, type = ward, bắt buộc với venue mới"
+        UUID district_id FK "areas, type = district, nullable legacy"
         NUMERIC_10_7 lat "NUMERIC(10,7)"
         NUMERIC_10_7 lng "NUMERIC(10,7)"
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected, suspended"
@@ -640,7 +711,8 @@ erDiagram
 
     areas |o--o{ areas : "parent_id"
     areas ||--o{ venues : "province_id"
-    areas ||--o{ venues : "district_id"
+    areas ||--o{ venues : "ward_id"
+    areas |o--o{ venues : "district_id (legacy)"
 
     venues ||--o| venue_payment_accounts : "venue_id"
     venues ||--o| cancellation_policies : "venue_id"
@@ -669,14 +741,82 @@ erDiagram
 | Bảng                        | Ràng buộc / index                                                                                                                 | Mục đích                                                                      |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `bookings`                  | `EXCLUDE USING gist (court_id WITH =, during WITH &&) WHERE (status IN ('held','pending_payment','confirmed'))`, cần `btree_gist` | **Chống trùng lịch ở DB** (Quy tắc #2)                                        |
-| `bookings`                  | GiST `(court_id, during)`; B-tree `customer_id`, `status`; `expires_at WHERE status='held'`                                       | Truy vấn lịch sân, dọn booking hết hạn giữ chỗ                                |
+| `bookings`                  | GiST `(court_id, during)`; B-tree `customer_id`, `status`; `expires_at WHERE status='held'`; `reminders_sent_at WHERE status='confirmed' AND reminders_sent_at IS NULL` | Truy vấn lịch sân, dọn booking hết hạn giữ chỗ, quét booking cần nhắc lịch   |
 | `blackout_periods`          | GiST `(court_id, during)`                                                                                                         | Kiểm tra sân bị khóa                                                          |
 | `opening_hours`             | `UNIQUE (court_id, day_of_week)`, `CHECK (open_time < close_time)`                                                                | Mỗi sân một khung giờ mở cửa mỗi thứ                                          |
 | `reviews`                   | `UNIQUE (booking_id)`                                                                                                             | Một booking chỉ được đánh giá một lần                                         |
 | `payments`                  | `UNIQUE (idempotency_key)`; partial unique `(booking_id) WHERE status IN ('pending','submitted','completed')`                     | Chống webhook trùng (sau này); mỗi booking chỉ có một thanh toán còn hiệu lực |
 | `owner_applications`        | partial unique `(user_id) WHERE status = 'pending'`                                                                               | Mỗi người chỉ có một hồ sơ đang chờ duyệt                                     |
-| `areas`                     | `UNIQUE NULLS NOT DISTINCT (parent_id, slug)`, `CHECK` tỉnh không có cha, quận phải có cha                                        | Danh mục hai cấp nhất quán                                                    |
+| `areas`                     | `UNIQUE NULLS NOT DISTINCT (parent_id, slug)`, `CHECK` tỉnh không có cha, xã/quận phải có cha, GIN trigram `unaccent_name`        | Danh mục 2 cấp mốc 03/11/2026, hỗ trợ tìm kiếm không dấu                     |
+| `venues`                    | FK `province_id`, `ward_id`, FK nullable `district_id` (legacy); index `(province_id, ward_id) WHERE deleted_at IS NULL`         | Mô hình địa lý 2 cấp, trigger đảm bảo xã thuộc tỉnh đã chọn                  |
 | `users`, `venues`, `courts` | Partial index `WHERE deleted_at IS NULL`                                                                                          | Soft delete                                                                   |
+
+### Trigger đồng bộ cột cache
+
+Ba cột cache của `venues` (`rating_avg`, `review_count`, `from_price`) phải luôn khớp dữ liệu nguồn. Vì API sort/filter trực tiếp trên chúng, lệch một chút là danh sách sân sai thứ tự. Ghi bằng trigger ở DB (không ghi tay ở service) để mọi đường ghi — kể cả migration, seed, hay sửa tay bằng SQL — đều cập nhật.
+
+```sql
+-- rating_avg / review_count: tính lại từ reviews đang hiển thị
+CREATE OR REPLACE FUNCTION refresh_venue_rating() RETURNS TRIGGER AS $$
+DECLARE
+  v_id UUID := COALESCE(NEW.venue_id, OLD.venue_id);
+BEGIN
+  UPDATE venues SET
+    rating_avg   = COALESCE((SELECT ROUND(AVG(rating)::numeric, 2) FROM reviews
+                             WHERE venue_id = v_id AND is_visible = true), 0),
+    review_count = (SELECT COUNT(*) FROM reviews
+                    WHERE venue_id = v_id AND is_visible = true)
+  WHERE id = v_id;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_reviews_refresh_venue
+AFTER INSERT OR UPDATE OR DELETE ON reviews
+FOR EACH ROW EXECUTE FUNCTION refresh_venue_rating();
+-- Lưu ý: `is_visible` đổi cũng phải tính lại → trigger bắt cả UPDATE, không chỉ INSERT/DELETE.
+
+-- from_price: MIN(price_per_slot) của pricing_rules thuộc court đang hoạt động
+CREATE OR REPLACE FUNCTION refresh_venue_from_price(p_venue UUID) RETURNS VOID AS $$
+BEGIN
+  UPDATE venues SET from_price = (
+    SELECT MIN(pr.price_per_slot)
+    FROM pricing_rules pr
+    JOIN courts c ON c.id = pr.court_id
+    WHERE c.venue_id = p_venue AND c.is_active = true AND c.deleted_at IS NULL
+  )
+  WHERE id = p_venue;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION trg_refresh_from_price_by_court() RETURNS TRIGGER AS $$
+DECLARE
+  v_id UUID := COALESCE(NEW.venue_id, OLD.venue_id);
+BEGIN
+  PERFORM refresh_venue_from_price(v_id);
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_courts_refresh_price
+AFTER INSERT OR UPDATE OF is_active, deleted_at OR DELETE ON courts
+FOR EACH ROW EXECUTE FUNCTION trg_refresh_from_price_by_court();
+```
+
+> `pricing_rules` thay đổi cũng phải gọi `refresh_venue_from_price` cho venue của court tương ứng — viết trigger tương tự trên `pricing_rules`, tra `venue_id` qua `courts`.
+
+**Sửa lệch hàng loạt:** nếu nghi ngờ cache lệch (ví dụ sau khi import dữ liệu thô), chạy một lần:
+
+```sql
+UPDATE venues v SET
+  rating_avg   = COALESCE((SELECT ROUND(AVG(rating)::numeric,2) FROM reviews r
+                           WHERE r.venue_id = v.id AND r.is_visible = true), 0),
+  review_count = (SELECT COUNT(*) FROM reviews r
+                  WHERE r.venue_id = v.id AND r.is_visible = true),
+  from_price   = (SELECT MIN(pr.price_per_slot) FROM pricing_rules pr
+                  JOIN courts c ON c.id = pr.court_id
+                  WHERE c.venue_id = v.id AND c.is_active = true AND c.deleted_at IS NULL);
+```
 
 ### Ghi chú thiết kế
 
@@ -695,21 +835,29 @@ erDiagram
 ```sql
 CREATE TABLE users (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email       TEXT NOT NULL UNIQUE,
+  -- KHÔNG dùng UNIQUE ở đây: UNIQUE vô điều kiện + soft delete sẽ chặn vĩnh viễn
+  -- email của tài khoản đã xoá, khách không thể đăng ký lại.
+  -- Ràng buộc duy nhất nằm ở partial unique index bên dưới (chỉ tính deleted_at IS NULL).
+  email       TEXT NOT NULL,
   password_hash TEXT,                    -- NULL nếu OAuth only
   full_name   TEXT NOT NULL,
   phone       TEXT,
   avatar_url  TEXT,
   role        TEXT NOT NULL CHECK (role IN ('customer','owner','admin')),
   status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','suspended','pending')),
+  session_version INTEGER NOT NULL DEFAULT 0 CHECK (session_version >= 0),
   email_verified_at TIMESTAMPTZ,         -- NULL = chưa xác thực email (CUS-01)
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now(),
   deleted_at  TIMESTAMPTZ
 );
-CREATE INDEX idx_users_email ON users(email) WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_role  ON users(role)  WHERE deleted_at IS NULL;
+-- UNIQUE (không phải index thường): đây là ràng buộc duy nhất thật cho email.
+-- Chỉ áp dụng cho tài khoản chưa xoá → email của tài khoản đã xoá mềm có thể đăng ký lại.
+CREATE UNIQUE INDEX idx_users_email_active ON users(email) WHERE deleted_at IS NULL;
+CREATE INDEX idx_users_role ON users(role) WHERE deleted_at IS NULL;
 ```
+
+> **Vì sao partial unique:** `UNIQUE` vô điều kiện trên `email` cộng với soft delete (`deleted_at`) khiến email của tài khoản đã xoá bị chiếm vĩnh viễn — khách xoá tài khoản rồi muốn đăng ký lại sẽ nhận lỗi trùng email mà không có cách nào tự xử lý. Partial index `WHERE deleted_at IS NULL` giữ đúng ràng buộc "mỗi email chỉ một tài khoản đang hoạt động" mà vẫn cho phép đăng ký lại.
 
 ### oauth_accounts
 
@@ -740,6 +888,8 @@ CREATE INDEX idx_rt_user ON refresh_tokens(user_id) WHERE revoked = false;
 
 ### auth_tokens
 
+**Nghiệm thu BSC-076:** dùng bảng hiện có, không thêm migration. password_reset chỉ lưu SHA-256 của token 32 byte, TTL 1 giờ theo clock DB. Luồng dùng token khoá users trước auth_tokens, đọc clock_timestamp() sau khi lấy khoá để kiểm tra hạn; used_at/password_hash/session_version/revoke refresh cùng transaction. Không lưu raw token vào audit/email_outbox. Giải thích và test PostgreSQL.
+
 Token dùng một lần cho xác thực email và đặt lại mật khẩu. Chỉ lưu hash, không lưu token gốc.
 
 ```sql
@@ -764,8 +914,15 @@ CREATE TABLE owner_applications (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id),
   business_name TEXT NOT NULL,
+  tax_code      TEXT CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$'),
   phone         TEXT NOT NULL,
   address       TEXT NOT NULL,
+  lat           NUMERIC(10, 7),
+  lng           NUMERIC(10, 7),
+  bank_bin      TEXT,
+  bank_name     TEXT,
+  account_no    TEXT,
+  account_name  TEXT,
   note          TEXT,
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   review_note   TEXT,
@@ -781,21 +938,29 @@ CREATE INDEX idx_owner_app_status ON owner_applications(status);
 
 ### areas
 
-Danh mục khu vực hai cấp (ADM-06): tỉnh/thành và quận/huyện. Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
+Danh mục khu vực hai cấp (Master Data phục vụ tìm kiếm/lọc sân CUS-04 và chọn địa chỉ sân OWN-02 theo ADR-022, ADR-023, ADR-025 mốc 03/11/2026): Tỉnh/Thành phố trực thuộc TW và Xã/Phường/Đặc khu trực thuộc (bãi bỏ cấp huyện từ 01/07/2025; giữ `district` làm legacy). Đây là dữ liệu tham chiếu hệ thống, không hiển thị thành tab CRUD thủ công trên trang Danh mục của Admin (`/admin/catalogs`). Venue tham chiếu bằng khoá ngoại; xoá khu vực đang được dùng bị chặn (`RESOURCE_IN_USE`).
 
 ```sql
 CREATE TABLE areas (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  type       TEXT NOT NULL CHECK (type IN ('province','district')),
-  name       TEXT NOT NULL,             -- "Thành phố Hồ Chí Minh", "Thành phố Thủ Đức"
-  slug       TEXT NOT NULL,             -- "ho-chi-minh", "thu-duc"
-  parent_id  UUID REFERENCES areas(id) ON DELETE RESTRICT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  CHECK ((type = 'province' AND parent_id IS NULL) OR (type = 'district' AND parent_id IS NOT NULL)),
-  UNIQUE NULLS NOT DISTINCT (parent_id, slug)   -- PostgreSQL 15+
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code          VARCHAR(10),                       -- Mã định danh GSO: '01'..'92' (tỉnh), '00001'..'33210' (xã)
+  type          TEXT NOT NULL CHECK (type IN ('province','ward','district')),
+  name          TEXT NOT NULL,                     -- "Thành phố Hồ Chí Minh", "Phường Bến Nghé"
+  slug          TEXT NOT NULL,                     -- "ho-chi-minh", "ben-nghe"
+  unaccent_name TEXT,                              -- "thanh pho ho chi minh", "phuong ben nghe"
+  parent_id     UUID REFERENCES areas(id) ON DELETE RESTRICT,
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  updated_at    TIMESTAMPTZ DEFAULT now(),
+  CHECK (
+    (type = 'province' AND parent_id IS NULL) OR 
+    (type IN ('ward', 'district') AND parent_id IS NOT NULL)
+  ),
+  UNIQUE NULLS NOT DISTINCT (parent_id, slug)      -- PostgreSQL 15+
 );
 CREATE INDEX idx_areas_parent ON areas(parent_id);
+CREATE INDEX idx_areas_code ON areas(code);
+CREATE INDEX idx_areas_type_parent ON areas(type, parent_id);
+CREATE INDEX idx_areas_unaccent_trgm ON areas USING gin (unaccent_name gin_trgm_ops);
 ```
 
 ### sports
@@ -828,6 +993,8 @@ CREATE TABLE amenities (
 
 ### venues
 
+`rejection_reason` được thêm bằng migration `0007_add-venue-rejection-reason.sql`. Nullable để giữ dữ liệu rejected cũ chưa có lý do; API mới bắt buộc reason trim 1–500 ký tự khi từ chối. Khi gửi lại/duyệt đặt NULL; public không trả cột này. Đây là lý do hiện tại, không phải lịch sử kiểm duyệt. Xem quy tắc BSC-014 trong docs/11. Không sửa migration 0002 đã áp dụng.
+
 ```sql
 CREATE TABLE venues (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -837,19 +1004,62 @@ CREATE TABLE venues (
   description  TEXT,
   address      TEXT NOT NULL,
   province_id  UUID NOT NULL REFERENCES areas(id),   -- areas.type = 'province'
-  district_id  UUID NOT NULL REFERENCES areas(id),   -- areas.type = 'district', cha phải là province_id
+  ward_id      UUID REFERENCES areas(id),            -- areas.type = 'ward', bắt buộc cho venue mới
+  district_id  UUID REFERENCES areas(id),            -- areas.type = 'district', nullable legacy
   lat          NUMERIC(10,7),
   lng          NUMERIC(10,7),
   status       TEXT NOT NULL DEFAULT 'pending'
                  CHECK (status IN ('pending','approved','rejected','suspended')),
   cover_url    TEXT,
+  rejection_reason TEXT,                         -- Lý do từ chối hiện tại; NULL cho legacy/không bị từ chối
+  -- ── Cột denormalized, cache để sort/filter không phải JOIN + aggregate ──
+  -- API cho phép sort=rating, sort=price, filter=maxPrice (xem 11-api-contract.md)
+  -- và UI hiển thị rating + "giá từ" trên VenueCard (xem 07-design-system.md).
+  -- Nếu tính bằng subquery mỗi lần list thì không thể index và phân trang sẽ chậm.
+  rating_avg   NUMERIC(3,2) NOT NULL DEFAULT 0,  -- 0.0–5.0, cache từ AVG(reviews.rating)
+  review_count INT NOT NULL DEFAULT 0,           -- cache từ COUNT(reviews) đang hiển thị
+  from_price   INT,                              -- VND, MIN(price_per_slot) của pricing_rules thuộc các court đang hoạt động; NULL nếu chưa cấu hình giá
   created_at   TIMESTAMPTZ DEFAULT now(),
   updated_at   TIMESTAMPTZ DEFAULT now(),
   deleted_at   TIMESTAMPTZ
 );
+
+-- Ba cột cache trên do TRIGGER cập nhật, không do application ghi tay:
+--   reviews        INSERT/UPDATE/DELETE → tính lại rating_avg, review_count
+--   pricing_rules  INSERT/UPDATE/DELETE → tính lại from_price
+--   courts         UPDATE is_active     → tính lại from_price
+-- Xem mục "Trigger đồng bộ cột cache" bên dưới.
 CREATE INDEX idx_venues_owner   ON venues(owner_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_status  ON venues(status)   WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_area ON venues(province_id, district_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_venues_province_ward ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
+-- Trigger kiểm tra tính toàn vẹn: ward_id phải trực thuộc province_id
+CREATE OR REPLACE FUNCTION check_venue_ward_province_match() RETURNS TRIGGER AS $$
+DECLARE
+  v_ward_parent UUID;
+BEGIN
+  IF NEW.ward_id IS NOT NULL THEN
+    SELECT parent_id INTO v_ward_parent FROM areas WHERE id = NEW.ward_id;
+    IF v_ward_parent IS NULL OR v_ward_parent <> NEW.province_id THEN
+      RAISE EXCEPTION 'Lỗi toàn vẹn dữ liệu: Xã/phường (%) không trực thuộc Tỉnh/thành phố (%) đã chọn', 
+        NEW.ward_id, NEW.province_id
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_venues_ward_province_match
+BEFORE INSERT OR UPDATE OF province_id, ward_id ON venues
+FOR EACH ROW EXECUTE FUNCTION check_venue_ward_province_match();
+-- Index cho sort/filter đang được API hỗ trợ (xem 11-api-contract.md):
+--   sort=rating, sort=price, filter maxPrice
+CREATE INDEX idx_venues_rating ON venues(rating_avg DESC) WHERE status = 'approved' AND deleted_at IS NULL;
+CREATE INDEX idx_venues_price  ON venues(from_price)       WHERE status = 'approved' AND deleted_at IS NULL;
+-- Tìm kiếm theo tên: không dùng LIKE '%...%' vì không tận dụng được index.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_venues_name_trgm ON venues USING gin (name gin_trgm_ops) WHERE deleted_at IS NULL;
 ```
 
 ### venue_images
@@ -969,8 +1179,40 @@ CREATE TABLE blackout_periods (
   court_id    UUID NOT NULL REFERENCES courts(id) ON DELETE CASCADE,
   reason      TEXT,
   during      TSTZRANGE NOT NULL,
-  created_at  TIMESTAMPTZ DEFAULT now()
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT chk_blackout_not_empty CHECK (NOT isempty(during))
 );
+
+-- Blackout không được chồng nhau trên cùng court: hai khoảng bảo trì giao nhau
+-- khiến việc kiểm tra "block có bị blackout không" trở nên mơ hồ.
+ALTER TABLE blackout_periods
+  ADD CONSTRAINT excl_blackout_overlap
+  EXCLUDE USING gist (court_id WITH =, during WITH &&);
+
+-- Chặn booking rơi vào blackout NGAY Ở TẦNG DB.
+-- Chỉ kiểm tra ở service là không đủ: hai request đồng thời (một tạo booking,
+-- một tạo blackout) đều qua được bước kiểm tra rồi mới ghi, nên vẫn lọt.
+-- Trigger chạy trong cùng transaction với INSERT/UPDATE nên không có khe hở đó.
+CREATE OR REPLACE FUNCTION reject_booking_in_blackout() RETURNS TRIGGER AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM blackout_periods bp
+    WHERE bp.court_id = NEW.court_id AND bp.during && NEW.during
+  ) THEN
+    RAISE EXCEPTION 'COURT_BLACKED_OUT: court % bị khoá trong khoảng %',
+      NEW.court_id, NEW.during
+      USING ERRCODE = 'exclusion_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Chỉ áp cho các trạng thái thực sự chiếm block; booking đã huỷ/hết hạn thì không cần chặn.
+CREATE TRIGGER trg_bookings_no_blackout
+BEFORE INSERT OR UPDATE OF court_id, during, status ON bookings
+FOR EACH ROW
+WHEN (NEW.status IN ('held','pending_payment','confirmed'))
+EXECUTE FUNCTION reject_booking_in_blackout();
 CREATE INDEX idx_blackout_court ON blackout_periods USING gist (court_id, during);
 ```
 
@@ -996,7 +1238,10 @@ CREATE TABLE bookings (
   note            TEXT,
   cancelled_by    UUID REFERENCES users(id),
   cancel_reason   TEXT,
+  cancelled_at    TIMESTAMPTZ,               -- Thời điểm huỷ (bởi khách, Owner, hoặc cron)
   expires_at      TIMESTAMPTZ,               -- Chỉ dùng cho trạng thái held; NULL khi đã sang pending_payment
+  reminders_sent_at TIMESTAMPTZ,             -- NULL = chưa nhắc; cron nhắc lịch CUS-14 đặt sau khi gửi thành công
+                                             -- (cờ chống nhắc trùng — xem docs/05-booking-and-realtime.md)
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
 
@@ -1030,6 +1275,10 @@ CREATE TABLE payments (
   provider        TEXT NOT NULL DEFAULT 'bank_transfer' CHECK (provider IN ('bank_transfer','cash')),
   transfer_code   TEXT,                        -- Nội dung chuyển khoản điền sẵn trong QR, VD "BSC-7F3A91"; NULL khi provider = 'cash'
   proof_url       TEXT,                        -- Ảnh chuyển khoản khách tải lên
+  bank_account_snapshot JSONB, -- shape/immutability: migration 0008
+  proof_object_key TEXT,
+  proof_updated_at TIMESTAMPTZ,
+  refund_note TEXT,
   proof_uploaded_at TIMESTAMPTZ,
   status          TEXT NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending','submitted','completed','rejected','refunded','cancelled','expired')),
@@ -1048,6 +1297,18 @@ CREATE TABLE payments (
   updated_at      TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT chk_payments_transfer_code CHECK (provider = 'cash' OR transfer_code IS NOT NULL)
 );
+
+-- transfer_code là nội dung chuyển khoản khách ghi khi chuyển tiền, Owner đối soát
+-- bằng chính mã này → BẮT BUỘC duy nhất. Nếu trùng, Owner không biết tiền thuộc booking nào.
+-- Partial (WHERE ... IS NOT NULL) để nhiều payment 'cash' không có mã vẫn hợp lệ:
+-- trong PostgreSQL, nhiều NULL không vi phạm UNIQUE, nhưng partial cho ý định rõ ràng hơn.
+CREATE UNIQUE INDEX idx_payments_transfer_code
+  ON payments(transfer_code) WHERE transfer_code IS NOT NULL;
+
+CREATE INDEX idx_payments_booking ON payments(booking_id);
+-- Cron huỷ booking quá hạn duyệt quét theo cột này
+CREATE INDEX idx_payments_pending_proof
+  ON payments(proof_uploaded_at) WHERE status = 'submitted';
 CREATE INDEX idx_payments_booking ON payments(booking_id);
 -- Mỗi booking chỉ có tối đa 1 thanh toán còn hiệu lực (rejected/cancelled/expired/refunded không tính)
 CREATE UNIQUE INDEX uq_payments_active ON payments(booking_id) WHERE status IN ('pending','submitted','completed');
@@ -1090,6 +1351,7 @@ CREATE TABLE notifications (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type        TEXT NOT NULL,             -- "booking_confirmed", "booking_cancelled", ...
+  event_key TEXT, -- unique(event_key,user_id) WHERE event_key IS NOT NULL
   title       TEXT NOT NULL,
   body        TEXT NOT NULL,
   data        JSONB,
@@ -1115,18 +1377,89 @@ CREATE TABLE audit_logs (
 );
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_actor  ON audit_logs(actor_id);
+-- Phục vụ job dọn log cũ (xem "Job dọn dữ liệu hết hạn" bên dưới)
+CREATE INDEX idx_audit_created ON audit_logs(created_at);
 ```
 
-Hệ quả cần nhớ:
+**Lưu giữ:** `audit_logs` giữ **12 tháng**, sau đó xoá theo lô bởi job dọn dẹp. Không có ràng buộc khoá ngoại nào chặn việc xoá log cũ (`actor_id` là `REFERENCES users(id)` không `ON DELETE`, nhưng xoá log chỉ làm mất tham chiếu chứ không lỗi).
 
-Mọi insert phải đi qua Drizzle, nếu không id sẽ không được tự sinh. Script seed dùng cùng hàm sinh ID.
-ID lộ thời điểm tạo. Chấp nhận được, vì created_at đã công khai ở nhiều resource.
-Nếu sau này nâng lên PostgreSQL 18, bạn có thể đổi sang DEFAULT uuidv7() bằng một migration mới.
+### Job dọn dữ liệu hết hạn
+
+Không có job này thì các bảng phụ trợ phình vô hạn và làm chậm truy vấn. Chạy hằng ngày lúc ít tải (03:00 giờ VN), xoá theo lô để không giữ lock lâu:
+
+| Bảng | Điều kiện xoá | Vì sao |
+|------|---------------|--------|
+| `auth_tokens` | `expires_at < now() - 7 ngày` | Token đã hết hạn, giữ thêm 7 ngày chỉ để tra cứu khi debug |
+| `refresh_tokens` | `revoked = true OR expires_at < now() - 30 ngày` | Token thu hồi/hết hạn không còn giá trị |
+| `notifications` | `read_at IS NOT NULL AND read_at < now() - 90 ngày` | Giữ thông báo chưa đọc vô thời hạn; đã đọc thì 90 ngày |
+| `audit_logs` | `created_at < now() - 12 tháng` | Lưu vết kiểm toán 1 năm |
+| `bookings` (`expired`) | `status = 'expired' AND updated_at < now() - 30 ngày` | Đơn giữ chỗ hết hạn không có giá trị nghiệp vụ; `payments` xoá theo `ON DELETE CASCADE` |
+
+> **KHÔNG** xoá `bookings` ở các trạng thái `completed`, `cancelled`, `no_show` — đó là dữ liệu đối soát và báo cáo doanh thu. Chỉ dọn `expired` (khách chưa từng chuyển tiền).
+>
+> Xoá theo lô: `DELETE FROM ... WHERE id IN (SELECT id FROM ... WHERE <điều kiện> LIMIT 1000)` lặp tới khi không còn dòng nào, để tránh một transaction xoá hàng trăm nghìn dòng.
+
+**Hệ quả cần nhớ:**
+
+- Mọi insert phải đi qua Drizzle, nếu không `id` sẽ không được tự sinh. Script seed dùng cùng hàm sinh ID.
+- ID lộ thời điểm tạo. Chấp nhận được, vì `created_at` đã công khai ở nhiều resource.
+- Nếu sau này nâng lên PostgreSQL 18, có thể đổi sang `DEFAULT uuidv7()` bằng một migration mới.
 
 ## Quy tắc migration
 
+**Vị trí file:** `apps/api/src/database/migrations/` (khai báo trong `drizzle.config.ts`). Thư mục này được commit vào repo; chỉ `drizzle/meta/` sinh tự động là có phần bị bỏ qua — xem `.gitignore`.
+
+```
+apps/api/src/database/
+├── migrations/
+│   ├── 0001_init-schema.sql
+│   ├── 0002_add-blackout-periods.sql
+│   └── ...
+├── schema/                     # Định nghĩa bảng bằng Drizzle TS
+└── seed/                       # Script dữ liệu mẫu
+```
+
 1. **Đặt tên file:** `NNNN_mô-tả-ngắn.sql` (vd: `0001_init-schema.sql`, `0002_add-blackout-periods.sql`).
 2. **Mỗi migration là idempotent hoặc có rollback script tương ứng.**
-3. **KHÔNG** sửa trực tiếp file migration đã được merge vào main.
+3. **KHÔNG** sửa trực tiếp file migration đã được merge vào `main` hoặc `develop`.
 4. **Constraint EXCLUDE** phải được viết trong file SQL migration tùy chỉnh (Drizzle chưa hỗ trợ native).
-5. Chạy lệnh: `pnpm --filter @bsc/api db:migrate`
+5. **Trigger và function** (mục "Trigger đồng bộ cột cache", chặn blackout) cũng phải nằm trong file migration SQL tùy chỉnh — Drizzle không sinh được.
+6. Chạy lệnh: `pnpm --filter @bsc/api db:migrate`
+
+### Migration Mẫu: V20261103_01__administrative_units_2levels.sql (Mô hình 2 cấp mốc 03/11/2026)
+
+```sql
+-- 1. Bổ sung cột mã định danh GSO và tên không dấu cho bảng areas
+ALTER TABLE areas
+  ADD COLUMN IF NOT EXISTS code VARCHAR(10),
+  ADD COLUMN IF NOT EXISTS unaccent_name TEXT;
+
+-- 2. Cập nhật ràng buộc CHECK của areas.type để hỗ trợ 'ward' và giữ 'district' (legacy)
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_type_check;
+ALTER TABLE areas ADD CONSTRAINT areas_type_check 
+  CHECK (type IN ('province', 'ward', 'district'));
+
+-- 3. Cập nhật ràng buộc phân cấp:
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_parent_check;
+ALTER TABLE areas ADD CONSTRAINT areas_parent_check 
+  CHECK (
+    (type = 'province' AND parent_id IS NULL) OR 
+    (type IN ('ward', 'district') AND parent_id IS NOT NULL)
+  );
+
+-- 4. Bổ sung index tối ưu truy vấn cho areas
+CREATE INDEX IF NOT EXISTS idx_areas_code ON areas(code);
+CREATE INDEX IF NOT EXISTS idx_areas_type_parent ON areas(type, parent_id);
+CREATE INDEX IF NOT EXISTS idx_areas_unaccent_trgm ON areas USING gin (unaccent_name gin_trgm_ops);
+
+-- 5. Cập nhật bảng venues: thêm ward_id, nới lỏng district_id thành NULL
+ALTER TABLE venues 
+  ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT;
+
+ALTER TABLE venues 
+  ALTER COLUMN district_id DROP NOT NULL;
+
+-- 6. Index cho venues theo cặp tỉnh - xã mới
+CREATE INDEX IF NOT EXISTS idx_venues_province_ward 
+  ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
+```
