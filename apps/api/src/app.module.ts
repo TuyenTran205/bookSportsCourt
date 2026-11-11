@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { fileURLToPath } from "node:url";
 
 import { AuthModule } from "./modules/auth/auth.module.js";
+import { BookingsModule } from "./modules/bookings/bookings.module.js";
 import { BusinessMailModule } from "./modules/mail/business-mail.module.js";
 import { ReviewsModule } from "./modules/reviews/reviews.module.js";
 import { AdminModule } from "./modules/admin/admin.module.js";
@@ -13,10 +14,13 @@ import { AuditModule } from "./modules/audit/audit.module.js";
 import { CatalogsModule } from "./modules/catalogs/catalogs.module.js";
 import { CourtsModule } from "./modules/courts/courts.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
-import { OwnerApplicationsModule } from "./modules/owner-applications/owner-applications.module.js";
 import { NotificationsModule } from "./modules/notifications/notifications.module.js";
+import { OwnerApplicationsModule } from "./modules/owner-applications/owner-applications.module.js";
+import { OwnerModule } from "./modules/owner/owner.module.js";
+import { RealtimeModule } from "./modules/realtime/realtime.module.js";
+import { ReportsModule } from "./modules/reports/reports.module.js";
 import { VenuesModule } from "./modules/venues/venues.module.js";
-import { BookingsModule } from "./modules/bookings/bookings.module.js";
+import { SchedulesModule } from "./schedules/schedules.module.js";
 import { FavoritesModule } from "./modules/favorites/favorites.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { validateConfig } from "./config/app-config.js";
@@ -43,11 +47,15 @@ import { validateConfig } from "./config/app-config.js";
     AuditModule,
     CatalogsModule,
     OwnerApplicationsModule,
+    OwnerModule,
+    RealtimeModule,
+    ReportsModule,
     NotificationsModule,
     VenuesModule,
     CourtsModule,
     BookingsModule,
     FavoritesModule,
+    SchedulesModule,
   ],
 })
 export class AppModule {}

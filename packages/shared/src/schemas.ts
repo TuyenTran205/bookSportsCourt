@@ -635,3 +635,71 @@ export const venueMapQuerySchema = z
     );
 export type PublicVenueSearchQueryInput = z.infer<typeof publicVenueSearchQuerySchema>;
 export type VenueMapQueryInput = z.infer<typeof venueMapQuerySchema>;
+
+// ===== Owner: khoảng khoá sân, lịch vận hành & báo cáo =====
+
+/** Khoảng ngày tối đa cho một lần xem lịch/báo cáo (tránh query quá nặng). */
+export const OWNER_RANGE_MAX_DAYS = 92;
+
+function isValidDateOnlyRange(from: string, to: string, maxDays = OWNER_RANGE_MAX_DAYS) {
+    const fromMs = Date.parse(`${from}T00:00:00.000Z`);
+    const toMs = Date.parse(`${to}T00:00:00.000Z`);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || fromMs > toMs) return false;
+    return (toMs - fromMs) / 86_400_000 + 1 <= maxDays;
+}
+
+export const blackoutListQuerySchema = z
+    .object({
+        from: dateOnlySchema,
+        to: dateOnlySchema,
+    })
+    .strict()
+    .refine((value) => isValidDateOnlyRange(value.from, value.to, 31), {
+        message: "Khoảng ngày xem khoá sân không hợp lệ (tối đa 31 ngày)",
+    });
+export type BlackoutListQueryInput = z.infer<typeof blackoutListQuerySchema>;
+
+export const ownerTimelineQuerySchema = z
+    .object({
+        venueId: uuidSchema,
+        courtId: uuidSchema.optional(),
+        date: dateOnlySchema,
+    })
+    .strict();
+export type OwnerTimelineQueryInput = z.infer<typeof ownerTimelineQuerySchema>;
+
+export const ownerReportQuerySchema = z
+    .object({
+        venueId: uuidSchema.optional(),
+        courtId: uuidSchema.optional(),
+        from: dateOnlySchema,
+        to: dateOnlySchema,
+        groupBy: z.enum(["day", "week", "month"]).default("day"),
+    })
+    .strict()
+    .refine((value) => isValidDateOnlyRange(value.from, value.to), {
+        message: `Khoảng ngày báo cáo không hợp lệ (tối đa ${OWNER_RANGE_MAX_DAYS} ngày)`,
+    });
+export type OwnerReportQueryInput = z.infer<typeof ownerReportQuerySchema>;
+
+export const ownerReviewQuerySchema = z
+    .object({
+        venueId: uuidSchema.optional(),
+        page: z.coerce.number().int().min(1).default(1),
+        limit: z.coerce.number().int().min(1).max(50).default(20),
+        replied: z
+            .enum(["true", "false"])
+            .transform((value) => value === "true")
+            .optional(),
+    })
+    .strict();
+export type OwnerReviewQueryInput = z.infer<typeof ownerReviewQuerySchema>;
+
+/** Ước tính giá trước khi giữ chỗ, không tạo booking. */
+export const quoteBookingSchema = z
+    .object({
+        courtId: uuidSchema,
+        slots: z.array(slotTimeSchema).min(1).max(96),
+    })
+    .strict();
+export type QuoteBookingInput = z.infer<typeof quoteBookingSchema>;

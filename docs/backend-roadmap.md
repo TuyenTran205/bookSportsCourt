@@ -40,23 +40,23 @@ Checklist từng Phase theo dõi riêng **triển khai BE** và **nghiệm thu**
 
 ### Phase 2 – Booking và realtime
 
-- [ ] BSC-023, 059–061 — Kiểm chứng schema booking/payment, các bảng bổ sung, EXCLUDE và trigger.
-- [ ] BSC-024 — Hold trong transaction, giá/cọc do BE tính, idempotency và hạn mức.
-- [ ] BSC-025 — Cron expire hold, đồng bộ payment.
+- [x] BSC-023, 059–061 — Kiểm chứng schema booking/payment, các bảng bổ sung, EXCLUDE và trigger.
+- [x] BSC-024 — Hold trong transaction, giá/cọc do BE tính, idempotency và hạn mức.
+- [x] BSC-025 — Cron expire hold, đồng bộ payment.
 - [ ] BSC-026 — Realtime Socket.IO, quyền join room và emit sau commit.
-- [ ] BSC-027 — Slots API theo ngày.
-- [ ] BSC-028 — Huỷ và chuyển trạng thái booking (P1).
-- [ ] BSC-029 — Test đồng thời chống trùng lịch.
+- [x] BSC-027 — Slots API theo ngày.
+- [x] BSC-028 — Huỷ và chuyển trạng thái booking (P1).
+- [x] BSC-029 — Test đồng thời chống trùng lịch.
 - [ ] BSC-064 — Favorites API (P1).
-- [ ] BSC-077 — Cron auto-complete booking.
-- [x] BSC-078 — Đã triển khai cron15 phút bắt kịp24h, intent/notification nguyên tử, unique chống trùng và marker theo ACK; kiểm thử PostgreSQL ở Bước10 Phase4.
-- [ ] BSC-078 — Nghiệm thu với hold/auto-complete thật của Phase2 và mail provider test.
+- [x] BSC-077 — Cron auto-complete booking.
+- [x] BSC-078 — Đã triển khai cron 15 phút bắt kịp 24h, intent/notification nguyên tử, unique chống trùng và marker theo ACK; kiểm thử PostgreSQL ở Bước 10 Phase 4.
+- [ ] BSC-078 — Nghiệm thu với hold/auto-complete thật của Phase 2 và mail provider test.
 - [ ] Chốt OpenAPI-2 theo mốc giữa Phase 2.
 - [ ] Nghiệm thu Phase 2: hold, expire, slots, realtime và race condition.
 
 ### Phase 3 – Vận hành Owner
 
-- [ ] BSC-036 — Booking thủ công, payment cash và chống trùng lịch.
+- [x] BSC-036 — Booking thủ công, payment cash và chống trùng lịch.
 - [ ] BSC-038 — Blackout: khoá/mở sân, kiểm tra quyền và cạnh tranh với booking.
 - [ ] BSC-039 — Báo cáo doanh thu API (P1).
 - [x] BSC-065 — Đã triển khai GET/PUT cấu hình chính sách huỷ/cọc (P1).

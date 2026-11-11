@@ -33,6 +33,7 @@
 | 025 | SDK S3 cho proof R2 private và Sharp để giải mã/chuẩn hoá ảnh |
 | 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
 | 027 | Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) |
+| 028 | @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
 
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
@@ -592,6 +593,52 @@ Khi khách hàng đăng ký trở thành chủ sân (`/owner/apply`), trước �
 
 **Hệ quả:**
 - Cần xử lý cẩn thận độ trễ và tỷ lệ giới hạn (rate limiting) của các dịch vụ geocoding công cộng; sử dụng debounce và fallback.
+
+---
+
+## ADR-028: @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE)
+
+**Ngày:** 2026-11-11 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+Khi chạy **từng file test FE riêng lẻ** (`npx vitest run <file>.test.tsx`), các test render React đều qua. Nhưng khi chạy **cả bộ 59 file** `pnpm --filter @bsc/web test`, toàn bộ 33 test render React qua `@testing-library/react` đều fail với warning *"Invalid hook call"* (reason 3: *more than one copy of React*) và lỗi `Cannot read properties of null (reading 'useCallback'/'useMemo'/'useContext')`. Điều này xảy ra kể cả với `--no-file-parallelism`, cho thấy đây không phải race giữa worker mà là **React/ReactDOM bị nạp thành 2 module identity khác nhau** khi Vite collect cả 59 file (do kết hợp pnpm symlink trên Windows + các package ESM như `@testing-library/react`; dấu vết trong stack trace: `react` nạp theo `d:\...` còn `react-dom` theo `D:\...` — khác case chữ ổ đĩa).
+
+**Quyết định:**
+1. Thêm `@vitejs/plugin-react@4` (devDependency, tương thích vite 5 / vitest 2) và dùng transform JSX qua Babel của plugin thay vì `esbuild.jsx: 'automatic'`.
+2. Ghi nhận giới hạn còn lại: trên Windows + pnpm, lỗi dual-instance **vẫn có thể tái phát khi chạy cả bộ**; cách chạy tin cậy hiện nay là từng file hoặc `npx vitest run --pool=forks --no-file-parallelism`. Đã thử và loại bỏ: `resolve.dedupe`, alias react/react-dom theo đường dẫn tuyệt đối, `server.deps.inline`, tắt dep-optimizer, `environment: 'jsdom'` chung, `singleFork` + `isolate: false` — các cấu hình này hoặc không tác động, hoặc làm hỏng resolve subpath (`react/jsx-dev-runtime`).
+
+**Lý do:**
+- `@vitejs/plugin-react` là plugin chính thức của Vite cho React; transform qua Babel chuẩn hoá JSX transform cho mọi file test (bỏ phụ thuộc `esbuild.jsx`).
+- Các cấu hình alias/inline thủ công gây tác dụng phụ (subpath resolve hỏng, external hoá lệch) lớn hơn lợi ích.
+
+**Hệ quả:**
+- CI/đóng góp mới cần biết: nếu full-suite FE test fail hàng loạt với "Invalid hook call" trên Windows, hãy xác nhận lại bằng cách chạy từng file — không phải lỗi code.
+- Khi nâng cấp vitest/vite (≥3/≥6), cần thử lại bỏ ghi chú giới hạn trên.
+- File test cần DOM vẫn khai báo `// @vitest-environment jsdom` ở đầu file.
+
+---
+
+## ADR-029: Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số
+
+**Ngày:** 2026-11-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+1. Khách hàng khi đăng ký làm chủ sân (`/owner/apply`) đã điền đầy đủ thông tin tài khoản ngân hàng (VietinBank, STK, Chủ TK). Tuy nhiên khi được duyệt và tạo cơ sở, trang Cài đặt & Chính sách (`/owner/settings`) lại bị trống thông tin tài khoản ngân hàng nhận tiền chuyển khoản, buộc chủ sân phải nhập lại.
+2. Form đăng ký cho phép nhập số CCCD cá nhân (12 chữ số) thay cho Mã số thuế (MST 10 hoặc 13 chữ số), nhưng CSDL bảng `owner_applications` trước đó có CHECK constraint chỉ nhận 10 hoặc 13 chữ số, dẫn đến lỗi khi lưu.
+3. Khi Admin lọc hồ sơ duyệt chủ sân, tab "Tất cả" chỉ trả về hồ sơ "Chờ duyệt" do schema backend ép mặc định `status: 'pending'` và repo lọc cứng theo status.
+4. Màn hình chi tiết cơ sở (`/venues/[slug]`) hiển thị "Đang cập nhật giờ mở cửa" do API `publicDetail` chưa query bảng `opening_hours`.
+
+**Quyết định:**
+1. Tạo migration `0014_allow_12_digit_cccd_owner_applications.sql`: Nới lỏng CHECK constraint `chk_owner_app_tax_code` chấp nhận cả 10, 12, hoặc 13 chữ số: `CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$')`.
+2. Tạo migration `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin`, `bank_name`, `account_no`, `account_name` vào bảng `owner_applications`.
+3. Kế thừa dữ liệu: Khi cơ sở thể thao được tạo, hoặc khi gọi API `GET /owner/venues/:id/payment-account` mà cơ sở chưa từng cấu hình tài khoản riêng, hệ thống tự động fallback nạp thông tin ngân hàng từ hồ sơ chủ sân đã duyệt của người dùng đó.
+4. Mở rộng `adminOwnerApplicationQuerySchema` chấp nhận `status: 'all'` để hỗ trợ tab "Tất cả" hiển thị mọi trạng thái hồ sơ.
+5. Endpoint công khai `GET /venues/:idOrSlug` query thêm bảng `opening_hours` để trả về giờ mở cửa chi tiết cho từng ngày trong tuần.
+
+**Hệ quả:**
+- Không phát sinh dependency mới (tuân thủ Rule 9).
+- Đảm bảo tính nhất quán dữ liệu, người dùng không phải nhập lại thông tin ngân hàng.
+- Mọi thành viên khác khi pull code cần chạy migration: `pnpm --filter @bsc/api db:migrate` để đồng bộ DB.
 
 ---
 

@@ -21,7 +21,8 @@ export class CatalogsService {
   }
 
   async createSport(input: SportInput) {
-    const slug = input.slug || slugify(input.name);
+    // `slug` không bắt buộc ở DTO: admin chỉ nhập tên, BE tự sinh để giữ URL sạch.
+    const slug = input.slug?.trim() || slugify(input.name);
     const existing = await this.repo.findSportBySlug(slug);
     if (existing) {
       throw new ConflictException({
@@ -76,7 +77,7 @@ export class CatalogsService {
   }
 
   async createAmenity(input: SportInput) {
-    const slug = input.slug || slugify(input.name);
+    const slug = input.slug?.trim() || slugify(input.name);
     const existing = await this.repo.findAmenityBySlug(slug);
     if (existing) {
       throw new ConflictException({
@@ -131,6 +132,7 @@ export class CatalogsService {
   }
 
   async createArea(input: AreaInput) {
+    const slug = input.slug?.trim() || slugify(input.name);
     if (input.type === "district") {
       if (!input.parentId) {
         throw new BadRequestException({
@@ -149,14 +151,14 @@ export class CatalogsService {
       input.parentId = null;
     }
 
-    const existing = await this.repo.findAreaBySlug(input.slug, input.parentId ?? null);
+    const existing = await this.repo.findAreaBySlug(slug, input.parentId ?? null);
     if (existing) {
       throw new ConflictException({
         code: "ALREADY_EXISTS",
         message: "Khu vực với slug này đã tồn tại trong cùng cấp.",
       });
     }
-    return this.repo.createArea(input);
+    return this.repo.createArea({ ...input, slug });
   }
 
   async updateArea(id: string, input: Partial<AreaInput>) {

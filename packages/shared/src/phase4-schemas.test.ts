@@ -28,6 +28,7 @@ describe('Phase 4 shared contract', () => {
   it('rejects coercion, unknown query fields, repeated values and unsafe pagination', () => {
     expect(input.ownerPaymentQuerySchema.parse({})).toEqual({ page: 1, limit: 20, status: 'submitted' });
     expect(input.adminOwnerApplicationQuerySchema.parse({}).status).toBe('pending');
+    expect(input.adminOwnerApplicationQuerySchema.parse({ status: 'all' }).status).toBe('all');
     for (const page of ['', '1e2', '1.5', '0', ['1','2'], true, '9007199254740992']) expect(input.ownerPaymentQuerySchema.safeParse({ page }).success).toBe(false);
     expect(input.ownerPaymentQuerySchema.safeParse({ limit: '101' }).success).toBe(false);
     expect(input.ownerPaymentQuerySchema.safeParse({ ownerId: id }).success).toBe(false);

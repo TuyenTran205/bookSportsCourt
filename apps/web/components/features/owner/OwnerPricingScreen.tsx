@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Clock3, DollarSign, Plus, Trash2 } from 'lucide-react';
+import { Building2, Clock3, DollarSign, Plus, Trash2 } from 'lucide-react';
 import type { OpeningHour, PricingRule } from '@bsc/shared';
 
 import { EmptyState } from '@/components/common/EmptyState';
@@ -13,7 +13,7 @@ import { ErrorState } from '@/components/common/ErrorState';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   createPricingRule,
@@ -139,6 +139,16 @@ export function OwnerPricingScreen() {
   });
 
   const rules = rulesQuery.data ?? [];
+  const uniqueRules = React.useMemo(() => {
+    const seen = new Set<string>();
+    return rules.filter((rule) => {
+      const weekdaysKey = (rule.weekdays ?? []).slice().sort().join(',');
+      const key = `${rule.label}|${rule.startTime}|${rule.endTime}|${weekdaysKey}|${rule.pricePerSlot}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [rules]);
   const weekdayLabels: Record<number, string> = {
     1: t('weekday1'),
     2: t('weekday2'),
@@ -215,21 +225,51 @@ export function OwnerPricingScreen() {
           <h1 className="text-2xl font-bold tracking-tight text-neutral-900">{t('pricingTitle')}</h1>
           <p className="mt-1 text-sm text-neutral-500">{t('pricingDesc')}</p>
         </div>
-        <label className="w-full space-y-1 sm:w-64">
-          <span className="sr-only">{t('selectPricingVenue')}</span>
-          <NativeSelect
+        <div className="flex w-full flex-col gap-1.5 sm:w-80 md:w-96">
+          <label htmlFor="owner-pricing-venue-select" className="sr-only">
+            {t('selectPricingVenue')}
+          </label>
+          <Select
             value={selectedVenueId}
-            onChange={(event) => {
-              setSelectedVenueId(event.target.value);
+            onValueChange={(val) => {
+              setSelectedVenueId(val);
               setPendingDeleteId(null);
             }}
-            aria-label={t('selectPricingVenue')}
           >
-            {venues.map((venue) => (
-              <option key={venue.id} value={venue.id}>{venue.name}</option>
-            ))}
-          </NativeSelect>
-        </label>
+            <SelectTrigger
+              id="owner-pricing-venue-select"
+              className="h-11 w-full bg-white border-neutral-300 shadow-sm transition-all hover:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-600/20"
+            >
+              <div className="flex items-center gap-2.5 truncate text-left">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-btn bg-primary-50 text-primary-700">
+                  <Building2 className="size-4" aria-hidden="true" />
+                </div>
+                <div className="flex flex-col truncate">
+                  <span className="truncate text-xs font-semibold text-neutral-900">
+                    {selectedVenue?.name ?? t('selectPricingVenue')}
+                  </span>
+                  {selectedVenue?.address && (
+                    <span className="truncate text-[11px] text-neutral-500">
+                      {selectedVenue.address}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </SelectTrigger>
+            <SelectContent className="max-h-80 w-[var(--radix-select-trigger-width)] min-w-[20rem] rounded-card border-neutral-200 shadow-lg">
+              {venues.map((venue) => (
+                <SelectItem key={venue.id} value={venue.id} className="py-2.5">
+                  <div className="flex flex-col gap-0.5 text-left">
+                    <span className="font-semibold text-neutral-900">{venue.name}</span>
+                    <span className="text-xs text-neutral-500 line-clamp-1">
+                      {venue.address}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </header>
 
       <div className="flex border-b border-neutral-200" role="tablist" aria-label={t('pricingTitle')}>
@@ -390,7 +430,7 @@ export function OwnerPricingScreen() {
               <div className="p-5">
                 <ErrorState error={rulesQuery.error} onRetry={() => void rulesQuery.refetch()} />
               </div>
-            ) : rules.length === 0 ? (
+            ) : uniqueRules.length === 0 ? (
               <div className="p-4 sm:p-5">
                 <EmptyState
                   icon={DollarSign}
@@ -418,7 +458,7 @@ export function OwnerPricingScreen() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {rules.map((rule) => (
+                    {uniqueRules.map((rule) => (
                       <tr key={rule.id} className="hover:bg-neutral-50/60">
                         <th scope="row" className="px-4 py-3 text-left font-semibold text-neutral-800 sm:px-5">
                           {rule.label}

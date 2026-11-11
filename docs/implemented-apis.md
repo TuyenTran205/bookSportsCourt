@@ -176,8 +176,37 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sá
 | POST | `/api/v1/courts/:id/pricing-rules` | Owner (chủ sân) | `PricingRuleInput` | 201, tạo khung giá theo block 30 phút |
 | PATCH | `/api/v1/courts/:id/pricing-rules/:ruleId` | Owner (chủ sân) | Partial `PricingRuleInput` | 200, cập nhật khung giá |
 | DELETE | `/api/v1/courts/:id/pricing-rules/:ruleId` | Owner (chủ sân) | Không có | 204, xoá khung giá |
+| GET | `/api/v1/provinces` | Công khai | Không có | 200, 34 tỉnh/thành phố (danh mục dùng chung `packages/shared`) |
+| GET | `/api/v1/provinces/:codeOrId/wards` | Công khai | Param nhận `code` (2 số) hoặc `id`; query `q?`, `limit?` | 200, phường/xã/đặc khu của tỉnh; tỉnh không tồn tại trả mảng rỗng |
+| GET | `/api/v1/provinces/:provinceId/districts` | Công khai | Param | 200, luôn `[]` – cấp huyện đã bỏ từ 01/07/2025 |
+| GET | `/api/v1/wards/search` | Công khai | Query `q`, `provinceCode?`, `limit?` | 200, autocomplete không dấu, tối đa 50 kết quả |
+| GET | `/api/v1/owner/venues/:id/opening-hours` | Owner (chính chủ) | Không có | 200, đủ 7 `OpeningHour` cấp cơ sở (`courtId: null`) |
+| PUT | `/api/v1/owner/venues/:id/opening-hours` | Owner (chính chủ) | `{ hours: OpeningHourInput[] }` | 200, ghi cho toàn bộ sân con của cơ sở |
+| GET | `/api/v1/owner/venues/:id/pricing-rules` | Owner (chính chủ) | Không có | 200, `PricingRule[]` cấp cơ sở |
+| POST | `/api/v1/owner/venues/:id/pricing-rules` | Owner (chính chủ) | `PricingRuleInput` | 201, tạo khung giá cho toàn bộ sân con |
+| DELETE | `/api/v1/owner/pricing-rules/:ruleId` | Owner/Admin | Không có | 204, xoá khung giá ở mọi sân con cùng cơ sở |
+
+> **Ghi chú đồng bộ FE ↔ BE (2026-11-09)**
+> - `POST /sports`, `POST /amenities`, `POST /areas`: `slug` **không bắt buộc** – bỏ trống thì BE tự sinh từ `name`.
+> - Danh mục admin nằm ở gốc `/sports`, `/amenities`, `/areas` (không có tiền tố `/admin`).
+> - Kiểm duyệt cơ sở dùng `PATCH /venues/:id/status` với `{ status, reason? }`.
+> - `GET /users/me`, `POST /auth/login`, `POST /auth/register`, `PATCH /users/me` trả **trực tiếp hồ sơ** trong `data` (không bọc `{ user }`) và **không** kèm `ownerProfile`.
+> - `GET /venues` nhận thêm `provinceCode`/`wardCode` (mã địa danh) và tự quy đổi sang `provinceId`/`districtId`.
 
 POST Venue dùng strict allowlist; ownerId/status/slug do server quyết định. Kiểm tra địa lý và danh mục, tạo Venue cùng liên kết trong một transaction; lỗi 400 VALIDATION_ERROR, 401 UNAUTHORIZED/TOKEN_EXPIRED, 403 FORBIDDEN/ACCOUNT_SUSPENDED, 409 ALREADY_EXISTS. Giải thích: [Bước 5](bsc-014-step-05-create-venue.md), [Bước 6](bsc-014-step-06-read-venues.md), [Bước 7](bsc-014-step-07-update-and-delete.md), [Bước 8](bsc-014-step-08-admin-moderation.md). Public search/map chưa triển khai.
+
+### 6. Bookings & Slots (9 endpoints)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| GET | `/api/v1/venues/:id/slots` | Công khai (tuỳ chọn cookie) | Query `date=YYYY-MM-DD` | 200, ma trận slot 30 phút theo ngày (`available/past/blocked/booked/held`, `mine: true/false`, giá) |
+| POST | `/api/v1/bookings/hold` | Customer | `CreateHoldInput` (`courtId`, `slots`, `idempotencyKey`, `note?`) | 201 (hoặc 200 nếu idempotent), booking `held` 10 phút + `transferCode` + thông tin ngân hàng |
+| GET | `/api/v1/bookings` | Customer | Query `status?`, `page`, `limit` | 200, danh sách booking của khách kèm phân trang |
+| GET | `/api/v1/bookings/:id` | Customer (chính chủ) / Owner / Admin | Không có | 200, chi tiết booking (court, venue, customer mask phone, payment) |
+| GET | `/api/v1/bookings/:id/cancellation-preview` | Customer / Owner | Không có | 200, xem trước điều kiện huỷ và số tiền cọc được hoàn |
+| PATCH | `/api/v1/bookings/:id/cancel` | Customer (chính chủ) / Owner | `CancelBookingInput` (`reason?`) | 200, huỷ booking (cập nhật payments sang `cancelled` hoặc `refunded`) |
+| GET | `/api/v1/owner/bookings` | Owner | Query `venueId?`, `courtId?`, `status?`, `from?`, `to?`, `page`, `limit` | 200, danh sách booking tại các sân của chủ sân |
+| POST | `/api/v1/owner/bookings/manual` | Owner | `CreateManualBookingInput` (`courtId`, `slots`, `guestName`, `guestPhone`, `note?`) | 201, tạo booking `confirmed`, thanh toán `cash` completed |
+| PATCH | `/api/v1/bookings/:id/no-show` | Owner | Không có | 200, đánh dấu khách không đến (sau giờ bắt đầu) |
 
 ## Input và hành vi từng API
 

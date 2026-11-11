@@ -321,7 +321,7 @@ try {
         params.push(w.id, w.code, w.name, w.slug, w.unaccentName, parentId);
       }
 
-      const insertedWards = await client.query<{ id: string; slug: string }>(
+      const insertedWards = await client.query<{ id: string; slug: string; parent_id: string }>(
         `
           INSERT INTO areas (id, code, type, name, slug, unaccent_name, parent_id)
           VALUES ${values.join(", ")}
@@ -331,12 +331,20 @@ try {
             name = EXCLUDED.name,
             unaccent_name = EXCLUDED.unaccent_name,
             updated_at = now()
-          RETURNING id, slug
+          RETURNING id, slug, parent_id
         `,
         params,
       );
+      const provinceIdToCode = new Map(
+        [...provinceCodeToId.entries()].map(([code, id]) => [id, code]),
+      );
       for (const row of insertedWards.rows) {
-        wardMap.set(row.slug, row.id);
+        // Khóa "provinceCode/slug" thay vì slug trần: nhiều phường ở khác tỉnh
+        // trùng slug (VD "tan-phu" có ở 8 tỉnh) — nếu khóa theo slug, bản ghi
+        // sau ghi đè bản ghi trước và venue nhận nhầm phường thuộc tỉnh khác,
+        // bị trigger validate_venue_areas từ chối (VENUE_WARD_INVALID).
+        const code = provinceIdToCode.get(row.parent_id);
+        if (code) wardMap.set(`${code}/${row.slug}`, row.id);
       }
     }
 
@@ -481,7 +489,7 @@ try {
       120000,
       "approved",
       "Cụm sân cầu lông thảm Yonex chuẩn quốc tế và sân Pickleball ngoài trời thoáng mát, hệ thống ánh sáng chống chói mắt.",
-      wardMap.get("dich-vong-hau"),
+      wardMap.get("01/dich-vong-hau"),
     );
 
     const venue2Id = await ensureVenue(
@@ -497,7 +505,7 @@ try {
       150000,
       "approved",
       "Hệ thống sân cỏ nhân tạo nhập khẩu tiêu chuẩn FIFA và 2 sân quần vợt chuyên nghiệp có khán đài.",
-      wardMap.get("tan-phu"),
+      wardMap.get("79/tan-phu"),
     );
 
     const venue3Id = await ensureVenue(
@@ -513,7 +521,7 @@ try {
       100000,
       "approved",
       "Khu phức hợp thể thao đa năng bên bờ sông Hàn thơ mộng, phục vụ cầu lông, bóng rổ và thể thao cộng đồng.",
-      wardMap.get("thuan-phuoc"),
+      wardMap.get("48/thuan-phuoc"),
     );
 
     const venue4Id = await ensureVenue(
@@ -529,7 +537,9 @@ try {
       140000,
       "pending",
       "Sân mới đang hoàn thiện đăng ký hồ sơ kiểm duyệt.",
-      wardMap.get("my-dinh-1"),
+      // "Mỹ Đình 1" không tồn tại trong đơn vị hành chính sau sáp nhập 2025 —
+      // dùng phường Dịch Vọng (cùng khu vực Cầu Giấy/Nam Từ Liêm cũ).
+      wardMap.get("01/dich-vong"),
     );
 
     // Gắn môn thể thao cho Venues

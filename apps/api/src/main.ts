@@ -1,6 +1,7 @@
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { IoAdapter } from "@nestjs/platform-socket.io";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 import { AppModule } from "./app.module.js";
@@ -18,6 +19,8 @@ async function bootstrap(): Promise<void> {
     configService.get<string>("NODE_ENV") ?? "development";
 
   app.setGlobalPrefix("api/v1");
+  // Socket.IO cho realtime (subscribe trạng thái sân theo venue+ngày).
+  app.useWebSocketAdapter(new IoAdapter(app));
   configureHttpSecurity(app);
 
   app.useGlobalPipes(

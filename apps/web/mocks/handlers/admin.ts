@@ -76,7 +76,7 @@ export const adminHandlers = [
         const status = url.searchParams.get("status");
 
         let list = [...db.ownerApplications];
-        if (status) list = list.filter((a) => a.status === status);
+        if (status && status !== 'all') list = list.filter((a) => a.status === status);
         list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
         const { data, meta } = paginate(list, page, limit);
@@ -213,12 +213,13 @@ export const adminHandlers = [
 
         const body = (await request.json()) as {
             status?: "approved" | "rejected" | "suspended";
-            reviewNote?: string;
+            reason?: string;
         };
+        const reviewNote = body.reason;
         if (!body.status || !["approved", "rejected", "suspended"].includes(body.status)) {
             return err(422, "VALIDATION_ERROR", "Trạng thái không hợp lệ");
         }
-        if (body.status === "rejected" && !body.reviewNote?.trim()) {
+        if (body.status === "rejected" && !reviewNote?.trim()) {
             return err(422, "VALIDATION_ERROR", "Vui lòng nhập lý do từ chối");
         }
 
@@ -226,7 +227,7 @@ export const adminHandlers = [
         // Lý do không nằm trong `VenueDetail` — ghi vào nhật ký hoạt động, cùng
         // cách xử lý như hồ sơ chủ sân ở trên.
         writeAudit(`venue.${body.status}`, "venue", venue.id, {
-            reviewNote: body.reviewNote ?? null,
+            reviewNote: reviewNote ?? null,
             venueName: venue.name,
         });
         persist();
@@ -237,7 +238,7 @@ export const adminHandlers = [
                 body:
                     body.status === "approved"
                         ? `${venue.name} đã hiển thị với khách hàng.`
-                        : (body.reviewNote?.trim() ?? `Vui lòng cập nhật thông tin của ${venue.name}.`),
+                        : (reviewNote?.trim() ?? `Vui lòng cập nhật thông tin của ${venue.name}.`),
                 payload: { venueId: venue.id },
             });
         }
@@ -360,7 +361,7 @@ export const adminHandlers = [
         return ok(newSport, 201);
     }),
 
-    http.patch("/api/v1/admin/sports/:id", async ({ params, request }) => {
+    http.patch("/api/v1/sports/:id", async ({ params, request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
         if (guard.error) return guard.error;

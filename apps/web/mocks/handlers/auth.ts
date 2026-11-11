@@ -1,9 +1,8 @@
 import { http } from 'msw';
-import type { OwnerProfile, User } from '@bsc/shared';
+import type { User } from '@bsc/shared';
 import { db, findUserByEmail, persist, saveCurrentUserId } from '../db';
 import { DEMO_PASSWORD } from '../fixtures/users';
-import { ownerProfiles } from '../fixtures/users';
-import { err, newId, ok, simulateLatency } from '../utils';
+import { err, newId, noContent, ok, simulateLatency } from '../utils';
 
 /**
  * Auth giả lập.
@@ -76,7 +75,7 @@ export const authHandlers = [
     saveCurrentUserId(user.id);
     persist(); // không lưu thì F5 sẽ khôi phục người dùng cũ và ghi đè cookie phiên
 
-    return ok({ user: publicUser(user) }, 201);
+    return ok(publicUser(user), 201);
   }),
 
   http.post('/api/v1/auth/login', async ({ request }) => {
@@ -96,7 +95,7 @@ export const authHandlers = [
     db.currentUserId = user.id;
     saveCurrentUserId(user.id);
     persist();
-    return ok({ user: publicUser(user) });
+    return ok(publicUser(user));
   }),
 
   http.post('/api/v1/auth/logout', async () => {
@@ -105,7 +104,7 @@ export const authHandlers = [
     db.currentUserId = null;
     saveCurrentUserId(null);
     persist();
-    return ok({ success: true });
+    return noContent();
   }),
 
   http.post('/api/v1/auth/refresh', async () => {
@@ -127,9 +126,8 @@ export const authHandlers = [
     const user = db.users.find((u) => u.id === db.currentUserId);
     if (!user) return err(401, 'UNAUTHORIZED', 'Chưa đăng nhập');
 
-    // Kèm hồ sơ chủ sân nếu có — header cần biết để hiện menu "Kênh chủ sân".
-    const ownerProfile: OwnerProfile | undefined = ownerProfiles.find((p) => p.userId === user.id);
-    return ok({ user: publicUser(user), ownerProfile: ownerProfile ?? null });
+    // BE trả thẳng hồ sơ trong `data` (docs/implemented-apis.md) — không bọc `{ user }`.
+    return ok(publicUser(user));
   }),
 
   /** Cập nhật hồ sơ cá nhân (docs/11 mục Users). */
@@ -148,7 +146,7 @@ export const authHandlers = [
     if (body.phone !== undefined) user.phone = body.phone || null;
 
     persist();
-    return ok({ user: publicUser(user) });
+    return ok(publicUser(user));
   }),
 
   /** Đổi mật khẩu — bắt buộc đúng mật khẩu cũ (docs/11 mục Users). */
@@ -169,8 +167,8 @@ export const authHandlers = [
       return err(422, 'VALIDATION_ERROR', 'Mật khẩu mới phải có ít nhất 8 ký tự');
     }
     // Không lưu mật khẩu mới: mock chỉ có một mật khẩu dùng chung, ghi đè sẽ
-    // làm hỏng các tài khoản demo khác. Trả thành công để UI chạy đúng luồng.
-    return ok({ success: true });
+    // làm hỏng các tài khoản demo khác. Trả 204 như BE thật để UI chạy đúng luồng.
+    return noContent();
   }),
 
   /**
@@ -195,23 +193,23 @@ export const authHandlers = [
       user.fullName,
     )}`;
     persist();
-    return ok({ user: publicUser(user) });
+    return ok(publicUser(user));
   }),
 
   http.post('/api/v1/auth/forgot-password', async () => {
     await simulateLatency(400);
-    // Luôn trả 200 dù email có tồn tại hay không — tránh lộ danh sách tài khoản.
-    return ok({ success: true, message: 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi.' });
+    // Luôn trả 204 dù email có tồn tại hay không — tránh lộ danh sách tài khoản.
+    return noContent();
   }),
 
   http.post('/api/v1/auth/reset-password', async () => {
     await simulateLatency(400);
-    return ok({ success: true });
+    return noContent();
   }),
 
   http.post('/api/v1/auth/verify-email', async () => {
     await simulateLatency(300);
-    return ok({ success: true });
+    return noContent();
   }),
 
   http.get('/api/v1/auth/google', async () => {

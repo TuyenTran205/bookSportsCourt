@@ -173,9 +173,12 @@ export function getAdminStatsByRange(params: {
 
 // ── Hồ sơ chủ sân (ADM-01) ─────────────────────────────────────────────────
 
-export function listOwnerApplications(params: { status?: OwnerApplicationStatus; page?: number; limit?: number } = {}) {
+export function listOwnerApplications(params: { status?: OwnerApplicationStatus | 'all'; page?: number; limit?: number } = {}) {
     return apiFetchWithMeta<OwnerApplication[]>("/admin/owner-applications", {
-        query: { ...params },
+        query: {
+            ...params,
+            status: params.status ?? 'all',
+        },
     }).then((res) => ({
         ...res,
         data: ((res.data ?? []) as unknown as Record<string, unknown>[]).map((app) => ({
@@ -229,6 +232,13 @@ export function listAdminVenues(params: { status?: string; page?: number; limit?
     }));
 }
 
+/**
+ * Duyệt / từ chối / tạm ngưng cơ sở.
+ *
+ * BE chỉ có một route kiểm duyệt là `PATCH /venues/:id/status` với body
+ * `{ status, reason? }` (`venueStatusUpdateSchema`, xem docs/implemented-apis.md).
+ * `reviewNote` của UI được ánh xạ sang `reason`.
+ */
 export function reviewVenue(id: string, input: { status: "approved" | "rejected" | "suspended"; reviewNote?: string }) {
     return apiFetch<AdminVenueRow>(`/venues/${encodeURIComponent(id)}/status`, {
         method: "PATCH",
@@ -326,7 +336,7 @@ export function deleteAmenity(id: string) {
     });
 }
 
-export function createArea(input: { name: string; type: "province" | "ward" | "district"; parentId?: string }) {
+export function createArea(input: { name: string; slug?: string; type: "province" | "ward" | "district"; parentId?: string }) {
     return apiFetch<Area>("/areas", { method: "POST", ...jsonBody(input) });
 }
 

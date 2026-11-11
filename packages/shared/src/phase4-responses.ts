@@ -18,6 +18,10 @@ export const ownerApplicationViewSchema = z.object({
   id, userId: id, businessName: z.string(), phone: z.string(), address: z.string(),
   lat: z.number().nullable().optional(), lng: z.number().nullable().optional(),
   note: nullableText, taxCode: nullableText,
+  bankBin: nullableText.optional(),
+  bankName: nullableText.optional(),
+  accountNo: nullableText.optional(),
+  accountName: nullableText.optional(),
   status: z.enum(OWNER_APPLICATION_STATUSES), reviewNote: nullableText, reviewedBy: id.nullable(), reviewedAt: nullableTimestamp, ...timestamps,
 }).strict();
 export const userListItemSchema = z.object({

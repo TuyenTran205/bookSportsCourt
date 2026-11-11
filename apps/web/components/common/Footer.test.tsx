@@ -17,9 +17,14 @@ vi.mock('next-intl', () => ({
         ownerHeading: 'Dành cho chủ sân',
         ownerTimeline: 'Kênh quản lý lịch sân',
         ownerApply: 'Đăng ký mở cơ sở',
+        bookingGuide: 'Hướng dẫn đặt sân',
+        paymentProcess: 'Quy trình duyệt thanh toán',
+        partnerPolicy: 'Chính sách phí đối tác (0đ)',
         policyHeading: 'Quy định & Chính sách',
         terms: 'Điều khoản dịch vụ',
         privacy: 'Chính sách bảo mật',
+        cancellationPolicy: 'Chính sách huỷ & hoàn cọc',
+        operatingRegulations: 'Quy chế hoạt động',
         currencyInfo: 'Tiền tệ: VND (₫)',
         timezoneInfo: 'Múi giờ: Asia/Ho_Chi_Minh (GMT+7)',
       };
@@ -48,6 +53,27 @@ describe('Footer component (SPEC-FE-BATCH3-01 / TODO-12)', () => {
     expect(screen.getByRole('link', { name: 'Lịch đặt của tôi' }).getAttribute('href')).toBe('/bookings');
     expect(screen.getByRole('link', { name: 'Kênh quản lý lịch sân' }).getAttribute('href')).toBe('/owner/timeline');
     expect(screen.getByRole('link', { name: 'Đăng ký mở cơ sở' }).getAttribute('href')).toBe('/owner/apply');
+    expect(screen.getByRole('link', { name: 'Hướng dẫn đặt sân' }).getAttribute('href')).toBe(
+      '/info/booking-guide',
+    );
+    expect(screen.getByRole('link', { name: 'Quy trình duyệt thanh toán' }).getAttribute('href')).toBe(
+      '/owner/payments',
+    );
+    expect(screen.getByRole('link', { name: 'Chính sách phí đối tác (0đ)' }).getAttribute('href')).toBe(
+      '/info/partner-policy',
+    );
+    expect(screen.getByRole('link', { name: 'Điều khoản dịch vụ' }).getAttribute('href')).toBe(
+      '/info/terms',
+    );
+    expect(screen.getByRole('link', { name: 'Chính sách bảo mật' }).getAttribute('href')).toBe(
+      '/info/privacy',
+    );
+    expect(screen.getByRole('link', { name: 'Chính sách huỷ & hoàn cọc' }).getAttribute('href')).toBe(
+      '/info/cancellation-policy',
+    );
+    expect(screen.getByRole('link', { name: 'Quy chế hoạt động' }).getAttribute('href')).toBe(
+      '/info/operating-regulations',
+    );
 
     // Múi giờ và tiền tệ
     expect(screen.getByText(/Tiền tệ: VND/i)).toBeDefined();
