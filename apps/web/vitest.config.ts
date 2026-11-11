@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
 /**
@@ -7,18 +8,17 @@ import { resolve } from 'node:path';
  * Alias `@/` phải khớp `tsconfig.json` để import trong test giống hệt trong
  * component — nếu lệch, test sẽ xanh trên một đường dẫn mà app không dùng.
  *
- * Chưa cần `@vitejs/plugin-react`: test render dùng `esbuild.jsx: 'automatic'`
- * là đủ cho các component thuần (không Fast Refresh trong test). File test nào
- * cần DOM thì khai báo `// @vitest-environment jsdom` ở đầu file.
+ * Dùng `@vitejs/plugin-react` (ADR-028) kèm alias react/react-dom về một
+ * instance duy nhất: trên Windows + pnpm, react (d:\...) và react-dom (D:\...)
+ * có thể bị nạp thành 2 module identity -> "Invalid hook call" khi render qua
+ * @testing-library/react. File test cần DOM khai `// @vitest-environment jsdom`.
  */
 export default defineConfig({
+  plugins: [react()],
   resolve: {
     alias: {
       '@': resolve(__dirname, './'),
     },
-  },
-  esbuild: {
-    jsx: 'automatic',
   },
   test: {
     environment: 'node',
