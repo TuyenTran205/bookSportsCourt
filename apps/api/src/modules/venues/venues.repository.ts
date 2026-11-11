@@ -28,7 +28,9 @@ import {
   cancellationPolicies,
   bookings,
   venuePaymentAccounts,
+  ownerApplications,
   users,
+  openingHours,
 } from "../../database/schema/index.js";
 import type {
   AdminVenueQueryDto,
@@ -307,6 +309,20 @@ export class VenuesRepository {
           })
           .from(cancellationPolicies)
           .where(eq(cancellationPolicies.venueId, venue.id));
+        const courtIds = courtRows.map((c) => c.id);
+        const openingHourRows = courtIds.length
+          ? await tx
+              .select({
+                id: openingHours.id,
+                courtId: openingHours.courtId,
+                dayOfWeek: openingHours.dayOfWeek,
+                openTime: openingHours.openTime,
+                closeTime: openingHours.closeTime,
+              })
+              .from(openingHours)
+              .where(inArray(openingHours.courtId, courtIds))
+              .orderBy(openingHours.dayOfWeek, openingHours.openTime)
+          : [];
         return {
           venue,
           areaRows,
@@ -315,6 +331,7 @@ export class VenuesRepository {
           images,
           courts: courtRows,
           policy,
+          openingHours: openingHourRows,
         };
       },
       { isolationLevel: "repeatable read", accessMode: "read only" },
@@ -697,6 +714,36 @@ export class VenuesRepository {
       .where(eq(venuePaymentAccounts.venueId, venueId))
       .limit(1);
     return row ?? null;
+  }
+
+  async findOwnerApplicationBank(venueId: string, tx: AuthTransaction | DrizzleDb = this.db) {
+    const [venue] = await tx
+      .select({ ownerId: venues.ownerId })
+      .from(venues)
+      .where(eq(venues.id, venueId))
+      .limit(1);
+    if (!venue) return null;
+
+    const [app] = await tx
+      .select({
+        bankBin: ownerApplications.bankBin,
+        bankName: ownerApplications.bankName,
+        accountNo: ownerApplications.accountNo,
+        accountName: ownerApplications.accountName,
+      })
+      .from(ownerApplications)
+      .where(
+        and(
+          eq(ownerApplications.userId, venue.ownerId),
+          eq(ownerApplications.status, "approved"),
+          isNotNull(ownerApplications.bankBin),
+          isNotNull(ownerApplications.accountNo),
+        ),
+      )
+      .orderBy(desc(ownerApplications.createdAt), desc(ownerApplications.id))
+      .limit(1);
+
+    return app ?? null;
   }
 
   async upsertPaymentAccount(

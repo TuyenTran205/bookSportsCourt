@@ -127,6 +127,10 @@ export const ownerApplications = pgTable(
     lat: numeric({ precision: 10, scale: 7 }),
     lng: numeric({ precision: 10, scale: 7 }),
     note: text(),
+    bankBin: text('bank_bin'),
+    bankName: text('bank_name'),
+    accountNo: text('account_no'),
+    accountName: text('account_name'),
     status: text().notNull().default('pending'),
     reviewNote: text('review_note'),
     reviewedBy: uuid('reviewed_by').references(() => users.id, {

@@ -489,7 +489,7 @@ GET    /api/v1/health                    Kiểm tra sống (public, không cần
 ```
 GET    /api/v1/admin/users               Danh sách user (query: role, status, q, page, limit)
 GET    /api/v1/admin/venues              Danh sách venue (query: status, q, page, limit; để trống status lấy tất cả)
-GET    /api/v1/admin/owner-applications  Hồ sơ chủ sân (query: status, page, limit)
+GET    /api/v1/admin/owner-applications  Hồ sơ chủ sân (query: status, page, limit; mặc định status=pending, truyền status=all để lấy tất cả)
 PATCH  /api/v1/admin/owner-applications/:id  Duyệt/từ chối hồ sơ (body: status, reviewNote)
 GET    /api/v1/admin/bookings            Toàn bộ booking (query: status, venueId, customerId, from, to, page, limit)
 GET    /api/v1/admin/stats               Thống kê tổng quan (query: from, to, groupBy=day|week|month)

@@ -50,6 +50,7 @@ export function PricingRuleDialog({
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (saving) return;
     const numericPrice = Number(price);
     if (!label.trim()) {
       setError(t('ruleLabelRequired'));

@@ -76,7 +76,7 @@ export const adminHandlers = [
         const status = url.searchParams.get("status");
 
         let list = [...db.ownerApplications];
-        if (status) list = list.filter((a) => a.status === status);
+        if (status && status !== 'all') list = list.filter((a) => a.status === status);
         list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
         const { data, meta } = paginate(list, page, limit);
