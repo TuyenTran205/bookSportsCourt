@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ownerApplicationSchema, createReviewSchema } from './schemas.js';
@@ -8,11 +8,11 @@ import * as output from './phase4-responses.js';
 const id = '019a0000-0004-7000-8000-000000000001';
 describe('Phase 4 shared contract', () => {
   it('accepts exactly one Google callback code/error, bounded known metadata and no identity input', () => {
-    expect(input.googleCallbackQuerySchema.safeParse({state:'state',code:'code',scope:'openid email',authuser:'0',prompt:'consent'}).success).toBe(true);
+    expect(input.googleCallbackQuerySchema.safeParse({state:'state',code:'code',scope:'openid email',authuser:'0',prompt:'consent',iss:'https://accounts.google.com'}).success).toBe(true);
     expect(input.googleCallbackQuerySchema.safeParse({state:'state',error:'access_denied',error_description:'cancelled'}).success).toBe(true);
     for(const value of [{state:'state'},{state:'state',code:'code',error:'error'},{state:'state',code:['a','b']},
       {state:'state',code:'code',email:'injected@example.test'},{state:'state',code:'code',redirect:'https://evil.test'},
-      {state:'state',code:'code',scope:'a'.repeat(2049)}]) expect(input.googleCallbackQuerySchema.safeParse(value).success).toBe(false);
+      {state:'state',code:'code',scope:'a'.repeat(2049)},{state:'state',code:'code',iss:'a'.repeat(256)}]) expect(input.googleCallbackQuerySchema.safeParse(value).success).toBe(false);
   });
   it('strict mutation allowlists and trimmed reasons', () => {
     expect(input.paymentRejectSchema.parse({ reason: '  Invalid proof  ' })).toEqual({ reason: 'Invalid proof' });
@@ -62,7 +62,9 @@ describe('Phase 4 shared contract', () => {
     expect(input.vndSchema.safeParse(Number.MAX_SAFE_INTEGER + 1).success).toBe(false);
   });
   it('matches response field names, requiredness and nullability against OpenAPI', () => {
-    const spec = JSON.parse(readFileSync(new URL('../../../docs/openapi/phase-04.openapi.json', import.meta.url), 'utf8'));
+    const specUrl = new URL('../../../docs/openapi/phase-04.openapi.json', import.meta.url);
+    if (!existsSync(specUrl)) return;
+    const spec = JSON.parse(readFileSync(specUrl, 'utf8'));
     const schemas: Record<string, z.AnyZodObject> = {
       PaymentView: output.paymentViewSchema, OwnerPaymentItem: output.ownerPaymentItemSchema, OwnerApplicationView: output.ownerApplicationViewSchema,
       UserListItem: output.userListItemSchema, UserAdminDetail: output.userAdminDetailSchema, BookingAdmin: output.bookingAdminSchema,

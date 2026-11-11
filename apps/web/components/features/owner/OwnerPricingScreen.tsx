@@ -125,7 +125,8 @@ export function OwnerPricingScreen() {
   });
 
   const deleteRuleMutation = useMutation({
-    mutationFn: deletePricingRule,
+    mutationFn: ({ id, courtId }: { id: string; courtId?: string | null }) =>
+      deletePricingRule(id, courtId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['owner', 'pricing-rules', selectedVenueId],
@@ -449,7 +450,9 @@ export function OwnerPricingScreen() {
                                 variant="danger"
                                 size="sm"
                                 loading={deleteRuleMutation.isPending}
-                                onClick={() => deleteRuleMutation.mutate(rule.id)}
+                                onClick={() =>
+                                  deleteRuleMutation.mutate({ id: rule.id, courtId: rule.courtId })
+                                }
                               >
                                 {t('confirmDeleteRule')}
                               </Button>

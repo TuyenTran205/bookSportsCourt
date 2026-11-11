@@ -70,9 +70,9 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | ADM-01 | Duyệt / Từ chối Owner đăng ký | P0 | Xem hồ sơ, approve/reject với ghi chú; Owner nhận email thông báo |
 | ADM-02 | Kiểm duyệt Venue | P0 | Xem thông tin, approve/reject; đình chỉ approved và đưa suspended về pending để duyệt lại theo docs/11. Venue chỉ hiển thị khi approved và chưa xoá; không tự huỷ booking cũ |
 | ADM-03 | Khoá / Mở khoá tài khoản | P0 | Khoá tài khoản Customer hoặc Owner; tài khoản bị khoá không thể đăng nhập |
-| ADM-04 | Quản lý danh mục môn thể thao | P0 | CRUD sport: tên, icon, slug |
-| ADM-05 | Quản lý danh mục tiện ích (Amenity) | P0 | CRUD amenity: tên, icon |
-| ADM-06 | Quản lý danh mục khu vực (Area/District) | P0 | CRUD area: tỉnh/thành, quận/huyện |
+| ADM-04 | Quản lý danh mục môn thể thao | P0 | CRUD sport: tên, icon, slug (Tab 1 trên màn hình Danh mục Admin) |
+| ADM-05 | Quản lý danh mục tiện ích (Amenity) | P0 | CRUD amenity: tên, icon (Tab 2 trên màn hình Danh mục Admin) |
+| ADM-06 | Master Data ĐVHC 2 cấp (Tỉnh/Xã) | P0 | Dữ liệu chuẩn quốc gia (34 Tỉnh, 3.321 Xã mốc 03/11/2026) phục vụ bộ lọc tìm sân cho Khách (CUS-04) và chọn địa chỉ sân (OWN-02); nạp từ seed/hệ thống, KHÔNG đưa vào tab CRUD thủ công ở Danh mục Admin |
 | ADM-07 | Xem toàn bộ booking hệ thống | P0 | Danh sách booking với filter đầy đủ; xem chi tiết |
 | ADM-08 | Xem thống kê toàn hệ thống | P0 | Tổng booking, doanh thu, số venue, số user theo kỳ |
 | ADM-09 | Audit log | P0 | Ghi lại mọi hành động admin; không thể sửa/xoá |

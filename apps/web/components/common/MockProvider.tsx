@@ -46,6 +46,20 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/*
+        Lớp nền tĩnh render cả ở SSR: cùng markup server/client nên không gây
+        hydration mismatch. CSS chỉ bật nó khi `<html>` có class `bsc-splash-active`
+        (do inline script trong app/layout.tsx gắn trước lần paint đầu tiên), và
+        tự tắt khi overlay Splash thật đã mount. Nhờ vậy người dùng thấy nền
+        thương hiệu từ mili-giây 0 thay vì khoảng trắng chờ hydrate.
+      */}
+      <div
+        data-testid="splash-static-boot"
+        aria-hidden="true"
+        className="bsc-splash-static-boot"
+      >
+        <div className="bsc-splash-static-boot-glow" />
+      </div>
       <SplashBrandReveal isAppReady={ready} />
       {!ready ? (
         <div

@@ -1,4 +1,4 @@
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import {
   cancellationPolicySchema,
   ownerApplicationSchema,
@@ -20,7 +20,7 @@ import type {
 import { createMockNotification, db, currentUser, persist } from '../db';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { buildSlots, timeToMinutes, toDateOnly, weekdayOf } from '../fixtures/slots';
-import { areas, sports } from '../fixtures/catalogs';
+import { amenities, areas, sports } from '../fixtures/catalogs';
 import { publish } from '../realtime';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency } from '../utils';
 
@@ -236,9 +236,11 @@ export const ownerHandlers = [
       wardId?: string;
       districtId?: string;
       sportIds?: string[];
+      amenityIds?: string[];
       description?: string;
       lat?: number;
       lng?: number;
+      ownerId?: string;
     };
     const province = areas.find((area) => area.id === body.provinceId && area.type === 'province');
     const ward = body.wardId
@@ -274,9 +276,11 @@ export const ownerHandlers = [
 
     const id = newId();
     const slugBase = slugify(body.name);
+    const targetOwnerId =
+      guard.user!.role === 'admin' && body.ownerId ? body.ownerId : guard.user!.id;
     const venue = {
       id,
-      ownerId: guard.user!.id,
+      ownerId: targetOwnerId,
       name: body.name.trim(),
       slug: `${slugBase}-${id.slice(-6)}`,
       description: body.description?.trim() || null,
@@ -301,13 +305,15 @@ export const ownerHandlers = [
         : null,
       lat: body.lat,
       lng: body.lng,
-      status: 'pending' as const,
+      status: guard.user!.role === 'admin' ? ('approved' as const) : ('pending' as const),
       coverUrl: null,
       ratingAvg: 0,
       reviewCount: 0,
       fromPrice: 0,
       images: [],
-      amenities: [],
+      amenities: Array.isArray(body.amenityIds)
+        ? amenities.filter((a) => body.amenityIds?.includes(a.id))
+        : [],
       courts: [],
       sports: selectedSports,
       cancellationPolicy: null,
@@ -315,6 +321,30 @@ export const ownerHandlers = [
     db.venues.push(venue);
     persist();
     return ok(venue, 201);
+  }),
+
+  http.delete('/api/v1/venues/:id', async ({ params }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+    const venueIndex = db.venues.findIndex((item) => item.id === params.id);
+    if (venueIndex === -1) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    const venue = db.venues[venueIndex];
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
+    if (guard.user!.role !== 'admin' && venue.ownerId !== guard.user!.id) {
+      return err(403, 'FORBIDDEN', 'Bạn không có quyền xoá cơ sở này');
+    }
+    const hasActiveBooking = db.bookings.some(
+      (b) =>
+        venueIdForCourt(b.booking.courtId) === venue.id &&
+        ['pending', 'confirmed'].includes(b.booking.status),
+    );
+    if (hasActiveBooking) {
+      return err(409, 'RESOURCE_IN_USE', 'Địa điểm còn booking đang hoạt động');
+    }
+    db.venues.splice(venueIndex, 1);
+    persist();
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.patch('/api/v1/venues/:id', async ({ params, request }) => {
@@ -330,9 +360,11 @@ export const ownerHandlers = [
       wardId?: string | null;
       districtId?: string | null;
       sportIds?: string[];
+      amenityIds?: string[];
       description?: string | null;
       lat?: number;
       lng?: number;
+      ownerId?: string;
     };
     if (body.name !== undefined && body.name.trim().length < 2) {
       return err(422, 'VALIDATION_ERROR', 'Tên cơ sở phải có ít nhất 2 ký tự');
@@ -434,6 +466,12 @@ export const ownerHandlers = [
     if (body.sportIds !== undefined) {
       venue.sports = selectedSports;
     }
+    if (body.amenityIds !== undefined) {
+      venue.amenities = amenities.filter((a) => body.amenityIds?.includes(a.id));
+    }
+    if (body.ownerId && guard.user!.role === 'admin') {
+      venue.ownerId = body.ownerId;
+    }
     persist();
     return ok(venue);
   }),
@@ -516,6 +554,124 @@ export const ownerHandlers = [
   }),
 
   // ── Giờ mở cửa, bảng giá, khoá sân ───────────────────────────────────────
+  http.get('/api/v1/courts/:id/opening-hours', async ({ params }) => {
+    await simulateLatency(250);
+    const courtId = params.id as string;
+    const venue = venueForCourt(courtId);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy sân');
+    const courtHours = db.openingHours.filter(
+      (o) => o.venueId === venue.id && (o.courtId === courtId || o.courtId === null),
+    );
+    return ok(courtHours);
+  }),
+
+  http.put('/api/v1/courts/:id/opening-hours', async ({ params, request }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+    const courtId = params.id as string;
+    const venue = ownedVenueForCourt(courtId);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy sân');
+    const body = (await request.json()) as
+      | { hours?: Array<Omit<OpeningHour, 'id' | 'venueId'>> }
+      | Array<Omit<OpeningHour, 'id' | 'venueId'>>;
+    const incoming = Array.isArray(body) ? body : (body.hours ?? []);
+    if (!isValidOpeningHours(incoming)) {
+      return err(422, 'VALIDATION_ERROR', 'Cần cấu hình hợp lệ đủ 7 ngày trong tuần');
+    }
+    db.openingHours = db.openingHours.filter(
+      (hour) => !(hour.venueId === venue.id && hour.courtId === courtId),
+    );
+    const updated: OpeningHour[] = incoming.map((h, i) => ({
+      id: `${courtId.slice(0, 22)}oh${h.weekday ?? i}`,
+      courtId,
+      venueId: venue.id,
+      weekday: h.weekday,
+      openTime: h.openTime,
+      closeTime: h.closeTime,
+      isClosed: Boolean(h.isClosed),
+    }));
+    db.openingHours.push(...updated);
+    persist();
+    return ok(updated);
+  }),
+
+  http.get('/api/v1/courts/:id/pricing-rules', async ({ params }) => {
+    await simulateLatency(250);
+    const courtId = params.id as string;
+    const venue = venueForCourt(courtId);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy sân');
+    return ok(
+      db.pricingRules.filter(
+        (rule) => rule.venueId === venue.id && (rule.courtId === courtId || rule.courtId === null),
+      ),
+    );
+  }),
+
+  http.post('/api/v1/courts/:id/pricing-rules', async ({ params, request }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+    const courtId = params.id as string;
+    const venue = ownedVenueForCourt(courtId);
+    if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy sân');
+    const body = (await request.json()) as Partial<PricingRule>;
+    const weekdays = Array.isArray(body.weekdays) ? body.weekdays : [];
+    const validTime = (time: string | undefined) =>
+      typeof time === 'string' && isValidClockTime(time);
+    if (
+      typeof body.label !== 'string' ||
+      body.label.trim().length === 0 ||
+      body.label.trim().length > 100 ||
+      weekdays.length === 0 ||
+      weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6) ||
+      new Set(weekdays).size !== weekdays.length ||
+      !validTime(body.startTime) ||
+      !validTime(body.endTime) ||
+      body.startTime! >= body.endTime! ||
+      !Number.isInteger(body.pricePerSlot) ||
+      body.pricePerSlot! < 0
+    ) {
+      return err(422, 'VALIDATION_ERROR', 'Vui lòng kiểm tra thông tin khung giá');
+    }
+    const conflicts = hasOverlappingPricingRule(db.pricingRules, {
+      venueId: venue.id,
+      courtId,
+      weekdays,
+      startTime: body.startTime!,
+      endTime: body.endTime!,
+    });
+    if (conflicts) {
+      return err(409, 'ALREADY_EXISTS', 'Khung giờ và ngày đã trùng với một quy tắc giá khác');
+    }
+    const rule: PricingRule = {
+      id: newId(),
+      venueId: venue.id,
+      courtId,
+      label: body.label.trim(),
+      weekdays,
+      startTime: body.startTime!,
+      endTime: body.endTime!,
+      pricePerSlot: body.pricePerSlot!,
+    };
+    db.pricingRules.push(rule);
+    persist();
+    return ok(rule, 201);
+  }),
+
+  http.delete('/api/v1/courts/:id/pricing-rules/:ruleId', async ({ params }) => {
+    await simulateLatency(300);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+    const rule = db.pricingRules.find((item) => item.id === params.ruleId);
+    if (!rule || !ownedVenues().some((venue) => venue.id === rule.venueId)) {
+      return err(404, 'NOT_FOUND', 'Không tìm thấy khung giá');
+    }
+    db.pricingRules = db.pricingRules.filter((item) => item.id !== rule.id);
+    persist();
+    return ok({ success: true });
+  }),
+
   http.get('/api/v1/owner/venues/:id/opening-hours', async ({ params }) => {
     await simulateLatency(250);
     const guard = requireOwner();
@@ -1073,6 +1229,24 @@ export const ownerHandlers = [
     db.bookings.unshift({ booking, payment, review: null });
     persist();
     return ok(booking, 201);
+  }),
+
+  /** Đánh dấu khách không đến theo contract: PATCH /bookings/:id/no-show (OWN-09). */
+  http.patch('/api/v1/bookings/:id/no-show', async ({ params }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+
+    const record = db.bookings.find((b) => b.booking.id === params.id);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+
+    if (record.booking.status !== 'confirmed') {
+      return err(409, 'ALREADY_EXISTS', 'Chỉ có thể đánh dấu no-show với đơn đã xác nhận');
+    }
+
+    record.booking.status = 'no_show';
+    persist();
+    return ok(record.booking);
   }),
 
   /** Đánh dấu khách không đến (OWN-09 No-Show). */

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { CatalogsRepository } from "./catalogs.repository.js";
-import { slugify } from "../../common/utils/slugify.js";
+import { slugify } from "../../../../../packages/shared/src/utils/unaccent.js";
 import type {
   AreaInput,
   SportInput,
@@ -208,5 +208,52 @@ export class CatalogsService {
       });
     }
     await this.repo.deleteArea(id);
+  }
+
+  // ===== Provinces & Wards (ĐVHC 2 cấp) =====
+
+  async getProvinces() {
+    return this.repo.findAllProvinces();
+  }
+
+  async getWardsByProvince(
+    codeOrId: string,
+    options?: { q?: string; limit?: number },
+  ) {
+    const province = await this.repo.findProvinceByCodeOrId(codeOrId);
+    if (!province) {
+      throw new NotFoundException({
+        code: "NOT_FOUND",
+        message: "Không tìm thấy tỉnh/thành phố.",
+      });
+    }
+    return this.repo.findWardsByProvince(
+      province.id,
+      province.code ?? "",
+      options,
+    );
+  }
+
+  async searchWards(options: {
+    q: string;
+    provinceCode?: string;
+    limit?: number;
+  }) {
+    let provinceId: string | undefined;
+    if (options.provinceCode) {
+      const province = await this.repo.findProvinceByCodeOrId(
+        options.provinceCode,
+      );
+      provinceId = province?.id;
+    }
+    return this.repo.searchWards({
+      q: options.q,
+      provinceId,
+      limit: options.limit,
+    });
+  }
+
+  async getDistrictsByProvince(provinceId: string) {
+    return this.repo.findDistrictsByProvince(provinceId);
   }
 }

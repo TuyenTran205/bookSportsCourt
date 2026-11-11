@@ -93,6 +93,11 @@ export class GoogleOAuthController {
     required: false,
     schema: { type: "string", maxLength: 255 },
   })
+  @ApiQuery({
+    name: "iss",
+    required: false,
+    schema: { type: "string", maxLength: 255 },
+  })
   async callback(
     @Query() query: unknown,
     @Req() request: AuthRequest,

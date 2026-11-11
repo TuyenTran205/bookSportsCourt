@@ -79,17 +79,67 @@ export function quoteBooking(input: { courtId: string; slots: SlotTime[] }) {
 }
 
 /** `GET /bookings` — lịch sử của chính người dùng đang đăng nhập. */
-export function listMyBookings(params: BookingListParams = {}) {
-  return apiFetchWithMeta<BookingDetail[]>('/bookings', { query: { ...params } });
+export async function listMyBookings(params: BookingListParams = {}) {
+  const res = await apiFetchWithMeta<Array<Record<string, unknown>>>(
+    '/bookings',
+    { query: { ...params } },
+  );
+  const data = (res.data ?? []).map((b) => {
+    const rawCourt = (b.court as Record<string, unknown>) || {};
+    const rawVenue = (rawCourt.venue as Record<string, unknown>) || {};
+    const rawDuring = (b.during as { start?: string; end?: string }) || {};
+    const start = (b.start as string) || rawDuring.start || '';
+    const end = (b.end as string) || rawDuring.end || '';
+    return {
+      ...b,
+      during: { start, end },
+      court: {
+        id: (rawCourt.id as string) || (b.courtId as string) || '',
+        name:
+          (rawCourt.name as string) ||
+          (b.courtName as string) ||
+          'Sân thi đấu',
+        venue: {
+          id: (rawVenue.id as string) || (b.venueId as string) || '',
+          name: (rawVenue.name as string) || (b.venueName as string) || 'Cơ sở',
+          slug: (rawVenue.slug as string) || '',
+          address: (rawVenue.address as string) || '',
+        },
+      },
+    } as unknown as BookingDetail;
+  });
+  return { data, meta: res.meta };
 }
 
-export function getBooking(id: string) {
-  return apiFetch<BookingDetail>(`/bookings/${encodeURIComponent(id)}`);
+export async function getBooking(id: string) {
+  const b = await apiFetch<Record<string, unknown>>(
+    `/bookings/${encodeURIComponent(id)}`,
+  );
+  const rawCourt = (b.court as Record<string, unknown>) || {};
+  const rawVenue = (rawCourt.venue as Record<string, unknown>) || {};
+  const rawDuring = (b.during as { start?: string; end?: string }) || {};
+  const start = (b.start as string) || rawDuring.start || '';
+  const end = (b.end as string) || rawDuring.end || '';
+  return {
+    ...b,
+    during: { start, end },
+    court: {
+      id: (rawCourt.id as string) || (b.courtId as string) || '',
+      name:
+        (rawCourt.name as string) || (b.courtName as string) || 'Sân thi đấu',
+      venue: {
+        id: (rawVenue.id as string) || (b.venueId as string) || '',
+        name: (rawVenue.name as string) || (b.venueName as string) || 'Cơ sở',
+        slug: (rawVenue.slug as string) || '',
+        address: (rawVenue.address as string) || '',
+      },
+    },
+  } as unknown as BookingDetail;
 }
 
 export function cancelBooking(id: string, reason?: string) {
   return apiFetch<BookingDetail>(`/bookings/${encodeURIComponent(id)}/cancel`, {
-    method: 'POST',
+    method: 'PATCH',
     ...jsonBody({ reason }),
   });
 }
@@ -111,11 +161,11 @@ export function uploadPaymentProof(id: string, file: File) {
 
 // ===== Đánh giá =====
 
-/** `POST /bookings/:id/review` — đánh giá gắn với lượt đặt đã hoàn tất. */
+/** `POST /reviews` — đánh giá gắn với lượt đặt đã hoàn tất (CUS-12). */
 export function createReview(bookingId: string, input: Omit<CreateReviewInput, 'bookingId'>) {
-  return apiFetch<Review>(`/bookings/${encodeURIComponent(bookingId)}/review`, {
+  return apiFetch<Review>('/reviews', {
     method: 'POST',
-    ...jsonBody(input),
+    ...jsonBody({ bookingId, ...input }),
   });
 }
 
@@ -134,7 +184,7 @@ export function listFavorites() {
 
 export function addFavorite(venueId: string) {
   return apiFetch<{ favorited: true }>(`/favorites/${encodeURIComponent(venueId)}`, {
-    method: 'POST',
+    method: 'PUT',
   });
 }
 

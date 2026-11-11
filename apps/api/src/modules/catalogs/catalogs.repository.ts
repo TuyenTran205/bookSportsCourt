@@ -13,6 +13,7 @@ import {
   venues,
   venueSports,
 } from "../../database/schema/index.js";
+import { slugify } from "../../../../../packages/shared/src/utils/unaccent.js";
 import type {
   AreaInput,
   SportInput,
@@ -25,8 +26,17 @@ export class CatalogsRepository {
   // Sports
   async findAllSports() {
     return this.db
-      .select()
+      .select({
+        id: sports.id,
+        name: sports.name,
+        slug: sports.slug,
+        icon: sports.icon,
+        sortOrder: sports.sortOrder,
+        venueCount: sql<number>`cast(count(distinct ${venueSports.venueId}) as int)`,
+      })
       .from(sports)
+      .leftJoin(venueSports, eq(venueSports.sportId, sports.id))
+      .groupBy(sports.id)
       .orderBy(asc(sports.sortOrder), asc(sports.name));
   }
 
@@ -53,7 +63,7 @@ export class CatalogsRepository {
       .insert(sports)
       .values({
         name: input.name,
-        slug: input.slug,
+        slug: input.slug ?? slugify(input.name),
         icon: input.icon ?? null,
       })
       .returning();
@@ -97,8 +107,17 @@ export class CatalogsRepository {
   // Amenities
   async findAllAmenities() {
     return this.db
-      .select()
+      .select({
+        id: amenities.id,
+        name: amenities.name,
+        slug: amenities.slug,
+        icon: amenities.icon,
+        sortOrder: amenities.sortOrder,
+        venueCount: sql<number>`cast(count(distinct ${venueAmenities.venueId}) as int)`,
+      })
       .from(amenities)
+      .leftJoin(venueAmenities, eq(venueAmenities.amenityId, amenities.id))
+      .groupBy(amenities.id)
       .orderBy(asc(amenities.sortOrder), asc(amenities.name));
   }
 
@@ -125,7 +144,7 @@ export class CatalogsRepository {
       .insert(amenities)
       .values({
         name: input.name,
-        slug: input.slug,
+        slug: input.slug ?? slugify(input.name),
         icon: input.icon ?? null,
       })
       .returning();
@@ -258,5 +277,141 @@ export class CatalogsRepository {
     return (
       Number(childUsage?.count ?? 0) > 0 || Number(venueUsage?.count ?? 0) > 0
     );
+  }
+
+  // ===== Đơn vị Hành chính 2 cấp (Provinces & Wards) =====
+
+  async findAllProvinces() {
+    return this.db
+      .select({
+        id: areas.id,
+        code: areas.code,
+        name: areas.name,
+        slug: areas.slug,
+        unaccentName: areas.unaccentName,
+      })
+      .from(areas)
+      .where(eq(areas.type, "province"))
+      .orderBy(asc(areas.code), asc(areas.name));
+  }
+
+  async findProvinceByCodeOrId(codeOrId: string) {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        codeOrId,
+      );
+    const condition = isUuid
+      ? and(eq(areas.id, codeOrId), eq(areas.type, "province"))
+      : and(eq(areas.code, codeOrId), eq(areas.type, "province"));
+
+    const [row] = await this.db.select().from(areas).where(condition).limit(1);
+    return row ?? null;
+  }
+
+  async findWardsByProvince(
+    provinceId: string,
+    provinceCode: string,
+    options?: { q?: string; limit?: number },
+  ) {
+    let query = this.db
+      .select({
+        id: areas.id,
+        code: areas.code,
+        name: areas.name,
+        slug: areas.slug,
+        type: areas.type,
+        parentId: areas.parentId,
+        unaccentName: areas.unaccentName,
+      })
+      .from(areas)
+      .$dynamic();
+
+    const conditions = [
+      eq(areas.parentId, provinceId),
+      eq(areas.type, "ward"),
+    ];
+
+    if (options?.q && options.q.trim()) {
+      const qClean = options.q.trim().toLowerCase();
+      conditions.push(
+        sql`(${areas.unaccentName} ILIKE ${"%" + qClean + "%"} OR ${areas.name} ILIKE ${"%" + qClean + "%"} OR ${areas.code} ILIKE ${"%" + qClean + "%"})`,
+      );
+    }
+
+    query = query
+      .where(and(...conditions))
+      .orderBy(asc(areas.code), asc(areas.name));
+
+    if (options?.limit && options.limit > 0) {
+      query = query.limit(options.limit);
+    }
+
+    const rows = await query;
+    return rows.map((r) => ({
+      ...r,
+      code: r.code ?? "",
+      type: "ward" as const,
+      provinceCode,
+      provinceId,
+    }));
+  }
+
+  async searchWards(options: {
+    q: string;
+    provinceCode?: string;
+    provinceId?: string;
+    limit?: number;
+  }) {
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
+    const qClean = options.q.trim().toLowerCase();
+
+    let query = this.db
+      .select({
+        id: areas.id,
+        code: areas.code,
+        name: areas.name,
+        slug: areas.slug,
+        type: areas.type,
+        parentId: areas.parentId,
+        unaccentName: areas.unaccentName,
+      })
+      .from(areas)
+      .$dynamic();
+
+    const conditions = [eq(areas.type, "ward")];
+
+    if (options.provinceId) {
+      conditions.push(eq(areas.parentId, options.provinceId));
+    }
+
+    conditions.push(
+      sql`(${areas.unaccentName} ILIKE ${"%" + qClean + "%"} OR ${areas.name} ILIKE ${"%" + qClean + "%"} OR ${areas.code} ILIKE ${"%" + qClean + "%"})`,
+    );
+
+    const rows = await query
+      .where(and(...conditions))
+      .orderBy(asc(areas.name))
+      .limit(limit);
+
+    return rows.map((r) => ({
+      ...r,
+      code: r.code ?? "",
+      type: "ward" as const,
+      provinceId: r.parentId ?? undefined,
+    }));
+  }
+
+  async findDistrictsByProvince(provinceId: string) {
+    return this.db
+      .select({
+        id: areas.id,
+        code: areas.code,
+        name: areas.name,
+        slug: areas.slug,
+        parentId: areas.parentId,
+      })
+      .from(areas)
+      .where(and(eq(areas.parentId, provinceId), eq(areas.type, "district")))
+      .orderBy(asc(areas.name));
   }
 }

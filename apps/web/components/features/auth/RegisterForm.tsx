@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api/errors';
+import { googleAuthUrl } from '@/lib/api/endpoints/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
 
 /**
@@ -209,7 +210,7 @@ export function RegisterForm() {
           size="md"
           className="w-full"
           onClick={() => {
-            window.location.href = '/api/v1/auth/google';
+            window.location.href = googleAuthUrl();
           }}
         >
           <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">

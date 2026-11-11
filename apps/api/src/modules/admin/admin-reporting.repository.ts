@@ -34,11 +34,17 @@ export class AdminReportingRepository {
     return sql`((${range.to}::date + 1)::timestamp at time zone 'Asia/Ho_Chi_Minh')`;
   }
   private scope(query: AdminBookingQueryInput, range: ReportRange) {
+    const qPattern = query.q
+      ? `%${query.q.replace(/[\\%_]/g, "\\$&")}%`
+      : undefined;
     return and(
       sql`lower(${bookings.during}) >= ${this.start(range)} and lower(${bookings.during}) < ${this.end(range)}`,
       query.status ? eq(bookings.status, query.status) : undefined,
       query.venueId ? eq(courts.venueId, query.venueId) : undefined,
       query.customerId ? eq(bookings.customerId, query.customerId) : undefined,
+      qPattern
+        ? sql`(${bookings.id}::text ilike ${qPattern} or coalesce(${bookings.guestName}, '') ilike ${qPattern} or ${courts.name} ilike ${qPattern})`
+        : undefined,
     );
   }
   async bookingCount(

@@ -19,10 +19,15 @@ import { AuthMailService } from "../src/modules/auth/auth-mail.service.js";
 
 function fixture() {
   const secret = randomBytes(32).toString("hex");
+  const refreshSecret = randomBytes(32).toString("hex");
   const jwt = new AuthJwtService(
     new ConfigService({
       JWT_ACCESS_SECRET: secret,
-      JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
+      JWT_REFRESH_SECRET: refreshSecret,
+      _PROCESS_ENV_VALIDATED: {
+        JWT_ACCESS_SECRET: secret,
+        JWT_REFRESH_SECRET: refreshSecret,
+      },
     }),
   );
   const user: AuthUser = {

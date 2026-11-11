@@ -194,14 +194,17 @@ export function OwnerVenuesScreen() {
               className="group overflow-hidden rounded-card border border-neutral-200 bg-white p-0 shadow-none transition-shadow hover:shadow-md"
             >
               <div className="relative aspect-video overflow-hidden bg-neutral-100">
-                {venue.coverUrl ? (
+                {venue.coverUrl || (venue as { images?: Array<{ url: string }> })?.images?.[0]?.url ? (
                   <Image
-                    src={venue.coverUrl}
+                    src={(venue.coverUrl || (venue as { images?: Array<{ url: string }> })?.images?.[0]?.url)!}
                     alt={t('venueCoverAlt', { name: venue.name })}
                     fill
                     priority={index === 0}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                    unoptimized={venue.coverUrl.startsWith('data:')}
+                    unoptimized={
+                      (venue.coverUrl || '').startsWith('data:') ||
+                      (venue.coverUrl || '').startsWith('blob:')
+                    }
                     className="object-cover"
                   />
                 ) : (
@@ -226,13 +229,13 @@ export function OwnerVenuesScreen() {
                   </div>
                   <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-neutral-800">
                     <Star className="size-3.5 fill-amber-500 text-amber-500" aria-hidden="true" />
-                    {formatNumber(venue.ratingAvg)}
-                    <span className="font-normal text-neutral-500">({venue.reviewCount})</span>
+                    {formatNumber(venue.ratingAvg ?? 0)}
+                    <span className="font-normal text-neutral-500">({venue.reviewCount ?? 0})</span>
                   </span>
                 </div>
 
                 <ul className="flex min-h-6 flex-wrap gap-1.5" aria-label={t('venueSportsLabel')}>
-                  {venue.sports.map((sport) => (
+                  {(venue.sports ?? []).map((sport) => (
                     <li
                       key={sport.id}
                       className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-700"
@@ -243,7 +246,7 @@ export function OwnerVenuesScreen() {
                 </ul>
 
                 <div className="flex items-center justify-between border-t border-neutral-100 pt-3 text-xs text-neutral-500">
-                  <span>{t('venueCourtCount', { count: venue.courts.length })}</span>
+                  <span>{t('venueCourtCount', { count: (venue.courts ?? []).length })}</span>
                   <span className="font-mono">{t('venueIdShort', { id: venue.id.slice(0, 8) })}</span>
                 </div>
 

@@ -32,6 +32,7 @@ export const AppConfigSchema = z
     R2_SECRET_KEY: z.string().optional(),
     R2_BUCKET: z.string().optional(),
     R2_PROOF_BUCKET: z.string().optional(),
+    R2_PUBLIC_URL: z.string().optional(),
     OWNER_REVIEW_TIMEOUT_HOURS: z.coerce.number().int().positive().default(2),
     BUSINESS_MAIL_ENABLED: z
       .enum(["true", "false"])
@@ -49,6 +50,7 @@ export const AppConfigSchema = z
       (value) => (value === "" ? undefined : value),
       z.string().url().optional(),
     ),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
     NODE_ENV: z
       .enum(["development", "test", "staging", "production"])
       .default("development"),

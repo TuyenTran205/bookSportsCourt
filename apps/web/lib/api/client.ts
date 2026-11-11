@@ -42,6 +42,36 @@ function buildUrl(path: string, query?: ApiFetchOptions['query']): string {
   return API_BASE_URL ? url.toString() : `${url.pathname}${url.search}`;
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Xoay vòng token khi gặp lỗi 401 Unauthorized.
+ * Đảm bảo chỉ 1 request refresh chạy tại một thời điểm dù có nhiều request song song.
+ */
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(buildUrl('/auth/refresh'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof window !== 'undefined' && window.location?.origin
+            ? { 'X-Request-Origin': window.location.origin }
+            : {}),
+        },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
 /**
  * Gọi API và trả về **phần `data`** đã bóc envelope.
  *
@@ -66,6 +96,17 @@ export async function apiFetchWithMeta<T>(
 
   // FormData phải để trình duyệt tự đặt Content-Type kèm boundary.
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+  const mergedHeaders = new Headers(headers);
+  if (!isFormData && !mergedHeaders.has('Content-Type')) {
+    mergedHeaders.set('Content-Type', 'application/json');
+  }
+  if (
+    typeof window !== 'undefined' &&
+    window.location?.origin &&
+    !mergedHeaders.has('X-Request-Origin')
+  ) {
+    mergedHeaders.set('X-Request-Origin', window.location.origin);
+  }
 
   let res: Response;
   try {
@@ -73,14 +114,28 @@ export async function apiFetchWithMeta<T>(
       ...rest,
       body,
       credentials: 'include', // gửi cookie httpOnly
-      headers: {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...headers,
-      },
+      headers: mergedHeaders,
     });
   } catch (err) {
     // fetch chỉ ném khi lỗi mạng thật (DNS, mất kết nối, CORS).
     throw ApiError.network(err instanceof Error ? err.message : undefined);
+  }
+
+  // Tự động xoay vòng refresh token khi gặp 401 trên các endpoint thông thường
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      try {
+        res = await fetch(buildUrl(path, query), {
+          ...rest,
+          body,
+          credentials: 'include',
+          headers: mergedHeaders,
+        });
+      } catch (err) {
+        throw ApiError.network(err instanceof Error ? err.message : undefined);
+      }
+    }
   }
 
   if (!res.ok) throw await ApiError.fromResponse(res);

@@ -8,6 +8,7 @@ import {
   type VenueMapQueryInput,
 } from "../../../../../packages/shared/src/schemas.js";
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -15,19 +16,28 @@ import {
   HttpCode,
   Param,
   Patch,
+  PayloadTooLargeException,
   Post,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiBody,
+  ApiConsumes,
   ApiCookieAuth,
   ApiHeader,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import {
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_BYTES,
+} from "../../../../../packages/shared/src/constants.js";
 import { bankAccountOpenApi } from "../payments/payments.swagger.js";
 import {
   addVenueImageSchema,
@@ -43,11 +53,27 @@ import { Roles } from "../../common/decorators/roles.decorator.js";
 import { CheckOwnership } from "../../common/decorators/check-ownership.decorator.js";
 import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
 import { VenuesService } from "./venues.service.js";
+import { invalidImage, type ProofFile } from "../uploads/proof-image.js";
+import { PublicStorage } from "../uploads/public-storage.js";
+
+const VenueImageUploadInterceptor = FileInterceptor("file", {
+  limits: { fileSize: UPLOAD_MAX_BYTES, files: 1 },
+  fileFilter: (_request, file, callback) =>
+    callback(
+      UPLOAD_ACCEPTED_TYPES.some((type) => type === file.mimetype)
+        ? null
+        : invalidImage(),
+      true,
+    ),
+});
 
 @ApiTags("Venue Extensions")
 @Controller("venues")
 export class VenueExtensionsController {
-  constructor(private readonly service: VenuesService) {}
+  constructor(
+    private readonly service: VenuesService,
+    private readonly storage: PublicStorage,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "Tìm kiếm cơ sở thể thao (public)" })
@@ -69,25 +95,49 @@ export class VenueExtensionsController {
 
   @Post(":id/images")
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
+  @Roles("owner", "admin")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
+  @UseInterceptors(VenueImageUploadInterceptor)
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Thêm ảnh cho cơ sở" })
-  addImage(
+  @ApiConsumes("multipart/form-data", "application/json")
+  @ApiOperation({ summary: "[Owner/Admin] Thêm ảnh cho cơ sở (multipart file hoặc JSON url)" })
+  async addImage(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
+    @UploadedFile() file: ProofFile | undefined,
     @Body() body: unknown,
   ) {
+    if (file) {
+      if (file.size > UPLOAD_MAX_BYTES || file.buffer.length > UPLOAD_MAX_BYTES) {
+        throw new PayloadTooLargeException({
+          code: "FILE_TOO_LARGE",
+          message: "Ảnh cơ sở tối đa 5 MB.",
+        });
+      }
+      const imageUrl = await this.storage.saveVenueImage(id, file.buffer, file.mimetype);
+      const rawOrder =
+        body && typeof body === "object" && "sortOrder" in body
+          ? Number((body as { sortOrder?: unknown }).sortOrder)
+          : 0;
+      const sortOrder = Number.isInteger(rawOrder) && rawOrder >= 0 ? rawOrder : 0;
+      return this.service.addImage(user.id, id, imageUrl, sortOrder);
+    }
+    if (!body || typeof body !== "object" || !("url" in body)) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Vui lòng tải lên tệp ảnh (field 'file') hoặc truyền đường dẫn ảnh.",
+      });
+    }
     const input = parseBody(addVenueImageSchema, body);
     return this.service.addImage(user.id, id, input.url, input.sortOrder);
   }
 
   @Patch(":id/images/order")
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
+  @Roles("owner", "admin")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Sắp xếp lại thứ tự ảnh" })
+  @ApiOperation({ summary: "[Owner/Admin] Sắp xếp lại thứ tự ảnh" })
   reorderImages(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
@@ -100,10 +150,10 @@ export class VenueExtensionsController {
   @Delete(":id/images/:imageId")
   @HttpCode(204)
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
+  @Roles("owner", "admin")
+  @CheckOwnership("venue", "id", { allowAdmin: true })
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Xoá ảnh" })
+  @ApiOperation({ summary: "[Owner/Admin] Xoá ảnh" })
   deleteImage(
     @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,

@@ -155,7 +155,9 @@ export class AuthRequestGuard implements CanActivate {
       entry = { count: 0, until: now + 300_000 };
       this.attempts.set(key, entry);
     }
-    if (++entry.count > 10)
+    const maxAttempts =
+      Number(this.config.get<string | number>("AUTH_RATE_LIMIT_MAX")) || 20;
+    if (++entry.count > maxAttempts)
       throw new HttpException(
         {
           code: "RATE_LIMIT_EXCEEDED",

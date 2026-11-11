@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -7,15 +8,24 @@ import {
   Post,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
 import {
   ApiBody,
+  ApiConsumes,
   ApiCookieAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { decodeAvatar, type AvatarFile } from "../uploads/avatar-image.js";
+import { PublicStorage } from "../uploads/public-storage.js";
 
 import {
   changePasswordSchema,
@@ -55,9 +65,7 @@ const stringFields = (names: string[]) =>
 
 @ApiTags("Auth")
 @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
-@ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
 @ApiResponse({ status: 500, description: "INTERNAL_ERROR" })
-@UseGuards(AuthRequestGuard)
 @Controller("auth")
 export class AuthController {
   constructor(
@@ -66,6 +74,7 @@ export class AuthController {
   ) {}
 
   @Post("register")
+  @UseGuards(AuthRequestGuard)
   @ApiOperation({ summary: "Đăng ký Customer và gửi email xác thực" })
   @ApiBody({
     schema: {
@@ -85,12 +94,14 @@ export class AuthController {
     description: "Hồ sơ Customer; không cấp phiên tự động",
   })
   @ApiResponse({ status: 409, description: "EMAIL_ALREADY_EXISTS" })
+  @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
   register(@Body() body: unknown) {
     return this.auth.register(parseBody(registerSchema, body));
   }
 
   @Post("login")
   @HttpCode(200)
+  @UseGuards(AuthRequestGuard)
   @ApiOperation({ summary: "Đăng nhập bằng cookie httpOnly" })
   @ApiBody({
     schema: {
@@ -107,6 +118,7 @@ export class AuthController {
     description: "Hồ sơ user và Set-Cookie access_token/refresh_token",
   })
   @ApiResponse({ status: 401, description: "INVALID_CREDENTIALS" })
+  @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
   async login(
     @Body() body: unknown,
     @Res({ passthrough: true }) response: AuthResponse,
@@ -154,9 +166,11 @@ export class AuthController {
 
   @Post("forgot-password")
   @HttpCode(204)
+  @UseGuards(AuthRequestGuard)
   @ApiOperation({
     summary: "Yêu cầu đặt lại mật khẩu, không tiết lộ email tồn tại",
   })
+  @ApiResponse({ status: 429, description: "RATE_LIMIT_EXCEEDED" })
   @ApiBody({
     schema: {
       type: "object",
@@ -241,6 +255,7 @@ export class CurrentUserController {
   constructor(
     private readonly auth: AuthService,
     private readonly cookies: AuthCookies,
+    private readonly storage: PublicStorage,
   ) {}
 
   @Get("me")
@@ -255,6 +270,46 @@ export class CurrentUserController {
   @ApiResponse({ status: 403, description: "ACCOUNT_SUSPENDED hoặc FORBIDDEN" })
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
+  }
+
+  @Post("me/avatar")
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor("file", {
+      limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+      fileFilter: (_request, file, callback) =>
+        callback(
+          ["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)
+            ? null
+            : new BadRequestException({
+                code: "VALIDATION_ERROR",
+                message:
+                  "Định dạng tệp không được hỗ trợ. Vui lòng chọn ảnh JPG, PNG hoặc WebP.",
+              }),
+          true,
+        ),
+    }),
+  )
+  @ApiConsumes("multipart/form-data")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "Upload ảnh đại diện người dùng hiện tại" })
+  @ApiResponse({
+    status: 200,
+    description: "Hồ sơ người dùng sau khi cập nhật ảnh đại diện",
+  })
+  async uploadAvatar(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: AvatarFile | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        code: "VALIDATION_ERROR",
+        message: "Thiếu tệp ảnh đại diện.",
+      });
+    }
+    const webpBuffer = await decodeAvatar(file);
+    const avatarUrl = await this.storage.saveAvatar(user.id, webpBuffer, "image/webp");
+    return this.auth.updateAvatar(user.id, avatarUrl);
   }
 
   @Patch("me")

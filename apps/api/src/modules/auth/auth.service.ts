@@ -329,6 +329,14 @@ export class AuthService {
     );
   }
 
+  async updateAvatar(userId: string, avatarUrl: string): Promise<AuthenticatedUser> {
+    return this.repo.transaction(async (tx) => {
+      await this.requireActiveUser(userId, tx);
+      await this.repo.updateUser(tx, userId, { avatarUrl });
+      return this.requireActiveUser(userId, tx);
+    });
+  }
+
   async updateProfile(
     userId: string,
     dto: z.infer<typeof updateProfileSchema>,

@@ -258,6 +258,7 @@ const venueEditableFields = {
     lng: z.number().finite().min(-180).max(180),
     sportIds: z.array(uuidSchema),
     amenityIds: z.array(uuidSchema),
+    ownerId: uuidSchema.optional(),
 };
 
 export const createVenueSchema = z
@@ -367,12 +368,29 @@ export const ownerApplicationSchema = z.object({
     .max(200),
   phone: phoneSchema,
   address: z.string().trim().min(5, "Vui lòng nhập địa chỉ").max(500),
+  lat: z.number().min(-90).max(90).optional().nullable(),
+  lng: z.number().min(-180).max(180).optional().nullable(),
   note: z.string().trim().max(1000).optional(),
   taxCode: z
-    .string()
-    .trim()
-    .regex(/^\d{10}(\d{3})?$/, "Mã số thuế gồm 10 hoặc 13 chữ số")
+    .union([
+      z
+        .string()
+        .trim()
+        .regex(
+          /^(?:\d{10}|\d{12}|\d{13})$/,
+          "MST gồm 10 hoặc 13 chữ số, CCCD gồm 12 chữ số",
+        ),
+      z.literal(""),
+      z.null(),
+      z.undefined(),
+    ])
+    .transform((v) => (v ? v : undefined))
     .optional(),
+  bankBin: z.string().optional(),
+  bankName: z.string().optional(),
+  accountNo: z.string().optional(),
+  accountName: z.string().optional(),
+  idCardUrl: z.string().optional(),
 }).strict();
 
 export const rejectSchema = z.object({
@@ -559,7 +577,7 @@ export const ownerVenueQuerySchema = z.object(venuePageFields).strict();
 export const adminVenueQuerySchema = z
     .object({
         ...venuePageFields,
-        status: z.enum(VENUE_STATUSES).default("pending"),
+        status: z.enum(VENUE_STATUSES).optional(),
         q: z.string().trim().max(200).optional(),
     })
     .strict();
@@ -595,6 +613,9 @@ export const publicVenueSearchQuerySchema = z
     .object({
         q: z.string().trim().max(100).optional(),
         provinceId: uuidSchema.optional(),
+        provinceCode: z.string().optional(),
+        wardId: uuidSchema.optional(),
+        wardCode: z.string().optional(),
         districtId: uuidSchema.optional(),
         /**
          * FE gửi mã địa danh 2 cấp (tỉnh 2 số, phường/xã 5 số) vì bộ lọc địa
@@ -621,6 +642,9 @@ export const publicVenueSearchQuerySchema = z
 export const venueMapQuerySchema = z
     .object({
         provinceId: uuidSchema.optional(),
+        provinceCode: z.string().optional(),
+        wardId: uuidSchema.optional(),
+        wardCode: z.string().optional(),
         districtId: uuidSchema.optional(),
         sportId: uuidSchema.optional(),
         minLat: z.coerce.number().finite().min(-90).max(90).optional(),

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --loader ts-node/esm --no-warnings src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test": "pnpm run test:auth && pnpm run test:venues && pnpm run test:group1 && pnpm run test:bookings && pnpm run test:merge && pnpm run test:phase4-prerequisites && pnpm run test:phase4-foundation && pnpm run test:audit && pnpm run test:payments && pnpm run test:payment-review && pnpm run test:owner-applications && pnpm run test:users && pnpm run test:admin-reporting && pnpm run test:business-mail && pnpm run test:reviews && pnpm run test:google-oauth && pnpm run test:password-recovery && pnpm run test:contract",
+    "test": "pnpm run test:auth && pnpm run test:venues && pnpm run test:group1 && pnpm run test:merge && pnpm run test:phase4-prerequisites && pnpm run test:phase4-foundation && pnpm run test:audit && pnpm run test:payments && pnpm run test:payment-review && pnpm run test:owner-applications && pnpm run test:users && pnpm run test:admin-reporting && pnpm run test:business-mail && pnpm run test:reviews && pnpm run test:google-oauth && pnpm run test:password-recovery && pnpm run test:bookings && pnpm run test:contract && node -e \"\"",
+    "test:bookings": "node --loader ts-node/esm --no-warnings --test scripts/booking-rules.test.ts scripts/booking-api.test.ts",
     "test:payments": "node --loader ts-node/esm --no-warnings --test scripts/payment-api.test.ts scripts/proof-storage.test.ts",
     "test:audit": "node --loader ts-node/esm --no-warnings --test scripts/audit-api.test.ts",
     "test:phase4-foundation": "node --loader ts-node/esm --no-warnings --test scripts/phase4-foundation.test.ts",
@@ -21,7 +22,6 @@
     "test:jwt-auth-guard": "node --loader ts-node/esm --no-warnings --test scripts/jwt-auth-guard.test.ts",
     "test:permissions-decorators": "node --loader ts-node/esm --no-warnings --test scripts/permissions-decorators.test.ts",
     "test:http-security": "node --loader ts-node/esm --no-warnings --test scripts/http-security.test.ts",
-    "test:bookings": "node --loader ts-node/esm --no-warnings --test scripts/bookings-api.test.ts",
     "db:generate": "drizzle-kit generate --config ../../drizzle.config.ts",
     "db:migrate": "node --loader ts-node/esm --no-warnings scripts/migrate.ts",
     "db:seed": "node --loader ts-node/esm --no-warnings scripts/seed.ts",

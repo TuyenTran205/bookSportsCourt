@@ -1,19 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import type { MapCoordinates } from './VenueLocationMap';
+import type { MapCoordinates, VenueLocationMapProps } from './VenueLocationMap';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils/cn';
 
-export type { MapCoordinates } from './VenueLocationMap';
-
-interface VenueLocationMapProps {
-  center: MapCoordinates;
-  marker: MapCoordinates | null;
-  placingPin?: boolean;
-  onPlacePin?: (coordinates: MapCoordinates) => void;
-  className?: string;
-}
+export type { MapCoordinates, VenueLocationMapProps } from './VenueLocationMap';
 
 const DynamicVenueLocationMap = dynamic(
   () => import('./VenueLocationMap').then((module) => module.VenueLocationMap),

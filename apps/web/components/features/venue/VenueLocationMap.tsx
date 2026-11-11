@@ -4,6 +4,7 @@ import * as React from 'react';
 import L from 'leaflet';
 import type { LeafletMouseEvent } from 'leaflet';
 import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { Loader2, LocateFixed } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { TileResilienceProvider } from './map/TileResilienceContext';
 import { ResilientTileLayer } from './map/ResilientTileLayer';
@@ -11,11 +12,13 @@ import { MapResilienceControl } from './map/MapResilienceControl';
 
 export type MapCoordinates = [number, number];
 
-interface VenueLocationMapProps {
+export interface VenueLocationMapProps {
   center: MapCoordinates;
   marker: MapCoordinates | null;
-  placingPin?: boolean;
   onPlacePin?: (coordinates: MapCoordinates) => void;
+  onLocateMe?: () => void;
+  isLocatingMe?: boolean;
+  scrollWheelZoom?: boolean;
   className?: string;
 }
 
@@ -26,13 +29,10 @@ const locationPinIcon = L.divIcon({
   iconAnchor: [14, 34],
 });
 
-function MapClickHandler({
-  placingPin,
-  onPlacePin,
-}: Pick<VenueLocationMapProps, 'placingPin' | 'onPlacePin'>) {
+function MapClickHandler({ onPlacePin }: Pick<VenueLocationMapProps, 'onPlacePin'>) {
   useMapEvents({
     click(event: LeafletMouseEvent) {
-      if (placingPin) onPlacePin?.([event.latlng.lat, event.latlng.lng]);
+      onPlacePin?.([event.latlng.lat, event.latlng.lng]);
     },
   });
 
@@ -64,8 +64,10 @@ function MapViewport({ center, marker }: Pick<VenueLocationMapProps, 'center' | 
 export function VenueLocationMap({
   center,
   marker,
-  placingPin = false,
   onPlacePin,
+  onLocateMe,
+  isLocatingMe = false,
+  scrollWheelZoom = true,
   className,
 }: VenueLocationMapProps) {
   return (
@@ -73,7 +75,7 @@ export function VenueLocationMap({
       <div
         className={cn(
           'relative isolate z-0 size-full overflow-hidden rounded-btn',
-          placingPin && 'cursor-crosshair',
+          onPlacePin && 'cursor-crosshair',
           className,
         )}
       >
@@ -81,14 +83,35 @@ export function VenueLocationMap({
           center={marker ?? center}
           zoom={marker ? 16 : 13}
           maxZoom={19}
-          scrollWheelZoom={false}
+          scrollWheelZoom={scrollWheelZoom}
           className="size-full"
         >
           <ResilientTileLayer />
           <MapViewport center={center} marker={marker} />
-          <MapClickHandler placingPin={placingPin} onPlacePin={onPlacePin} />
+          <MapClickHandler onPlacePin={onPlacePin} />
           {marker && <Marker position={marker} icon={locationPinIcon} />}
         </MapContainer>
+
+        {onLocateMe && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onLocateMe();
+            }}
+            disabled={isLocatingMe}
+            className="absolute bottom-3 right-3 z-[1000] flex size-9 items-center justify-center rounded-btn border border-neutral-300 bg-white/95 backdrop-blur-xs shadow-md text-neutral-700 transition hover:bg-neutral-50 hover:text-primary-700 hover:border-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
+            title="Định vị vị trí của tôi"
+            aria-label="Định vị vị trí của tôi"
+          >
+            {isLocatingMe ? (
+              <Loader2 className="size-4 animate-spin text-primary-600" />
+            ) : (
+              <LocateFixed className="size-4 text-primary-700" />
+            )}
+          </button>
+        )}
 
         <MapResilienceControl />
       </div>

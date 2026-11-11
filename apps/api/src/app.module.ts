@@ -18,6 +18,8 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
 import { OwnerApplicationsModule } from "./modules/owner-applications/owner-applications.module.js";
 import { VenuesModule } from "./modules/venues/venues.module.js";
 import { SchedulesModule } from "./schedules/schedules.module.js";
+import { BookingsModule } from "./modules/bookings/bookings.module.js";
+import { FavoritesModule } from "./modules/favorites/favorites.module.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { validateConfig } from "./config/app-config.js";
 
@@ -43,10 +45,11 @@ import { validateConfig } from "./config/app-config.js";
     AuditModule,
     CatalogsModule,
     OwnerApplicationsModule,
+    NotificationsModule,
     VenuesModule,
     CourtsModule,
     BookingsModule,
-    NotificationsModule,
+    FavoritesModule,
     SchedulesModule,
   ],
 })

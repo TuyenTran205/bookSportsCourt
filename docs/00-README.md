@@ -1,6 +1,6 @@
 # 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.4.29 | **Cập nhật lần cuối:** 2026-11-08 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.4.30 | **Cập nhật lần cuối:** 2026-11-09 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -27,6 +27,7 @@
 | `17-report-outline.md` | Dàn ý báo cáo | Khi viết báo cáo |
 | `18-decision-log.md` | Nhật ký quyết định | Khi thêm dep/thay đổi lớn |
 | `implemented-apis.md` | Tổng hợp API thực tế đã triển khai | Khi tích hợp và tra cứu API hiện có |
+| `api-todo.md` | Danh mục toàn bộ API backend cần triển khai | Khi lập kế hoạch và triển khai các API còn thiếu |
 | `backend-roadmap.md` | Các giai đoạn BE và bước tiếp theo sau auth/phân quyền | Khi chọn issue và theo dõi phạm vi BE |
 | `backend-conflict-resolution.md` | Cách ghép hai nhánh backend, kiểm thử và giới hạn nghiệm thu | Khi review kết quả xử lý conflict ngày 2026-11-05 |
 | `bsc-014-implementation-plan.md` | Lộ trình từng bước cho Venue CRUD và Admin duyệt | Khi triển khai BSC-014 |
@@ -65,6 +66,7 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-11-09 | Tạo tài liệu `api-todo.md` tổng hợp 31 API REST còn thiếu, Socket.IO Gateway và bảng chuẩn hoá FE-BE. | `docs/api-todo.md`, `docs/00-README.md` |
 | 2026-11-08 | Gỡ đường dẫn cũ tới tài liệu và artifact Phase 4 đã chuyển đi; giữ nội dung nghiệp vụ, tiến độ và lịch sử thay đổi. | Mục lục và các tài liệu Markdown tham chiếu Phase 4 |
 | 2026-11-06 | Bước15: backend275/275/shared14/14, typecheck và compiler build đạt; xuất runtime candidate24 paths/25 operations, report pending refund, Postman33 request/13 body validate shared; bổ sung Swagger errors/build/API contract gate, ghi lint/toolchain/Phase2/provider/FE còn thiếu; chưa chốt OpenAPI-3 final | API build config/package, contract script/test/Postman exporter, controller metadata/CI, OpenAPI0.10.0/runtime/report/Postman, Bước15/progress/plan, docs10/11/API thực tế/roadmap/00 |
 | 2026-11-06 | Bước14 BSC-076: reuse API/AuthMail/auth_tokens, config/origin/password dưới khoá, clock DB, reset/session rollback và sanitized errors; backend274/274, shared14/14, typecheck đạt; smoke Resend thật được người dùng xác nhận inbox, FE còn chờ | Auth controller/service/repository/mail, password-recovery tests/business-mail/package, docs02/04/06/11, Bước14/progress/plan/business rules, roadmap/API thực tế/OpenAPI0.9.0, `00` |

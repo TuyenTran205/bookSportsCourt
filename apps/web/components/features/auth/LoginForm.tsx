@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAppRouter } from '@/lib/navigation/navigate';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, LogIn, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { loginSchema } from '@bsc/shared';
@@ -16,21 +16,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api/errors';
+import { googleAuthUrl } from '@/lib/api/endpoints/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { DEMO_PASSWORD } from '@/mocks/fixtures/users';
-
-const DEMO_ACCOUNTS = [
-  { label: 'Khách hàng', email: 'khach@example.com', role: 'customer' },
-  { label: 'Chủ sân', email: 'owner@example.com', role: 'owner' },
-  { label: 'Quản trị viên', email: 'admin@example.com', role: 'admin' },
-];
 
 /**
  * LoginForm – Màn hình Đăng nhập (CUS-01).
  *
  * Tính năng:
  * - Validate phía client bằng Zod `loginSchema` (@bsc/shared).
- * - Bộ chọn tài khoản demo nhanh cho đồ án: bấm 1 click tự điền tài khoản.
  * - Hiện/ẩn mật khẩu an toàn.
  * - Điều hướng thông minh theo tham số `?next=` hoặc theo vai trò sau đăng nhập.
  */
@@ -49,7 +42,6 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
@@ -85,12 +77,6 @@ export function LoginForm() {
     }
   };
 
-  const handleFillDemo = (email: string) => {
-    setValue('email', email, { shouldValidate: true });
-    setValue('password', DEMO_PASSWORD, { shouldValidate: true });
-    setServerError(null);
-  };
-
   return (
     <Card className="w-full max-w-md shadow-card">
       <CardHeader className="text-center">
@@ -99,27 +85,6 @@ export function LoginForm() {
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
-        {/* Bộ chọn tài khoản demo nhanh (Hỗ trợ báo cáo đồ án) */}
-        <div className="flex flex-col gap-2 rounded-btn border border-primary-200 bg-primary-50/50 p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary-800">
-            <Sparkles className="size-3.5" aria-hidden="true" />
-            <span>{tAuth('demoAccounts')}</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {DEMO_ACCOUNTS.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => handleFillDemo(acc.email)}
-                className="rounded-btn border border-primary-200 bg-white px-2.5 py-1 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-              >
-                {acc.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-primary-600">{tAuth('demoHint')}</p>
-        </div>
-
         {/* Thông báo lỗi từ server */}
         {serverError && (
           <div
@@ -223,8 +188,8 @@ export function LoginForm() {
           size="md"
           className="w-full"
           onClick={() => {
-            // Chuyển hướng sang Google Auth endpoint theo hợp đồng
-            window.location.href = '/api/v1/auth/google';
+            // Chuyển hướng sang Google Auth endpoint theo hợp đồng (HTTP 302)
+            window.location.href = googleAuthUrl();
           }}
         >
           <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">

@@ -28,6 +28,7 @@ import {
   cancellationPolicies,
   bookings,
   venuePaymentAccounts,
+  users,
 } from "../../database/schema/index.js";
 import type {
   AdminVenueQueryDto,
@@ -164,24 +165,69 @@ export class VenuesRepository {
         if (query.page > Math.ceil(total / query.limit))
           return { rows: [], total, sports: [], amenities: [] };
         const rows = await tx
-          .select()
+          .select({
+            id: venues.id,
+            ownerId: venues.ownerId,
+            ownerName: users.fullName,
+            slug: venues.slug,
+            name: venues.name,
+            description: venues.description,
+            address: venues.address,
+            provinceId: venues.provinceId,
+            wardId: venues.wardId,
+            districtId: venues.districtId,
+            lat: venues.lat,
+            lng: venues.lng,
+            coverUrl: venues.coverUrl,
+            status: venues.status,
+            rejectionReason: venues.rejectionReason,
+            createdAt: venues.createdAt,
+            updatedAt: venues.updatedAt,
+          })
           .from(venues)
+          .leftJoin(users, eq(users.id, venues.ownerId))
           .where(where)
           .orderBy(desc(venues.createdAt), desc(venues.id))
           .limit(query.limit)
           .offset((query.page - 1) * query.limit);
         const ids = rows.map((row) => row.id);
-        const sportLinks = await tx
-          .select()
+        const sportLinks = ids.length === 0 ? [] : await tx
+          .select({
+            venueId: venueSports.venueId,
+            sportId: venueSports.sportId,
+            name: sports.name,
+            slug: sports.slug,
+            icon: sports.icon,
+          })
           .from(venueSports)
+          .innerJoin(sports, eq(sports.id, venueSports.sportId))
           .where(inArray(venueSports.venueId, ids))
-          .orderBy(venueSports.sportId);
-        const amenityLinks = await tx
-          .select()
+          .orderBy(asc(sports.sortOrder), asc(sports.name));
+        const amenityLinks = ids.length === 0 ? [] : await tx
+          .select({
+            venueId: venueAmenities.venueId,
+            amenityId: venueAmenities.amenityId,
+            name: amenities.name,
+            slug: amenities.slug,
+            icon: amenities.icon,
+          })
           .from(venueAmenities)
+          .innerJoin(amenities, eq(amenities.id, venueAmenities.amenityId))
           .where(inArray(venueAmenities.venueId, ids))
-          .orderBy(venueAmenities.amenityId);
-        return { rows, total, sports: sportLinks, amenities: amenityLinks };
+          .orderBy(asc(amenities.sortOrder), asc(amenities.name));
+        const courtRows = ids.length === 0 ? [] : await tx
+          .select({
+            id: courts.id,
+            venueId: courts.venueId,
+            name: courts.name,
+            sportId: courts.sportId,
+            status: courts.status,
+            description: courts.description,
+          })
+          .from(courts)
+          .where(and(inArray(courts.venueId, ids), isNull(courts.deletedAt)))
+          .orderBy(asc(courts.sortOrder), asc(courts.name));
+        return { rows, total, sports: sportLinks, amenities: amenityLinks, courts: courtRows };
       },
       { isolationLevel: "repeatable read", accessMode: "read only" },
     );
@@ -201,10 +247,16 @@ export class VenuesRepository {
             ),
           );
         if (!venue) return undefined;
-        const areaRows = await tx
-          .select()
-          .from(areas)
-          .where(inArray(areas.id, [venue.provinceId, venue.districtId]));
+        const relevantAreaIds = [
+          venue.provinceId,
+          venue.wardId,
+          venue.districtId,
+        ].filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        );
+        const areaRows = relevantAreaIds.length
+          ? await tx.select().from(areas).where(inArray(areas.id, relevantAreaIds))
+          : [];
         const sportRows = await tx
           .select({
             id: sports.id,
@@ -322,23 +374,19 @@ export class VenuesRepository {
     return row ?? null;
   }
 
-  /**
-   * Quy đổi mã địa danh 2 cấp (tỉnh 2 số, phường/xã 5 số) sang `id` của bảng
-   * `areas`. Bảng `areas` hiện chưa có cột `code` (migration GSO code còn ở
-   * dạng spec), nên cầu nối là `slug` — danh mục dùng chung và seed đều dùng
-   * cùng quy ước slug (`ha-noi`, `ben-thanh`…).
-   */
-  async findAreaIdsBySlugs(slugs: string[]) {
-    if (slugs.length === 0) return [];
-    return this.db
-      .select({ id: areas.id, slug: areas.slug })
+  async findAreaByCode(code: string, type: "province" | "ward") {
+    const [row] = await this.db
+      .select({ id: areas.id })
       .from(areas)
-      .where(inArray(areas.slug, slugs));
+      .where(and(eq(areas.code, code), eq(areas.type, type)))
+      .limit(1);
+    return row ?? null;
   }
 
   async searchVenues(params: {
     q?: string;
     provinceId?: string;
+    wardId?: string;
     districtId?: string;
     sportIds?: string[];
     amenityIds?: string[];
@@ -362,6 +410,9 @@ export class VenuesRepository {
     }
     if (params.provinceId) {
       conditions.push(eq(venues.provinceId, params.provinceId));
+    }
+    if (params.wardId) {
+      conditions.push(eq(venues.wardId, params.wardId));
     }
     if (params.districtId) {
       conditions.push(eq(venues.districtId, params.districtId));
@@ -475,13 +526,20 @@ export class VenuesRepository {
     }
 
     const areaIds = [
-      ...new Set(rows.flatMap((row) => [row.provinceId, row.districtId])),
+      ...new Set(
+        rows
+          .flatMap((row) => [row.provinceId, row.wardId, row.districtId])
+          .filter(
+            (id): id is string => typeof id === "string" && id.length > 0,
+          ),
+      ),
     ];
     const locations = areaIds.length
       ? await this.db.select().from(areas).where(inArray(areas.id, areaIds))
       : [];
     const enriched = rows.map((row) => {
       const province = locations.find((area) => area.id === row.provinceId);
+      const ward = locations.find((area) => area.id === row.wardId);
       const district = locations.find((area) => area.id === row.districtId);
       return {
         id: row.id,
@@ -491,12 +549,22 @@ export class VenuesRepository {
         province: province
           ? { id: province.id, name: province.name, slug: province.slug }
           : null,
+        ward: ward
+          ? {
+              id: ward.id,
+              code: ward.code ?? undefined,
+              name: ward.name,
+              slug: ward.slug,
+              type: "ward" as const,
+              parentId: ward.parentId,
+            }
+          : null,
         district: district
           ? {
               id: district.id,
               name: district.name,
               slug: district.slug,
-              provinceId: district.parentId,
+              provinceId: district.parentId ?? "",
             }
           : null,
         lat: row.lat === null ? null : Number(row.lat),
@@ -523,6 +591,7 @@ export class VenuesRepository {
 
   async getMapVenues(filters?: {
     provinceId?: string;
+    wardId?: string;
     districtId?: string;
     sportIds?: string[];
     minLat?: number;
@@ -539,6 +608,9 @@ export class VenuesRepository {
 
     if (filters?.provinceId) {
       conditions.push(eq(venues.provinceId, filters.provinceId));
+    }
+    if (filters?.wardId) {
+      conditions.push(eq(venues.wardId, filters.wardId));
     }
     if (filters?.districtId) {
       conditions.push(eq(venues.districtId, filters.districtId));

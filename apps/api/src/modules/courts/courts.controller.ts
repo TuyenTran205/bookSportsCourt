@@ -8,10 +8,12 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { ApiCookieAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
+  blackoutSchema,
   createCourtSchema,
   pricingRuleSchema,
   updateCourtSchema,
@@ -101,8 +103,40 @@ export class CourtsController {
     @Param("id") id: string,
     @Body() body: unknown,
   ) {
-    const input = parseBody(updateOpeningHoursSchema, body);
+    const rawHours =
+      body && typeof body === "object" && "hours" in body
+        ? (body as { hours: unknown }).hours
+        : body;
+    const input = parseBody(updateOpeningHoursSchema, rawHours);
     return this.service.updateOpeningHours(id, input);
+  }
+
+  @Get("owner/venues/:id/opening-hours")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("venue", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xem giờ mở cửa của cơ sở" })
+  getVenueOpeningHours(@Param("id") venueId: string) {
+    return this.service.getVenueOpeningHours(venueId);
+  }
+
+  @Put("owner/venues/:id/opening-hours")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("venue", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Cập nhật giờ mở cửa đồng loạt cho cơ sở" })
+  updateVenueOpeningHours(
+    @Param("id") venueId: string,
+    @Body() body: unknown,
+  ) {
+    const rawHours =
+      body && typeof body === "object" && "hours" in body
+        ? (body as { hours: unknown }).hours
+        : body;
+    const input = parseBody(updateOpeningHoursSchema, rawHours);
+    return this.service.updateVenueOpeningHours(venueId, input);
   }
 
   // ===== Pricing Rules =====
@@ -156,43 +190,12 @@ export class CourtsController {
     return this.service.deletePricingRule(courtId, ruleId);
   }
 
-  // ── Cấu hình cấp cơ sở (màn "Kênh chủ sân" của FE) ──────────────────────
-  // FE cấu hình giờ mở cửa / bảng giá một lần cho cả cơ sở, trong khi DB lưu
-  // theo từng sân con. Các route dưới đây làm cầu nối: đọc theo sân chính và
-  // ghi áp dụng cho toàn bộ sân con (xem CourtsService).
-
-  @Get("owner/venues/:id/opening-hours")
-  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
-  @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Giờ mở cửa cấp cơ sở" })
-  getVenueOpeningHours(@Param("id") venueId: string) {
-    return this.service.getVenueOpeningHours(venueId);
-  }
-
-  @Put("owner/venues/:id/opening-hours")
-  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
-  @Roles("owner")
-  @CheckOwnership("venue", "id")
-  @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Thay toàn bộ giờ mở cửa cấp cơ sở" })
-  replaceVenueOpeningHours(
-    @Param("id") venueId: string,
-    @Body() body: unknown,
-  ) {
-    const input = updateOpeningHoursSchema.parse(
-      (body as { hours?: unknown } | null)?.hours ?? body,
-    );
-    return this.service.updateVenueOpeningHours(venueId, input);
-  }
-
   @Get("owner/venues/:id/pricing-rules")
   @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
   @Roles("owner")
   @CheckOwnership("venue", "id")
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Bảng giá cấp cơ sở" })
+  @ApiOperation({ summary: "[Owner] Xem bảng giá của cơ sở" })
   getVenuePricingRules(@Param("id") venueId: string) {
     return this.service.getVenuePricingRules(venueId);
   }
@@ -202,22 +205,66 @@ export class CourtsController {
   @Roles("owner")
   @CheckOwnership("venue", "id")
   @ApiCookieAuth("access_token")
-  @ApiOperation({ summary: "[Owner] Thêm khung giá cho toàn bộ sân con" })
-  createVenuePricingRule(@Param("id") venueId: string, @Body() body: unknown) {
-    return this.service.createVenuePricingRule(venueId, parseBody(pricingRuleSchema, body));
+  @ApiOperation({ summary: "[Owner] Tạo khung giá cho cơ sở" })
+  createVenuePricingRule(
+    @Param("id") venueId: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseBody(pricingRuleSchema, body);
+    return this.service.createVenuePricingRule(venueId, input);
   }
 
-  /** FE gọi `DELETE /owner/pricing-rules/:ruleId` — quyền sở hữu suy ra từ sân. */
   @Delete("owner/pricing-rules/:ruleId")
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles("owner", "admin")
-  @ApiCookieAuth("access_token")
   @HttpCode(204)
-  @ApiOperation({ summary: "[Owner] Xoá khung giá (áp cho mọi sân con)" })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("owner")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xoá khung giá theo ruleId" })
   deleteOwnerPricingRule(
-    @Param("ruleId") ruleId: string,
     @CurrentUser() user: AuthenticatedUser,
+    @Param("ruleId") ruleId: string,
   ) {
-    return this.service.deleteOwnerPricingRule(user.id, ruleId);
+    return this.service.deletePricingRuleByOwner(user.id, ruleId);
+  }
+
+  // ===== Blackouts =====
+
+  @Post("courts/:id/blackouts")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("court", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Tạo khoảng khoá bảo trì trên sân" })
+  createBlackout(@Param("id") id: string, @Body() body: unknown) {
+    const input = parseBody(blackoutSchema, body);
+    return this.service.createBlackout(id, input);
+  }
+
+  @Get("courts/:id/blackouts")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("court", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Danh sách khoảng khoá bảo trì của sân" })
+  listBlackouts(
+    @Param("id") id: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ) {
+    return this.service.listBlackouts(id, from, to);
+  }
+
+  @Delete("courts/:id/blackouts/:blackoutId")
+  @UseGuards(JwtAuthGuard, RolesGuard, OwnershipGuard)
+  @Roles("owner")
+  @CheckOwnership("court", "id")
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "[Owner] Xoá khoảng khoá bảo trì (mở khoá sân)" })
+  async deleteBlackout(
+    @Param("id") id: string,
+    @Param("blackoutId") blackoutId: string,
+  ) {
+    await this.service.deleteBlackout(id, blackoutId);
+    return { success: true };
   }
 }

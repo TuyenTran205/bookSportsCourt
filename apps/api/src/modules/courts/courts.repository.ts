@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   InjectDrizzle,
   type DrizzleDb,
 } from "../../database/database.module.js";
 import {
+  blackoutPeriods,
   courts,
   openingHours,
   pricingRules,
@@ -16,6 +17,47 @@ import type {
   UpdateCourtInput,
   UpdateOpeningHoursInput,
 } from "../../../../../packages/shared/src/schemas.js";
+
+function mapOpeningHoursForCourt(
+  courtId: string,
+  venueId: string,
+  rows: Array<typeof openingHours.$inferSelect>,
+  asVenueDefault = false,
+) {
+  return [1, 2, 3, 4, 5, 6, 0].map((weekday) => {
+    const found = rows.find((r) => r.dayOfWeek === weekday);
+    return {
+      id: found?.id ?? `${courtId}-oh-${weekday}`,
+      venueId,
+      courtId: asVenueDefault ? null : courtId,
+      weekday,
+      dayOfWeek: weekday,
+      openTime: found ? found.openTime.slice(0, 5) : "06:00",
+      closeTime: found ? found.closeTime.slice(0, 5) : "22:00",
+      isClosed: !found,
+    };
+  });
+}
+
+function mapPricingRuleRow(
+  row: typeof pricingRules.$inferSelect,
+  venueId: string,
+) {
+  return {
+    id: row.id,
+    venueId,
+    courtId: row.courtId,
+    label: row.name,
+    name: row.name,
+    weekdays: row.dayOfWeek,
+    dayOfWeek: row.dayOfWeek,
+    startTime: row.startTime.slice(0, 5),
+    endTime: row.endTime.slice(0, 5),
+    pricePerSlot: row.pricePerSlot,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
 
 @Injectable()
 export class CourtsRepository {
@@ -111,15 +153,20 @@ export class CourtsRepository {
   }
 
   // Opening Hours
-  async getOpeningHours(courtId: string) {
-    return this.db
+  async getOpeningHours(courtId: string, venueId = "") {
+    const rows = await this.db
       .select()
       .from(openingHours)
       .where(eq(openingHours.courtId, courtId))
       .orderBy(asc(openingHours.dayOfWeek));
+    return mapOpeningHoursForCourt(courtId, venueId, rows, false);
   }
 
-  async upsertOpeningHours(courtId: string, hours: UpdateOpeningHoursInput) {
+  async upsertOpeningHours(
+    courtId: string,
+    hours: UpdateOpeningHoursInput,
+    venueId = "",
+  ) {
     return this.db.transaction(async (tx) => {
       await tx
         .delete(openingHours)
@@ -138,21 +185,57 @@ export class CourtsRepository {
         await tx.insert(openingHours).values(rowsToInsert);
       }
 
-      return tx
+      const rows = await tx
         .select()
         .from(openingHours)
         .where(eq(openingHours.courtId, courtId))
         .orderBy(asc(openingHours.dayOfWeek));
+      return mapOpeningHoursForCourt(courtId, venueId, rows, false);
     });
   }
 
+  async getVenueOpeningHours(venueId: string) {
+    const venueCourts = await this.findCourtsByVenueId(venueId, false);
+    const firstCourt = venueCourts[0];
+    if (!firstCourt) {
+      return mapOpeningHoursForCourt(venueId, venueId, [], true);
+    }
+    const rows = await this.db
+      .select()
+      .from(openingHours)
+      .where(eq(openingHours.courtId, firstCourt.id))
+      .orderBy(asc(openingHours.dayOfWeek));
+    return mapOpeningHoursForCourt(firstCourt.id, venueId, rows, true);
+  }
+
+  async upsertVenueOpeningHours(venueId: string, hours: UpdateOpeningHoursInput) {
+    const venueCourts = await this.findCourtsByVenueId(venueId, false);
+    for (const court of venueCourts) {
+      await this.upsertOpeningHours(court.id, hours, venueId);
+    }
+    return this.getVenueOpeningHours(venueId);
+  }
+
   // Pricing Rules
-  async getPricingRules(courtId: string) {
-    return this.db
+  async getPricingRules(courtId: string, venueId = "") {
+    const rows = await this.db
       .select()
       .from(pricingRules)
       .where(eq(pricingRules.courtId, courtId))
       .orderBy(asc(pricingRules.startTime));
+    return rows.map((row) => mapPricingRuleRow(row, venueId));
+  }
+
+  async getVenuePricingRules(venueId: string) {
+    const venueCourts = await this.findCourtsByVenueId(venueId, false);
+    const courtIds = venueCourts.map((c) => c.id);
+    if (courtIds.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(pricingRules)
+      .where(inArray(pricingRules.courtId, courtIds))
+      .orderBy(asc(pricingRules.startTime));
+    return rows.map((row) => mapPricingRuleRow(row, venueId));
   }
 
   async findPricingRuleById(courtId: string, ruleId: string) {
@@ -164,7 +247,24 @@ export class CourtsRepository {
     return row ?? null;
   }
 
-  async createPricingRule(courtId: string, input: PricingRuleInput) {
+  async findPricingRuleByRuleId(ruleId: string) {
+    const [row] = await this.db
+      .select({
+        rule: pricingRules,
+        venueId: courts.venueId,
+      })
+      .from(pricingRules)
+      .innerJoin(courts, eq(courts.id, pricingRules.courtId))
+      .where(eq(pricingRules.id, ruleId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async createPricingRule(
+    courtId: string,
+    input: PricingRuleInput,
+    venueId = "",
+  ) {
     const [row] = await this.db
       .insert(pricingRules)
       .values({
@@ -176,13 +276,14 @@ export class CourtsRepository {
         dayOfWeek: input.weekdays,
       })
       .returning();
-    return row;
+    return row ? mapPricingRuleRow(row, venueId) : null;
   }
 
   async updatePricingRule(
     courtId: string,
     ruleId: string,
     input: Partial<PricingRuleInput>,
+    venueId = "",
   ) {
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
@@ -201,7 +302,7 @@ export class CourtsRepository {
         and(eq(pricingRules.id, ruleId), eq(pricingRules.courtId, courtId)),
       )
       .returning();
-    return row ?? null;
+    return row ? mapPricingRuleRow(row, venueId) : null;
   }
 
   async deletePricingRule(courtId: string, ruleId: string) {
@@ -214,120 +315,79 @@ export class CourtsRepository {
     return row ?? null;
   }
 
-  // ===== Phạm vi cơ sở (dùng cho màn "Kênh chủ sân") =====
+  // ===== Blackouts =====
 
-  /**
-   * DB lưu giờ mở cửa / bảng giá theo từng sân con (docs/04), còn UI chủ sân
-   * cấu hình một lần cho cả cơ sở. Vì vậy:
-   * - Đọc: lấy cấu hình của sân "chính" (sortOrder nhỏ nhất).
-   * - Ghi: áp dụng cho toàn bộ sân con còn hoạt động của cơ sở.
-   */
-  async findCourtIdsByVenueId(venueId: string) {
-    const rows = await this.db
-      .select({ id: courts.id })
-      .from(courts)
-      .where(and(eq(courts.venueId, venueId), isNull(courts.deletedAt)))
-      .orderBy(asc(courts.sortOrder), asc(courts.createdAt));
-    return rows.map((row) => row.id);
-  }
-
-  async findPrimaryCourtIdByVenueId(venueId: string) {
-    const [row] = await this.db
-      .select({ id: courts.id })
-      .from(courts)
-      .where(and(eq(courts.venueId, venueId), isNull(courts.deletedAt)))
-      .orderBy(asc(courts.sortOrder), asc(courts.createdAt))
-      .limit(1);
-    return row?.id ?? null;
-  }
-
-  async upsertOpeningHoursForCourts(
-    courtIds: string[],
-    hours: UpdateOpeningHoursInput,
+  async createBlackout(
+    courtId: string,
+    input: { start: string; end: string; reason?: string },
   ) {
-    const primaryCourtId = courtIds[0];
-    if (!primaryCourtId) return [];
-
-    return this.db.transaction(async (tx) => {
-      await tx
-        .delete(openingHours)
-        .where(inArray(openingHours.courtId, courtIds));
-
-      const rowsToInsert = hours
-        .filter((hour) => !hour.isClosed)
-        .flatMap((hour) =>
-          courtIds.map((courtId) => ({
-            courtId,
-            dayOfWeek: hour.weekday,
-            openTime: hour.openTime,
-            closeTime: hour.closeTime,
-          })),
-        );
-
-      if (rowsToInsert.length > 0) {
-        await tx.insert(openingHours).values(rowsToInsert);
-      }
-
-      return tx
-        .select()
-        .from(openingHours)
-        .where(eq(openingHours.courtId, primaryCourtId))
-        .orderBy(asc(openingHours.dayOfWeek));
-    });
-  }
-
-  async createPricingRuleForCourts(
-    courtIds: string[],
-    input: PricingRuleInput,
-  ) {
-    if (courtIds.length === 0) return [];
-    return this.db
-      .insert(pricingRules)
-      .values(
-        courtIds.map((courtId) => ({
-          courtId,
-          name: input.label,
-          pricePerSlot: input.pricePerSlot,
-          startTime: input.startTime,
-          endTime: input.endTime,
-          dayOfWeek: input.weekdays,
-        })),
-      )
-      .returning();
-  }
-
-  async findPricingRuleWithCourt(ruleId: string) {
     const [row] = await this.db
-      .select({
-        rule: pricingRules,
-        venueId: courts.venueId,
+      .insert(blackoutPeriods)
+      .values({
+        courtId,
+        during: sql`tstzrange(${input.start}::timestamptz, ${input.end}::timestamptz)`,
+        reason: input.reason ?? null,
       })
-      .from(pricingRules)
-      .innerJoin(courts, eq(pricingRules.courtId, courts.id))
-      .where(eq(pricingRules.id, ruleId))
-      .limit(1);
-    return row ?? null;
+      .returning();
+    return row
+      ? {
+          id: row.id,
+          courtId: row.courtId,
+          start: input.start,
+          end: input.end,
+          reason: row.reason ?? undefined,
+          createdAt: row.createdAt
+            ? new Date(row.createdAt).toISOString()
+            : new Date().toISOString(),
+        }
+      : null;
   }
 
-  /**
-   * Xoá khung giá ở phạm vi cơ sở: xoá bản ghi được chọn và các bản sao cùng
-   * tên/khung giờ ở những sân con khác (do thao tác tạo ở cấp cơ sở sinh ra).
-   */
-  async deletePricingRuleAcrossVenue(
-    venueId: string,
-    signature: { name: string; startTime: string; endTime: string },
-  ) {
-    const courtIds = await this.findCourtIdsByVenueId(venueId);
-    if (courtIds.length === 0) return null;
+  async listBlackouts(courtId: string, from?: string, to?: string) {
+    const conditions = [eq(blackoutPeriods.courtId, courtId)];
+    if (from && to) {
+      conditions.push(
+        sql`${blackoutPeriods.during} && tstzrange(${from}::timestamptz, ${to}::timestamptz)`,
+      );
+    } else if (from) {
+      conditions.push(
+        sql`upper(${blackoutPeriods.during}) >= ${from}::timestamptz`,
+      );
+    } else if (to) {
+      conditions.push(
+        sql`lower(${blackoutPeriods.during}) <= ${to}::timestamptz`,
+      );
+    }
+    const rows = await this.db
+      .select({
+        id: blackoutPeriods.id,
+        courtId: blackoutPeriods.courtId,
+        reason: blackoutPeriods.reason,
+        start: sql<Date>`lower(${blackoutPeriods.during})`,
+        end: sql<Date>`upper(${blackoutPeriods.during})`,
+        createdAt: blackoutPeriods.createdAt,
+      })
+      .from(blackoutPeriods)
+      .where(and(...conditions))
+      .orderBy(asc(sql`lower(${blackoutPeriods.during})`));
 
+    return rows.map((r) => ({
+      id: r.id,
+      courtId: r.courtId,
+      start: r.start ? new Date(r.start).toISOString() : "",
+      end: r.end ? new Date(r.end).toISOString() : "",
+      reason: r.reason ?? undefined,
+      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : undefined,
+    }));
+  }
+
+  async deleteBlackout(courtId: string, blackoutId: string) {
     const [row] = await this.db
-      .delete(pricingRules)
+      .delete(blackoutPeriods)
       .where(
         and(
-          inArray(pricingRules.courtId, courtIds),
-          eq(pricingRules.name, signature.name),
-          eq(pricingRules.startTime, signature.startTime),
-          eq(pricingRules.endTime, signature.endTime),
+          eq(blackoutPeriods.id, blackoutId),
+          eq(blackoutPeriods.courtId, courtId),
         ),
       )
       .returning();

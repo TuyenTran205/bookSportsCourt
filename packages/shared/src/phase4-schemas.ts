@@ -35,7 +35,12 @@ function validRange(value: { from?: string; to?: string }, inclusive: boolean): 
   return elapsed >= (inclusive ? 0 : 1) && elapsed <= (inclusive ? 365 : 366) * 86400000;
 }
 export const adminBookingQuerySchema = z.object({
-  ...venuePageFields, ...dateFields, status: z.enum(BOOKING_STATUSES).optional(), venueId: phase4IdSchema.optional(), customerId: phase4IdSchema.optional(),
+  ...venuePageFields,
+  ...dateFields,
+  status: z.enum(BOOKING_STATUSES).optional(),
+  venueId: phase4IdSchema.optional(),
+  customerId: phase4IdSchema.optional(),
+  q: z.string().trim().max(200).optional(),
 }).strict().refine((value) => validRange(value, true), 'Both dates required, ordered, at most 366 inclusive days');
 export const adminStatsQuerySchema = z.object({ ...dateFields, groupBy: z.enum(['day', 'week', 'month']).default('day') }).strict()
   .refine((value) => validRange(value, true), 'Both dates required, ordered, at most 366 inclusive days');
@@ -45,8 +50,16 @@ export const adminAuditQuerySchema = z.object({
 }).strict().refine((value) => validRange(value, false), 'Both timestamps required, increasing, at most 366 days');
 export const publicReviewQuerySchema = z.object(venuePageFields).strict();
 export const adminReviewQuerySchema = z.object({
-  ...venuePageFields, venueId: phase4IdSchema.optional(),
+  ...venuePageFields,
+  venueId: phase4IdSchema.optional(),
   isVisible: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  rating: z
+    .union([
+      z.number().int().min(1).max(5),
+      z.enum(['1', '2', '3', '4', '5']).transform((value) => Number(value)),
+    ])
+    .optional(),
+  q: z.string().trim().max(200).optional(),
 }).strict();
 export const reviewVisibilitySchema = z.object({ isVisible: z.boolean() }).strict();
 export const googleCallbackQuerySchema = z.object({
@@ -54,6 +67,7 @@ export const googleCallbackQuerySchema = z.object({
   error: z.string().min(1).max(200).optional(), error_description: z.string().max(1000).optional(),
   scope: z.string().max(2048).optional(), authuser: z.string().max(100).optional(),
   prompt: z.string().max(100).optional(), hd: z.string().max(255).optional(),
+  iss: z.string().max(255).optional(),
 }).strict().refine((value) => (value.code !== undefined) !== (value.error !== undefined), 'Exactly one code or error required');
 
 // DTO aliases derive from the shared validation source; no controller-specific enums.

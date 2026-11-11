@@ -52,6 +52,46 @@ test("Group 1 CatalogsService validates slug uniqueness and resource usage", asy
         err.status === 400 && err.response?.code === "VALIDATION_ERROR",
     );
   });
+
+  await t.test("getProvinces returns provinces list from repository", async () => {
+    const mockRepo: any = {
+      findAllProvinces: async () => [
+        { id: "p1", code: "01", name: "Thành phố Hà Nội", slug: "ha-noi" },
+      ],
+    };
+    const service = new CatalogsService(mockRepo);
+    const result = await service.getProvinces();
+    assert.equal(result.length, 1);
+    assert.equal(result[0]?.code, "01");
+  });
+
+  await t.test("getWardsByProvince throws 404 when province not found", async () => {
+    const mockRepo: any = {
+      findProvinceByCodeOrId: async () => null,
+    };
+    const service = new CatalogsService(mockRepo);
+    await assert.rejects(
+      async () => service.getWardsByProvince("999"),
+      (err: any) => err.status === 404 && err.response?.code === "NOT_FOUND",
+    );
+  });
+
+  await t.test("getWardsByProvince returns wards when province exists", async () => {
+    const mockRepo: any = {
+      findProvinceByCodeOrId: async (codeOrId: string) => ({
+        id: "p79",
+        code: "79",
+        name: "Thành phố Hồ Chí Minh",
+      }),
+      findWardsByProvince: async (provinceId: string, provinceCode: string) => [
+        { id: "w1", code: "00001", name: "Phường Tân Phú", slug: "tan-phu", type: "ward", provinceCode, provinceId },
+      ],
+    };
+    const service = new CatalogsService(mockRepo);
+    const wards = await service.getWardsByProvince("79");
+    assert.equal(wards.length, 1);
+    assert.equal(wards[0]?.provinceCode, "79");
+  });
 });
 
 test("Owner application decisions enforce role, terminal retry and inactive target rules", async (t) => {

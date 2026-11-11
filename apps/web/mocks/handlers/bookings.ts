@@ -431,6 +431,58 @@ export const bookingHandlers = [
   }),
 
   /** Khách tự huỷ — hoàn tiền theo chính sách của cơ sở. */
+  http.patch('/api/v1/bookings/:id/cancel', async ({ params, request }) => {
+    await simulateLatency(400);
+    const record = db.bookings.find((b) => b.booking.id === params.id);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+
+    if (['completed', 'cancelled', 'expired', 'no_show'].includes(record.booking.status)) {
+      return err(409, 'ALREADY_EXISTS', 'Đơn này không thể huỷ ở trạng thái hiện tại');
+    }
+
+    const body = (await request.json().catch(() => ({}))) as { reason?: string };
+    const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+    const venue = venues.find((v) => v.id === venueId);
+    const policy = venue?.cancellationPolicy;
+
+    // Hoàn theo chính sách: huỷ đủ sớm thì hoàn theo %, muộn quá thì mất cọc.
+    let refundAmount = 0;
+    if (policy && record.payment?.status === 'completed') {
+      const hoursUntil = (new Date(record.booking.during.start).getTime() - Date.now()) / 3_600_000;
+      refundAmount =
+        hoursUntil >= policy.cancelBeforeHours
+          ? Math.round((record.payment.amount * policy.refundPercent) / 100)
+          : 0;
+    }
+
+    record.booking.status = 'cancelled';
+    record.booking.cancelledAt = new Date().toISOString();
+    record.booking.cancelReason = body.reason ?? 'Khách tự huỷ';
+    record.booking.expiresAt = null;
+    if (record.payment && refundAmount > 0) {
+      record.payment.status = 'refunded';
+      record.payment.refundAmount = refundAmount;
+    }
+    persist();
+
+    const ownerId = db.venues.find((item) => item.id === venueId)?.ownerId;
+    if (ownerId) {
+      createMockNotification(ownerId, {
+        type: 'booking_cancelled',
+        title: 'Khách đã huỷ đơn đặt sân',
+        body: `Đơn tại ${venue?.name ?? 'cơ sở của bạn'} đã được huỷ.`,
+        payload: { bookingId: record.booking.id },
+      });
+      publish({
+        type: 'booking_cancelled',
+        targetUserId: ownerId,
+        payload: { bookingId: record.booking.id, reason: record.booking.cancelReason },
+      });
+    }
+    broadcastSlots(record.booking.courtId, record.booking.during.start.slice(0, 10));
+
+    return ok(toDetail(record));
+  }),
   http.post('/api/v1/bookings/:id/cancel', async ({ params, request }) => {
     await simulateLatency(400);
     const record = db.bookings.find((b) => b.booking.id === params.id);
@@ -486,6 +538,42 @@ export const bookingHandlers = [
     }
 
     return ok({ booking: record.booking, refundAmount });
+  }),
+
+  /** Đánh giá theo chuẩn Hợp đồng API POST /reviews (CUS-12). */
+  http.post('/api/v1/reviews', async ({ request }) => {
+    await simulateLatency(400);
+    const user = currentUser();
+    if (!user) return err(401, 'UNAUTHORIZED', 'Vui lòng đăng nhập để đánh giá');
+
+    const body = (await request.json()) as { bookingId: string; rating: number; comment?: string };
+    const record = db.bookings.find((b) => b.booking.id === body.bookingId);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+    if (record.booking.status !== 'completed') {
+      return err(409, 'ALREADY_EXISTS', 'Chỉ có thể đánh giá sau khi đã hoàn tất lượt chơi');
+    }
+    if (record.review) {
+      return err(409, 'ALREADY_EXISTS', 'Bạn đã đánh giá lượt chơi này rồi');
+    }
+
+    const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+    const review: Review = {
+      id: newId(),
+      bookingId: record.booking.id,
+      venueId,
+      customerId: user.id,
+      rating: body.rating,
+      comment: body.comment ?? null,
+      ownerReply: null,
+      ownerRepliedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+
+    record.review = review;
+    db.reviews.unshift(review);
+    persist();
+
+    return ok(review, 201);
   }),
 
   /** Đánh giá sau khi đã chơi xong. */
@@ -575,6 +663,11 @@ export const bookingHandlers = [
       lng: v.lng,
     }));
     return ok(favorites);
+  }),
+
+  http.put('/api/v1/favorites/:venueId', async ({ params }) => {
+    await simulateLatency(200);
+    return ok({ venueId: params.venueId, favorited: true });
   }),
 
   http.post('/api/v1/favorites/:venueId', async ({ params }) => {

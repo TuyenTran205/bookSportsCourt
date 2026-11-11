@@ -9,7 +9,7 @@ import type {
   User,
 } from '@bsc/shared';
 
-import { apiFetch, jsonBody } from '../client';
+import { API_BASE_URL, API_PREFIX, apiFetch, jsonBody } from '../client';
 
 /**
  * Endpoint module – Auth & hồ sơ.
@@ -72,6 +72,14 @@ export function logout() {
   return apiFetch<{ success: true }>('/auth/logout', { method: 'POST' });
 }
 
+/**
+ * Xoay vòng refresh token khi access token hết hạn.
+ * Trả về hồ sơ user và đặt cặp cookie mới qua Set-Cookie.
+ */
+export function refresh() {
+  return apiFetch<AuthResult | User>('/auth/refresh', { method: 'POST' }).then(toAuthResult);
+}
+
 /** Ném `ApiError` 401 khi chưa đăng nhập — dùng làm nguồn sự thật cho phiên. */
 export function me() {
   return apiFetch<MeResult | User>('/users/me').then(toMeResult);
@@ -128,13 +136,13 @@ export function updateProfile(input: UpdateProfileInput) {
  */
 export function uploadAvatar(file: File) {
   const form = new FormData();
-  form.append('avatar', file);
+  form.append('file', file);
   return apiFetch<AuthResult | User>('/users/me/avatar', { method: 'POST', body: form }).then(
     toAuthResult,
   );
 }
 
-/** Trả URL chuyển hướng sang Google OAuth. */
-export function googleAuthUrl() {
-  return apiFetch<{ url: string }>('/auth/google');
+/** Trả URL chuyển hướng trực tiếp sang Google OAuth (HTTP 302 tại Backend). */
+export function googleAuthUrl(): string {
+  return `${API_BASE_URL}${API_PREFIX}/auth/google`;
 }

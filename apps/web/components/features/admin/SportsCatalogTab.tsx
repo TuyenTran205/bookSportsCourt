@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api/errors';
 import { useDeleteSport, useSportsList } from '@/lib/hooks/useAdminCatalogs';
+import { renderCatalogIcon } from './catalog-icons';
 
 export function SportsCatalogTab() {
   const tCommon = useTranslations('common');
@@ -36,7 +37,7 @@ export function SportsCatalogTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Danh sách các bộ môn thể thao được hỗ trợ trên nền tảng ({sports.length} môn).
         </p>
         <Button onClick={() => setDialogOpen(true)} size="sm">
@@ -69,27 +70,37 @@ export function SportsCatalogTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase text-neutral-500">
+                <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-400">
                   <th className="py-3 px-4">Tên môn thể thao</th>
-                  <th className="py-3 px-4">Đường dẫn tĩnh (Slug)</th>
-                  <th className="py-3 px-4">Mã biểu tượng (Icon)</th>
+                  <th className="py-3 px-4">Số cơ sở kinh doanh</th>
                   <th className="py-3 px-4 text-right">Hành động</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {sports.map((sport) => (
-                  <tr key={sport.id} className="hover:bg-neutral-50/50">
+                  <tr key={sport.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 items-center justify-center rounded-btn bg-primary-50 text-primary-600">
-                          <Activity className="size-4" />
+                        <div className="flex size-8 items-center justify-center rounded-btn bg-primary-50 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
+                          {renderCatalogIcon(sport.icon, Activity)}
                         </div>
-                        <span className="font-semibold text-neutral-900">{sport.name}</span>
+                        <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                          {sport.name}
+                        </span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-xs font-mono text-neutral-500">{sport.slug}</td>
-                    <td className="py-3 px-4 text-xs font-mono text-neutral-600">
-                      {sport.icon ?? 'activity'}
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          (sport.venueCount ?? 0) > 0
+                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'
+                            : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+                        }`}
+                      >
+                        {(sport.venueCount ?? 0) > 0
+                          ? `${sport.venueCount} cơ sở`
+                          : 'Chưa có cơ sở nào'}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <Button
