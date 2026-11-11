@@ -1071,6 +1071,68 @@
         "currencyInfo": "Tiền tệ: VND (₫)",
         "timezoneInfo": "Múi giờ: Asia/Ho_Chi_Minh (GMT+7)"
     },
+    "footerPages": {
+        "booking-guide": {
+            "title": "Hướng dẫn đặt sân",
+            "intro": "Đặt sân trực tuyến minh bạch, theo dõi trạng thái theo thời gian thực và nhận xác nhận ngay sau khi thanh toán cọc.",
+            "section1Heading": "1. Tìm và chọn sân",
+            "section1Body": "Tìm theo môn thể thao, khu vực hoặc tên cơ sở. Mở trang chi tiết để xem giá, tiện ích, đánh giá và các block 30 phút còn trống.",
+            "section2Heading": "2. Giữ chỗ và thanh toán",
+            "section2Body": "Chọn các block liên tiếp rồi tạo giữ chỗ. Hệ thống giữ slot trong 10 phút; hãy chuyển đúng số tiền cọc và nội dung để được đối soát tự động.",
+            "section3Heading": "3. Theo dõi đơn đặt",
+            "section3Body": "Mở Lịch đặt sân để xem trạng thái, mã đặt sân, thông tin thanh toán và điều kiện huỷ. Nếu cần hỗ trợ, liên hệ hotline trong giờ hoạt động."
+        },
+        "partner-policy": {
+            "title": "Chính sách phí đối tác",
+            "intro": "BookSportsCourt cung cấp kênh quản lý lịch và đối soát cho chủ sân với chính sách phí minh bạch.",
+            "section1Heading": "Phí sử dụng nền tảng",
+            "section1Body": "Nền tảng hiện không thu phí thường niên đối với cơ sở được duyệt. Mọi khoản phí phát sinh, nếu có, phải được thông báo trước trên hệ thống.",
+            "section2Heading": "Đối soát thanh toán",
+            "section2Body": "Chủ sân duyệt biên lai trong Kênh chủ sân. Chỉ các khoản thanh toán hợp lệ và đúng trạng thái mới được ghi nhận vào doanh thu.",
+            "section3Heading": "Trách nhiệm đối tác",
+            "section3Body": "Chủ sân chịu trách nhiệm về thông tin cơ sở, giá, lịch mở bán và việc phục vụ đúng cam kết. BookSportsCourt có quyền tạm dừng cơ sở vi phạm quy định."
+        },
+        "terms": {
+            "title": "Điều khoản dịch vụ",
+            "intro": "Các điều khoản cơ bản khi sử dụng nền tảng BookSportsCourt để tìm, đặt và vận hành sân thể thao.",
+            "section1Heading": "Sử dụng tài khoản",
+            "section1Body": "Bạn phải cung cấp thông tin chính xác, bảo vệ thông tin đăng nhập và chịu trách nhiệm với hoạt động phát sinh từ tài khoản của mình.",
+            "section2Heading": "Đặt sân và thanh toán",
+            "section2Body": "Đơn đặt sân chỉ được xác nhận theo trạng thái trên hệ thống. Không tự ý chuyển tiền ngoài thông tin thanh toán được hiển thị trong đơn.",
+            "section3Heading": "Vi phạm điều khoản",
+            "section3Body": "Nền tảng có thể từ chối, huỷ hoặc hạn chế tài khoản khi phát hiện gian lận, thông tin sai lệch hoặc hành vi ảnh hưởng đến người dùng khác."
+        },
+        "privacy": {
+            "title": "Chính sách bảo mật",
+            "intro": "BookSportsCourt chỉ sử dụng dữ liệu cần thiết để xác thực, xử lý đặt sân, hỗ trợ người dùng và vận hành an toàn nền tảng.",
+            "section1Heading": "Dữ liệu được sử dụng",
+            "section1Body": "Thông tin tài khoản, liên hệ, đơn đặt và dữ liệu thanh toán được dùng để cung cấp dịch vụ, đối soát và gửi thông báo liên quan.",
+            "section2Heading": "Bảo vệ dữ liệu",
+            "section2Body": "Quyền truy cập được giới hạn theo vai trò. Thông tin nhạy cảm không được hiển thị công khai và các thao tác quản trị được ghi nhận để kiểm tra.",
+            "section3Heading": "Quyền của bạn",
+            "section3Body": "Bạn có thể xem, cập nhật thông tin hồ sơ hoặc liên hệ hỗ trợ để được giải đáp về dữ liệu tài khoản theo quy định hiện hành."
+        },
+        "cancellation-policy": {
+            "title": "Chính sách huỷ và hoàn cọc",
+            "intro": "Điều kiện huỷ được xác định theo chính sách của từng cơ sở và được hiển thị trước khi bạn xác nhận đặt sân.",
+            "section1Heading": "Giữ chỗ chưa thanh toán",
+            "section1Body": "Giữ chỗ quá thời hạn thanh toán sẽ tự động huỷ để giải phóng slot. Bạn cần tạo giữ chỗ mới nếu vẫn muốn đặt khung giờ đó.",
+            "section2Heading": "Huỷ đơn đã thanh toán",
+            "section2Body": "Mức hoàn cọc và hạn chót được tính theo chính sách của cơ sở. Hãy xem phần Chính sách huỷ trong chi tiết đơn trước khi gửi yêu cầu.",
+            "section3Heading": "Xử lý hoàn tiền",
+            "section3Body": "Kết quả và số tiền hoàn được cập nhật trong đơn đặt. Nếu thông tin chuyển khoản có vấn đề, vui lòng liên hệ hỗ trợ kèm mã đặt sân."
+        },
+        "operating-regulations": {
+            "title": "Quy chế hoạt động",
+            "intro": "Quy chế giúp người chơi, chủ sân và quản trị viên phối hợp minh bạch trên cùng một nền tảng.",
+            "section1Heading": "Người chơi",
+            "section1Body": "Người chơi cung cấp thông tin chính xác, thanh toán đúng hạn, sử dụng sân đúng mục đích và tuân thủ nội quy của cơ sở.",
+            "section2Heading": "Chủ sân",
+            "section2Body": "Chủ sân cập nhật lịch và giá chính xác, duyệt thanh toán đúng quy trình, bảo đảm chất lượng dịch vụ và xử lý yêu cầu của khách.",
+            "section3Heading": "Quản trị viên",
+            "section3Body": "Quản trị viên kiểm duyệt cơ sở, xử lý vi phạm và giám sát hoạt động nền tảng. Quản trị viên không thay thế hành vi đặt sân của người chơi."
+        }
+    },
     "table": {
         "noData": "Không có dữ liệu",
         "selectAll": "Chọn tất cả dòng",

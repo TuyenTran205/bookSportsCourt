@@ -46,11 +46,21 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="size-3.5 shrink-0 text-text-disabled" />
-                <span>{t('hotline')}</span>
+                <a
+                  href="tel:19000000"
+                  className="transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('hotline')}
+                </a>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="size-3.5 shrink-0 text-text-disabled" />
-                <span>{t('support')}</span>
+                <a
+                  href="mailto:support@booksportscourt.vn"
+                  className="transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('support')}
+                </a>
               </div>
             </div>
           </div>
@@ -86,7 +96,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-text-disabled">{t('bookingGuide')}</span>
+                <Link
+                  href="/info/booking-guide"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('bookingGuide')}
+                </Link>
               </li>
             </ul>
           </div>
@@ -114,10 +129,20 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-text-disabled">{t('paymentProcess')}</span>
+                <Link
+                  href="/owner/payments"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('paymentProcess')}
+                </Link>
               </li>
               <li>
-                <span className="text-text-disabled">{t('partnerPolicy')}</span>
+                <Link
+                  href="/info/partner-policy"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('partnerPolicy')}
+                </Link>
               </li>
             </ul>
           </div>
@@ -129,16 +154,36 @@ export function Footer() {
             </h3>
             <ul className="flex flex-col gap-2 text-sm text-text-secondary">
               <li>
-                <span className="text-text-disabled">{t('terms')}</span>
+                <Link
+                  href="/info/terms"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('terms')}
+                </Link>
               </li>
               <li>
-                <span className="text-text-disabled">{t('privacy')}</span>
+                <Link
+                  href="/info/privacy"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('privacy')}
+                </Link>
               </li>
               <li>
-                <span className="text-text-disabled">{t('cancellationPolicy')}</span>
+                <Link
+                  href="/info/cancellation-policy"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('cancellationPolicy')}
+                </Link>
               </li>
               <li>
-                <span className="text-text-disabled">{t('operatingRegulations')}</span>
+                <Link
+                  href="/info/operating-regulations"
+                  className="transition-colors hover:text-primary-600 dark:hover:text-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+                >
+                  {t('operatingRegulations')}
+                </Link>
               </li>
             </ul>
           </div>
