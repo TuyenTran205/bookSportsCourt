@@ -36,7 +36,9 @@ const nextConfig = {
   },
 
   async rewrites() {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://booksportscourt.onrender.com';
+    const backendUrl = (
+      process.env.NEXT_PUBLIC_API_URL || 'https://booksportscourt.onrender.com'
+    ).replace(/\/+$/, '');
     return [
       {
         source: '/api/v1/:path*',

@@ -11,11 +11,14 @@ import { ApiError } from './errors';
 const MOCKING_ENABLED = process.env.NEXT_PUBLIC_API_MOCKING === 'enabled';
 
 /** URL backend thật – khớp `.env.example` (NEXT_PUBLIC_API_URL). Server Component luôn dùng URL này vì MSW chỉ chạy ở trình duyệt. */
-export const BACKEND_URL =
+export const BACKEND_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production'
     ? 'https://booksportscourt.onrender.com'
-    : 'http://localhost:3001');
+    : 'http://localhost:3001')
+)
+  // Bỏ dấu `/` cuối để tránh URL `//api/v1/...` (backend trả 404).
+  .replace(/\/+$/, '');
 
 /** Base URL mà trình duyệt gọi. Rỗng = cùng origin, để MSW chặn được khi đang dùng dữ liệu mẫu. */
 export const API_BASE_URL = MOCKING_ENABLED ? '' : BACKEND_URL;
