@@ -158,13 +158,6 @@ export const adminHandlers = [
         return okList(data, meta);
     }),
 
-<<<<<<< HEAD
-    /**
-     * Duyệt/từ chối cơ sở — BE dùng `PATCH /venues/:id/status` với body
-     * `{ status, reason? }` (xem docs/implemented-apis.md).
-     */
-    http.patch("/api/v1/venues/:id/status", async ({ params, request }) => {
-=======
     /** Duyệt/từ chối cơ sở theo contract: PATCH /venues/:id/status (ADM-02). */
     http.patch("/api/v1/venues/:id/status", async ({ params, request }) => {
         await simulateLatency(450);
@@ -211,7 +204,6 @@ export const adminHandlers = [
 
     /** Duyệt/từ chối cơ sở — cùng quy ước gộp route như hồ sơ chủ sân. */
     http.patch("/api/v1/admin/venues/:id", async ({ params, request }) => {
->>>>>>> origin/develop
         await simulateLatency(450);
         const guard = requireAdmin();
         if (guard.error) return guard.error;
@@ -352,7 +344,6 @@ export const adminHandlers = [
     }),
 
     http.post("/api/v1/admin/sports", async ({ request }) => {
->>>>>>> origin/develop
         await simulateLatency(400);
         const guard = requireAdmin();
         if (guard.error) return guard.error;

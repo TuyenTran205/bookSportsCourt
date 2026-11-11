@@ -401,10 +401,6 @@ export const rejectSchema = z.object({
 
 export const sportSchema = z.object({
     name: z.string().min(1, "Vui lòng nhập tên môn").max(100).trim(),
-    /**
-     * Không bắt buộc: bỏ trống thì BE tự sinh từ `name` (`slugify`) — admin
-     * trong UI chỉ nhập tên, xem `CatalogsService.createSport`.
-     */
     slug: z
         .string()
         .min(1, "Vui lòng nhập slug")
@@ -427,8 +423,7 @@ export const areaSchema = z
             .string()
             .min(1, "Vui lòng nhập slug")
             .max(100)
-            .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối")
-            .optional(),
+            .regex(/^[a-z0-9-]+$/, "Slug chỉ gồm chữ thường, số và dấu gạch nối"),
         type: z.enum(["province", "ward", "district"]),
         parentId: uuidSchema.nullish(),
     })
@@ -463,19 +458,8 @@ export const tableQuerySchema = z.object({
 export const bookingFilterSchema = tableQuerySchema.extend({
     status: z.enum(BOOKING_STATUSES).optional(),
     venueId: uuidSchema.optional(),
-    courtId: uuidSchema.optional(),
     from: dateOnlySchema.optional(),
     to: dateOnlySchema.optional(),
-});
-
-/** Bộ lọc cho khách xem lịch sử đặt sân của chính mình. */
-export const customerBookingFilterSchema = tableQuerySchema.extend({
-  status: z.enum(BOOKING_STATUSES).optional(),
-});
-
-/** Query của lưới slot 30 phút: bắt buộc có `date` dạng YYYY-MM-DD. */
-export const slotsQuerySchema = z.object({
-  date: dateOnlySchema,
 });
 
 export const paymentFilterSchema = tableQuerySchema.extend({
@@ -493,7 +477,6 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type VenueSearchInput = z.infer<typeof venueSearchSchema>;
 export type CreateHoldInput = z.infer<typeof createHoldSchema>;
-export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;
 export type CreateManualBookingInput = z.infer<typeof createManualBookingSchema>;
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 export type ReplyReviewInput = z.infer<typeof replyReviewSchema>;
@@ -510,8 +493,6 @@ export type SportInput = z.infer<typeof sportSchema>;
 export type AreaInput = z.infer<typeof areaSchema>;
 export type TableQueryInput = z.infer<typeof tableQuerySchema>;
 export type BookingFilterInput = z.infer<typeof bookingFilterSchema>;
-export type CustomerBookingFilterInput = z.infer<typeof customerBookingFilterSchema>;
-export type SlotsQueryInput = z.infer<typeof slotsQuerySchema>;
 export type PaymentFilterInput = z.infer<typeof paymentFilterSchema>;
 
 export { API_ERROR_CODES, SLOT_MINUTES };
@@ -617,13 +598,6 @@ export const publicVenueSearchQuerySchema = z
         wardId: uuidSchema.optional(),
         wardCode: z.string().optional(),
         districtId: uuidSchema.optional(),
-        /**
-         * FE gửi mã địa danh 2 cấp (tỉnh 2 số, phường/xã 5 số) vì bộ lọc địa
-         * điểm dùng danh mục `provinces`/`wards` chứ không giữ UUID của `areas`.
-         * BE tự quy đổi mã → `provinceId`/`districtId` trước khi truy vấn.
-         */
-        provinceCode: provinceCodeSchema.optional(),
-        wardCode: wardCodeSchema.optional(),
         sportId: uuidSchema.optional(),
         sportIds: venueQueryIds.optional(),
         amenityIds: venueQueryIds.optional(),

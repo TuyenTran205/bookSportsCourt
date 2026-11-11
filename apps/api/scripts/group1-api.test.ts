@@ -238,12 +238,7 @@ test("Group 1 CourtsService validates court creation and pricing rules", async (
     }),
   };
 
-  const service = new CourtsService(
-    mockCourtsRepo,
-    mockVenuesRepo,
-    // Kiểm tra quyền sở hữu không thuộc phạm vi unit test của service này.
-    {} as unknown as ConstructorParameters<typeof CourtsService>[2],
-  );
+  const service = new CourtsService(mockCourtsRepo, mockVenuesRepo);
 
   await t.test(
     "creates court and seeds 7-day default opening hours",
