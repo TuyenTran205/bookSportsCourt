@@ -20,7 +20,7 @@ export class ExpireHoldsSchedule {
       await this.db.transaction(async (tx) => {
         const expired = await tx
           .update(bookings)
-          .set({ status: "expired", updatedAt: now })
+          .set({ status: "expired", expiresAt: null, updatedAt: now })
           .where(and(eq(bookings.status, "held"), lt(bookings.expiresAt, now)))
           .returning({ id: bookings.id, courtId: bookings.courtId });
 
