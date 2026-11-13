@@ -16,6 +16,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import HomePage from './page';
 
 const pushSpy = vi.hoisted(() => vi.fn());
+const listVenuesMock = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    data: [],
+    meta: { page: 1, limit: 100, total: 0, totalPages: 0 },
+  }),
+);
 
 vi.mock('next-intl', () => ({
   // Bản dịch giả lập trả về chính key: test cấu trúc, không phụ thuộc nội dung.
@@ -28,6 +34,10 @@ vi.mock('@/lib/navigation/navigate', () => ({
     replace: vi.fn(),
     refresh: vi.fn(),
   }),
+}));
+
+vi.mock('@/lib/api/endpoints/venues', () => ({
+  listVenues: listVenuesMock,
 }));
 
 /** Đọc file thật từ đĩa thay vì import — test i18n phải kiểm tra nguồn gốc. */
@@ -58,6 +68,11 @@ const EXPECTED_SPORT_SLUGS = [
 afterEach(() => {
   cleanup();
   pushSpy.mockClear();
+  listVenuesMock.mockClear();
+  listVenuesMock.mockResolvedValue({
+    data: [],
+    meta: { page: 1, limit: 100, total: 0, totalPages: 0 },
+  });
 });
 
 describe('A — Chip môn thể thao dùng icon, không dùng emoji', () => {
@@ -91,10 +106,10 @@ describe('A — Chip môn thể thao dùng icon, không dùng emoji', () => {
   });
 });
 
-describe('B — Layout Anti-AI: không căn giữa tràn lan', () => {
-  it('B1: không phần tử nào dùng class text-center', () => {
+describe('B — Layout cân đối theo chiều rộng trình duyệt', () => {
+  it('B1: khối thống kê và tiêu đề section căn giữa cân xứng trên màn rộng', () => {
     const { container } = render(<HomePage />);
-    expect(container.querySelectorAll('.text-center')).toHaveLength(0);
+    expect(container.querySelectorAll('.text-center').length).toBeGreaterThanOrEqual(3);
   });
 
   it('B2: hero dùng grid 12 cột trên desktop', () => {
@@ -231,5 +246,39 @@ describe('E — Tương phản nút trên banner CTA chủ sân', () => {
     expect(classes).not.toContain('bg-bg');
     expect(classes).toContain('bg-transparent');
     expect(classes).toContain('text-primary-800');
+  });
+});
+
+describe('F — Khối preview và băng chuyền dùng dữ liệu sân thực', () => {
+  it('F1: hiển thị tên sân thực trong Lịch sân thời gian thực và băng chuyền khi API trả về dữ liệu', async () => {
+    listVenuesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'v-real-1',
+          name: 'Sân Cầu Lông Thực Tế Hà Nội',
+          slug: 'san-cau-long-thuc-te-ha-noi',
+          address: '123 Cầu Giấy',
+          province: { id: 'p1', code: '01', name: 'Thành phố Hà Nội', mergedName: 'Thành phố Hà Nội', type: 'tp' },
+          ward: { id: 'w1', code: '001', name: 'Phường Dịch Vọng Hậu', provinceId: 'p1' },
+          district: null,
+          lat: 21.03,
+          lng: 105.79,
+          status: 'active',
+          coverUrl: null,
+          ratingAvg: 4.9,
+          reviewCount: 12,
+          fromPrice: 120000,
+          sports: [{ id: 's1', name: 'Cầu lông', slug: 'cau-long' }],
+        },
+      ],
+      meta: { page: 1, limit: 100, total: 1, totalPages: 1 },
+    });
+
+    const { container } = render(<HomePage />);
+    const matches = await screen.findAllByText('Sân Cầu Lông Thực Tế Hà Nội');
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(
+      container.querySelectorAll('a[href="/venues/san-cau-long-thuc-te-ha-noi"]').length,
+    ).toBeGreaterThanOrEqual(2);
   });
 });

@@ -28,6 +28,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: '**.r2.dev' },
+      { protocol: 'https', hostname: 'booksportscourt.id.vn' },
+      { protocol: 'https', hostname: '**.booksportscourt.id.vn' },
     ],
   },
 

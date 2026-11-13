@@ -1,0 +1,69 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Vietnam Mainland and Coastal Waters" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [102.0, 22.8],
+            [104.2, 23.5],
+            [106.8, 23.0],
+            [108.4, 21.6],
+            [108.1, 20.0],
+            [106.7, 18.2],
+            [108.8, 16.2],
+            [109.6, 13.5],
+            [109.5, 10.3],
+            [106.9, 8.4],
+            [104.6, 8.3],
+            [103.3, 9.2],
+            [103.7, 10.5],
+            [105.0, 11.1],
+            [105.8, 11.6],
+            [107.2, 13.5],
+            [107.3, 15.2],
+            [105.6, 17.5],
+            [104.0, 19.6],
+            [102.5, 21.2],
+            [102.0, 22.8]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Hoang Sa Archipelago" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [111.0, 15.6],
+            [113.0, 15.6],
+            [113.0, 17.3],
+            [111.0, 17.3],
+            [111.0, 15.6]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Truong Sa Archipelago" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [111.5, 7.2],
+            [116.5, 7.2],
+            [116.5, 11.7],
+            [111.5, 11.7],
+            [111.5, 7.2]
+          ]
+        ]
+      }
+    }
+  ]
+}

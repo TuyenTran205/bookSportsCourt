@@ -939,7 +939,7 @@ export const ownerHandlers = [
       .filter((b) => myVenueIds.has(venueIdForCourt(b.booking.courtId)))
       .filter((b) => b.payment !== null);
 
-    if (status) list = list.filter((b) => b.payment!.status === status);
+    if (status && status !== 'all') list = list.filter((b) => b.payment!.status === status);
 
     list = [...list].sort((a, b) =>
       (b.payment?.proofUploadedAt ?? b.booking.createdAt).localeCompare(

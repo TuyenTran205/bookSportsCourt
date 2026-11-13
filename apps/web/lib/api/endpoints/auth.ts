@@ -146,3 +146,15 @@ export function uploadAvatar(file: File) {
 export function googleAuthUrl(): string {
   return `${API_BASE_URL}${API_PREFIX}/auth/google`;
 }
+
+export interface WsTokenResult {
+  token: string;
+  expiresInSeconds: number;
+}
+
+/** `POST /auth/ws-token` — lấy token ngắn hạn (15m) cho kết nối Socket.IO cross-domain. */
+export function getWsToken() {
+  return apiFetch<WsTokenResult>('/auth/ws-token', {
+    method: 'POST',
+  });
+}

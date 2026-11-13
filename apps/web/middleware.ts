@@ -119,6 +119,6 @@ export const config = {
      * Bỏ qua các file tĩnh, ảnh, mock worker và OAuth callback
      * /auth/callback/google PHẢI nằm ngoài mọi chặn route (docs/09)
      */
-    '/((?!api|_next/static|_next/image|auth/callback/google|mockServiceWorker.js|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|auth/callback/google|mockServiceWorker.js|maplibre-gl-worker.js|favicon.ico).*)',
   ],
 };

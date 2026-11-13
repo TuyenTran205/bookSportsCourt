@@ -34,17 +34,44 @@ export class AuthJwtService {
       .sign(this.key(kind));
   }
 
+  async signWs(userId: string, sessionVersion = 0) {
+    if (!Number.isSafeInteger(sessionVersion) || sessionVersion < 0)
+      throw new Error("Invalid session version");
+    return new SignJWT({ kind: "ws", sessionVersion })
+      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setSubject(userId)
+      .setJti(v7())
+      .setIssuer("booksportscourt")
+      .setAudience("booksportscourt-ws")
+      .setIssuedAt()
+      .setExpirationTime("15m")
+      .sign(this.key("access"));
+  }
+
   async verify(token: string | undefined, kind: "access" | "refresh") {
+    return this.verifyWithAudience(token, kind, "booksportscourt-api");
+  }
+
+  async verifyWs(token: string | undefined) {
+    return this.verifyWithAudience(token, "ws", "booksportscourt-ws");
+  }
+
+  private async verifyWithAudience(
+    token: string | undefined,
+    kind: "access" | "refresh" | "ws",
+    audience: "booksportscourt-api" | "booksportscourt-ws",
+  ) {
     if (!token)
       throw new UnauthorizedException({
         code: "UNAUTHORIZED",
         message: "Vui lòng đăng nhập.",
       });
     try {
-      const { payload } = await jwtVerify(token, this.key(kind), {
+      const signingKind = kind === "refresh" ? "refresh" : "access";
+      const { payload } = await jwtVerify(token, this.key(signingKind), {
         algorithms: ["HS256"],
         issuer: "booksportscourt",
-        audience: "booksportscourt-api",
+        audience,
         requiredClaims: ["sub", "jti", "iat", "exp"],
       });
       if (

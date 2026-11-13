@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -21,6 +22,8 @@ import { ProofStorage } from "../uploads/proof-storage.js";
 import { PaymentsService } from "./payments.service.js";
 import { PaymentsRepository } from "./payments.repository.js";
 import { reviewDecision } from "./payment-review.rules.js";
+import { RealtimePublisher } from "../realtime/realtime.publisher.js";
+import { BookingsService } from "../bookings/bookings.service.js";
 
 @Injectable()
 export class PaymentReviewService {
@@ -31,6 +34,8 @@ export class PaymentReviewService {
     private readonly views: PaymentsService,
     private readonly storage: ProofStorage,
     private readonly config: ConfigService,
+    @Optional() private readonly realtime?: RealtimePublisher,
+    @Optional() private readonly bookings?: BookingsService,
   ) {}
   private timeout() {
     return this.config.get<number>("OWNER_REVIEW_TIMEOUT_HOURS", 2) * 3600000;
@@ -138,12 +143,66 @@ export class PaymentReviewService {
     await this.owner(userId);
     const id = this.parse(phase4IdSchema, rawId);
     const result = await this.locked(id, userId, action, body, query);
+    if (result.changed) {
+      await this.publishReviewRealtime(action, result);
+    }
     return this.views.view(
       result.row,
       result.payment,
       result.payment.proofObjectKey
         ? await this.storage.signedGet(result.payment.proofObjectKey)
         : null,
+    );
+  }
+  private async publishReviewRealtime(
+    action: "approve" | "reject" | "expire",
+    result: Awaited<ReturnType<PaymentReviewService["locked"]>>,
+  ) {
+    const customerId = result.row.booking.customerId;
+    const ownerId = result.row.venue.ownerId;
+    if (customerId) {
+      if (action === "approve") {
+        this.realtime?.emitBookingConfirmed(
+          customerId,
+          { paymentId: result.payment.id, bookingId: result.row.booking.id },
+          ownerId,
+        );
+        this.realtime?.emitNotificationCreated(customerId, {
+          id: result.payment.id,
+          type: "booking_confirmed",
+          title: "Đặt sân đã được xác nhận",
+        });
+      } else if (action === "reject") {
+        this.realtime?.emitPaymentRejected(customerId, {
+          paymentId: result.payment.id,
+          bookingId: result.row.booking.id,
+          reason: result.payment.rejectReason ?? "",
+        });
+        this.realtime?.emitNotificationCreated(customerId, {
+          id: result.payment.id,
+          type: "payment_rejected",
+          title: "Đặt sân đã bị huỷ",
+        });
+      } else {
+        this.realtime?.emitBookingCancelled(
+          customerId,
+          {
+            bookingId: result.row.booking.id,
+            reason: "OWNER_REVIEW_TIMEOUT",
+          },
+          ownerId,
+        );
+        this.realtime?.emitNotificationCreated(customerId, {
+          id: result.payment.id,
+          type: "booking_cancelled",
+          title: "Đơn đặt sân đã bị huỷ",
+        });
+      }
+    }
+    await this.bookings?.publishSlotUpdate(
+      result.row.venue.id,
+      result.row.booking.courtId,
+      result.row.start,
     );
   }
   private locked(
@@ -245,7 +304,10 @@ export class PaymentReviewService {
         after = candidate.id;
         try {
           const result = await this.locked(candidate.id, null, "expire");
-          if (result.changed) stats.cancelled++;
+          if (result.changed) {
+            stats.cancelled++;
+            await this.publishReviewRealtime("expire", result);
+          }
         } catch {
           stats.errors++;
           if (stats.problemPaymentIds.length < 10)

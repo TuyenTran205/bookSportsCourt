@@ -38,7 +38,9 @@ export class PaymentsRepository {
       async (tx) => {
         const scope = and(
           eq(venues.ownerId, ownerId),
-          eq(payments.status, query.status),
+          query.status && query.status !== "all"
+            ? eq(payments.status, query.status)
+            : undefined,
           query.venueId ? eq(venues.id, query.venueId) : undefined,
         );
         const counts = await tx
