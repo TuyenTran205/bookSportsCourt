@@ -120,6 +120,9 @@ export function MapLibreCanvas({
         maxBounds,
         scrollZoom: scrollWheelZoom,
         attributionControl: { compact: true },
+        fadeDuration: 120,
+        maxTileCacheSize: 512,
+        refreshExpiredTiles: false,
       });
     } catch {
       setWebglError('Trình duyệt hoặc thiết bị hiện chưa hỗ trợ hiển thị bản đồ WebGL.');
