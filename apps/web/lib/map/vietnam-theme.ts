@@ -32,8 +32,8 @@ const SPORTS_LANDUSE_KINDS = [
 ] as const;
 
 const VIETNAM_SPORTS_FLAVOR: Flavor = {
-  background: '#f8fafc',
-  earth: '#f8fafc',
+  background: '#f1f5f9',
+  earth: '#f1f5f9',
   park_a: '#dcfce7',
   park_b: '#bbf7d0',
   hospital: '#fee2e2',

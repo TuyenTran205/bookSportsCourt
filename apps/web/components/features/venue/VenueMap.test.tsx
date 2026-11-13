@@ -11,6 +11,7 @@ interface FakeMap {
   flyTo: ReturnType<typeof vi.fn>;
   fitBounds: ReturnType<typeof vi.fn>;
   getCenter: ReturnType<typeof vi.fn>;
+  getZoom: ReturnType<typeof vi.fn>;
   on: ReturnType<typeof vi.fn>;
   off: ReturnType<typeof vi.fn>;
 }
@@ -95,6 +96,7 @@ vi.mock('./map/ResilientTileLayer', () => ({
         flyTo: vi.fn(),
         fitBounds: vi.fn(),
         getCenter: vi.fn(() => ({ ...currentMapCenter })),
+        getZoom: vi.fn(() => 6),
         on: vi.fn((ev: string, cb: (e?: unknown) => void) => {
           (handlers[ev] ??= new Set()).add(cb);
         }),
@@ -255,5 +257,28 @@ describe('VenueMap — Định vị vị trí hiện tại & nút quay về vị
     expect(
       screen.getByText('Không thể truy cập vị trí. Hãy cấp quyền định vị cho trình duyệt.'),
     ).toBeDefined();
+  });
+
+  it('giữ hiệu ứng flyTo mượt mà (duration 900) khi chọn cơ sở trên bản đồ', () => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn((_s, error?: PositionErrorCallback) => {
+          error?.({ code: 1, message: 'Denied' } as GeolocationPositionError);
+        }),
+      },
+    });
+
+    const { rerender } = render(<VenueMap venues={SAMPLE_VENUES} />);
+    const map = createdMaps[0]!;
+    map.flyTo.mockClear();
+
+    rerender(<VenueMap venues={SAMPLE_VENUES} selectedVenueId="v2" />);
+
+    expect(map.flyTo).toHaveBeenCalledWith({
+      center: [106.72, 10.73],
+      zoom: 15,
+      duration: 900,
+    });
   });
 });
