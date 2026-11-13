@@ -28,6 +28,8 @@ import {
 import type { Sport, VenueListItem } from '@bsc/shared';
 
 import { buttonVariants } from '@/components/ui/button';
+import { prewarmPmTilesForCoordinates } from '@/lib/map/pmtiles-protocol';
+import { getTileProviders } from '@/lib/map/tile-providers';
 import { cn } from '@/lib/utils/cn';
 import { formatCurrency, formatNumber } from '@/lib/utils/format';
 import { TileResilienceProvider } from './map/TileResilienceContext';
@@ -120,6 +122,11 @@ function isValidCoordinate(
 
 const USER_LOCATION_DRIFT_METERS = 200;
 
+function getActivePmTilesUrl(): string | null {
+  const provider = getTileProviders().find((item) => item.format === 'pmtiles');
+  return provider?.url ?? null;
+}
+
 function isWithinVietnamRegion([lng, lat]: [number, number]): boolean {
   return lng >= 101 && lng <= 118 && lat >= 6 && lat <= 24.5;
 }
@@ -159,6 +166,16 @@ function VenueMarkerPin({
   return (
     <button
       type="button"
+      onMouseEnter={() => {
+        const pmtilesUrl = getActivePmTilesUrl();
+        if (pmtilesUrl && isValidCoordinate(venue)) {
+          void prewarmPmTilesForCoordinates(pmtilesUrl, [[venue.lng, venue.lat]], {
+            zooms: [12, 14],
+            radius: 1,
+            maxCenters: 1,
+          });
+        }
+      }}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(venue);
@@ -236,6 +253,16 @@ function MapBoundsUpdater({
     if (selectedVenue && isValidCoordinate(selectedVenue)) {
       if (prevSelectedIdRef.current !== selectedId) {
         prevSelectedIdRef.current = selectedId;
+
+        const pmtilesUrl = getActivePmTilesUrl();
+        if (pmtilesUrl) {
+          void prewarmPmTilesForCoordinates(pmtilesUrl, [[selectedVenue.lng, selectedVenue.lat]], {
+            zooms: [12, 14],
+            radius: 1,
+            maxCenters: 1,
+          });
+        }
+
         map.flyTo({
           center: [selectedVenue.lng, selectedVenue.lat],
           zoom: 15,
@@ -648,6 +675,29 @@ export function VenueMap({
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     );
   }, []);
+
+  // Làm nóng sẵn tile z12/z14 cho các sân đang hiển thị để giảm thiểu ô trắng khi chọn hoặc chuyển giữa các sân
+  React.useEffect(() => {
+    const pmtilesUrl = getActivePmTilesUrl();
+    if (!pmtilesUrl) return undefined;
+
+    const coords = venues
+      .filter(isValidCoordinate)
+      .slice(0, 8)
+      .map((venue) => [venue.lng, venue.lat] as [number, number]);
+
+    if (coords.length === 0) return undefined;
+
+    const timer = setTimeout(() => {
+      void prewarmPmTilesForCoordinates(pmtilesUrl, coords, {
+        zooms: [12, 14],
+        radius: 1,
+        maxCenters: 6,
+      });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [venues]);
 
   // Tự động định vị vị trí người dùng ngay khi mở bản đồ tìm sân
   React.useEffect(() => {
