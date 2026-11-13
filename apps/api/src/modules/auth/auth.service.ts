@@ -329,6 +329,17 @@ export class AuthService {
     );
   }
 
+  async issueWsToken(raw: string | undefined) {
+    const claims = await this.jwt.verify(raw, "access");
+    const user = await this.requireActiveUser(
+      claims.userId,
+      undefined,
+      claims.sessionVersion,
+    );
+    const token = await this.jwt.signWs(user.id, claims.sessionVersion);
+    return { token, expiresInSeconds: 900 };
+  }
+
   async updateAvatar(userId: string, avatarUrl: string): Promise<AuthenticatedUser> {
     return this.repo.transaction(async (tx) => {
       await this.requireActiveUser(userId, tx);

@@ -35,7 +35,9 @@ export class RealtimeGateway {
   handleConnection(socket: Socket) {
     const user = socket.data.user as AuthenticatedUser | undefined;
     if (!user) {
-      socket.disconnect(true);
+      if (!socket.data.isGuest) {
+        socket.disconnect(true);
+      }
       return;
     }
     void socket.join(`user:${user.id}`);

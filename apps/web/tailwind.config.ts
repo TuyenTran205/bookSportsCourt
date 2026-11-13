@@ -16,13 +16,12 @@ const config: Config = {
     './hooks/**/*.{ts,tsx}',
     './mocks/**/*.{ts,tsx}',
   ],
+  corePlugins: {
+    // Tự định nghĩa `.container` full-width kèm lề thở chuẩn trong `globals.css`
+    // để tránh Tailwind gắn `padding` vào `@media (min-width: 100%)`.
+    container: false,
+  },
   theme: {
-    // Breakpoint chuẩn của Tailwind, KHÔNG override (docs/09 mục Responsive).
-    container: {
-      center: true,
-      padding: { DEFAULT: '1rem', md: '1.5rem', xl: '2rem' },
-      screens: { '2xl': '1280px' },
-    },
     extend: {
       colors: {
         primary: {

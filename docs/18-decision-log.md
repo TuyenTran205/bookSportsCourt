@@ -34,6 +34,8 @@
 | 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
 | 027 | Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) |
 | 028 | @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
+| 029 | Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số |
+| 030 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông |
 
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
@@ -639,6 +641,64 @@ Khi chạy **từng file test FE riêng lẻ** (`npx vitest run <file>.test.tsx`
 - Không phát sinh dependency mới (tuân thủ Rule 9).
 - Đảm bảo tính nhất quán dữ liệu, người dùng không phải nhập lại thông tin ngân hàng.
 - Mọi thành viên khác khi pull code cần chạy migration: `pnpm --filter @bsc/api db:migrate` để đồng bộ DB.
+
+---
+
+## ADR-030: Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông
+
+**Ngày:** 2026-11-13 | **Trạng thái:** Superseded by ADR-031
+
+**Bối cảnh:**
+Các nguồn tile công cộng hiện tại (Esri, CARTO, OSM) phụ thuộc vào máy chủ nước ngoài, khó đồng bộ màu sắc theo Design System của BookSportsCourt, không làm nổi bật các khu vực thể thao/công viên, và không chủ động kiểm soát được nhãn tiếng Việt đối với Biển Đông, Quần đảo Hoàng Sa, Quần đảo Trường Sa.
+
+**Quyết định:**
+1. Thêm `protomaps-leaflet` và `pmtiles` vào `@bsc/web` để đọc trực tiếp file vector tile `vietnam.pmtiles` đặt trên Cloudflare R2 (qua HTTP Range Request `206 Partial Content`) ngay bên trong hệ thống Leaflet hiện tại.
+2. Tự thiết kế bảng màu & quy tắc vẽ vector (custom paint/label rules) tại `apps/web/lib/map/vietnam-theme.ts` đồng bộ với token màu xanh sân cỏ (`#16a34a`) và nền Slate, ưu tiên nhãn tiếng Việt (`name:vi`) và làm nổi bật các sân vận động/khu thể thao.
+3. Bổ sung lớp GeoJSON tĩnh (`apps/web/public/geo/vietnam-islands.geojson`) để luôn hiển thị chuẩn xác nhãn tiếng Việt cho Biển Đông, Quần đảo Hoàng Sa và Quần đảo Trường Sa trên bản đồ.
+4. Giữ nguyên hệ thống tự phục hồi `ResilientTileLayer` (SPEC-MAP-002): khi `NEXT_PUBLIC_VIETNAM_PMTILES_URL` được cấu hình, `vietnam-pmtiles` là nguồn ưu tiên cao nhất; nếu chưa cấu hình hoặc R2 lỗi/bị chặn, hệ thống tự động fallback sang Esri / OSM France / OpenTopoMap / OSM Standard.
+
+**Lý do:**
+- Tận dụng hạ tầng Cloudflare R2 sẵn có (chi phí 0đ, miễn phí egress, CDN edge tốc độ cao tại Việt Nam), không cần thuê Tile Server chạy 24/7.
+- Giữ nguyên 100% component, marker, popup và bộ test Leaflet đang ổn định (`VenueMap`, `VenueLocationMap`, `SPEC-MAP-002`).
+
+**Loại bỏ:**
+- **Thay bằng `maplibre-gl`:** Yêu cầu viết lại toàn bộ component bản đồ, marker, popup và cơ chế fallback hiện có.
+- **Tự dựng `TileServer GL` / `Martin`:** Tốn server chạy nền, không phù hợp kiến trúc chi phí 0đ trên Render Free.
+
+**Hệ quả:**
+- Khi bật `NEXT_PUBLIC_VIETNAM_PMTILES_URL`, bucket Cloudflare R2 bắt buộc cấu hình CORS cho phép method `GET, HEAD` và header `Range`.
+- Khi chưa thiết lập `NEXT_PUBLIC_VIETNAM_PMTILES_URL`, ứng dụng hoạt động bình thường với danh sách provider miễn phí hiện tại.
+
+---
+
+## ADR-031: Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache
+
+**Ngày:** 2026-11-13 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+Sau khi tích hợp `protomaps-leaflet` trên nền Leaflet (ADR-030), trải nghiệm thực tế khi thu/phóng hoặc kéo bản đồ vẫn xuất hiện các ô vuông xám lộ ra trong lúc chờ tải và vẽ lại do 4 nguyên nhân:
+1. CSS mặc định của Leaflet tô nền `.leaflet-container` màu xám `#ddd` lộ ra khi ô `<canvas>` mới đang render.
+2. `protomaps-leaflet` vẽ vector tile bằng Canvas 2D trên luồng JS chính (CPU), nhân độ phân giải theo `window.devicePixelRatio` và có độ trễ `tileDelay`, gây chậm khung hình trên màn hình DPI cao.
+3. Thư viện `pmtiles` đặt `chromeWindowsNoCache = true` ép `cache: "no-store"` khi `fetch()` trên trình duyệt nhân Chromium Windows, vô hiệu hoá HTTP disk cache của trình duyệt.
+4. `ResilientTileLayer` tạo `new PMTiles(url)` mỗi lần mount với `SharedPromiseCache` mặc định chỉ 100 entry, làm mất cache RAM khi chuyển màn hình hoặc zoom/pan qua lại.
+
+**Quyết định:**
+1. Chuyển engine bản đồ `@bsc/web` từ `leaflet` / `react-leaflet` / `protomaps-leaflet` sang **`maplibre-gl`** (WebGL 60fps trên GPU) kết hợp **`@protomaps/basemaps`** để sinh MapLibre Style Spec v8 (vẫn dùng bảng màu Slate + nhấn xanh sân thể thao `#16a34a`, ưu tiên nhãn tiếng Việt `name:vi`).
+2. Tạo lớp `PMTiles` Singleton (`apps/web/lib/map/pmtiles-protocol.ts`) dùng chung `SharedPromiseCache(1000)` kết hợp LRU cache tile trong RAM (512 tile gần nhất) và đăng ký giao thức `pmtiles://` duy nhất một lần qua `maplibregl.addProtocol`.
+3. Upload bộ font glyphs `.pbf` mã nguồn mở hỗ trợ tiếng Việt (`Noto Sans Regular/Medium/Italic`) lên Cloudflare R2 (`scripts/map/upload-r2-fonts.mjs`) để MapLibre render nhãn tiếng Việt không tốn phí (fallback về CDN Protomaps miễn phí nếu không cấu hình `NEXT_PUBLIC_MAP_GLYPHS_URL`).
+4. Chuyển lớp chủ quyền **Biển Đông**, **Quần đảo Hoàng Sa**, **Quần đảo Trường Sa** (`vietnam-islands.json`) sang GeoJSON source + `symbol` layer trên WebGL, tự động gắn lại kể cả khi fallback sang nguồn raster dự phòng (Esri / OSM).
+5. Giữ nguyên giao diện props `VenueMapProps`, `VenueLocationMapProps` và cơ chế tự phục hồi `SPEC-MAP-002` thông qua `map.setStyle(buildRasterFallbackStyle(provider))`.
+
+**Lý do:**
+- MapLibre GL JS render trên GPU ở tốc độ 60fps và tự động giữ tile mức zoom cũ phóng to tạm thời (overzoom mượt) trong lúc chờ tile mới, triệt tiêu hoàn toàn hiện tượng nháy ô vuông xám khi thu/phóng.
+- Vẫn đảm bảo chi phí **0đ** (BSD-3-Clause, không cần API key, dùng chung bucket R2 và CORS sẵn có).
+
+**Loại bỏ:**
+- **Chỉ giữ Leaflet + tối ưu thông số `protomaps-leaflet`:** Giảm được một phần độ trễ nhưng vẫn render Canvas 2D trên CPU, không có hiệu ứng overzoom WebGL 60fps.
+
+**Hệ quả:**
+- Cần gỡ bỏ `leaflet`, `react-leaflet`, `@types/leaflet`, `protomaps-leaflet` khỏi `@bsc/web` và cập nhật CSS sang `maplibre-gl/dist/maplibre-gl.css`.
+- Thiết bị người dùng cần hỗ trợ WebGL; bổ sung UI fallback thân thiện nếu khởi tạo WebGL thất bại hoặc mất context (`webglcontextlost`).
 
 ---
 

@@ -70,7 +70,7 @@ export function PaymentsManagement() {
   const [rejectReason, setRejectReason] = React.useState('');
   const [failedImageId, setFailedImageId] = React.useState<string | null>(null);
 
-  const paymentsQuery = useOwnerPayments(status === 'all' ? undefined : status, page, PAGE_SIZE, role === 'owner');
+  const paymentsQuery = useOwnerPayments(status, page, PAGE_SIZE, role === 'owner');
 
   const invalidatePayments = async () => {
     await queryClient.invalidateQueries({ queryKey: ['owner', 'payments'] });

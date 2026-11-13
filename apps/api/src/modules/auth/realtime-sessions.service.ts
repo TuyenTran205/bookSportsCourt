@@ -7,13 +7,20 @@ import { AuthService } from "./auth.service.js";
 import { AuthJwtService } from "./auth-jwt.service.js";
 import { cookie } from "./auth-http.js";
 import { onSessionInvalidated, withSession } from "./session-context.js";
+import { SOCKET_EVENTS } from "../../../../../packages/shared/src/constants.js";
 
 /** Session layer only. Gateway must still authorize every room/resource and call sendPrivate. */
 @Injectable()
 export class RealtimeSessionsService {
   private readonly sockets = new Map<
     Socket,
-    { token: string; userId: string; role: string; version: number }
+    {
+      token: string;
+      kind: "access" | "ws";
+      userId: string;
+      role: string;
+      version: number;
+    }
   >();
   private readonly unsubscribe = onSessionInvalidated((id) =>
     this.disconnectUser(id),
@@ -42,11 +49,34 @@ export class RealtimeSessionsService {
       ).includes(origin)
     )
       throw new UnauthorizedException();
-    const raw = cookie(
+    const authToken =
+      typeof socket.handshake.auth?.token === "string" &&
+      socket.handshake.auth.token.trim().length > 0
+        ? socket.handshake.auth.token.trim()
+        : undefined;
+    const cookieToken = cookie(
       { headers: socket.handshake.headers, method: "GET" },
       "access_token",
     );
-    const claims = await this.jwt.verify(raw, "access");
+    if (!authToken && !cookieToken && socket.handshake.auth?.guest === true) {
+      socket.data.isGuest = true;
+      socket.use(([event], next) => {
+        if (
+          event === SOCKET_EVENTS.JOIN_VENUE ||
+          event === SOCKET_EVENTS.LEAVE_VENUE
+        ) {
+          return next();
+        }
+        return next(new Error("UNAUTHORIZED"));
+      });
+      return;
+    }
+    const kind: "access" | "ws" = authToken ? "ws" : "access";
+    const raw = authToken ?? cookieToken;
+    const claims =
+      kind === "ws"
+        ? await this.jwt.verifyWs(raw)
+        : await this.jwt.verify(raw, "access");
     const user = await this.auth.requireActiveUser(
       claims.userId,
       undefined,
@@ -54,6 +84,7 @@ export class RealtimeSessionsService {
     );
     this.sockets.set(socket, {
       token: raw!,
+      kind,
       userId: user.id,
       role: user.role,
       version: claims.sessionVersion,
@@ -76,7 +107,10 @@ export class RealtimeSessionsService {
     try {
       const saved = this.sockets.get(socket);
       if (!saved) throw new UnauthorizedException();
-      const claims = await this.jwt.verify(saved.token, "access");
+      const claims =
+        saved.kind === "ws"
+          ? await this.jwt.verifyWs(saved.token)
+          : await this.jwt.verify(saved.token, "access");
       const user = await this.auth.requireActiveUser(
         claims.userId,
         undefined,

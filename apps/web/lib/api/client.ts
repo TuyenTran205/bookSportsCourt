@@ -10,6 +10,8 @@ import { ApiError } from './errors';
  */
 const MOCKING_ENABLED = process.env.NEXT_PUBLIC_API_MOCKING === 'enabled';
 
+export const IS_MOCKING_ENABLED = MOCKING_ENABLED;
+
 /** URL backend thật – khớp `.env.example` (NEXT_PUBLIC_API_URL). Server Component luôn dùng URL này vì MSW chỉ chạy ở trình duyệt. */
 export const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -17,6 +19,25 @@ export const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:
 export const API_BASE_URL = MOCKING_ENABLED ? '' : BACKEND_URL;
 
 export const API_PREFIX = '/api/v1';
+
+/** URL origin trực tiếp của Backend dùng cho Socket.IO (Vercel rewrite không proxy WebSocket). */
+export function getSocketBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL.replace(/\/+$/, '');
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'booksportscourt.id.vn' ||
+      window.location.hostname.endsWith('.booksportscourt.id.vn') ||
+      window.location.hostname.endsWith('.vercel.app'))
+  ) {
+    return 'https://booksportscourt.onrender.com';
+  }
+  return BACKEND_URL.replace(/\/+$/, '');
+}
 
 export interface ApiFetchOptions extends RequestInit {
   /**

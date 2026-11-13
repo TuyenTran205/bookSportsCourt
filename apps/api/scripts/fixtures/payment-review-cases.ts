@@ -112,6 +112,14 @@ export async function runPaymentReviewCases(
       assert.equal(list.meta.total, 1);
       assert.equal(list.data.length, 1);
       ownerPaymentItemSchema.parse(list.data[0]);
+      const allList = phase4ListEnvelope(ownerPaymentItemSchema).parse(
+        await (
+          await request("/owner/payments?status=all&limit=20", "ownerA")
+        ).json(),
+      );
+      assert.ok(allList.meta.total >= 2);
+      assert.ok(allList.data.some((row: { id: string }) => row.id === ids.payments.submitted));
+      assert.ok(allList.data.some((row: { id: string }) => row.id === ids.payments.cash));
       const other = phase4ListEnvelope(ownerPaymentItemSchema).parse(
         await (
           await request(`/owner/payments?venueId=${ids.venues.a}`, "ownerB")
