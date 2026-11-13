@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCreateHold } from '@/lib/hooks/useBookings';
+import { useOptionalSocket } from '@/lib/hooks/useSocket';
 import { ApiError } from '@/lib/api/errors';
 import {
   useReviewSummary,
@@ -73,6 +74,15 @@ export function VenueDetailScreen() {
   const slotsQuery = useVenueSlots(slug, date);
   const summaryQuery = useReviewSummary(slug);
   const reviewsQuery = useVenueReviews(slug, reviewPage);
+
+  const socket = useOptionalSocket();
+  const joinVenue = socket?.joinVenue;
+  const leaveVenue = socket?.leaveVenue;
+  React.useEffect(() => {
+    if (!joinVenue || !leaveVenue || !venue?.id || !date) return;
+    joinVenue(venue.id, date);
+    return () => leaveVenue(venue.id, date);
+  }, [joinVenue, leaveVenue, venue?.id, date]);
 
   const activeCourts = React.useMemo(
     () => (venue?.courts ?? []).filter((c) => c.status === 'active'),

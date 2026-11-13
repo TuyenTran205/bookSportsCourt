@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import type { User, UserRole, UserStatus } from '@bsc/shared';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -38,6 +39,7 @@ export function AdminUsersScreen() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [pendingStatusUser, setPendingStatusUser] = React.useState<User | null>(null);
 
   // Debounce search query
   React.useEffect(() => {
@@ -60,25 +62,29 @@ export function AdminUsersScreen() {
   const users = usersQuery.data?.data ?? [];
   const meta = usersQuery.data?.meta;
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = (user: User) => {
     const isLocking = user.status === 'active';
-    const actionLabel = isLocking ? 'khoá' : 'mở khoá';
 
     if (user.role === 'admin' && isLocking) {
       toast.error('Không thể khoá tài khoản Quản trị viên');
       return;
     }
 
-    if (!window.confirm(`Bạn có chắc chắn muốn ${actionLabel} tài khoản "${user.fullName || user.email}"?`)) {
-      return;
-    }
+    setPendingStatusUser(user);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!pendingStatusUser) return;
+    const isLocking = pendingStatusUser.status === 'active';
+    const actionLabel = isLocking ? 'khoá' : 'mở khoá';
 
     try {
       await statusMutation.mutateAsync({
-        id: user.id,
+        id: pendingStatusUser.id,
         status: isLocking ? 'suspended' : 'active',
       });
       toast.success(`Đã ${actionLabel} tài khoản thành công`);
+      setPendingStatusUser(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon('error'));
     }
@@ -295,6 +301,35 @@ export function AdminUsersScreen() {
           setRoleDialogOpen(false);
           setSelectedUser(null);
         }}
+      />
+
+      <ConfirmDialog
+        open={pendingStatusUser !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingStatusUser(null);
+        }}
+        variant={pendingStatusUser?.status === 'active' ? 'danger' : 'primary'}
+        icon={pendingStatusUser?.status === 'active' ? Lock : Unlock}
+        title={
+          pendingStatusUser?.status === 'active'
+            ? 'Xác nhận khoá tài khoản'
+            : 'Xác nhận mở khoá tài khoản'
+        }
+        description={
+          pendingStatusUser && (
+            <>
+              Bạn có chắc chắn muốn{' '}
+              {pendingStatusUser.status === 'active' ? 'khoá' : 'mở khoá'} tài khoản{' '}
+              <span className="font-semibold text-text-primary">
+                &ldquo;{pendingStatusUser.fullName || pendingStatusUser.email}&rdquo;
+              </span>
+              ?
+            </>
+          )
+        }
+        confirmLabel={pendingStatusUser?.status === 'active' ? 'Khoá tài khoản' : 'Mở khoá'}
+        isPending={statusMutation.isPending}
+        onConfirm={confirmToggleStatus}
       />
     </div>
   );

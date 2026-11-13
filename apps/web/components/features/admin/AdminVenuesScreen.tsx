@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { AdminVenueRow } from '@/lib/api/endpoints/admin';
 import { createOwnerVenue, updateOwnerVenue, uploadVenueImage } from '@/lib/api/endpoints/owner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -36,6 +37,11 @@ export function AdminVenuesScreen() {
   const [rejectingVenue, setRejectingVenue] = React.useState<AdminVenueRow | null>(null);
   const [editingVenue, setEditingVenue] = React.useState<AdminVenueRow | null>(null);
   const [deletingVenue, setDeletingVenue] = React.useState<AdminVenueRow | null>(null);
+  const [pendingStatusAction, setPendingStatusAction] = React.useState<{
+    venue: AdminVenueRow;
+    status: 'approved' | 'suspended';
+    label: string;
+  } | null>(null);
   const [isVenueFormOpen, setIsVenueFormOpen] = React.useState(false);
   const [isSavingVenue, setIsSavingVenue] = React.useState(false);
 
@@ -59,18 +65,23 @@ export function AdminVenuesScreen() {
   const venues = venuesQuery.data?.data ?? [];
   const meta = venuesQuery.data?.meta;
 
-  const handleUpdateStatus = async (
+  const handleUpdateStatus = (
     venue: AdminVenueRow,
     status: 'approved' | 'suspended',
     label: string,
   ) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn ${label} cơ sở "${venue.name}"?`)) return;
+    setPendingStatusAction({ venue, status, label });
+  };
+
+  const confirmUpdateStatus = async () => {
+    if (!pendingStatusAction) return;
     try {
       await reviewMutation.mutateAsync({
-        id: venue.id,
-        status,
+        id: pendingStatusAction.venue.id,
+        status: pendingStatusAction.status,
       });
-      toast.success(`Đã cập nhật trạng thái cơ sở thành công`);
+      toast.success('Đã cập nhật trạng thái cơ sở thành công');
+      setPendingStatusAction(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon('error'));
     }
@@ -425,6 +436,36 @@ export function AdminVenuesScreen() {
         venue={deletingVenue}
         open={deletingVenue !== null}
         onClose={() => setDeletingVenue(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingStatusAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingStatusAction(null);
+        }}
+        variant={pendingStatusAction?.status === 'suspended' ? 'warning' : 'primary'}
+        title={
+          pendingStatusAction?.status === 'suspended'
+            ? 'Xác nhận tạm đình chỉ cơ sở'
+            : 'Xác nhận phê duyệt cơ sở'
+        }
+        subtitle="Thao tác cập nhật trạng thái hiển thị trên hệ thống"
+        description={
+          pendingStatusAction && (
+            <>
+              Bạn có chắc chắn muốn {pendingStatusAction.label} cơ sở{' '}
+              <span className="font-semibold text-text-primary">
+                &ldquo;{pendingStatusAction.venue.name}&rdquo;
+              </span>
+              ?
+            </>
+          )
+        }
+        confirmLabel={
+          pendingStatusAction?.status === 'suspended' ? 'Tạm đình chỉ' : 'Xác nhận'
+        }
+        isPending={reviewMutation.isPending}
+        onConfirm={confirmUpdateStatus}
       />
 
       <VenueFormDialog

@@ -14,6 +14,22 @@ export const FALLBACK_ERROR_TILE_URL =
 
 /** Danh mục cấu hình gốc của các nhà cung cấp tile */
 export const TILE_PROVIDERS: Record<MapProviderId, TileProviderConfig> = {
+  'vietnam-pmtiles': {
+    id: 'vietnam-pmtiles',
+    name: 'Bản đồ Việt Nam (PMTiles)',
+    label: 'Bản đồ Việt Nam (BookSportsCourt)',
+    url: '{pmtilesUrl}',
+    attribution:
+      '&copy; BookSportsCourt &middot; &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> &middot; <a href="https://protomaps.com" target="_blank" rel="noopener noreferrer">Protomaps</a>',
+    maxZoom: 19,
+    maxNativeZoom: 14,
+    maxDataZoom: 14,
+    format: 'pmtiles',
+    requiresKey: true,
+    keyEnvVar: 'NEXT_PUBLIC_VIETNAM_PMTILES_URL',
+    priority: -1,
+    supportsRetina: true,
+  },
   'carto-voyager': {
     id: 'carto-voyager',
     name: 'CARTO Voyager',
@@ -143,8 +159,14 @@ export const TILE_PROVIDERS: Record<MapProviderId, TileProviderConfig> = {
   },
 };
 
+/** URL font glyphs (.pbf) mặc định hỗ trợ tiếng Việt cho MapLibre GL JS (miễn phí, hỗ trợ CORS) */
+export const DEFAULT_MAP_GLYPHS_URL =
+  'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf';
+
 /** Cấu hình biến môi trường hỗ trợ */
 export interface MapEnvConfig {
+  NEXT_PUBLIC_VIETNAM_PMTILES_URL?: string;
+  NEXT_PUBLIC_MAP_GLYPHS_URL?: string;
   NEXT_PUBLIC_CARTO_API_KEY?: string;
   NEXT_PUBLIC_MAPTILER_API_KEY?: string;
   NEXT_PUBLIC_STADIA_API_KEY?: string;
@@ -159,6 +181,8 @@ export interface MapEnvConfig {
  */
 function readStaticEnv(): MapEnvConfig {
   return {
+    NEXT_PUBLIC_VIETNAM_PMTILES_URL: process.env.NEXT_PUBLIC_VIETNAM_PMTILES_URL,
+    NEXT_PUBLIC_MAP_GLYPHS_URL: process.env.NEXT_PUBLIC_MAP_GLYPHS_URL,
     NEXT_PUBLIC_CARTO_API_KEY: process.env.NEXT_PUBLIC_CARTO_API_KEY,
     NEXT_PUBLIC_MAPTILER_API_KEY: process.env.NEXT_PUBLIC_MAPTILER_API_KEY,
     NEXT_PUBLIC_STADIA_API_KEY: process.env.NEXT_PUBLIC_STADIA_API_KEY,
@@ -169,12 +193,71 @@ function readStaticEnv(): MapEnvConfig {
 }
 
 /**
+ * Lấy URL font glyphs (.pbf) cho MapLibre GL JS.
+ * Ưu tiên `NEXT_PUBLIC_MAP_GLYPHS_URL` (trỏ tới R2/CDN riêng), mặc định dùng Protomaps basemaps-assets.
+ */
+export function getMapGlyphsUrl(customEnv?: Partial<MapEnvConfig>): string {
+  const configured = (customEnv?.NEXT_PUBLIC_MAP_GLYPHS_URL ?? readStaticEnv().NEXT_PUBLIC_MAP_GLYPHS_URL)?.trim();
+  return configured && configured.length > 0 ? configured : DEFAULT_MAP_GLYPHS_URL;
+}
+
+/**
+ * Mở rộng mẫu URL raster chứa `{s}` (subdomains) và `{r}` (retina `@2x`) thành danh sách URL
+ * tương thích với `tiles` array trong MapLibre `raster` source.
+ */
+export function expandRasterTileUrls(
+  provider: TileProviderConfig,
+  detectRetina?: boolean,
+): string[] {
+  const useRetina = Boolean(detectRetina ?? provider.supportsRetina);
+  const retinaSuffix = useRetina && provider.supportsRetina ? '@2x' : '';
+  const urlWithRetina = provider.url.replace('{r}', retinaSuffix);
+
+  if (!urlWithRetina.includes('{s}')) {
+    return [urlWithRetina];
+  }
+
+  const rawSubdomains = provider.subdomains ?? ['a', 'b', 'c'];
+  const subdomainList = Array.isArray(rawSubdomains)
+    ? rawSubdomains
+    : rawSubdomains.split('').filter(Boolean);
+
+  if (subdomainList.length === 0) {
+    return [urlWithRetina.replace('{s}', 'a')];
+  }
+
+  return subdomainList.map((subdomain) => urlWithRetina.replace('{s}', subdomain));
+}
+
+/**
+ * Ánh xạ tên biến môi trường tới giá trị tương ứng trong MapEnvConfig.
+ */
+function resolveConfigValue(env: MapEnvConfig, keyEnvVar?: string): string | undefined {
+  switch (keyEnvVar) {
+    case 'NEXT_PUBLIC_VIETNAM_PMTILES_URL':
+      return env.NEXT_PUBLIC_VIETNAM_PMTILES_URL;
+    case 'NEXT_PUBLIC_CARTO_API_KEY':
+      return env.NEXT_PUBLIC_CARTO_API_KEY;
+    case 'NEXT_PUBLIC_MAPTILER_API_KEY':
+      return env.NEXT_PUBLIC_MAPTILER_API_KEY;
+    case 'NEXT_PUBLIC_STADIA_API_KEY':
+      return env.NEXT_PUBLIC_STADIA_API_KEY;
+    case 'NEXT_PUBLIC_GEOAPIFY_API_KEY':
+      return env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
+    case 'NEXT_PUBLIC_THUNDERFOREST_API_KEY':
+      return env.NEXT_PUBLIC_THUNDERFOREST_API_KEY;
+    default:
+      return undefined;
+  }
+}
+
+/**
  * Lấy danh sách các nhà cung cấp tile khả dụng đã sắp xếp theo độ ưu tiên.
  * Hàm thuần (pure function), không side-effect, dễ dàng kiểm thử bằng cách truyền customEnv.
  *
  * Thứ tự ưu tiên mặc định:
- * Provider có API key hợp lệ (priority: 0) -> Esri World Street (1) -> OSM France HOT (2)
- * -> OpenTopoMap (3) -> OSM Standard (4).
+ * Bản đồ Việt Nam PMTiles (-1, nếu cấu hình URL) -> Provider có API key (0) -> Esri World Street (1)
+ * -> OSM France HOT (2) -> OpenTopoMap (3) -> OSM Standard (4).
  * Nếu NEXT_PUBLIC_DEFAULT_MAP_PROVIDER được chỉ định, provider đó sẽ được đưa lên vị trí đầu tiên.
  */
 export function getTileProviders(customEnv?: Partial<MapEnvConfig>): TileProviderConfig[] {
@@ -191,24 +274,12 @@ export function getTileProviders(customEnv?: Partial<MapEnvConfig>): TileProvide
       continue;
     }
 
-    // Xử lý provider yêu cầu API key
-    let rawKey: string | undefined;
-    if (provider.keyEnvVar === 'NEXT_PUBLIC_CARTO_API_KEY') {
-      rawKey = env.NEXT_PUBLIC_CARTO_API_KEY;
-    } else if (provider.keyEnvVar === 'NEXT_PUBLIC_MAPTILER_API_KEY') {
-      rawKey = env.NEXT_PUBLIC_MAPTILER_API_KEY;
-    } else if (provider.keyEnvVar === 'NEXT_PUBLIC_STADIA_API_KEY') {
-      rawKey = env.NEXT_PUBLIC_STADIA_API_KEY;
-    } else if (provider.keyEnvVar === 'NEXT_PUBLIC_GEOAPIFY_API_KEY') {
-      rawKey = env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
-    } else if (provider.keyEnvVar === 'NEXT_PUBLIC_THUNDERFOREST_API_KEY') {
-      rawKey = env.NEXT_PUBLIC_THUNDERFOREST_API_KEY;
-    }
-
-    const trimmedKey = rawKey?.trim();
-    if (trimmedKey && trimmedKey.length > 0) {
-      // Thay thế placeholder {apiKey} hoặc {key} trong URL template
-      const resolvedUrl = provider.url.replace('{apiKey}', trimmedKey).replace('{key}', trimmedKey);
+    const trimmedValue = resolveConfigValue(env, provider.keyEnvVar)?.trim();
+    if (trimmedValue && trimmedValue.length > 0) {
+      const resolvedUrl = provider.url
+        .replace('{pmtilesUrl}', trimmedValue)
+        .replace('{apiKey}', trimmedValue)
+        .replace('{key}', trimmedValue);
       available.push({
         ...provider,
         url: resolvedUrl,

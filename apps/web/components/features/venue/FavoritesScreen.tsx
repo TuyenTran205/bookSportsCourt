@@ -25,8 +25,8 @@ export function FavoritesScreen() {
       <PageHeader title={t('title')} description={t('desc')} />
 
       {query.isLoading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-72 w-full" />
           ))}
         </div>
@@ -47,7 +47,7 @@ export function FavoritesScreen() {
           }
         />
       ) : (
-        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {venues.map((venue) => (
             <li key={venue.id}>
               <VenueCard venue={venue} action={<FavoriteButton venueId={venue.id} />} />

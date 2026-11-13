@@ -39,6 +39,7 @@ import {
 } from '@/lib/api/endpoints/owner';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useOwnerRealtime } from '@/lib/hooks/useOwnerRealtime';
+import { useOptionalSocket } from '@/lib/hooks/useSocket';
 import { formatCurrency, formatTimeRange } from '@/lib/utils/format';
 
 type TimelineSlot = Pick<Slot, 'start' | 'end'> & { time: string; endTime: string };
@@ -149,6 +150,15 @@ export function OwnerTimeline() {
   const [selectedVenueId, setSelectedVenueId] = React.useState('');
 
   useOwnerRealtime({ venueId: selectedVenueId });
+
+  const socket = useOptionalSocket();
+  const joinVenue = socket?.joinVenue;
+  const leaveVenue = socket?.leaveVenue;
+  React.useEffect(() => {
+    if (!joinVenue || !leaveVenue || !selectedVenueId || !selectedDate) return;
+    joinVenue(selectedVenueId, selectedDate);
+    return () => leaveVenue(selectedVenueId, selectedDate);
+  }, [joinVenue, leaveVenue, selectedVenueId, selectedDate]);
   const [selectedBooking, setSelectedBooking] = React.useState<OwnerTimelineBooking | null>(null);
   const [selectedBlackout, setSelectedBlackout] = React.useState<Blackout | null>(null);
   const [manualDialogOpen, setManualDialogOpen] = React.useState(false);

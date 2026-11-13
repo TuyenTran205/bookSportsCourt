@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
+  Optional,
   UnprocessableEntityException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -23,6 +24,7 @@ import type {
   HoldBookingResponse,
 } from "../../../../../packages/shared/src/types.js";
 import { BookingsRepository } from "./bookings.repository.js";
+import { RealtimePublisher } from "../realtime/realtime.publisher.js";
 import {
   addDaysToDateString,
   assertBlocksWithinOpeningHours,
@@ -32,6 +34,7 @@ import {
   DEFAULT_HOLD_TTL_MINUTES,
   evaluateCancellationPreview,
   formatDateToVnIso,
+  toVnDateParts,
   HOLD_LIMIT,
   HOLD_RATE_LIMIT_PER_HOUR,
   isValidDateString,
@@ -47,7 +50,31 @@ export class BookingsService {
   constructor(
     private readonly repo: BookingsRepository,
     private readonly config: ConfigService,
+    @Optional() private readonly realtime?: RealtimePublisher,
   ) {}
+
+  /** Phát sự kiện `slot_updated` cho room `venue:<id>:date:<YYYY-MM-DD>` (best-effort sau khi commit DB). */
+  async publishSlotUpdate(
+    venueId: string,
+    courtId: string,
+    start: Date,
+  ): Promise<void> {
+    if (!this.realtime) return;
+    try {
+      const date = toVnDateParts(start).dateStr;
+      const grid = await this.getVenueSlots(venueId, { date, courtId });
+      const court = grid.data.courts.find((item) => item.courtId === courtId);
+      if (!court) return;
+      this.realtime.emitSlots({
+        venueId,
+        courtId,
+        date,
+        slots: court.slots,
+      });
+    } catch {
+      // Best-effort: dữ liệu DB đã commit thành công.
+    }
+  }
 
   private holdTtlMinutes(): number {
     const raw = Number(
@@ -245,7 +272,7 @@ export class BookingsService {
     const blocks = splitRangeIntoBlocks(input.start, input.end);
 
     try {
-      return await this.repo.transaction(async (tx) => {
+      const outcome = await this.repo.transaction(async (tx) => {
         // 1. Advisory lock theo courtId để tuần tự hóa các yêu cầu tranh chấp trên cùng 1 sân
         await this.repo.acquireCourtAdvisoryLock(tx, input.courtId);
 
@@ -294,14 +321,17 @@ export class BookingsService {
 
         if (existingHold) {
           return {
-            statusCode: 200 as const,
-            data: this.formatHoldResponse(
-              existingHold.booking,
-              existingHold.payment,
-              existingHold.start,
-              existingHold.end,
-              now,
-            ),
+            createdNow: false as const,
+            response: {
+              statusCode: 200 as const,
+              data: this.formatHoldResponse(
+                existingHold.booking,
+                existingHold.payment,
+                existingHold.start,
+                existingHold.end,
+                now,
+              ),
+            },
           };
         }
 
@@ -425,16 +455,44 @@ export class BookingsService {
         });
 
         return {
-          statusCode: 201 as const,
-          data: this.formatHoldResponse(
-            created.booking,
-            created.payment,
-            created.start,
-            created.end,
-            now,
-          ),
+          createdNow: true as const,
+          meta: {
+            venueId: venue.id,
+            courtId: court.id,
+            ownerId: venue.ownerId,
+            customerId: user.id,
+            bookingId: created.booking.id,
+            start: created.start,
+          },
+          response: {
+            statusCode: 201 as const,
+            data: this.formatHoldResponse(
+              created.booking,
+              created.payment,
+              created.start,
+              created.end,
+              now,
+            ),
+          },
         };
       });
+      if (outcome.createdNow) {
+        this.realtime?.emitBookingCreated(
+          outcome.meta.ownerId,
+          outcome.meta.customerId,
+          {
+            bookingId: outcome.meta.bookingId,
+            venueId: outcome.meta.venueId,
+            courtId: outcome.meta.courtId,
+          },
+        );
+        await this.publishSlotUpdate(
+          outcome.meta.venueId,
+          outcome.meta.courtId,
+          outcome.meta.start,
+        );
+      }
+      return outcome.response;
     } catch (error: unknown) {
       if (error instanceof HttpException) {
         throw error;
@@ -862,7 +920,7 @@ export class BookingsService {
 
     await this.repo.expireStaleHoldsForCustomer(user.id);
 
-    return this.repo.transaction(async (tx) => {
+    const { detail, meta } = await this.repo.transaction(async (tx) => {
       const now = await this.repo.now(tx);
       const bundle = await this.repo.findBookingBundleById(bookingId, tx, true);
 
@@ -940,14 +998,44 @@ export class BookingsService {
             ? "Chủ sân huỷ"
             : "Quản trị viên huỷ";
 
-      return this.repo.cancelBookingInTx(tx, {
+      const reason = reasonInput ?? defaultReason;
+      const detail = await this.repo.cancelBookingInTx(tx, {
         bundle,
         actorId: user.id,
         actorRole: user.role,
-        reason: reasonInput ?? defaultReason,
+        reason,
         now,
       });
+      return {
+        detail,
+        meta: {
+          bookingId: bundle.booking.id,
+          venueId: bundle.venue.id,
+          courtId: bundle.booking.courtId,
+          ownerId: bundle.venue.ownerId,
+          customerId: bundle.booking.customerId,
+          start: bundle.start,
+          reason,
+        },
+      };
     });
+
+    if (meta.customerId) {
+      this.realtime?.emitBookingCancelled(
+        meta.customerId,
+        { bookingId: meta.bookingId, reason: meta.reason },
+        meta.ownerId,
+      );
+      if (meta.customerId !== user.id) {
+        this.realtime?.emitNotificationCreated(meta.customerId, {
+          id: meta.bookingId,
+          type: "booking_cancelled",
+          title: "Đơn đặt sân đã bị huỷ",
+        });
+      }
+    }
+    await this.publishSlotUpdate(meta.venueId, meta.courtId, meta.start);
+    return detail;
   }
 
   /**
@@ -956,7 +1044,7 @@ export class BookingsService {
   async releaseHold(user: AuthenticatedUser, holdId: string): Promise<void> {
     const bookingId = this.parseUuid(holdId, "Mã giữ chỗ");
 
-    await this.repo.transaction(async (tx) => {
+    const released = await this.repo.transaction(async (tx) => {
       const now = await this.repo.now(tx);
       const bundle = await this.repo.findBookingBundleById(bookingId, tx, true);
 
@@ -968,7 +1056,7 @@ export class BookingsService {
       }
 
       if (bundle.booking.status === "cancelled") {
-        return;
+        return null;
       }
 
       if (bundle.booking.status !== "held") {
@@ -978,14 +1066,36 @@ export class BookingsService {
         });
       }
 
+      const reason = "Khách chủ động nhả giữ chỗ";
       await this.repo.cancelBookingInTx(tx, {
         bundle,
         actorId: user.id,
         actorRole: user.role,
-        reason: "Khách chủ động nhả giữ chỗ",
+        reason,
         now,
       });
+      return {
+        bookingId: bundle.booking.id,
+        venueId: bundle.venue.id,
+        courtId: bundle.booking.courtId,
+        ownerId: bundle.venue.ownerId,
+        start: bundle.start,
+        reason,
+      };
     });
+
+    if (released) {
+      this.realtime?.emitBookingCancelled(
+        user.id,
+        { bookingId: released.bookingId, reason: released.reason },
+        released.ownerId,
+      );
+      await this.publishSlotUpdate(
+        released.venueId,
+        released.courtId,
+        released.start,
+      );
+    }
   }
 
   /**
@@ -999,7 +1109,7 @@ export class BookingsService {
 
     await this.repo.expireStaleHoldsForCustomer(user.id);
 
-    return this.repo.transaction(async (tx) => {
+    const outcome = await this.repo.transaction(async (tx) => {
       const now = await this.repo.now(tx);
       const bundle = await this.repo.findBookingBundleById(bookingId, tx, true);
 
@@ -1011,7 +1121,10 @@ export class BookingsService {
       }
 
       if (bundle.booking.status === "confirmed") {
-        return this.repo.toBookingDetail(bundle);
+        return {
+          changed: false as const,
+          detail: this.repo.toBookingDetail(bundle),
+        };
       }
 
       if (
@@ -1040,8 +1153,39 @@ export class BookingsService {
         });
       }
 
-      return this.repo.confirmHeldBookingInTx(tx, bundle, user.id, now);
+      const detail = await this.repo.confirmHeldBookingInTx(
+        tx,
+        bundle,
+        user.id,
+        now,
+      );
+      return {
+        changed: true as const,
+        detail,
+        meta: {
+          bookingId: bundle.booking.id,
+          venueId: bundle.venue.id,
+          courtId: bundle.booking.courtId,
+          ownerId: bundle.venue.ownerId,
+          customerId: bundle.booking.customerId ?? user.id,
+          start: bundle.start,
+        },
+      };
     });
+
+    if (outcome.changed) {
+      this.realtime?.emitBookingConfirmed(
+        outcome.meta.customerId,
+        { bookingId: outcome.meta.bookingId },
+        outcome.meta.ownerId,
+      );
+      await this.publishSlotUpdate(
+        outcome.meta.venueId,
+        outcome.meta.courtId,
+        outcome.meta.start,
+      );
+    }
+    return outcome.detail;
   }
 
   /**
@@ -1053,7 +1197,7 @@ export class BookingsService {
   ): Promise<BookingDetail> {
     const bookingId = this.parseUuid(id, "Mã đặt sân");
 
-    return this.repo.transaction(async (tx) => {
+    const outcome = await this.repo.transaction(async (tx) => {
       const now = await this.repo.now(tx);
       const bundle = await this.repo.findBookingBundleById(bookingId, tx, true);
 
@@ -1072,7 +1216,10 @@ export class BookingsService {
       }
 
       if (bundle.booking.status === "no_show") {
-        return this.repo.toBookingDetail(bundle);
+        return {
+          changed: false as const,
+          detail: this.repo.toBookingDetail(bundle),
+        };
       }
 
       if (bundle.booking.status !== "confirmed") {
@@ -1091,7 +1238,25 @@ export class BookingsService {
         });
       }
 
-      return this.repo.markNoShowInTx(tx, bundle, user.id, now);
+      const detail = await this.repo.markNoShowInTx(tx, bundle, user.id, now);
+      return {
+        changed: true as const,
+        detail,
+        meta: {
+          venueId: bundle.venue.id,
+          courtId: bundle.booking.courtId,
+          start: bundle.start,
+        },
+      };
     });
+
+    if (outcome.changed) {
+      await this.publishSlotUpdate(
+        outcome.meta.venueId,
+        outcome.meta.courtId,
+        outcome.meta.start,
+      );
+    }
+    return outcome.detail;
   }
 }

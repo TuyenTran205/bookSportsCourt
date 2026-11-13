@@ -262,7 +262,7 @@ export interface OwnerPaymentItem {
 }
 
 export async function listOwnerPayments(
-  params: { page?: number; limit?: number; status?: string } = {},
+  params: { page?: number; limit?: number; status?: PaymentStatus | 'all' } = {},
 ) {
   const res = await apiFetchWithMeta<Array<Record<string, unknown>>>(
     '/owner/payments',

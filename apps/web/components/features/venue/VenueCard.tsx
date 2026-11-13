@@ -39,6 +39,8 @@ export interface VenueCardProps {
    * Hiển thị nút so sánh cơ sở. Mặc định tự bật ở trang khách/công khai.
    */
   showCompare?: boolean;
+  /** Mật độ hiển thị thẻ (`compact` thu gọn chiều cao cho chế độ chia đôi 1:2). */
+  density?: 'default' | 'compact';
   className?: string;
 }
 
@@ -48,6 +50,7 @@ export function VenueCard({
   href,
   action,
   showCompare = true,
+  density = 'default',
   className,
 }: VenueCardProps) {
   const location = venue.ward?.name
@@ -55,6 +58,7 @@ export function VenueCard({
     : (venue.district?.name ?? venue.province?.name ?? venue.address);
   const detailHref = href ?? `/venues/${venue.slug}`;
   const displayCompare = showCompare && !showStatus;
+  const isCompact = density === 'compact';
 
   return (
     <article
@@ -71,7 +75,12 @@ export function VenueCard({
         </div>
       )}
       <Link href={detailHref} className="block focus-visible:outline-none">
-        <div className="relative aspect-video bg-bg-subtle">
+        <div
+          className={cn(
+            'relative bg-bg-subtle',
+            isCompact ? 'h-28 sm:h-32' : 'h-40 sm:h-44',
+          )}
+        >
           {venue.coverUrl ? (
             <Image
               src={venue.coverUrl}
@@ -96,36 +105,70 @@ export function VenueCard({
           )}
         </div>
 
-        <div className="flex flex-col gap-2 p-4">
-          <h3 className="line-clamp-1 text-base font-bold text-text-primary">{venue.name}</h3>
+        <div className={cn('flex flex-col', isCompact ? 'gap-1 p-3' : 'gap-1.5 p-3.5 sm:p-4')}>
+          <h3
+            className={cn(
+              'line-clamp-1 font-bold text-text-primary',
+              isCompact ? 'text-sm' : 'text-base',
+            )}
+          >
+            {venue.name}
+          </h3>
 
-          <p className="flex items-center gap-1 text-sm text-text-secondary">
-            <MapPin className="size-4 shrink-0" aria-hidden="true" />
+          <p
+            className={cn(
+              'flex items-center gap-1 text-text-secondary',
+              isCompact ? 'text-xs' : 'text-sm',
+            )}
+          >
+            <MapPin
+              className={cn('shrink-0', isCompact ? 'size-3.5' : 'size-4')}
+              aria-hidden="true"
+            />
             <span className="line-clamp-1">{location}</span>
           </p>
 
           {/* Môn thể thao — tối đa 3 thẻ để hàng không xuống dòng. */}
           {(venue.sports ?? []).length > 0 && (
-            <ul className="flex min-h-6 flex-wrap gap-1">
+            <ul className={cn('flex flex-wrap gap-1', !isCompact && 'min-h-6')}>
               {(venue.sports ?? []).slice(0, 3).map((sport) => (
                 <li
                   key={sport.id}
-                  className="rounded-full bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary"
+                  className={cn(
+                    'rounded-full bg-bg-subtle text-text-secondary',
+                    isCompact ? 'px-2 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs',
+                  )}
                 >
                   {sport.name}
                 </li>
               ))}
               {(venue.sports ?? []).length > 3 && (
-                <li className="rounded-full bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
+                <li
+                  className={cn(
+                    'rounded-full bg-bg-subtle text-text-secondary',
+                    isCompact ? 'px-2 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs',
+                  )}
+                >
                   +{(venue.sports ?? []).length - 3}
                 </li>
               )}
             </ul>
           )}
 
-          <div className="mt-1 flex items-end justify-between gap-2">
-            <p className="text-sm text-text-secondary">
-              từ <span className="text-base font-bold text-primary-700 dark:text-primary-400">
+          <div
+            className={cn(
+              'flex items-end justify-between gap-2',
+              isCompact ? 'mt-0.5' : 'mt-1',
+            )}
+          >
+            <p className={cn('text-text-secondary', isCompact ? 'text-xs' : 'text-sm')}>
+              từ{' '}
+              <span
+                className={cn(
+                  'font-bold text-primary-700 dark:text-primary-400',
+                  isCompact ? 'text-sm' : 'text-base',
+                )}
+              >
                 {venue.fromPrice === null ? 'Liên hệ' : formatCurrency(venue.fromPrice)}
               </span>
             </p>
