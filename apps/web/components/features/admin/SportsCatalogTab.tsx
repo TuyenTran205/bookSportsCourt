@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Activity, Plus, Trash2, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { SportFormDialog } from '@/components/features/admin/SportFormDialog';
@@ -18,17 +19,25 @@ import { renderCatalogIcon } from './catalog-icons';
 export function SportsCatalogTab() {
   const tCommon = useTranslations('common');
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [deletingSport, setDeletingSport] = React.useState<{ id: string; name: string } | null>(
+    null,
+  );
 
   const sportsQuery = useSportsList();
   const deleteMutation = useDeleteSport();
 
   const sports = sportsQuery.data ?? [];
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xoá môn thể thao "${name}"?`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setDeletingSport({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingSport) return;
     try {
-      await deleteMutation.mutateAsync(id);
-      toast.success(`Đã xoá môn "${name}"`);
+      await deleteMutation.mutateAsync(deletingSport.id);
+      toast.success(`Đã xoá môn "${deletingSport.name}"`);
+      setDeletingSport(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon('error'));
     }
@@ -125,6 +134,29 @@ export function SportsCatalogTab() {
       <SportFormDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={deletingSport !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingSport(null);
+        }}
+        variant="danger"
+        title="Xác nhận xoá môn thể thao"
+        description={
+          deletingSport && (
+            <>
+              Bạn có chắc chắn muốn xoá môn thể thao{' '}
+              <span className="font-semibold text-text-primary">
+                &ldquo;{deletingSport.name}&rdquo;
+              </span>
+              ?
+            </>
+          )
+        }
+        confirmLabel="Xoá môn thể thao"
+        isPending={deleteMutation.isPending}
+        onConfirm={confirmDelete}
       />
     </div>
   );

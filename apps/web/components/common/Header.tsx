@@ -82,13 +82,13 @@ export function Header() {
   }, [isAuthenticated, role, tNav]);
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border bg-bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-bg-card/80">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-bg-card">
+      <div className="container flex h-16 items-center justify-between gap-4">
         {/* Logo & Brand */}
-        <div className="flex items-center gap-8">
+        <div className="flex min-w-0 items-center gap-4 lg:gap-8">
           <Link
             href="/"
-            className="flex items-center gap-2 text-lg font-bold text-primary-700 transition-colors hover:text-primary-800"
+            className="flex shrink-0 items-center gap-2 text-lg font-bold text-primary-700 transition-colors hover:text-primary-800"
           >
             <div className="flex size-9 items-center justify-center rounded-lg bg-primary-700 text-white">
               <Calendar className="size-5" />
@@ -109,7 +109,7 @@ export function Header() {
                   aria-current={active ? 'page' : undefined}
                   aria-busy={pending || undefined}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-btn px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center gap-1.5 whitespace-nowrap rounded-btn px-3 py-2 text-sm font-medium transition-colors',
                     active
                       ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
                       : 'text-text-secondary hover:bg-bg-subtle hover:text-text-primary',

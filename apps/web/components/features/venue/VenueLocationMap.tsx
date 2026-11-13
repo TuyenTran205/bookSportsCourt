@@ -1,15 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import L from 'leaflet';
-import type { LeafletMouseEvent } from 'leaflet';
-import { MapContainer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { Marker, type MapMouseEvent } from 'maplibre-gl';
 import { Loader2, LocateFixed } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { TileResilienceProvider } from './map/TileResilienceContext';
-import { ResilientTileLayer } from './map/ResilientTileLayer';
+import { MapLibreCanvas, ResilientTileLayer, useMapLibre } from './map/ResilientTileLayer';
 import { MapResilienceControl } from './map/MapResilienceControl';
+import { VietnamMaritimeLayer } from './map/VietnamMaritimeLayer';
 
+/** Cặp toạ độ `[lat, lng]` chuẩn theo giao diện cũ để không phá vỡ caller */
 export type MapCoordinates = [number, number];
 
 export interface VenueLocationMapProps {
@@ -22,41 +22,79 @@ export interface VenueLocationMapProps {
   className?: string;
 }
 
-const locationPinIcon = L.divIcon({
-  className: 'bsc-venue-location-icon',
-  html: '<span class="bsc-venue-location-pin" aria-hidden="true"></span>',
-  iconSize: [28, 36],
-  iconAnchor: [14, 34],
-});
-
 function MapClickHandler({ onPlacePin }: Pick<VenueLocationMapProps, 'onPlacePin'>) {
-  useMapEvents({
-    click(event: LeafletMouseEvent) {
-      onPlacePin?.([event.latlng.lat, event.latlng.lng]);
-    },
-  });
+  const map = useMapLibre();
+  const onPlacePinRef = React.useRef(onPlacePin);
+  React.useEffect(() => {
+    onPlacePinRef.current = onPlacePin;
+  }, [onPlacePin]);
+
+  React.useEffect(() => {
+    if (!map) return undefined;
+
+    const handleClick = (event: MapMouseEvent) => {
+      onPlacePinRef.current?.([event.lngLat.lat, event.lngLat.lng]);
+    };
+
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [map]);
 
   return null;
 }
 
 function MapViewport({ center, marker }: Pick<VenueLocationMapProps, 'center' | 'marker'>) {
-  const map = useMap();
+  const map = useMapLibre();
   const centerLat = center[0];
   const centerLng = center[1];
   const markerLat = marker?.[0];
   const markerLng = marker?.[1];
 
   React.useEffect(() => {
+    if (!map) return;
+
     const hasMarker = markerLat !== undefined && markerLng !== undefined;
-    const position: MapCoordinates = hasMarker
-      ? [markerLat, markerLng]
-      : [centerLat, centerLng];
-    map.flyTo(position, hasMarker ? 16 : 13, { duration: 0.5 });
+    const targetLngLat: [number, number] = hasMarker
+      ? [markerLng, markerLat]
+      : [centerLng, centerLat];
+
+    map.flyTo({
+      center: targetLngLat,
+      zoom: hasMarker ? 16 : 13,
+      duration: 500,
+    });
   }, [centerLat, centerLng, map, markerLat, markerLng]);
 
+  return null;
+}
+
+function LocationPinMarker({ marker }: Pick<VenueLocationMapProps, 'marker'>) {
+  const map = useMapLibre();
+  const markerLat = marker?.[0];
+  const markerLng = marker?.[1];
+
   React.useEffect(() => {
-    map.invalidateSize();
-  }, [map]);
+    if (!map || markerLat === undefined || markerLng === undefined) {
+      return undefined;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bsc-venue-location-icon pointer-events-none';
+    const pin = document.createElement('span');
+    pin.className = 'bsc-venue-location-pin';
+    pin.setAttribute('aria-hidden', 'true');
+    wrapper.appendChild(pin);
+
+    const mapMarker = new Marker({ element: wrapper, anchor: 'bottom' })
+      .setLngLat([markerLng, markerLat])
+      .addTo(map);
+
+    return () => {
+      mapMarker.remove();
+    };
+  }, [map, markerLat, markerLng]);
 
   return null;
 }
@@ -70,27 +108,32 @@ export function VenueLocationMap({
   scrollWheelZoom = true,
   className,
 }: VenueLocationMapProps) {
+  const initialCoords = marker ?? center;
+  // Đảo [lat, lng] sang [lng, lat] cho MapLibre
+  const initialCenterLngLat: [number, number] = [initialCoords[1], initialCoords[0]];
+
   return (
     <TileResilienceProvider>
       <div
         className={cn(
-          'relative isolate z-0 size-full overflow-hidden rounded-btn',
-          onPlacePin && 'cursor-crosshair',
+          'relative isolate z-0 size-full overflow-hidden rounded-btn bg-neutral-50',
+          onPlacePin && 'cursor-crosshair [&_canvas]:cursor-crosshair',
           className,
         )}
       >
-        <MapContainer
-          center={marker ?? center}
+        <MapLibreCanvas
+          center={initialCenterLngLat}
           zoom={marker ? 16 : 13}
           maxZoom={19}
           scrollWheelZoom={scrollWheelZoom}
           className="size-full"
         >
           <ResilientTileLayer />
+          <VietnamMaritimeLayer />
           <MapViewport center={center} marker={marker} />
           <MapClickHandler onPlacePin={onPlacePin} />
-          {marker && <Marker position={marker} icon={locationPinIcon} />}
-        </MapContainer>
+          <LocationPinMarker marker={marker} />
+        </MapLibreCanvas>
 
         {onLocateMe && (
           <button

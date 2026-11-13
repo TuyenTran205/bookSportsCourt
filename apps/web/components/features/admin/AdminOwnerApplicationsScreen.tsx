@@ -6,6 +6,7 @@ import { Check, ExternalLink, MapPin, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { OwnerApplication, OwnerApplicationStatus } from '@bsc/shared';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -28,6 +29,7 @@ export function AdminOwnerApplicationsScreen() {
 
   const [page, setPage] = React.useState(1);
   const [statusFilter, setStatusFilter] = React.useState<OwnerApplicationStatus | undefined>(undefined);
+  const [approvingApp, setApprovingApp] = React.useState<OwnerApplication | null>(null);
   const [rejectingApp, setRejectingApp] = React.useState<OwnerApplication | null>(null);
 
   const applicationsQuery = useOwnerApplications({
@@ -41,15 +43,19 @@ export function AdminOwnerApplicationsScreen() {
   const applications = applicationsQuery.data?.data ?? [];
   const meta = applicationsQuery.data?.meta;
 
-  const handleApprove = async (app: OwnerApplication) => {
-    const applicantName = app.user?.fullName || app.businessName;
-    if (!window.confirm(`Xác nhận duyệt hồ sơ đối tác của ${applicantName}?`)) return;
+  const handleApprove = (app: OwnerApplication) => {
+    setApprovingApp(app);
+  };
+
+  const confirmApprove = async () => {
+    if (!approvingApp) return;
     try {
       await reviewMutation.mutateAsync({
-        id: app.id,
+        id: approvingApp.id,
         status: 'approved',
       });
       toast.success('Đã duyệt hồ sơ đối tác chủ sân');
+      setApprovingApp(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon('error'));
     }
@@ -247,6 +253,30 @@ export function AdminOwnerApplicationsScreen() {
         application={rejectingApp}
         open={rejectingApp !== null}
         onClose={() => setRejectingApp(null)}
+      />
+
+      <ConfirmDialog
+        open={approvingApp !== null}
+        onOpenChange={(open) => {
+          if (!open) setApprovingApp(null);
+        }}
+        variant="primary"
+        title="Xác nhận duyệt hồ sơ đối tác"
+        subtitle="Tài khoản sẽ được kích hoạt quyền chủ sân"
+        description={
+          approvingApp && (
+            <>
+              Xác nhận duyệt hồ sơ đối tác của{' '}
+              <span className="font-semibold text-text-primary">
+                {approvingApp.user?.fullName || approvingApp.businessName}
+              </span>
+              ?
+            </>
+          )
+        }
+        confirmLabel="Xác nhận duyệt"
+        isPending={reviewMutation.isPending}
+        onConfirm={confirmApprove}
       />
     </div>
   );

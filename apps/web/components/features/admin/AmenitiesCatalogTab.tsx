@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { AmenityFormDialog } from '@/components/features/admin/AmenityFormDialog';
@@ -18,17 +19,25 @@ import { renderCatalogIcon } from './catalog-icons';
 export function AmenitiesCatalogTab() {
   const tCommon = useTranslations('common');
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [deletingAmenity, setDeletingAmenity] = React.useState<{ id: string; name: string } | null>(
+    null,
+  );
 
   const amenitiesQuery = useAmenitiesList();
   const deleteMutation = useDeleteAmenity();
 
   const amenities = amenitiesQuery.data ?? [];
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xoá tiện ích "${name}"?`)) return;
+  const handleDelete = (id: string, name: string) => {
+    setDeletingAmenity({ id, name });
+  };
+
+  const confirmDelete = async () => {
+    if (!deletingAmenity) return;
     try {
-      await deleteMutation.mutateAsync(id);
-      toast.success(`Đã xoá tiện ích "${name}"`);
+      await deleteMutation.mutateAsync(deletingAmenity.id);
+      toast.success(`Đã xoá tiện ích "${deletingAmenity.name}"`);
+      setDeletingAmenity(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon('error'));
     }
@@ -125,6 +134,29 @@ export function AmenitiesCatalogTab() {
       <AmenityFormDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={deletingAmenity !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingAmenity(null);
+        }}
+        variant="danger"
+        title="Xác nhận xoá tiện ích"
+        description={
+          deletingAmenity && (
+            <>
+              Bạn có chắc chắn muốn xoá tiện ích{' '}
+              <span className="font-semibold text-text-primary">
+                &ldquo;{deletingAmenity.name}&rdquo;
+              </span>
+              ?
+            </>
+          )
+        }
+        confirmLabel="Xoá tiện ích"
+        isPending={deleteMutation.isPending}
+        onConfirm={confirmDelete}
       />
     </div>
   );

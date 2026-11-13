@@ -31,6 +31,7 @@ import {
 } from '@/components/features/venue/VenueLocationMapWrapper';
 import {
   geocodeAddress,
+  parseAddressQuery,
   reverseGeocodeDetails,
   matchProvinceFromLocation,
   matchWardFromLocation,
@@ -113,9 +114,13 @@ export function VenueFormDialog({
   const [imagePreviewUrl, setImagePreviewUrl] = React.useState<string | null>(null);
   const [imageError, setImageError] = React.useState('');
   const [validationError, setValidationError] = React.useState('');
+  const shouldAutoLocateRef = React.useRef(false);
+  const locateRequestIdRef = React.useRef(0);
 
   React.useEffect(() => {
     if (!open) return;
+    shouldAutoLocateRef.current = false;
+    locateRequestIdRef.current += 1;
     setOwnerId((venue as { ownerId?: string })?.ownerId ?? '');
     setName(venue?.name ?? '');
     setAddress(venue?.address ?? '');
@@ -161,11 +166,14 @@ export function VenueFormDialog({
     if (venue && typeof venue.lat === 'number' && typeof venue.lng === 'number') {
       return [venue.lat, venue.lng];
     }
+    if (provinceCode) {
+      return getProvinceCenter(provinceCode);
+    }
     return [21.0285, 105.8542];
-  }, [venue]);
+  }, [provinceCode, venue]);
 
   const handleResolveLocation = React.useCallback(
-    async (lat: number, lng: number) => {
+    async (lat: number, lng: number, options?: { silent?: boolean }) => {
       setIsReverseGeocoding(true);
       try {
         const details = await reverseGeocodeDetails(lat, lng);
@@ -191,16 +199,22 @@ export function VenueFormDialog({
               setWardCode(matchedWard.code ?? '');
               setWardName(matchedWard.name);
               setDistrictId('');
-              toast.success(`Đã tự động chọn: ${fullProvince.name} - ${matchedWard.name}`);
+              if (!options?.silent) {
+                toast.success(`Đã tự động chọn: ${fullProvince.name} - ${matchedWard.name}`);
+              }
             } else {
               setWardId('');
               setWardCode('');
               setWardName('');
               setDistrictId('');
-              toast.success(`Đã tự động chọn: ${fullProvince.name}`);
+              if (!options?.silent) {
+                toast.success(`Đã tự động chọn: ${fullProvince.name}`);
+              }
             }
           } catch {
-            toast.success(`Đã tự động chọn: ${fullProvince.name}`);
+            if (!options?.silent) {
+              toast.success(`Đã tự động chọn: ${fullProvince.name}`);
+            }
           }
         }
       } catch (err) {
@@ -223,6 +237,7 @@ export function VenueFormDialog({
       (position) => {
         const { latitude, longitude } = position.coords;
         const coords: MapCoordinates = [latitude, longitude];
+        shouldAutoLocateRef.current = false;
         setLocation(coords);
         setValidationError('');
         setIsGettingLocation(false);
@@ -249,41 +264,87 @@ export function VenueFormDialog({
   }, [handleResolveLocation]);
 
   const handleLocateAddress = React.useCallback(
-    async (customAddress?: string) => {
+    async (customAddress?: string, options?: { silent?: boolean }) => {
       const text = (customAddress ?? address).trim();
       if (!text && !wardName && !provinceName) return;
 
+      const requestId = ++locateRequestIdRef.current;
+      shouldAutoLocateRef.current = false;
       setIsLocating(true);
       try {
-        const queries: string[] = [];
+        const parsedText = text ? parseAddressQuery(text) : null;
+        const textHasProvince = Boolean(parsedText?.province);
+        const rawQueries: string[] = [];
+
         if (text) {
-          queries.push([text, wardName, provinceName, 'Việt Nam'].filter(Boolean).join(', '));
-          if (wardName) {
-            queries.push([text, provinceName, 'Việt Nam'].filter(Boolean).join(', '));
+          if (textHasProvince) {
+            // Địa chỉ đã ghi rõ tỉnh/thành: ưu tiên tìm nguyên bản trước để tránh nhiễu khi ghép thêm tên hành chính
+            rawQueries.push(text);
+          } else {
+            if (provinceName) {
+              rawQueries.push([text, provinceName].filter(Boolean).join(', '));
+            }
+            if (wardName && provinceName) {
+              rawQueries.push([text, wardName, provinceName].filter(Boolean).join(', '));
+            }
+            rawQueries.push(text);
           }
-          queries.push(text);
-        }
-        if (wardName && provinceName) {
-          queries.push([wardName, provinceName, 'Việt Nam'].join(', '));
-        } else if (provinceName) {
-          queries.push([provinceName, 'Việt Nam'].join(', '));
         }
 
+        if (!options?.silent) {
+          if (wardName && provinceName) {
+            rawQueries.push([wardName, provinceName].join(', '));
+          } else if (provinceName) {
+            rawQueries.push(provinceName);
+          }
+        }
+
+        const queries = rawQueries.filter((q, index) => q && rawQueries.indexOf(q) === index);
+        const biasProvince = parsedText?.province ?? (provinceCode ? { code: provinceCode } : null);
+        const focusCenter = biasProvince?.code ? getProvinceCenter(biasProvince.code) : null;
+
+        let foundCoords: [number, number] | null = null;
         for (const query of queries) {
-          const coords = await geocodeAddress(query);
+          const coords = await geocodeAddress(query, {
+            focusLat: focusCenter?.[0],
+            focusLng: focusCenter?.[1],
+            preferredProvince: parsedText?.province?.name ?? (provinceName || undefined),
+          });
+          if (requestId !== locateRequestIdRef.current) return;
           if (coords) {
-            setLocation(coords);
-            setValidationError('');
-            void handleResolveLocation(coords[0], coords[1]);
+            foundCoords = coords;
             break;
           }
         }
+
+        if (foundCoords) {
+          setLocation(foundCoords);
+          setValidationError('');
+          void handleResolveLocation(foundCoords[0], foundCoords[1], { silent: options?.silent });
+        } else if (!options?.silent) {
+          toast.error('Không tìm thấy vị trí phù hợp. Vui lòng thử bấm trực tiếp lên bản đồ để cắm ghim.');
+        }
       } finally {
-        setIsLocating(false);
+        if (requestId === locateRequestIdRef.current) {
+          setIsLocating(false);
+        }
       }
     },
-    [address, wardName, provinceName, handleResolveLocation],
+    [address, wardName, provinceName, provinceCode, handleResolveLocation],
   );
+
+  // Tự động kéo bản đồ khi người dùng gõ xong địa chỉ trên form
+  React.useEffect(() => {
+    if (!open || !shouldAutoLocateRef.current) return undefined;
+    const text = address.trim();
+    if (text.length < 5) return undefined;
+
+    const timer = setTimeout(() => {
+      void handleLocateAddress(text, { silent: true });
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [address, open, handleLocateAddress]);
 
   const toggleSport = (sportId: string) => {
     setSportIds((current) =>
@@ -438,7 +499,10 @@ export function VenueFormDialog({
               <Input
                 id="venue-address-input"
                 value={address}
-                onChange={(event) => setAddress(event.target.value)}
+                onChange={(event) => {
+                  shouldAutoLocateRef.current = true;
+                  setAddress(event.target.value);
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
                     event.preventDefault();
@@ -588,6 +652,8 @@ export function VenueFormDialog({
                 marker={location}
                 scrollWheelZoom={true}
                 onPlacePin={(coordinates) => {
+                  shouldAutoLocateRef.current = false;
+                  locateRequestIdRef.current += 1;
                   setLocation(coordinates);
                   setValidationError('');
                   void handleResolveLocation(coordinates[0], coordinates[1]);
@@ -629,7 +695,10 @@ export function VenueFormDialog({
                         size="sm"
                         variant="outline"
                         className="h-7 shrink-0 bg-white text-xs font-medium text-primary-700 hover:bg-primary-100 hover:text-primary-800"
-                        onClick={() => setAddress(pinnedAddress)}
+                        onClick={() => {
+                          shouldAutoLocateRef.current = false;
+                          setAddress(pinnedAddress);
+                        }}
                       >
                         Dùng làm địa chỉ
                       </Button>

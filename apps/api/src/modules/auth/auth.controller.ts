@@ -247,6 +247,16 @@ export class AuthController {
   verify(@Body() body: unknown) {
     return this.auth.verifyEmail(parseBody(verifyEmailSchema, body).token);
   }
+
+  @Post("ws-token")
+  @HttpCode(200)
+  @ApiCookieAuth("access_token")
+  @ApiOperation({ summary: "Cấp token ngắn hạn cho kết nối Socket.IO" })
+  @ApiResponse({ status: 200, description: "Token WebSocket ngắn hạn" })
+  @ApiResponse({ status: 401, description: "UNAUTHORIZED" })
+  wsToken(@Req() request: AuthRequest) {
+    return this.auth.issueWsToken(cookie(request, "access_token"));
+  }
 }
 
 @ApiTags("Users")
