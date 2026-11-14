@@ -49,6 +49,11 @@ export function Header() {
   const { phase, target } = useNavigation();
 
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [avatarError, setAvatarError] = React.useState(false);
+
+  React.useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatarUrl]);
 
   // Đóng mobile menu khi chuyển trang
   React.useEffect(() => {
@@ -142,13 +147,14 @@ export function Header() {
                   className="flex items-center gap-2 rounded-btn border border-border p-1.5 pl-2 text-left text-sm text-text-primary transition-colors hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                   aria-label={tNav('profile')}
                 >
-                  {user.avatarUrl ? (
+                  {user.avatarUrl && !avatarError ? (
                     <Image
                       src={user.avatarUrl}
                       alt={user.fullName}
                       width={32}
                       height={32}
                       unoptimized
+                      onError={() => setAvatarError(true)}
                       className="size-8 rounded-full object-cover border border-border"
                     />
                   ) : (
@@ -298,13 +304,14 @@ export function Header() {
             {isAuthenticated && user ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3 px-3 py-2">
-                  {user.avatarUrl ? (
+                  {user.avatarUrl && !avatarError ? (
                     <Image
                       src={user.avatarUrl}
                       alt={user.fullName}
                       width={36}
                       height={36}
                       unoptimized
+                      onError={() => setAvatarError(true)}
                       className="size-9 rounded-full object-cover border border-border"
                     />
                   ) : (
