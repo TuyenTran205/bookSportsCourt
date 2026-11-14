@@ -66,13 +66,21 @@ export class PublicStorage {
       }
     }
 
-    // Fallback lưu local: apps/web/public/uploads/avatars
-    const uploadDir = fileURLToPath(
-      new URL("../../../../web/public/uploads/avatars", import.meta.url),
-    );
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), buffer);
-    return `/uploads/avatars/${filename}`;
+    if (this.config.get<string>("NODE_ENV") === "production") {
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
+    }
+
+    // Fallback lưu local khi chạy dev: apps/web/public/uploads/avatars
+    try {
+      const uploadDir = fileURLToPath(
+        new URL("../../../../web/public/uploads/avatars", import.meta.url),
+      );
+      await mkdir(uploadDir, { recursive: true });
+      await writeFile(path.join(uploadDir, filename), buffer);
+      return `/uploads/avatars/${filename}`;
+    } catch {
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
+    }
   }
 
   private async saveOptimizedPublicImage(
@@ -118,12 +126,21 @@ export class PublicStorage {
       }
     }
 
-    const uploadDir = fileURLToPath(
-      new URL(`../../../../web/public/uploads/${folder}`, import.meta.url),
-    );
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), processedBuffer);
-    return `/uploads/${folder}/${filename}`;
+    if (this.config.get<string>("NODE_ENV") === "production") {
+      return `data:${finalMime};base64,${processedBuffer.toString("base64")}`;
+    }
+
+    // Fallback lưu local khi chạy dev: apps/web/public/uploads/${folder}
+    try {
+      const uploadDir = fileURLToPath(
+        new URL(`../../../../web/public/uploads/${folder}`, import.meta.url),
+      );
+      await mkdir(uploadDir, { recursive: true });
+      await writeFile(path.join(uploadDir, filename), processedBuffer);
+      return `/uploads/${folder}/${filename}`;
+    } catch {
+      return `data:${finalMime};base64,${processedBuffer.toString("base64")}`;
+    }
   }
 
   /**

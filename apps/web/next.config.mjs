@@ -36,6 +36,18 @@ const nextConfig = {
   eslint: {
     dirs: ['app', 'components', 'lib', 'hooks', 'store', 'mocks', 'types'],
   },
+
+  async rewrites() {
+    const backendUrl = (
+      process.env.NEXT_PUBLIC_API_URL || 'https://booksportscourt.onrender.com'
+    ).replace(/\/+$/, '');
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
