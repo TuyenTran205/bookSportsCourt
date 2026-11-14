@@ -62,6 +62,14 @@ export class ReviewsRepository {
     const [row] = await (lock ? query.for("update") : query);
     return row ?? null;
   }
+  async findReviewWithOwner(tx: AuthTransaction, id: string) {
+    const [row] = await tx
+      .select({ review: reviews, ownerId: venues.ownerId })
+      .from(reviews)
+      .innerJoin(venues, eq(reviews.venueId, venues.id))
+      .where(eq(reviews.id, id));
+    return row ?? null;
+  }
   async create(
     tx: AuthTransaction,
     input: CreateReviewInput,
@@ -102,6 +110,70 @@ export class ReviewsRepository {
     });
     return updated!;
   }
+  async report(
+    tx: AuthTransaction,
+    row: typeof reviews.$inferSelect,
+    actorId: string,
+    reason: string,
+    imageUrl: string | null,
+  ) {
+    const now = new Date();
+    const [updated] = await tx
+      .update(reviews)
+      .set({
+        reportStatus: "pending",
+        reportReason: reason,
+        reportImageUrl: imageUrl,
+        reportedAt: now,
+        reportedBy: actorId,
+        updatedAt: now,
+      })
+      .where(eq(reviews.id, row.id))
+      .returning();
+    await writeAudit(tx, {
+      actorId,
+      action: "review.reported",
+      entityId: row.id,
+      before: {
+        isVisible: row.isVisible,
+        hasReason: Boolean(row.reportReason),
+      },
+      after: { isVisible: updated!.isVisible, hasReason: true },
+    });
+    return updated!;
+  }
+  async moderateReport(
+    tx: AuthTransaction,
+    row: typeof reviews.$inferSelect,
+    action: "approve" | "reject",
+    actorId: string,
+  ) {
+    const nextStatus = action === "approve" ? "resolved" : "dismissed";
+    const nextVisible = action === "approve" ? false : row.isVisible;
+    const [updated] = await tx
+      .update(reviews)
+      .set({
+        reportStatus: nextStatus,
+        isVisible: nextVisible,
+        updatedAt: new Date(),
+      })
+      .where(eq(reviews.id, row.id))
+      .returning();
+    await writeAudit(tx, {
+      actorId,
+      action: "review.report_moderated",
+      entityId: row.id,
+      before: {
+        isVisible: row.isVisible,
+        hasReason: Boolean(row.reportReason),
+      },
+      after: {
+        isVisible: updated!.isVisible,
+        hasReason: Boolean(updated!.reportReason),
+      },
+    });
+    return updated!;
+  }
   async publicVenue(tx: AuthTransaction, id: string) {
     const [row] = await tx
       .select({ id: venues.id })
@@ -124,6 +196,9 @@ export class ReviewsRepository {
       query.isVisible === undefined
         ? undefined
         : eq(reviews.isVisible, query.isVisible),
+      query.reportStatus
+        ? eq(reviews.reportStatus, query.reportStatus)
+        : undefined,
       query.rating !== undefined ? eq(reviews.rating, query.rating) : undefined,
       qPattern
         ? or(ilike(reviews.content, qPattern), ilike(reviews.ownerReply, qPattern))
@@ -135,8 +210,14 @@ export class ReviewsRepository {
       !Number.isSafeInteger(offset) || offset >= total!.n
         ? []
         : await tx
-            .select()
+            .select({
+              review: reviews,
+              venueName: venues.name,
+              customerName: users.fullName,
+            })
             .from(reviews)
+            .leftJoin(venues, eq(reviews.venueId, venues.id))
+            .leftJoin(users, eq(reviews.customerId, users.id))
             .where(where)
             .orderBy(desc(reviews.createdAt), desc(reviews.id))
             .limit(query.limit)
@@ -185,6 +266,10 @@ export class ReviewsRepository {
               comment: reviews.content,
               ownerReply: reviews.ownerReply,
               ownerRepliedAt: reviews.ownerRepliedAt,
+              reportStatus: reviews.reportStatus,
+              reportReason: reviews.reportReason,
+              reportImageUrl: reviews.reportImageUrl,
+              reportedAt: reviews.reportedAt,
               createdAt: reviews.createdAt,
             })
             .from(reviews)

@@ -771,16 +771,16 @@ export class VenuesService {
     input: BankAccountInput,
   ) {
     return this.repository.transaction(async (tx) => {
-      await this.lockOwnedVenue(tx, userId, venueId);
-      const account = await this.repository.upsertPaymentAccount(
-        venueId,
+      const venue = await this.lockOwnedVenue(tx, userId, venueId);
+      await this.repository.upsertOwnerPaymentAccounts(
+        venue.ownerId,
         input,
         tx,
       );
       return {
-        bankBin: account!.bankBin,
-        accountNo: account!.accountNo,
-        accountName: account!.accountName,
+        bankBin: input.bankBin,
+        accountNo: input.accountNo,
+        accountName: input.accountName,
       };
     });
   }

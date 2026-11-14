@@ -124,6 +124,57 @@ export class AdminReportingRepository {
       where status='refunded' and refund_amount is not null and refunded_at>=${this.start(range)} and refunded_at<${this.end(range)} group by 1`);
     return { gross: gross.rows, refunded: refunded.rows };
   }
+  async userGrowth(
+    tx: AuthTransaction,
+    range: ReportRange,
+    group: AdminStatsQueryInput["groupBy"],
+  ) {
+    const baseline = await tx.execute<{ role: string; n: string }>(sql`
+      select role, count(*)::text as n
+      from users
+      where deleted_at is null
+        and role in ('owner', 'customer')
+        and created_at < ${this.start(range)}
+      group by role`);
+    const increments = await tx.execute<{
+      date: string;
+      role: string;
+      n: string;
+    }>(sql`
+      select to_char(date_trunc(${group}, created_at at time zone 'Asia/Ho_Chi_Minh'), 'YYYY-MM-DD') as date,
+             role,
+             count(*)::text as n
+      from users
+      where deleted_at is null
+        and role in ('owner', 'customer')
+        and created_at >= ${this.start(range)}
+        and created_at < ${this.end(range)}
+      group by 1, 2`);
+    return { baseline: baseline.rows, increments: increments.rows };
+  }
+  async venueGrowth(
+    tx: AuthTransaction,
+    range: ReportRange,
+    group: AdminStatsQueryInput["groupBy"],
+  ) {
+    const baseline = await tx.execute<{ n: string }>(sql`
+      select count(*)::text as n
+      from venues
+      where deleted_at is null
+        and created_at < ${this.start(range)}`);
+    const increments = await tx.execute<{ date: string; n: string }>(sql`
+      select to_char(date_trunc(${group}, created_at at time zone 'Asia/Ho_Chi_Minh'), 'YYYY-MM-DD') as date,
+             count(*)::text as n
+      from venues
+      where deleted_at is null
+        and created_at >= ${this.start(range)}
+        and created_at < ${this.end(range)}
+      group by 1`);
+    return {
+      baseline: baseline.rows[0]?.n ?? "0",
+      increments: increments.rows,
+    };
+  }
   async populations(tx: AuthTransaction) {
     const users = await tx.execute<{ role: string; n: string }>(
       sql`select role,count(*)::text as n from users where deleted_at is null group by role`,

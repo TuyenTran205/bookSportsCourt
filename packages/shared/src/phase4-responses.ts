@@ -1,5 +1,15 @@
 import { z } from 'zod';
-import { BOOKING_SOURCES, BOOKING_STATUSES, OWNER_APPLICATION_STATUSES, PAYMENT_PROVIDERS, PAYMENT_STATUSES, USER_ROLES, USER_STATUSES, VENUE_STATUSES } from './constants.js';
+import {
+  BOOKING_SOURCES,
+  BOOKING_STATUSES,
+  OWNER_APPLICATION_STATUSES,
+  PAYMENT_PROVIDERS,
+  PAYMENT_STATUSES,
+  REVIEW_REPORT_STATUSES,
+  USER_ROLES,
+  USER_STATUSES,
+  VENUE_STATUSES,
+} from './constants.js';
 import { phase4IdSchema as id, phase4DateSchema, paymentAccountInputSchema, vndSchema as money } from './phase4-schemas.js';
 
 const timestamp = z.string().datetime({ offset: true });
@@ -13,9 +23,20 @@ export const paymentViewSchema = z.object({
   proofUpdatedAt: nullableTimestamp, reviewDeadline: nullableTimestamp, reviewedBy: id.nullable(), reviewedAt: nullableTimestamp,
   rejectReason: nullableText, paidAt: nullableTimestamp, refundAmount: money.nullable(), refundedAt: nullableTimestamp, ...timestamps,
 }).strict();
-export const ownerPaymentItemSchema = paymentViewSchema.extend({ venueId: id, courtId: id, bookingStart: timestamp, bookingEnd: timestamp, customerId: id.nullable() });
+export const ownerPaymentItemSchema = paymentViewSchema.extend({
+  venueId: id,
+  venueName: nullableText.optional(),
+  courtId: id,
+  courtName: nullableText.optional(),
+  bookingStart: timestamp,
+  bookingEnd: timestamp,
+  bookingTotalPrice: money.optional(),
+  customerId: id.nullable(),
+  customerName: nullableText.optional(),
+  customerPhone: nullableText.optional(),
+});
 export const ownerApplicationViewSchema = z.object({
-  id, userId: id, businessName: z.string(), phone: z.string(), address: z.string(),
+  id, userId: id, applicantName: nullableText.optional(), businessName: z.string(), phone: z.string(), address: z.string(),
   lat: z.number().nullable().optional(), lng: z.number().nullable().optional(),
   note: nullableText, taxCode: nullableText,
   bankBin: nullableText.optional(),
@@ -41,14 +62,28 @@ export const auditDataSchema = z.object({
 }).strict();
 export const auditViewSchema = z.object({ id, actorId: id.nullable(), action: z.string(), entityType: z.string(), entityId: id.nullable(), oldData: auditDataSchema.nullable(), newData: auditDataSchema.nullable(), createdAt: timestamp }).strict();
 export const reviewPublicSchema = z.object({ id, venueId: id, rating: z.number().int().min(1).max(5), comment: nullableText, ownerReply: nullableText, ownerRepliedAt: nullableTimestamp, createdAt: timestamp }).strict();
-export const reviewAdminSchema = reviewPublicSchema.extend({ bookingId: id, customerId: id, isVisible: z.boolean(), updatedAt: timestamp });
+export const reviewAdminSchema = reviewPublicSchema.extend({
+  bookingId: id,
+  customerId: id,
+  isVisible: z.boolean(),
+  updatedAt: timestamp,
+  venueName: nullableText.optional(),
+  customerName: nullableText.optional(),
+  reportStatus: z.enum(REVIEW_REPORT_STATUSES).optional(),
+  reportReason: nullableText.optional(),
+  reportImageUrl: nullableText.optional(),
+  reportedAt: nullableTimestamp.optional(),
+});
 
 const counts = <T extends readonly [string, ...string[]]>(values: T) => z.object(Object.fromEntries(values.map((key) => [key, money])) as { [K in T[number]]: typeof money }).strict();
 const revenue = { bookingCountsByStatus: counts(BOOKING_STATUSES), grossRevenue: money, refundedAmount: money, netRevenue: z.number().int().safe() };
 export const adminStatsSchema = z.object({
   generatedAt: timestamp, from: phase4DateSchema, to: phase4DateSchema, groupBy: z.enum(['day', 'week', 'month']),
   summary: z.object({ ...revenue, userCountsByRole: counts(USER_ROLES), venueCountsByStatus: counts(VENUE_STATUSES) }).strict(),
-  series: z.array(z.object({ date: phase4DateSchema, ...revenue }).strict()), dataQuality: z.object({ excludedPaymentCount: money }).strict(),
+  series: z.array(z.object({ date: phase4DateSchema, ...revenue }).strict()),
+  userGrowthSeries: z.array(z.object({ date: phase4DateSchema, owners: money, customers: money }).strict()),
+  venueGrowthSeries: z.array(z.object({ date: phase4DateSchema, venues: money }).strict()),
+  dataQuality: z.object({ excludedPaymentCount: money }).strict(),
 }).strict();
 export const paginationMetaSchema = z.object({ page: z.number().int().positive().safe(), limit: z.number().int().min(1).max(100), total: money, totalPages: money }).strict();
 export const phase4DataEnvelope = <T extends z.ZodTypeAny>(schema: T) => z.object({ data: schema }).strict();

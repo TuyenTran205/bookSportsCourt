@@ -38,6 +38,9 @@ const mockReviews: adminEndpoints.AdminReviewRow[] = [
     ownerRepliedAt: null,
     createdAt: '2026-10-08T09:00:00.000Z',
     isVisible: false,
+    reportStatus: 'pending',
+    reportReason: 'Khách hàng chưa đến sân nhưng đánh giá sai sự thật',
+    reportImageUrl: 'https://example.com/proof.jpg',
   },
 ];
 
@@ -80,6 +83,13 @@ vi.mock('@/lib/api/endpoints/admin', async (importOriginal) => {
       Promise.resolve({
         ...mockReviews.find((r) => r.id === id),
         isVisible,
+      }),
+    ),
+    moderateReviewReport: vi.fn().mockImplementation((id: string, action: 'approve' | 'reject') =>
+      Promise.resolve({
+        ...mockReviews.find((r) => r.id === id),
+        reportStatus: action === 'approve' ? 'resolved' : 'dismissed',
+        isVisible: action === 'approve' ? false : mockReviews.find((r) => r.id === id)?.isVisible,
       }),
     ),
   };
@@ -176,6 +186,32 @@ describe('AdminReviewsScreen Component (TC-REV)', () => {
     await waitFor(() => {
       expect(adminEndpoints.setReviewVisibility).toHaveBeenCalledWith('rev-1', false);
       expect(toast.success).toHaveBeenCalledWith('toggleSuccess');
+    });
+  });
+
+  it('TC-REV-05: lọc theo "Bị chủ sân báo cáo" và duyệt báo cáo ẩn đánh giá', async () => {
+    render(<AdminReviewsScreen />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Khách hàng chưa đến sân/)).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Bị chủ sân báo cáo/i }));
+    await waitFor(() => {
+      expect(adminEndpoints.listAdminReviews).toHaveBeenCalledWith(
+        expect.objectContaining({ reportStatus: 'pending' }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Duyệt & Ẩn/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Xác nhận Duyệt & Ẩn/i }));
+    await waitFor(() => {
+      expect(adminEndpoints.moderateReviewReport).toHaveBeenCalledWith('rev-2', 'approve');
+      expect(toast.success).toHaveBeenCalledWith('Đã duyệt báo cáo và ẩn đánh giá');
     });
   });
 });

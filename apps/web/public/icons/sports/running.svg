@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-running" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-running" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0d9488" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-running)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-running)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#0f766e" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Running Shoe Profile -->
+      <g transform="translate(1, 0)">
+        <!-- Shoe upper & sole -->
+        <path d="M 15 22 C 16 19 18 17 21 17 L 24 19 L 29 20 C 31 20.5 32 22 31 23.5 L 16 23.5 C 15 23.5 14.5 22.8 15 22 Z" fill="#0D9488" stroke="#115E59" stroke-width="0.9" />
+        <!-- White foam midsole -->
+        <path d="M 15 23.5 L 31 23.5 C 32 23.5 31.5 25 30 25 L 16 25 C 14.8 25 14.5 23.5 15 23.5 Z" fill="#F8FAFC" stroke="#115E59" stroke-width="0.8" />
+        <!-- Speed stripes -->
+        <path d="M 21 18 L 22.5 22" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" />
+        <path d="M 23.5 18.5 L 25 22.5" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" />
+        <path d="M 26 19 L 27.5 22.5" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" />
+        <!-- Speed wind swooshes -->
+        <path d="M 13 18 L 16 18" stroke="#14B8A6" stroke-width="1" stroke-linecap="round" />
+        <path d="M 12 21 L 14.5 21" stroke="#14B8A6" stroke-width="1" stroke-linecap="round" />
+      </g>
+  </g>
+</svg>

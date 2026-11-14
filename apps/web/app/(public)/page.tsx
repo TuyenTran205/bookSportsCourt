@@ -390,7 +390,7 @@ export default function HomePage() {
               aria-label={tHome('heroPreviewTitle')}
               className="hidden lg:col-span-5 lg:block"
             >
-              <div className="relative w-full max-w-[560px] rounded-2xl border border-primary-200/80 bg-bg-card/95 p-7 shadow-2xl shadow-primary-950/10 backdrop-blur-md lg:ml-auto lg:p-8 xl:p-9 dark:border-primary-900/50 dark:bg-neutral-900/90">
+              <div className="relative w-full max-w-[560px] rounded-2xl border border-primary-200/80 bg-bg-card/95 p-7 shadow-2xl shadow-primary-950/10 backdrop-blur-md lg:ml-auto lg:p-8 xl:p-9 dark:border-primary-900/50">
                 <div className="flex items-center justify-between border-b border-border/70 pb-4">
                   <div className="flex items-center gap-2.5">
                     <span className="relative flex size-2.5">
@@ -420,13 +420,13 @@ export default function HomePage() {
                         <Link
                           key={venue.id}
                           href={`/venues/${venue.slug}`}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-neutral-100 bg-neutral-50/80 p-3.5 transition-colors hover:border-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 sm:p-4 dark:border-neutral-800 dark:bg-neutral-800/50"
+                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-subtle p-3.5 transition-colors hover:border-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 sm:p-4"
                         >
                           <div className="flex min-w-0 flex-col text-left">
-                            <span className="truncate text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                            <span className="truncate text-sm font-bold text-text-primary">
                               {venue.name}
                             </span>
-                            <span className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                            <span className="mt-0.5 truncate text-xs text-text-secondary">
                               {subtitle}
                             </span>
                           </div>
@@ -438,12 +438,12 @@ export default function HomePage() {
                     })
                   ) : (
                     <>
-                      <div className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50/80 p-3.5 transition-colors hover:border-primary-300 sm:p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
+                      <div className="flex items-center justify-between rounded-xl border border-border bg-bg-subtle p-3.5 transition-colors hover:border-primary-300 sm:p-4">
                         <div className="flex flex-col text-left">
-                          <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                          <span className="text-sm font-bold text-text-primary">
                             {tHome('heroPreviewVenueName')}
                           </span>
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                          <span className="text-xs text-text-secondary">
                             {tHome('heroPreviewSlot1')}
                           </span>
                         </div>
@@ -452,12 +452,12 @@ export default function HomePage() {
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50/80 p-3.5 transition-colors hover:border-primary-300 sm:p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
+                      <div className="flex items-center justify-between rounded-xl border border-border bg-bg-subtle p-3.5 transition-colors hover:border-primary-300 sm:p-4">
                         <div className="flex flex-col text-left">
-                          <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                          <span className="text-sm font-bold text-text-primary">
                             {tHome('heroPreviewVenueName')}
                           </span>
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                          <span className="text-xs text-text-secondary">
                             {tHome('heroPreviewSlot2')}
                           </span>
                         </div>
@@ -466,12 +466,12 @@ export default function HomePage() {
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50/80 p-3.5 transition-colors hover:border-primary-300 sm:p-4 dark:border-neutral-800 dark:bg-neutral-800/50">
+                      <div className="flex items-center justify-between rounded-xl border border-border bg-bg-subtle p-3.5 transition-colors hover:border-primary-300 sm:p-4">
                         <div className="flex flex-col text-left">
-                          <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                          <span className="text-sm font-bold text-text-primary">
                             {tHome('heroPreviewVenueName')}
                           </span>
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                          <span className="text-xs text-text-secondary">
                             {tHome('heroPreviewSlot3')}
                           </span>
                         </div>
@@ -483,8 +483,8 @@ export default function HomePage() {
                   )}
                 </div>
 
-                <div className="mt-5 flex items-center gap-2 pt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  <Clock className="size-3.5 text-neutral-400" aria-hidden="true" />
+                <div className="mt-5 flex items-center gap-2 pt-1 text-xs text-text-secondary">
+                  <Clock className="size-3.5 text-text-disabled" aria-hidden="true" />
                   <span>{tHome('heroPreviewStatus')}</span>
                 </div>
               </div>
@@ -599,7 +599,7 @@ export default function HomePage() {
             {[...marqueeHalf, ...marqueeHalf].map((court, idx) => {
               const cardBody = (
                 <>
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-bg-subtle">
                     {court.imageUrl ? (
                       <Image
                         src={court.imageUrl}
@@ -623,12 +623,12 @@ export default function HomePage() {
                       {court.sport}
                     </span>
                     {court.rating !== null ? (
-                      <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full border border-black/5 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-neutral-900 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/90 dark:text-neutral-100">
+                      <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full border border-border bg-bg-card/95 px-2.5 py-0.5 text-[11px] font-bold text-text-primary shadow-md backdrop-blur-md">
                         <Star className="size-3 fill-amber-400 text-amber-400" aria-hidden="true" />
                         <span>{court.rating.toFixed(1)}</span>
                       </div>
                     ) : court.fromPrice !== null ? (
-                      <div className="absolute bottom-2.5 right-2.5 rounded-full border border-black/5 bg-white/95 px-2.5 py-0.5 text-[11px] font-bold text-primary-700 shadow-md backdrop-blur-md dark:border-white/10 dark:bg-neutral-900/90 dark:text-primary-400">
+                      <div className="absolute bottom-2.5 right-2.5 rounded-full border border-border bg-bg-card/95 px-2.5 py-0.5 text-[11px] font-bold text-primary-700 shadow-md backdrop-blur-md dark:text-primary-400">
                         {formatCurrency(court.fromPrice)}
                       </div>
                     ) : null}

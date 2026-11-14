@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-table-tennis" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-table-tennis" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#dc2626" />
+      <stop offset="100%" stop-color="#b91c1c" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-table-tennis)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-table-tennis)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#b91c1c" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Table Tennis Paddle tilted -->
+      <g transform="rotate(-30 22 20)">
+        <!-- Round blade / rubber -->
+        <circle cx="22" cy="16" r="7.5" fill="#DC2626" stroke="#991B1B" stroke-width="1.2" />
+        <circle cx="22" cy="16" r="6" fill="#EF4444" opacity="0.6" />
+        <!-- Wooden handle -->
+        <path d="M 20.5 23.5 L 23.5 23.5 L 23 28.5 L 21 28.5 Z" fill="#D97706" stroke="#B45309" stroke-width="0.8" />
+        <line x1="22" y1="23.5" x2="22" y2="28" stroke="#FDE68A" stroke-width="0.6" />
+      </g>
+      <!-- Small ping pong ball -->
+      <circle cx="29" cy="22" r="3.2" fill="#FFFFFF" stroke="#DC2626" stroke-width="0.8" />
+  </g>
+</svg>

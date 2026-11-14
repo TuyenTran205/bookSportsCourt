@@ -63,7 +63,7 @@ export function VenueCard({
   return (
     <article
       className={cn(
-        'group relative overflow-hidden rounded-card border border-border bg-bg-card',
+        'group relative isolate box-border overflow-hidden rounded-card border border-border bg-bg-card',
         'transition-shadow duration-150 hover:shadow-md',
         className,
       )}
@@ -77,7 +77,7 @@ export function VenueCard({
       <Link href={detailHref} className="block focus-visible:outline-none">
         <div
           className={cn(
-            'relative bg-bg-subtle',
+            'relative overflow-hidden bg-bg-subtle',
             isCompact ? 'h-28 sm:h-32' : 'h-40 sm:h-44',
           )}
         >

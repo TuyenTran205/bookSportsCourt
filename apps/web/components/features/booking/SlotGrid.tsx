@@ -142,9 +142,9 @@ export function SlotGrid({
 
   if (timeRows.length === 0) {
     return (
-      <div className={cn('rounded-card border border-neutral-200 bg-white p-8 text-center', className)}>
-        <p className="text-base font-medium text-neutral-900">{t('noSlots')}</p>
-        <p className="mt-1 text-sm text-neutral-600">{t('noSlotsDesc')}</p>
+      <div className={cn('rounded-card border border-border bg-bg-card p-8 text-center', className)}>
+        <p className="text-base font-medium text-text-primary">{t('noSlots')}</p>
+        <p className="mt-1 text-sm text-text-secondary">{t('noSlotsDesc')}</p>
       </div>
     );
   }

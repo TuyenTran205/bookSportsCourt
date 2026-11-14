@@ -85,10 +85,10 @@ export function CheckoutProofUploader({
   return (
     <Card className={cn('space-y-4 p-5', className)}>
       <div>
-        <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+        <h3 className="text-base font-bold text-text-primary">
           {t('uploadProofTitle')}
         </h3>
-        <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+        <p className="mt-1 text-xs text-text-secondary">
           {t('uploadProofHint')}
         </p>
       </div>

@@ -61,19 +61,22 @@ export function CheckoutPaymentSection({ payment, className }: CheckoutPaymentSe
   return (
     <Card className={cn('space-y-6 p-5', className)}>
       <div>
-        <h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900 dark:text-white">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-text-primary">
           <QrCode className="size-5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
           <span>{t('transferInfoTitle')}</span>
         </h2>
-        <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+        <p className="mt-1 text-xs text-text-secondary">
           {t('scanQrHint')}
         </p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-[220px_minmax(0,1fr)] items-start">
-        {/* Khối hiển thị mã QR VietQR */}
+        {/* Khối hiển thị mã QR VietQR (giữ nền trắng để dễ quét) */}
         <div className="mx-auto flex flex-col items-center">
-          <div className="flex size-[220px] items-center justify-center rounded-card border border-neutral-200 bg-white p-2 shadow-xs dark:border-neutral-700">
+          <div
+            data-keep-white="true"
+            className="flex size-[220px] items-center justify-center rounded-card border border-border bg-white p-2 shadow-xs"
+          >
             {qrSrc ? (
               <Image
                 src={qrSrc}
@@ -89,7 +92,7 @@ export function CheckoutPaymentSection({ payment, className }: CheckoutPaymentSe
               </div>
             )}
           </div>
-          <span className="mt-2 text-center text-[11px] text-neutral-500 dark:text-neutral-400">
+          <span className="mt-2 text-center text-[11px] text-text-secondary">
             VietQR Napas 24/7
           </span>
         </div>
@@ -173,14 +176,14 @@ function PaymentCopyRow({
         'flex items-center justify-between gap-3 rounded-btn px-2.5 py-1.5 transition-colors',
         highlight
           ? 'border border-amber-200 bg-amber-50/50 dark:border-amber-800/50 dark:bg-amber-950/20'
-          : 'border-b border-neutral-100 last:border-b-0 dark:border-neutral-800',
+          : 'border-b border-border last:border-b-0',
       )}
     >
       <div className="min-w-0">
-        <dt className="text-xs text-neutral-500 dark:text-neutral-400">{label}</dt>
+        <dt className="text-xs text-text-secondary">{label}</dt>
         <dd
           className={cn(
-            'truncate text-neutral-900 dark:text-neutral-100',
+            'truncate text-text-primary',
             mono && 'font-mono text-sm tracking-wide',
             emphasis && 'text-base font-bold text-primary-700 dark:text-primary-300',
             highlight && 'font-bold text-amber-900 dark:text-amber-200',
@@ -194,7 +197,7 @@ function PaymentCopyRow({
           type="button"
           aria-label={`${copyLabel ?? 'Sao chép'} ${label}`}
           onClick={handleCopy}
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-btn text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-btn text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
         >
           {done ? (
             <Check className="size-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />

@@ -18,6 +18,7 @@ import { listOwnerVenues } from '@/lib/api/endpoints/owner';
 import { useOccupancyStats } from '@/lib/hooks/useOccupancyStats';
 import { useRevenueStats } from '@/lib/hooks/useRevenueStats';
 import { formatCurrency, formatNumber, formatPercent, formatShortDate } from '@/lib/utils/format';
+import { RECHARTS_TOOLTIP_PROPS } from '@/lib/utils/chart';
 
 const ResponsiveContainer = Recharts.ResponsiveContainer as unknown as React.ComponentType<Record<string, unknown>>;
 const LineChart = Recharts.LineChart as unknown as React.ComponentType<Record<string, unknown>>;
@@ -211,7 +212,10 @@ export function OwnerRevenueScreen() {
                   tickFormatter={(value: number) => formatCurrency(value)}
                   width={84}
                 />
-                <Tooltip formatter={(value: number) => [formatCurrency(value), t('totalRevenue')]} />
+                <Tooltip
+                  {...RECHARTS_TOOLTIP_PROPS}
+                  formatter={(value: number) => [formatCurrency(value), t('totalRevenue')]}
+                />
                 <Line
                   type="monotone"
                   dataKey="revenue"
@@ -254,7 +258,10 @@ export function OwnerRevenueScreen() {
                   allowDecimals={false}
                   width={36}
                 />
-                <Tooltip formatter={(value: number) => [t('unitBookings', { count: value }), t('chartBookings')]} />
+                <Tooltip
+                  {...RECHARTS_TOOLTIP_PROPS}
+                  formatter={(value: number) => [t('unitBookings', { count: value }), t('chartBookings')]}
+                />
                 <Bar dataKey="bookings" name={t('chartBookings')} fill="var(--color-primary-600)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -290,7 +297,10 @@ export function OwnerRevenueScreen() {
                   tickFormatter={(value: number) => `${value}%`}
                   width={40}
                 />
-                <Tooltip formatter={(value: number) => [`${Math.round(value)}%`, t('occupancyRate')]} />
+                <Tooltip
+                  {...RECHARTS_TOOLTIP_PROPS}
+                  formatter={(value: number) => [`${Math.round(value)}%`, t('occupancyRate')]}
+                />
                 <Line
                   type="monotone"
                   dataKey="occupancyRate"

@@ -9,6 +9,7 @@ import type {
     OwnerApplicationStatus,
     PaymentStatus,
     Review,
+    ReviewReportStatus,
     Sport,
     User,
     UserRole,
@@ -51,6 +52,17 @@ export interface AdminStatsSeriesPoint {
     netRevenue: number;
 }
 
+export interface AdminUserGrowthPoint {
+    date: string;
+    owners: number;
+    customers: number;
+}
+
+export interface AdminVenueGrowthPoint {
+    date: string;
+    venues: number;
+}
+
 export interface AdminStats {
     totalUsers: number;
     totalVenues: number;
@@ -64,6 +76,8 @@ export interface AdminStats {
     groupBy?: "day" | "week" | "month";
     summary?: AdminStatsSummary;
     series?: AdminStatsSeriesPoint[];
+    userGrowthSeries?: AdminUserGrowthPoint[];
+    venueGrowthSeries?: AdminVenueGrowthPoint[];
     dataQuality?: { excludedPaymentCount: number };
 }
 
@@ -84,6 +98,8 @@ function normalizeAdminStats(raw: AdminStats | Record<string, unknown>): AdminSt
         groupBy?: "day" | "week" | "month";
         summary?: AdminStatsSummary;
         series?: AdminStatsSeriesPoint[];
+        userGrowthSeries?: AdminUserGrowthPoint[];
+        venueGrowthSeries?: AdminVenueGrowthPoint[];
         dataQuality?: { excludedPaymentCount: number };
         pendingOwnerApplications?: number;
     };
@@ -113,6 +129,8 @@ function normalizeAdminStats(raw: AdminStats | Record<string, unknown>): AdminSt
         groupBy: contract.groupBy,
         summary,
         series: contract.series,
+        userGrowthSeries: contract.userGrowthSeries,
+        venueGrowthSeries: contract.venueGrowthSeries,
         dataQuality: contract.dataQuality,
     };
 }
@@ -185,7 +203,7 @@ export function listOwnerApplications(params: { status?: OwnerApplicationStatus 
             ...app,
             user: (app.user as OwnerApplication['user'] | undefined) ?? {
                 id: String(app.userId ?? app.id ?? ''),
-                fullName: String(app.businessName || 'Người nộp hồ sơ'),
+                fullName: String(app.applicantName || app.businessName || 'Người nộp hồ sơ'),
                 email: app.phone ? `SĐT: ${app.phone}` : 'Chưa cập nhật',
                 phone: (app.phone as string | undefined) ?? null,
                 avatarUrl: null,
@@ -348,12 +366,18 @@ export interface AdminReviewRow extends Review {
     customerName: string;
     customerEmail?: string;
     isVisible: boolean;
+    reportStatus?: ReviewReportStatus;
+    reportReason?: string | null;
+    reportImageUrl?: string | null;
+    reportedAt?: string | null;
+    reportedBy?: string | null;
 }
 
 export function listAdminReviews(
     params: {
         venueId?: string;
         isVisible?: boolean;
+        reportStatus?: ReviewReportStatus;
         rating?: number;
         q?: string;
         page?: number;
@@ -369,6 +393,11 @@ export function listAdminReviews(
             isVisible: Boolean(r.isVisible ?? true),
             rating: Number(r.rating ?? 5),
             comment: (r.comment as string | null | undefined) ?? null,
+            reportStatus: (r.reportStatus as AdminReviewRow['reportStatus'] | undefined) ?? 'none',
+            reportReason: (r.reportReason as string | null | undefined) ?? null,
+            reportImageUrl: (r.reportImageUrl as string | null | undefined) ?? null,
+            reportedAt: (r.reportedAt as string | null | undefined) ?? null,
+            reportedBy: (r.reportedBy as string | null | undefined) ?? null,
             createdAt: String(r.createdAt ?? new Date().toISOString()),
         })) as unknown as AdminReviewRow[],
     }));
@@ -379,6 +408,14 @@ export function setReviewVisibility(id: string, isVisible: boolean) {
     return apiFetch<AdminReviewRow>(`/reviews/${encodeURIComponent(id)}/visibility`, {
         method: "PATCH",
         ...jsonBody({ isVisible }),
+    });
+}
+
+/** Admin duyệt hoặc bác bỏ báo cáo đánh giá của chủ sân. */
+export function moderateReviewReport(id: string, action: 'approve' | 'reject') {
+    return apiFetch<AdminReviewRow>(`/admin/reviews/${encodeURIComponent(id)}/report`, {
+        method: "PATCH",
+        ...jsonBody({ action }),
     });
 }
 
