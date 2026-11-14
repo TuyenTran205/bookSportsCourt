@@ -6,27 +6,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { LngLatBounds, Marker, Popup } from 'maplibre-gl';
 import {
-  Bike,
-  CircleDot,
-  Dribbble,
-  Dumbbell,
   ExternalLink,
-  Feather,
-  Flag,
-  Goal,
   ImageOff,
   Loader2,
   LocateFixed,
   MapPin,
   Star,
-  Table2,
-  Trophy,
-  Volleyball,
-  Waves,
-  type LucideIcon,
 } from 'lucide-react';
-import type { Sport, VenueListItem } from '@bsc/shared';
+import type { VenueListItem } from '@bsc/shared';
 
+import { SportPinIcon } from '@/components/common/SportPinIcon';
 import { buttonVariants } from '@/components/ui/button';
 import { prewarmPmTilesForCoordinates } from '@/lib/map/pmtiles-protocol';
 import { getTileProviders } from '@/lib/map/tile-providers';
@@ -36,78 +25,6 @@ import { TileResilienceProvider } from './map/TileResilienceContext';
 import { MapLibreCanvas, ResilientTileLayer, useMapLibre } from './map/ResilientTileLayer';
 import { MapResilienceControl } from './map/MapResilienceControl';
 import { VietnamMaritimeLayer } from './map/VietnamMaritimeLayer';
-
-const SPORT_PIN_ICONS: Record<string, LucideIcon> = {
-  // Cầu lông
-  badminton: Feather,
-  'cau-long': Feather,
-  feather: Feather,
-  // Bóng đá
-  soccer: Goal,
-  football: Goal,
-  'bong-da': Goal,
-  'bong-da-mini': Goal,
-  goal: Goal,
-  // Bóng rổ
-  basketball: Dribbble,
-  'bong-ro': Dribbble,
-  'circle-dashed': Dribbble,
-  // Bóng chuyền
-  volleyball: Volleyball,
-  'bong-chuyen': Volleyball,
-  // Pickleball / Bóng bàn
-  pickleball: Table2,
-  'table-2': Table2,
-  'bong-ban': Table2,
-  // Tennis / Quần vợt
-  tennis: CircleDot,
-  'quan-vot': CircleDot,
-  circle: CircleDot,
-  'circle-dot': CircleDot,
-  // Gym / Bơi lội / Golf / Đạp xe
-  dumbbell: Dumbbell,
-  gym: Dumbbell,
-  waves: Waves,
-  swimming: Waves,
-  'boi-loi': Waves,
-  flag: Flag,
-  golf: Flag,
-  bike: Bike,
-  cycling: Bike,
-  trophy: Trophy,
-};
-
-function resolveSingleSportIcon(sport: Sport): LucideIcon {
-  const candidates = [sport.slug, sport.icon]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => value.trim().toLowerCase());
-
-  for (const key of candidates) {
-    const matched = SPORT_PIN_ICONS[key];
-    if (matched) return matched;
-  }
-
-  return Trophy;
-}
-
-/** Lấy danh sách tối đa 3 icon Lucide duy nhất đại diện đúng các môn của cơ sở. */
-function resolveVenueSportIcons(venue: VenueListItem): LucideIcon[] {
-  const sports = venue.sports ?? [];
-  if (sports.length === 0) {
-    return [MapPin];
-  }
-
-  const icons: LucideIcon[] = [];
-  for (const sport of sports) {
-    const icon = resolveSingleSportIcon(sport);
-    if (!icons.includes(icon)) {
-      icons.push(icon);
-    }
-    if (icons.length >= 3) break;
-  }
-
-  return icons.length > 0 ? icons : [MapPin];
-}
 
 function isValidCoordinate(
   venue: VenueListItem,
@@ -158,10 +75,12 @@ function VenueMarkerPin({
   isSelected: boolean;
   onSelect: (venue: VenueListItem) => void;
 }) {
-  const icons = resolveVenueSportIcons(venue);
-  const sportNames = (venue.sports ?? []).map((sport) => sport.name).join(', ');
+  const sports = venue.sports ?? [];
+  const primarySport = sports[0];
+  const primarySportKey = primarySport?.icon || primarySport?.slug || 'general';
+  const extraSportsCount = Math.max(0, sports.length - 1);
+  const sportNames = sports.map((sport) => sport.name).join(', ');
   const label = sportNames ? `${venue.name} (${sportNames})` : venue.name;
-  const hasMultipleIcons = icons.length > 1;
 
   return (
     <button
@@ -184,45 +103,31 @@ function VenueMarkerPin({
       aria-pressed={isSelected}
       title={label}
       className={cn(
-        'group relative flex origin-bottom flex-col items-center pb-[2px] focus-visible:outline-none',
-        'transition-transform duration-150',
-        isSelected ? 'scale-110' : 'hover:scale-105',
+        'group relative flex origin-bottom flex-col items-center pb-0 focus-visible:outline-none cursor-pointer',
+        'transition-all duration-150',
+        isSelected ? 'scale-115 -translate-y-1 z-30' : 'hover:scale-110 hover:-translate-y-0.5 z-10',
       )}
     >
-      <span
+      <div
         className={cn(
-          'relative z-[1] flex h-7 items-center justify-center rounded-full border-[1.5px] shadow-md transition-colors duration-150',
-          'group-focus-visible:ring-2 group-focus-visible:ring-primary-600 group-focus-visible:ring-offset-2',
-          hasMultipleIcons ? 'gap-1 px-2' : 'w-7',
-          isSelected
-            ? 'border-white bg-primary-600 text-white shadow-lg'
-            : 'border-primary-600 bg-white text-primary-700 group-hover:bg-primary-50',
+          'relative inline-flex items-center justify-center transition-all',
+          isSelected ? 'filter drop-shadow-xl' : 'filter drop-shadow-md group-hover:drop-shadow-lg',
         )}
       >
-        {icons.map((SportIcon, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && (
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'h-3 w-px shrink-0',
-                  isSelected ? 'bg-white/40' : 'bg-primary-200',
-                )}
-              />
-            )}
-            <SportIcon className="size-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
-          </React.Fragment>
-        ))}
-      </span>
-      <span
-        aria-hidden="true"
-        className={cn(
-          'relative z-[2] -mt-1 size-2 rotate-45 border-b-[1.5px] border-r-[1.5px] transition-colors duration-150',
-          isSelected
-            ? 'border-white bg-primary-600'
-            : 'border-primary-600 bg-white group-hover:bg-primary-50',
+        <SportPinIcon
+          sport={primarySportKey}
+          size={isSelected ? 44 : 36}
+          className="transition-transform duration-150"
+        />
+        {extraSportsCount > 0 && (
+          <span
+            className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary-600 text-[9px] font-bold text-white shadow-sm ring-1 ring-white"
+            title={`${venue.name} còn có: ${sports.slice(1).map((s) => s.name).join(', ')}`}
+          >
+            +{extraSportsCount}
+          </span>
         )}
-      />
+      </div>
     </button>
   );
 }
@@ -557,6 +462,24 @@ function VenueMarkersLayer({
 
             {/* Thông tin cơ sở */}
             <div className="flex flex-col gap-1">
+              {(popupVenue.sports ?? []).length > 0 && (
+                <div className="flex flex-wrap items-center gap-1">
+                  {(popupVenue.sports ?? []).map((sport) => (
+                    <span
+                      key={sport.id}
+                      className="inline-flex items-center gap-1 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-700"
+                    >
+                      <SportPinIcon
+                        sport={sport.icon || sport.slug}
+                        size={12}
+                        className="shrink-0"
+                      />
+                      {sport.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <h4 className="line-clamp-1 text-sm font-bold text-neutral-900" title={popupVenue.name}>
                 {popupVenue.name}
               </h4>
@@ -773,7 +696,7 @@ export function VenueMap({
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-60',
               userLocation && !isAwayFromUser
                 ? 'border-primary-300 bg-primary-50/95 text-primary-700 hover:bg-primary-100'
-                : 'border-neutral-300 bg-white/95 text-neutral-700 hover:border-primary-400 hover:bg-neutral-50 hover:text-primary-700',
+                : 'border-border bg-bg-card/95 text-text-primary hover:border-primary-400 hover:bg-bg-subtle hover:text-primary-700',
             )}
           >
             {isLocating ? (
@@ -787,7 +710,7 @@ export function VenueMap({
             <div
               role="status"
               aria-live="polite"
-              className="max-w-[240px] rounded-md border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs text-neutral-700 shadow-md backdrop-blur-xs"
+              className="max-w-[240px] rounded-md border border-border bg-bg-card/95 px-2.5 py-1.5 text-xs text-text-primary shadow-md backdrop-blur-xs"
             >
               {locationNotice}
             </div>

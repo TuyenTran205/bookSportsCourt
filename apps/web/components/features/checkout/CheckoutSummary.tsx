@@ -26,16 +26,16 @@ export function CheckoutSummary({ booking, className }: CheckoutSummaryProps) {
 
   return (
     <Card className={className ? `space-y-5 p-5 ${className}` : 'space-y-5 p-5'}>
-      <div className="border-b border-neutral-200 pb-4 dark:border-neutral-800">
-        <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
+      <div className="border-b border-border pb-4">
+        <h2 className="text-lg font-bold text-text-primary">
           {t('orderSummary')}
         </h2>
         <div className="mt-2 space-y-1">
-          <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          <p className="text-base font-semibold text-text-primary">
             {court.venue.name}
           </p>
-          <p className="flex items-start gap-1.5 text-xs text-neutral-600 dark:text-neutral-400">
-            <MapPin className="mt-0.5 size-3.5 shrink-0 text-neutral-500" aria-hidden="true" />
+          <p className="flex items-start gap-1.5 text-xs text-text-secondary">
+            <MapPin className="mt-0.5 size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
             <span>{court.venue.address}</span>
           </p>
         </div>
@@ -43,37 +43,37 @@ export function CheckoutSummary({ booking, className }: CheckoutSummaryProps) {
 
       <dl className="space-y-3 text-sm">
         <div className="flex items-center justify-between gap-3">
-          <dt className="text-neutral-600 dark:text-neutral-400">{t('court')}</dt>
-          <dd className="font-medium text-neutral-900 dark:text-neutral-100">{court.name}</dd>
+          <dt className="text-text-secondary">{t('court')}</dt>
+          <dd className="font-medium text-text-primary">{court.name}</dd>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <dt className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
-            <Calendar className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+          <dt className="flex items-center gap-1.5 text-text-secondary">
+            <Calendar className="size-4 shrink-0 text-text-disabled" aria-hidden="true" />
             <span>{t('matchDate')}</span>
           </dt>
-          <dd className="font-medium text-neutral-900 dark:text-neutral-100">
+          <dd className="font-medium text-text-primary">
             {formatDateWithWeekday(booking.during.start)}
           </dd>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <dt className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
-            <Clock className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+          <dt className="flex items-center gap-1.5 text-text-secondary">
+            <Clock className="size-4 shrink-0 text-text-disabled" aria-hidden="true" />
             <span>{t('matchTime')}</span>
           </dt>
-          <dd className="text-right font-medium text-neutral-900 dark:text-neutral-100">
+          <dd className="text-right font-medium text-text-primary">
             {formatTimeRange(booking.during.start, booking.during.end)}{' '}
-            <span className="text-xs text-neutral-500 dark:text-neutral-400">
+            <span className="text-xs text-text-secondary">
               ({slotCount} khung 30p)
             </span>
           </dd>
         </div>
 
-        <div className="border-t border-neutral-100 pt-3 dark:border-neutral-800">
+        <div className="border-t border-border pt-3">
           <div className="flex items-center justify-between gap-3 py-1">
-            <dt className="text-neutral-600 dark:text-neutral-400">{t('totalPrice')}</dt>
-            <dd className="font-semibold text-neutral-900 dark:text-neutral-100">
+            <dt className="text-text-secondary">{t('totalPrice')}</dt>
+            <dd className="font-semibold text-text-primary">
               {formatCurrency(booking.totalPrice)}
             </dd>
           </div>
@@ -87,11 +87,11 @@ export function CheckoutSummary({ booking, className }: CheckoutSummaryProps) {
             </dd>
           </div>
 
-          <div className="flex items-center justify-between gap-3 py-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+          <div className="flex items-center justify-between gap-3 py-1.5 text-xs text-text-secondary">
             <dt>{t('remainingAtVenue')}</dt>
-            <dd className="font-medium text-neutral-700 dark:text-neutral-300">
+            <dd className="font-medium text-text-primary">
               {formatCurrency(remainingAtVenue)}{' '}
-              <span className="text-[11px] text-neutral-500">
+              <span className="text-[11px] text-text-secondary">
                 ({t('remainingAtVenueHint')})
               </span>
             </dd>

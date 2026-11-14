@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-soccer" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-soccer" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#16a34a" />
+      <stop offset="100%" stop-color="#15803d" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-soccer)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-soccer)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#15803d" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Ball base circle -->
+      <circle cx="24" cy="20" r="9" fill="#FFFFFF" stroke="#15803d" stroke-width="1.2" />
+      <!-- Center black pentagon -->
+      <polygon points="24,17.5 26.4,19.2 25.5,21.8 22.5,21.8 21.6,19.2" fill="#15803d" />
+      <!-- Seam lines from center pentagon to perimeter patches -->
+      <line x1="24" y1="17.5" x2="24" y2="15" stroke="#15803d" stroke-width="1" />
+      <line x1="26.4" y1="19.2" x2="28.8" y2="18.2" stroke="#15803d" stroke-width="1" />
+      <line x1="25.5" y1="21.8" x2="27.2" y2="24" stroke="#15803d" stroke-width="1" />
+      <line x1="22.5" y1="21.8" x2="20.8" y2="24" stroke="#15803d" stroke-width="1" />
+      <line x1="21.6" y1="19.2" x2="19.2" y2="18.2" stroke="#15803d" stroke-width="1" />
+      <!-- Top patch -->
+      <path d="M 22.2 12.5 Q 24 12 25.8 12.5 L 25.2 14.5 L 22.8 14.5 Z" fill="#15803d" />
+      <!-- Top right patch -->
+      <path d="M 30.5 15.5 Q 32.2 17.5 32.5 19.5 L 30.2 19 L 29 17 Z" fill="#15803d" />
+      <!-- Bottom right patch -->
+      <path d="M 29.5 26 Q 27.5 27.8 25.5 28.5 L 25.8 26.5 L 28 25 Z" fill="#15803d" />
+      <!-- Bottom left patch -->
+      <path d="M 18.5 26 Q 20.5 27.8 22.5 28.5 L 22.2 26.5 L 20 25 Z" fill="#15803d" />
+      <!-- Top left patch -->
+      <path d="M 17.5 15.5 Q 15.8 17.5 15.5 19.5 L 17.8 19 L 19 17 Z" fill="#15803d" />
+  </g>
+</svg>

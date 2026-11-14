@@ -228,7 +228,7 @@ export default function VenuesPage() {
                 placeholder={tCommon('search')}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="min-h-11 pl-9"
+                className="min-h-11 border-0 bg-bg-subtle pl-9 shadow-none focus-visible:bg-bg-card focus-visible:ring-2"
               />
             </div>
             {searchInput && (
@@ -381,13 +381,13 @@ export default function VenuesPage() {
             /* Chế độ chia đôi 1:2 — Thẻ thu gọn 1 phần bên trái, Bản đồ rộng 2 phần bên phải */
             <>
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 lg:col-span-1 lg:flex lg:max-h-[calc(100vh-13rem)] lg:flex-col lg:overflow-y-auto lg:pr-1">
+                <div className="flex flex-col gap-3 p-1 sm:grid sm:grid-cols-2 lg:col-span-1 lg:flex lg:max-h-[calc(100vh-13rem)] lg:flex-col lg:overflow-y-auto lg:px-1.5 lg:py-1">
                   {venues.map((venue) => (
                     <div
                       key={venue.id}
                       onMouseEnter={() => setSelectedVenueId(venue.id)}
                       className={cn(
-                        'rounded-card transition-all',
+                        'min-w-0 rounded-card transition-all',
                         selectedVenueId === venue.id ? 'ring-2 ring-primary-600' : '',
                       )}
                     >
@@ -423,7 +423,7 @@ export default function VenuesPage() {
           ) : (
             /* Chế độ lưới mở rộng full màn hình */
             <>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-5 p-0.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {venues.map((venue) => (
                   <VenueCard
                     key={venue.id}

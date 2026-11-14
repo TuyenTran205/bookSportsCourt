@@ -144,7 +144,7 @@ export function VenueLocationMap({
               onLocateMe();
             }}
             disabled={isLocatingMe}
-            className="absolute bottom-3 right-3 z-[1000] flex size-9 items-center justify-center rounded-btn border border-neutral-300 bg-white/95 backdrop-blur-xs shadow-md text-neutral-700 transition hover:bg-neutral-50 hover:text-primary-700 hover:border-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
+            className="absolute bottom-3 right-3 z-[1000] flex size-9 items-center justify-center rounded-btn border border-border bg-bg-card/95 backdrop-blur-xs shadow-md text-text-primary transition hover:bg-bg-subtle hover:text-primary-700 hover:border-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
             title="Định vị vị trí của tôi"
             aria-label="Định vị vị trí của tôi"
           >

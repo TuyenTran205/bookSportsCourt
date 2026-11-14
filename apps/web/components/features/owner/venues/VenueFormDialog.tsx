@@ -446,7 +446,7 @@ export function VenueFormDialog({
                 <select
                   value={ownerId}
                   onChange={(event) => setOwnerId(event.target.value)}
-                  className="w-full rounded-btn border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full rounded-btn border border-border bg-bg-card px-3 py-2 text-sm text-text-primary focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">-- Chọn chủ sân phụ trách --</option>
                   {(ownersQuery.data?.data ?? []).map((o) => (
@@ -553,7 +553,7 @@ export function VenueFormDialog({
                       className={`min-h-9 rounded-btn border px-3 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
                         selected
                           ? 'border-primary-700 bg-primary-700 font-medium text-white'
-                          : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+                          : 'border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary'
                       }`}
                     >
                       {sport.name}
@@ -580,7 +580,7 @@ export function VenueFormDialog({
                         className={`inline-flex min-h-9 items-center gap-1.5 rounded-btn border px-3 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
                           selected
                             ? 'border-primary-700 bg-primary-700 font-medium text-white'
-                            : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+                            : 'border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary'
                         }`}
                       >
                         {renderCatalogIcon(amenity.icon, Sparkles, 'size-3.5')}
@@ -694,7 +694,7 @@ export function VenueFormDialog({
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 shrink-0 bg-white text-xs font-medium text-primary-700 hover:bg-primary-100 hover:text-primary-800"
+                        className="h-7 shrink-0 bg-bg-card text-xs font-medium text-primary-700 hover:bg-primary-100 hover:text-primary-800 dark:text-primary-300 dark:hover:bg-primary-950/60"
                         onClick={() => {
                           shouldAutoLocateRef.current = false;
                           setAddress(pinnedAddress);
@@ -707,7 +707,7 @@ export function VenueFormDialog({
                 </div>
               ) : (
                 <p className="text-xs text-warning flex items-center gap-1">
-                  <span>⚠️</span>
+                  <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>{t('venuePinRequired')}</span>
                 </p>
               )}
@@ -735,7 +735,7 @@ export function VenueFormDialog({
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="absolute right-2 top-2 bg-white"
+                      className="absolute right-2 top-2 bg-bg-card"
                       aria-label={t('venueImageClear')}
                       onClick={() => {
                         setImage(null);
@@ -748,7 +748,7 @@ export function VenueFormDialog({
                   )}
                 </div>
               )}
-              <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-btn border border-neutral-200 bg-white px-3 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 focus-within:ring-2 focus-within:ring-primary-600">
+              <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-btn border border-border bg-bg-card px-3 text-sm font-medium text-text-primary transition-colors hover:bg-bg-subtle focus-within:ring-2 focus-within:ring-primary-600">
                 <ImagePlus className="size-4" aria-hidden="true" />
                 {image ? t('venueImageChange') : t('venueImageChoose')}
                 <input

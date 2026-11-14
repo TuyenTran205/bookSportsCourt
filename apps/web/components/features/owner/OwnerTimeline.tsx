@@ -183,6 +183,8 @@ export function OwnerTimeline() {
   const [pointerRange, setPointerRange] = React.useState<PointerRange | null>(null);
   const pointerRangeRef = React.useRef<PointerRange | null>(null);
   const pointerActionRef = React.useRef(false);
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const pointerClientXRef = React.useRef<number | null>(null);
 
   const venuesQuery = useQuery({
     queryKey: ['owner', 'venues'],
@@ -278,8 +280,97 @@ export function OwnerTimeline() {
     setPointerRange(range);
   }, []);
 
+  const extendPointerSelection = React.useCallback(
+    (targetIndex: number) => {
+      const range = pointerRangeRef.current;
+      if (!range || slots.length === 0) return;
+      const clampedTarget = Math.max(0, Math.min(slots.length - 1, targetIndex));
+      const direction = clampedTarget >= range.startIndex ? 1 : -1;
+      let validEndIndex = range.startIndex;
+      for (
+        let i = range.startIndex;
+        direction > 0 ? i <= clampedTarget : i >= clampedTarget;
+        i += direction
+      ) {
+        if (slotState(range.courtId, slots[i]!) !== 'available') break;
+        validEndIndex = i;
+      }
+      if (validEndIndex !== range.endIndex) {
+        setPointerSelection({ ...range, endIndex: validEndIndex });
+      }
+    },
+    [setPointerSelection, slotState, slots],
+  );
+
+  const slotIndexFromClientX = React.useCallback(
+    (clientX: number): number | null => {
+      const container = scrollContainerRef.current;
+      if (!container || slots.length === 0) return null;
+      const rect = container.getBoundingClientRect();
+      const clampedClientX = Math.max(rect.left + LABEL_WIDTH, Math.min(rect.right - 2, clientX));
+      const offsetInStrip = clampedClientX - rect.left + container.scrollLeft - LABEL_WIDTH;
+      return Math.floor(offsetInStrip / SLOT_WIDTH);
+    },
+    [slots.length],
+  );
+
+  const isPointerSelecting = pointerRange !== null;
+
+  React.useEffect(() => {
+    if (!isPointerSelecting) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      pointerClientXRef.current = event.clientX;
+      const nextIndex = slotIndexFromClientX(event.clientX);
+      if (nextIndex !== null) {
+        extendPointerSelection(nextIndex);
+      }
+    };
+
+    let rafId = 0;
+    const EDGE_ZONE = 64;
+    const tickAutoScroll = () => {
+      const container = scrollContainerRef.current;
+      const clientX = pointerClientXRef.current;
+      if (container && clientX !== null && pointerRangeRef.current) {
+        const rect = container.getBoundingClientRect();
+        const rightDistance = rect.right - clientX;
+        const leftDistance = clientX - (rect.left + LABEL_WIDTH);
+        let delta = 0;
+        if (
+          rightDistance < EDGE_ZONE &&
+          container.scrollLeft + container.clientWidth < container.scrollWidth - 1
+        ) {
+          const intensity = Math.min(2.5, Math.max(0.2, (EDGE_ZONE - rightDistance) / EDGE_ZONE));
+          delta = Math.ceil(intensity * 14);
+        } else if (leftDistance < EDGE_ZONE && container.scrollLeft > 0) {
+          const intensity = Math.min(2.5, Math.max(0.2, (EDGE_ZONE - leftDistance) / EDGE_ZONE));
+          delta = -Math.ceil(intensity * 14);
+        }
+        if (delta !== 0) {
+          container.scrollLeft += delta;
+          const nextIndex = slotIndexFromClientX(clientX);
+          if (nextIndex !== null) {
+            extendPointerSelection(nextIndex);
+          }
+        }
+      }
+      if (pointerRangeRef.current) {
+        rafId = window.requestAnimationFrame(tickAutoScroll);
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    rafId = window.requestAnimationFrame(tickAutoScroll);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [extendPointerSelection, isPointerSelecting, slotIndexFromClientX]);
+
   React.useEffect(() => {
     const finishPointerSelection = () => {
+      pointerClientXRef.current = null;
       const range = pointerRangeRef.current;
       if (!range) return;
       const selectedSlots = slots.slice(
@@ -290,7 +381,11 @@ export function OwnerTimeline() {
       openManualBooking(range.courtId, selectedSlots);
     };
     window.addEventListener('pointerup', finishPointerSelection);
-    return () => window.removeEventListener('pointerup', finishPointerSelection);
+    window.addEventListener('pointercancel', finishPointerSelection);
+    return () => {
+      window.removeEventListener('pointerup', finishPointerSelection);
+      window.removeEventListener('pointercancel', finishPointerSelection);
+    };
   }, [openManualBooking, setPointerSelection, slots]);
 
   const createBookingMutation = useMutation({
@@ -396,7 +491,7 @@ export function OwnerTimeline() {
 
   if (!venuesQuery.data?.length) {
     return (
-      <div className="rounded-card border border-dashed border-neutral-300 bg-white p-8 text-center">
+      <div className="rounded-card border border-dashed border-border bg-bg-card p-8 text-center">
         <CalendarDays className="mx-auto mb-3 size-8 text-neutral-400" aria-hidden="true" />
         <h2 className="font-semibold text-neutral-900">{t('timelineNoVenue')}</h2>
         <p className="mt-1 text-sm text-neutral-600">{t('timelineNoVenueDesc')}</p>
@@ -509,7 +604,7 @@ export function OwnerTimeline() {
           <Skeleton className="h-48 w-full" />
         </div>
       ) : courts.length === 0 ? (
-        <div className="rounded-card border border-dashed border-neutral-300 bg-white p-8 text-center">
+        <div className="rounded-card border border-dashed border-border bg-bg-card p-8 text-center">
           <CalendarDays className="mx-auto mb-3 size-8 text-neutral-400" aria-hidden="true" />
           <h2 className="font-semibold text-neutral-900">{t('timelineNoCourts')}</h2>
           <p className="mt-1 text-sm text-neutral-600">{t('timelineNoCourtsDesc')}</p>
@@ -530,7 +625,7 @@ export function OwnerTimeline() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div ref={scrollContainerRef} className="overflow-x-auto select-none">
                 <div className="min-w-max">
                   <div className="grid border-b border-border bg-bg-subtle text-xs text-text-secondary" style={{ gridTemplateColumns: columns }}>
                     <div className="sticky left-0 z-10 flex min-h-11 items-center border-r border-border bg-bg-subtle px-3 font-medium text-text-primary">
@@ -593,18 +688,13 @@ export function OwnerTimeline() {
                               if (state !== 'available') return;
                               event.preventDefault();
                               pointerActionRef.current = true;
+                              pointerClientXRef.current = event.clientX;
                               setPointerSelection({ courtId: court.id, startIndex: index, endIndex: index });
                             }}
                             onPointerEnter={() => {
                               const range = pointerRangeRef.current;
                               if (!range || range.courtId !== court.id) return;
-                              const startIndex = Math.min(range.startIndex, index);
-                              const endIndex = Math.max(range.startIndex, index);
-                              const available = slots
-                                .slice(startIndex, endIndex + 1)
-                                .every((candidate) => slotState(court.id, candidate) === 'available')
-                                && endIndex - startIndex + 1 <= 16;
-                              if (available) setPointerSelection({ ...range, endIndex: index });
+                              extendPointerSelection(index);
                             }}
                             onPointerUp={() => {
                               if (state === 'booked' && booking) {
@@ -790,10 +880,15 @@ export function OwnerTimeline() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setManualDialogOpen(false)}>{t('manualCancel')}</Button>
-              {minutesOfDay(manualDraft.endTime) - minutesOfDay(manualDraft.startTime) > 16 * SLOT_MINUTES && (
-                <p className="mr-auto text-left text-xs text-danger">{t('manualBookingMaxSlots')}</p>
-              )}
-              <Button type="submit" loading={createBookingMutation.isPending} disabled={guestName.trim().length < 2 || !guestPhone.trim() || minutesOfDay(manualDraft.endTime) <= minutesOfDay(manualDraft.startTime) || minutesOfDay(manualDraft.endTime) - minutesOfDay(manualDraft.startTime) > 16 * SLOT_MINUTES}>
+              <Button
+                type="submit"
+                loading={createBookingMutation.isPending}
+                disabled={
+                  guestName.trim().length < 2 ||
+                  !guestPhone.trim() ||
+                  minutesOfDay(manualDraft.endTime) <= minutesOfDay(manualDraft.startTime)
+                }
+              >
                 {t('manualBookingSubmit')}
               </Button>
             </DialogFooter>
@@ -820,7 +915,7 @@ export function OwnerTimeline() {
                 id="blackout-court"
                 value={blackoutDraft.courtId}
                 onChange={(event) => setBlackoutDraft((current) => ({ ...current, courtId: event.target.value }))}
-                className="h-10 w-full rounded-input border border-neutral-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                className="h-10 w-full rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                 required
               >
                 {courts.map((court) => <option key={court.id} value={court.id}>{court.name}</option>)}

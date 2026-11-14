@@ -543,7 +543,7 @@ export function OwnerApplicationScreen() {
                     type="button"
                     onClick={handleGetMyLocation}
                     disabled={isLocating}
-                    className="absolute right-3 top-3 z-[400] flex size-8 items-center justify-center rounded-btn bg-white/95 text-neutral-700 shadow-md ring-1 ring-black/10 transition-colors hover:bg-white hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
+                    className="absolute right-3 top-3 z-[400] flex size-8 items-center justify-center rounded-btn bg-bg-card/95 text-text-primary shadow-md ring-1 ring-border transition-colors hover:bg-bg-subtle hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
                     title="Định vị của tôi (vị trí hiện tại)"
                     aria-label="Định vị của tôi"
                   >
@@ -556,7 +556,7 @@ export function OwnerApplicationScreen() {
 
                   {isGeocoding && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
-                      <div className="flex items-center gap-2 rounded-btn bg-white/95 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-md">
+                      <div className="flex items-center gap-2 rounded-btn bg-bg-card/95 px-3 py-1.5 text-xs font-medium text-text-primary shadow-md">
                         <Loader2 className="size-4 animate-spin text-primary-600" />
                         <span>Đang đồng bộ tọa độ & địa chỉ...</span>
                       </div>
@@ -705,9 +705,9 @@ export function OwnerApplicationScreen() {
               </div>
             )}
 
-            <div className="flex flex-col gap-4 rounded-card border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-              <p className="flex gap-2 text-sm text-neutral-600">
-                <FileText className="mt-0.5 size-4 shrink-0 text-neutral-400" aria-hidden="true" />
+            <div className="flex flex-col gap-4 rounded-card border border-border bg-bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <p className="flex gap-2 text-sm text-text-secondary">
+                <FileText className="mt-0.5 size-4 shrink-0 text-text-disabled" aria-hidden="true" />
                 <span>{t('submissionNote')}</span>
               </p>
               <Button

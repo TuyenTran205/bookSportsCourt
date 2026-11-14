@@ -867,7 +867,13 @@ export const ownerHandlers = [
     if (guard.error) return guard.error;
     const venue = ownedVenues().find((item) => item.id === params.id);
     if (!venue) return err(404, 'NOT_FOUND', 'Không tìm thấy cơ sở');
-    return ok(db.bankAccounts[venue.id] ?? null);
+    const shared =
+      db.bankAccounts[venue.id] ??
+      ownedVenues()
+        .map((v) => db.bankAccounts[v.id])
+        .find(Boolean) ??
+      null;
+    return ok(shared);
   }),
 
   http.put('/api/v1/owner/venues/:id/payment-account', async ({ params, request }) => {
@@ -889,7 +895,9 @@ export const ownerHandlers = [
       return err(422, 'VALIDATION_ERROR', 'Thông tin tài khoản ngân hàng chưa hợp lệ');
     }
     const account = { ...body, accountName: body.accountName.trim() } as BankAccountInfo;
-    db.bankAccounts[venue.id] = account;
+    for (const v of ownedVenues()) {
+      db.bankAccounts[v.id] = account;
+    }
     persist();
     return ok(account);
   }),
@@ -947,28 +955,40 @@ export const ownerHandlers = [
       ),
     );
 
-    const shaped = list.map((r) => ({
-      id: r.payment!.id,
-      bookingId: r.booking.id,
-      amount: r.payment!.amount,
-      provider: r.payment!.provider,
-      transferCode: r.payment!.transferCode,
-      proofUrl: r.payment!.proofUrl,
-      proofUploadedAt: r.payment!.proofUploadedAt,
-      status: r.payment!.status,
-      rejectReason: r.payment!.rejectReason ?? null,
-      booking: {
-        id: r.booking.id,
-        during: r.booking.during,
-        status: r.booking.status,
-        totalPrice: r.booking.totalPrice,
-        courtName: courtName(r.booking.courtId),
-        venueName: venueForCourt(r.booking.courtId)?.name ?? '',
-        customerName:
-          db.users.find((u) => u.id === r.booking.customerId)?.fullName ?? r.booking.guestName ?? 'Khách vãng lai',
-        customerPhone: db.users.find((u) => u.id === r.booking.customerId)?.phone ?? r.booking.guestPhone ?? null,
-      },
-    }));
+    const shaped = list.map((r) => {
+      const resolvedVenueName = venueForCourt(r.booking.courtId)?.name ?? '';
+      const resolvedCourtName = courtName(r.booking.courtId);
+      const resolvedCustomerName =
+        db.users.find((u) => u.id === r.booking.customerId)?.fullName ?? r.booking.guestName ?? 'Khách vãng lai';
+      const resolvedCustomerPhone =
+        db.users.find((u) => u.id === r.booking.customerId)?.phone ?? r.booking.guestPhone ?? null;
+      return {
+        id: r.payment!.id,
+        bookingId: r.booking.id,
+        amount: r.payment!.amount,
+        provider: r.payment!.provider,
+        transferCode: r.payment!.transferCode,
+        proofUrl: r.payment!.proofUrl,
+        proofUploadedAt: r.payment!.proofUploadedAt,
+        status: r.payment!.status,
+        rejectReason: r.payment!.rejectReason ?? null,
+        venueName: resolvedVenueName,
+        courtName: resolvedCourtName,
+        bookingTotalPrice: r.booking.totalPrice,
+        customerName: resolvedCustomerName,
+        customerPhone: resolvedCustomerPhone,
+        booking: {
+          id: r.booking.id,
+          during: r.booking.during,
+          status: r.booking.status,
+          totalPrice: r.booking.totalPrice,
+          courtName: resolvedCourtName,
+          venueName: resolvedVenueName,
+          customerName: resolvedCustomerName,
+          customerPhone: resolvedCustomerPhone,
+        },
+      };
+    });
 
     const { data, meta } = paginate(shaped, page, limit);
     return okList(data, meta);
@@ -1470,10 +1490,73 @@ export const ownerHandlers = [
         courtName: courtName(
           db.bookings.find((record) => record.review?.id === r.id)?.booking.courtId ?? '',
         ),
+        reportStatus: r.reportStatus ?? 'none',
+        reportReason: r.reportReason ?? null,
+        reportImageUrl: r.reportImageUrl ?? null,
+        reportedAt: r.reportedAt ?? null,
       }));
 
     const { data, meta } = paginate(list, page, limit);
     return okList(data, meta);
+  }),
+
+  http.post('/api/v1/owner/reviews/:id/report', async ({ params, request }) => {
+    await simulateLatency(400);
+    const guard = requireOwner();
+    if (guard.error) return guard.error;
+
+    const review = db.reviews.find((r) => r.id === params.id);
+    const venueIds = new Set(ownedVenues().map((venue) => venue.id));
+    if (!review || !isReviewInOwnedVenues(review, venueIds)) {
+      return err(404, 'NOT_FOUND', 'Không tìm thấy đánh giá');
+    }
+    if (review.reportStatus === 'pending') {
+      return err(409, 'ALREADY_EXISTS', 'Đánh giá này đang có báo cáo chờ Admin xét duyệt');
+    }
+    if (review.reportStatus === 'resolved') {
+      return err(409, 'ALREADY_EXISTS', 'Báo cáo cho đánh giá này đã được duyệt xử lý');
+    }
+
+    const contentType = request.headers.get('content-type') ?? '';
+    let reason = '';
+    let imageUrl: string | null = null;
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      reason = String(formData.get('reason') ?? '').trim();
+      const file = formData.get('file');
+      if (file instanceof File && file.size > 0) {
+        imageUrl = URL.createObjectURL(file);
+      } else {
+        const rawUrl = String(formData.get('imageUrl') ?? '').trim();
+        imageUrl = rawUrl || null;
+      }
+    } else {
+      const body = (await request.json().catch(() => ({}))) as {
+        reason?: string;
+        imageUrl?: string | null;
+      };
+      reason = (body.reason ?? '').trim();
+      imageUrl = body.imageUrl?.trim() || null;
+    }
+
+    if (reason.length < 5) {
+      return err(422, 'VALIDATION_ERROR', 'Lý do báo cáo phải có ít nhất 5 ký tự');
+    }
+
+    review.reportStatus = 'pending';
+    review.reportReason = reason;
+    review.reportImageUrl = imageUrl;
+    review.reportedAt = new Date().toISOString();
+
+    const record = db.bookings.find((b) => b.review?.id === params.id);
+    if (record?.review) {
+      record.review.reportStatus = review.reportStatus;
+      record.review.reportReason = review.reportReason;
+      record.review.reportImageUrl = review.reportImageUrl;
+      record.review.reportedAt = review.reportedAt;
+    }
+    persist();
+    return ok(review);
   }),
 
   http.patch('/api/v1/owner/reviews/:id/reply', async ({ params, request }) => {

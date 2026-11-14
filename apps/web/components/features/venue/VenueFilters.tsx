@@ -189,18 +189,18 @@ export function VenueFilters({
     <section
       aria-label="Bộ lọc tìm kiếm sân"
       className={cn(
-        'rounded-card border border-border bg-bg-card p-4 text-text-primary shadow-xs',
+        'rounded-card border-0 bg-bg-card p-4 text-text-primary shadow-xs',
         className,
       )}
     >
       {/* Tiêu đề cột sidebar (Phương án B) */}
       {isSidebar && (
-        <div className="mb-4 flex items-center justify-between gap-2 border-b border-border pb-3">
+        <div className="mb-4 flex items-center justify-between gap-2 pb-2">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="size-4 text-primary-700 dark:text-primary-400" aria-hidden="true" />
             <span className="text-sm font-bold text-text-primary">Bộ lọc</span>
             {activeFiltersCount > 0 && (
-              <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
                 {activeFiltersCount}
               </span>
             )}
@@ -237,6 +237,7 @@ export function VenueFilters({
             onWardChange={handleWardChange}
             disabled={isLoading}
             layout={isSidebar ? 'vertical' : 'horizontal'}
+            borderless
           />
         </div>
 
@@ -251,7 +252,7 @@ export function VenueFilters({
             value={values.maxPrice ? String(values.maxPrice) : ''}
             onChange={handlePriceChange}
             disabled={isLoading}
-            className="min-h-11"
+            className="min-h-11 border-0 bg-bg-subtle shadow-none"
           >
             {PRICE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -272,7 +273,7 @@ export function VenueFilters({
             value={values.sort ?? 'rating_desc'}
             onChange={handleSortChange}
             disabled={isLoading}
-            className="min-h-11"
+            className="min-h-11 border-0 bg-bg-subtle shadow-none"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -285,7 +286,7 @@ export function VenueFilters({
 
       {/* Thanh công cụ phụ ở layout ngang: Nút Mở rộng bộ lọc & Đặt lại */}
       {!isSidebar && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -296,7 +297,7 @@ export function VenueFilters({
               <SlidersHorizontal className="size-3.5 text-text-secondary" aria-hidden="true" />
               <span>{isAdvancedOpen ? 'Thu gọn bộ lọc' : 'Bộ lọc nâng cao'}</span>
               {activeFiltersCount > 0 && (
-                <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300">
+                <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
                   {activeFiltersCount}
                 </span>
               )}
@@ -324,7 +325,7 @@ export function VenueFilters({
 
       {/* Vùng bộ lọc nâng cao (luôn mở ở sidebar) */}
       {showAdvanced && (
-        <div className="mt-4 flex flex-col gap-4 border-t border-border pt-4">
+        <div className="mt-4 flex flex-col gap-4 pt-2">
           {/* Môn thể thao (chọn nhiều) */}
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-text-secondary">Môn thể thao</span>
@@ -338,11 +339,11 @@ export function VenueFilters({
                     onClick={() => handleSportToggle(sport.id)}
                     aria-pressed={isSelected}
                     className={cn(
-                      'inline-flex items-center rounded-btn px-3 py-1.5 text-xs font-medium transition-colors',
+                      'inline-flex items-center rounded-btn border-0 px-3 py-1.5 text-xs font-medium transition-colors',
                       isSidebar ? 'min-h-9' : 'min-h-11',
                       isSelected
-                        ? 'bg-primary-700 font-semibold text-white dark:bg-primary-600'
-                        : 'border border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
+                        ? 'bg-primary-700 font-semibold text-white'
+                        : 'bg-bg-subtle text-text-secondary hover:bg-neutral-200/70 hover:text-text-primary',
                     )}
                   >
                     {sport.name}
@@ -363,7 +364,7 @@ export function VenueFilters({
               value={values.minRating ? String(values.minRating) : ''}
               onChange={handleRatingChange}
               disabled={isLoading}
-              className="min-h-11"
+              className="min-h-11 border-0 bg-bg-subtle shadow-none"
             >
               {RATING_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -390,11 +391,11 @@ export function VenueFilters({
                     <label
                       key={amenity.id}
                       className={cn(
-                        'flex cursor-pointer items-center gap-2 rounded-btn border p-2 text-xs transition-colors',
+                        'flex cursor-pointer items-center gap-2 rounded-btn border-0 p-2 text-xs transition-colors',
                         isSidebar ? 'min-h-10' : 'min-h-11',
                         isChecked
-                          ? 'border-primary-600 bg-primary-50 font-medium text-primary-900 dark:border-primary-500 dark:bg-primary-950/40 dark:text-primary-200'
-                          : 'border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
+                          ? 'bg-primary-50 font-semibold text-primary-700 ring-1 ring-primary-500/40'
+                          : 'bg-bg-subtle text-text-secondary hover:bg-neutral-200/70 hover:text-text-primary',
                       )}
                     >
                       <input
@@ -416,7 +417,7 @@ export function VenueFilters({
       {/* Dòng ghi chú bản quyền & mốc dữ liệu ĐVHC */}
       <div
         className={cn(
-          'mt-3 border-t border-border pt-2.5',
+          'mt-3 pt-2.5',
           isSidebar ? 'text-left' : 'text-right',
         )}
       >

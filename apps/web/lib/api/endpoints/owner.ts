@@ -16,6 +16,7 @@ import type {
   PricingRule,
   RevenueReport,
   Review,
+  ReviewReportStatus,
   VenueDetail,
   VenueImage,
 } from '@bsc/shared';
@@ -293,11 +294,26 @@ export async function listOwnerPayments(
           (rawBooking.status as BookingStatus) ||
           (p.bookingStatus as BookingStatus) ||
           'confirmed',
-        totalPrice: Number(rawBooking.totalPrice) || Number(p.amount) || 0,
-        courtName: (rawBooking.courtName as string) || 'Sân thi đấu',
-        venueName: (rawBooking.venueName as string) || 'Cơ sở',
-        customerName: (rawBooking.customerName as string) || 'Khách hàng',
-        customerPhone: (rawBooking.customerPhone as string) ?? null,
+        totalPrice:
+          Number(rawBooking.totalPrice ?? p.bookingTotalPrice) ||
+          Number(p.amount) ||
+          0,
+        courtName:
+          (rawBooking.courtName as string) ||
+          (p.courtName as string) ||
+          'Sân thi đấu',
+        venueName:
+          (rawBooking.venueName as string) ||
+          (p.venueName as string) ||
+          'Cơ sở',
+        customerName:
+          (rawBooking.customerName as string) ||
+          (p.customerName as string) ||
+          'Khách hàng',
+        customerPhone:
+          (rawBooking.customerPhone as string) ??
+          (p.customerPhone as string) ??
+          null,
       },
     } as OwnerPaymentItem;
   });
@@ -406,6 +422,10 @@ export interface OwnerReview extends Review {
   venueName?: string;
   courtName?: string;
   customerName?: string;
+  reportStatus?: ReviewReportStatus;
+  reportReason?: string | null;
+  reportImageUrl?: string | null;
+  reportedAt?: string | null;
 }
 
 export function getRevenue(params: {
@@ -450,6 +470,10 @@ export async function listOwnerReviews(
         ((r.customer as { fullName?: string })?.fullName) ||
         'Khách hàng',
       comment: (r.comment as string) || (r.content as string) || '',
+      reportStatus: (r.reportStatus as ReviewReportStatus | undefined) ?? 'none',
+      reportReason: (r.reportReason as string | null | undefined) ?? null,
+      reportImageUrl: (r.reportImageUrl as string | null | undefined) ?? null,
+      reportedAt: (r.reportedAt as string | null | undefined) ?? null,
     } as unknown as OwnerReview;
   });
   return { data, meta: res.meta };
@@ -459,6 +483,28 @@ export function replyToReview(id: string, reply: string) {
   return apiFetch<Review>(`/owner/reviews/${encodeURIComponent(id)}/reply`, {
     method: 'PATCH',
     ...jsonBody({ ownerReply: reply }),
+  });
+}
+
+export function reportReview(
+  id: string,
+  input: { reason: string; file?: File | null; imageUrl?: string | null },
+) {
+  if (input.file) {
+    const form = new FormData();
+    form.append('reason', input.reason);
+    form.append('file', input.file);
+    return apiFetch<OwnerReview>(`/owner/reviews/${encodeURIComponent(id)}/report`, {
+      method: 'POST',
+      body: form,
+    });
+  }
+  return apiFetch<OwnerReview>(`/owner/reviews/${encodeURIComponent(id)}/report`, {
+    method: 'POST',
+    ...jsonBody({
+      reason: input.reason,
+      ...(input.imageUrl ? { imageUrl: input.imageUrl } : {}),
+    }),
   });
 }
 

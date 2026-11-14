@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminAnalytics } from '@/lib/hooks/useAdminDashboard';
 import { formatCurrency } from '@/lib/utils/format';
+import { RECHARTS_TOOLTIP_PROPS } from '@/lib/utils/chart';
 
 const ResponsiveContainer = Recharts.ResponsiveContainer as unknown as React.ComponentType<Record<string, unknown>>;
 const PieChart = Recharts.PieChart as unknown as React.ComponentType<Record<string, unknown>>;
@@ -98,6 +99,7 @@ export function AdminAnalyticsScreen() {
                       ))}
                     </Pie>
                     <Tooltip
+                      {...RECHARTS_TOOLTIP_PROPS}
                       formatter={(val: number) => [`${val} lượt`, 'Số lượt đặt']}
                     />
                     <Legend />
@@ -126,7 +128,7 @@ export function AdminAnalyticsScreen() {
                     }
                     margin={{ top: 10, right: 10, left: 0, bottom: 25 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
                     <XAxis
                       dataKey="name"
                       stroke="#94a3b8"
@@ -143,6 +145,7 @@ export function AdminAnalyticsScreen() {
                       allowDecimals={false}
                     />
                     <Tooltip
+                      {...RECHARTS_TOOLTIP_PROPS}
                       formatter={(val: number) => [`${val} đơn`, 'Số lượng']}
                     />
                     <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
