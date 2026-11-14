@@ -66,15 +66,14 @@ export function BankAccountForm() {
   return (
     <main className="w-full min-w-0 space-y-5">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900">
+        <h1 className="text-2xl font-bold tracking-tight text-text-primary">
           {t('settingsTitle')}
         </h1>
-        <p className="mt-1 text-sm text-neutral-600">{t('settingsDesc')}</p>
+        <p className="mt-1 text-sm text-text-secondary">{t('settingsDesc')}</p>
       </header>
 
       {venuesQuery.isLoading ? (
         <div className="space-y-5" aria-label={t('loadingSettings')}>
-          <Skeleton className="h-10 w-full max-w-sm" />
           <div className="grid gap-4 lg:grid-cols-2">
             <SettingsCardSkeleton />
             <SettingsCardSkeleton />
@@ -94,31 +93,14 @@ export function BankAccountForm() {
           }
         />
       ) : (
-        <>
-          <div className="max-w-md">
-            <FormField label={t('selectVenue')} htmlFor="settings-venue" required>
-              <NativeSelect
-                id="settings-venue"
-                value={venueId}
-                onChange={(event) => setVenueId(event.target.value)}
-                aria-label={t('selectVenue')}
-              >
-                {venues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </FormField>
-          </div>
-
-          {venueId && (
-            <div className="grid items-start gap-4 lg:grid-cols-2 xl:gap-6">
-              <BankAccountCard key={venueId} venueId={venueId} />
-              <CancellationPolicyCard key={venueId} venueId={venueId} />
-            </div>
-          )}
-        </>
+        <div className="grid items-start gap-4 lg:grid-cols-2 xl:gap-6">
+          <BankAccountCard venueId={venues[0]!.id} />
+          <CancellationPolicyCard
+            venues={venues}
+            venueId={venueId}
+            onVenueChange={setVenueId}
+          />
+        </div>
       )}
     </main>
   );
@@ -149,17 +131,19 @@ function SettingsCardHeader({
   tone: 'primary' | 'warning';
 }) {
   return (
-    <CardHeader className="flex-row items-center gap-3 border-b border-neutral-100 p-4 sm:p-5">
+    <CardHeader className="flex-row items-center gap-3 border-b border-border p-4 sm:p-5">
       <span
         className={`flex size-9 shrink-0 items-center justify-center rounded-card ${
-          tone === 'primary' ? 'bg-primary-100 text-primary-700' : 'bg-warning/10 text-warning'
+          tone === 'primary'
+            ? 'bg-primary-100 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'
+            : 'bg-warning/10 text-warning'
         }`}
       >
         <Icon className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
         <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-        <p className="mt-0.5 text-xs leading-5 text-neutral-500">{description}</p>
+        <p className="mt-0.5 text-xs leading-5 text-text-secondary">{description}</p>
       </div>
     </CardHeader>
   );
@@ -183,7 +167,7 @@ function BankAccountCard({ venueId }: { venueId: string }) {
     mutationFn: () => updateBankAccount(venueId, account),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['owner', 'venues', venueId, 'payment-account'],
+        queryKey: ['owner', 'venues'],
       });
       toast.success(t('saveBankSuccess'));
     },
@@ -197,7 +181,7 @@ function BankAccountCard({ venueId }: { venueId: string }) {
       <SettingsCardHeader
         icon={WalletCards}
         title={t('bankAccountSection')}
-        description={t('bankAccountVenueHint')}
+        description="Áp dụng chung cho tất cả cơ sở của bạn để nhận tiền đặt cọc qua chuyển khoản."
         tone="primary"
       />
       <CardContent className="space-y-4 p-4 sm:p-5">
@@ -236,7 +220,7 @@ function BankAccountCard({ venueId }: { venueId: string }) {
               </NativeSelect>
             </FormField>
             {account.bankBin && (
-              <p className="-mt-2 text-xs text-neutral-500">
+              <p className="-mt-2 text-xs text-text-secondary">
                 {t('bankSelected', { bank: bankNameFromBin(account.bankBin) })}
               </p>
             )}
@@ -274,8 +258,8 @@ function BankAccountCard({ venueId }: { venueId: string }) {
                 disabled={saveMutation.isPending}
               />
             </FormField>
-            <div className="border-t border-neutral-200 pt-3">
-              <p className="mb-3 text-xs text-neutral-500">{t('bankAccountSecurityHint')}</p>
+            <div className="border-t border-border pt-3">
+              <p className="mb-3 text-xs text-text-secondary">{t('bankAccountSecurityHint')}</p>
               <Button type="submit" loading={saveMutation.isPending} disabled={!accountQuery.isSuccess}>
                 <Save aria-hidden="true" />
                 {t('saveSettings')}
@@ -288,7 +272,15 @@ function BankAccountCard({ venueId }: { venueId: string }) {
   );
 }
 
-function CancellationPolicyCard({ venueId }: { venueId: string }) {
+function CancellationPolicyCard({
+  venues,
+  venueId,
+  onVenueChange,
+}: {
+  venues: Awaited<ReturnType<typeof listOwnerVenues>>;
+  venueId: string;
+  onVenueChange: (nextId: string) => void;
+}) {
   const t = useTranslations('owner');
   const queryClient = useQueryClient();
   const [policy, setPolicy] = React.useState<CancellationPolicyFormState>(
@@ -300,6 +292,7 @@ function CancellationPolicyCard({ venueId }: { venueId: string }) {
   const policyQuery = useQuery({
     queryKey: ['owner', 'venues', venueId, 'cancellation-policy'],
     queryFn: () => getCancellationPolicy(venueId),
+    enabled: Boolean(venueId),
     staleTime: 60_000,
   });
 
@@ -364,6 +357,21 @@ function CancellationPolicyCard({ venueId }: { venueId: string }) {
         tone="warning"
       />
       <CardContent className="space-y-4 p-4 sm:p-5">
+        <FormField label={t('selectVenue')} htmlFor="settings-venue" required>
+          <NativeSelect
+            id="settings-venue"
+            value={venueId}
+            onChange={(event) => onVenueChange(event.target.value)}
+            aria-label={t('selectVenue')}
+          >
+            {venues.map((venue) => (
+              <option key={venue.id} value={venue.id}>
+                {venue.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </FormField>
+
         {policyQuery.isLoading ? (
           <div className="space-y-4" aria-label={t('loadingSettings')}>
             <Skeleton className="h-10 w-full" />
@@ -425,7 +433,7 @@ function CancellationPolicyCard({ venueId }: { venueId: string }) {
                 onChange={(value) => updateField('refundPercent', value)}
               />
             </FormField>
-            <div className="border-t border-neutral-200 pt-3">
+            <div className="border-t border-border pt-3">
               <Button type="submit" loading={saveMutation.isPending} disabled={!policyQuery.isSuccess}>
                 <Save aria-hidden="true" />
                 {t('savePolicy')}
@@ -473,7 +481,7 @@ function NumberInputWithUnit({
         className="pr-12 tabular-nums"
         onChange={(event) => onChange(event.target.value)}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-neutral-500">
+      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-text-secondary">
         {unit}
       </span>
     </div>

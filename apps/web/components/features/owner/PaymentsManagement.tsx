@@ -5,8 +5,6 @@ import Image from 'next/image';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import {
-  ChevronLeft,
-  ChevronRight,
   CreditCard,
   Eye,
   FileImage,
@@ -15,6 +13,7 @@ import { toast } from 'sonner';
 
 import type { PaymentStatus } from '@bsc/shared';
 import { ErrorState } from '@/components/common/ErrorState';
+import { Pagination } from '@/components/common/Pagination';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -131,16 +130,14 @@ export function PaymentsManagement() {
   const items = paymentsQuery.data?.data ?? [];
   const meta = paymentsQuery.data?.meta;
   const totalPages = meta?.totalPages ?? 1;
-  const firstItem = meta?.total ? (page - 1) * PAGE_SIZE + 1 : 0;
-  const lastItem = meta?.total ? Math.min(page * PAGE_SIZE, meta.total) : 0;
   const isProcessing = approveMutation.isPending || rejectMutation.isPending;
   const activePayment = selectedPayment;
 
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-900">{t('paymentsTitle')}</h1>
-        <p className="mt-1 text-sm text-neutral-600">{t('paymentsDesc')}</p>
+        <h1 className="text-xl font-semibold tracking-tight text-text-primary">{t('paymentsTitle')}</h1>
+        <p className="mt-1 text-sm text-text-secondary">{t('paymentsDesc')}</p>
       </header>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -187,7 +184,7 @@ export function PaymentsManagement() {
                   <th scope="col" className="px-3 py-3">{t('colCustomer')}</th>
                   <th scope="col" className="px-3 py-3">{t('colCourtVenue')}</th>
                   <th scope="col" className="px-3 py-3">{t('colTime')}</th>
-                  <th scope="col" className="px-3 py-3 text-right">{t('colAmount')}</th>
+                  <th scope="col" className="px-3 py-3 text-right">Tiền cọc / Tổng đơn</th>
                   <th scope="col" className="px-3 py-3">{t('colProofTime')}</th>
                   <th scope="col" className="px-3 py-3">{t('colStatus')}</th>
                   <th scope="col" className="px-3 py-3 text-right">{t('colActions')}</th>
@@ -217,7 +214,12 @@ export function PaymentsManagement() {
                         : '—'}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-text-primary">
-                      {formatCurrency(payment.amount)}
+                      <div>{formatCurrency(payment.amount)}</div>
+                      {payment.booking.totalPrice > 0 && payment.booking.totalPrice !== payment.amount && (
+                        <div className="text-[11px] font-normal text-text-secondary">
+                          Tổng: {formatCurrency(payment.booking.totalPrice)}
+                        </div>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-secondary">
                       {formatDateTimeInVietnam(payment.proofUploadedAt)}
@@ -247,32 +249,16 @@ export function PaymentsManagement() {
         )}
 
         {items.length > 0 && (
-          <footer className="flex flex-col gap-3 border-t border-border px-4 py-3 text-xs text-text-secondary sm:flex-row sm:items-center sm:justify-between">
-            <span>{t('paymentPaginationSummary', { from: firstItem, to: lastItem, total: meta?.total ?? items.length })}</span>
-            <nav className="flex items-center justify-end gap-2" aria-label={t('paginationLabel')}>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                aria-label={t('previousPage')}
-                disabled={page <= 1 || paymentsQuery.isFetching}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-              >
-                <ChevronLeft aria-hidden="true" />
-              </Button>
-              <span className="min-w-12 text-center tabular-nums">{page} / {totalPages}</span>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                aria-label={t('nextPage')}
-                disabled={page >= totalPages || paymentsQuery.isFetching}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              >
-                <ChevronRight aria-hidden="true" />
-              </Button>
-            </nav>
-          </footer>
+          <div className="border-t border-border px-4 py-3">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={meta?.total ?? items.length}
+              limit={PAGE_SIZE}
+              onPageChange={setPage}
+              disabled={paymentsQuery.isFetching}
+            />
+          </div>
         )}
       </section>
 
@@ -291,7 +277,7 @@ export function PaymentsManagement() {
               </DialogHeader>
 
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.9fr)]">
-                <div className="relative flex min-h-56 items-center justify-center overflow-hidden rounded-card border border-neutral-200 bg-neutral-50 md:min-h-[320px]">
+                <div className="relative flex min-h-56 items-center justify-center overflow-hidden rounded-card border border-border bg-bg-subtle md:min-h-[320px]">
                   {activePayment.proofUrl && failedImageId !== activePayment.id ? (
                     <Image
                       src={activePayment.proofUrl}
@@ -303,27 +289,27 @@ export function PaymentsManagement() {
                       onError={() => setFailedImageId(activePayment.id)}
                     />
                   ) : (
-                    <div className="flex flex-col items-center gap-2 px-4 text-center text-xs text-neutral-400">
+                    <div className="flex flex-col items-center gap-2 px-4 text-center text-xs text-text-disabled">
                       <FileImage className="size-6" aria-hidden="true" />
                       {t(activePayment.proofUrl ? 'proofImageUnavailable' : 'proofUnavailable')}
                     </div>
                   )}
                 </div>
 
-                <section className="rounded-card border border-neutral-200 bg-white p-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('reconciliationTitle')}</h3>
+                <section className="rounded-card border border-border bg-bg-card p-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">{t('reconciliationTitle')}</h3>
                   <dl className="mt-3 space-y-3 text-xs">
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="shrink-0 text-neutral-500">{t('colCustomer')}</dt>
-                      <dd className="text-right font-medium text-neutral-900">{activePayment.booking.customerName}</dd>
+                      <dt className="shrink-0 text-text-secondary">{t('colCustomer')}</dt>
+                      <dd className="text-right font-medium text-text-primary">{activePayment.booking.customerName}</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="shrink-0 text-neutral-500">{t('customerPhoneLabel')}</dt>
-                      <dd className="text-right text-neutral-900">{activePayment.booking.customerPhone || '—'}</dd>
+                      <dt className="shrink-0 text-text-secondary">{t('customerPhoneLabel')}</dt>
+                      <dd className="text-right text-text-primary">{activePayment.booking.customerPhone || '—'}</dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="shrink-0 text-neutral-500">{t('colCourtVenue')}</dt>
-                      <dd className="max-w-[65%] text-right text-neutral-900">
+                      <dt className="shrink-0 text-text-secondary">{t('colCourtVenue')}</dt>
+                      <dd className="max-w-[65%] text-right text-text-primary">
                         {t('paymentCourtAndVenue', {
                           court: activePayment.booking.courtName,
                           venue: activePayment.booking.venueName,
@@ -331,25 +317,44 @@ export function PaymentsManagement() {
                       </dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="shrink-0 text-neutral-500">{t('transferContent')}</dt>
+                      <dt className="shrink-0 text-text-secondary">{t('colTime')}</dt>
+                      <dd className="text-right tabular-nums text-text-primary">
+                        {activePayment.booking.during.start && activePayment.booking.during.end
+                          ? formatDateTimeRangeInVietnam(
+                              activePayment.booking.during.start,
+                              activePayment.booking.during.end,
+                            )
+                          : '—'}
+                      </dd>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <dt className="shrink-0 text-text-secondary">{t('transferContent')}</dt>
                       <dd className="break-all text-right font-mono font-medium text-primary-700">
                         {activePayment.transferCode || '—'}
                       </dd>
                     </div>
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="shrink-0 text-neutral-500">{t('colAmount')}</dt>
-                      <dd className="whitespace-nowrap text-right font-semibold tabular-nums text-neutral-900">
+                      <dt className="shrink-0 text-text-secondary">{t('colAmount')}</dt>
+                      <dd className="whitespace-nowrap text-right font-semibold tabular-nums text-text-primary">
                         {formatCurrency(activePayment.amount)}
                       </dd>
                     </div>
+                    {activePayment.booking.totalPrice > 0 && (
+                      <div className="flex items-start justify-between gap-3">
+                        <dt className="shrink-0 text-text-secondary">Tổng giá trị đơn</dt>
+                        <dd className="whitespace-nowrap text-right tabular-nums text-text-primary">
+                          {formatCurrency(activePayment.booking.totalPrice)}
+                        </dd>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
-                      <dt className="shrink-0 text-neutral-500">{t('colProofTime')}</dt>
-                      <dd className="text-right tabular-nums text-neutral-900">
+                      <dt className="shrink-0 text-text-secondary">{t('colProofTime')}</dt>
+                      <dd className="text-right tabular-nums text-text-primary">
                         {formatDateTimeInVietnam(activePayment.proofUploadedAt)}
                       </dd>
                     </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-3">
-                      <dt className="shrink-0 text-neutral-500">{t('colStatus')}</dt>
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <dt className="shrink-0 text-text-secondary">{t('colStatus')}</dt>
                       <dd><StatusBadge kind="payment" status={activePayment.status} size="sm" /></dd>
                     </div>
                   </dl>
@@ -412,7 +417,7 @@ export function PaymentsManagement() {
             }}
           >
             <div className="space-y-1.5">
-              <label htmlFor="payment-reject-reason" className="text-sm font-medium text-neutral-800">
+              <label htmlFor="payment-reject-reason" className="text-sm font-medium text-text-primary">
                 {t('rejectReason')}
               </label>
               <Textarea
@@ -424,7 +429,7 @@ export function PaymentsManagement() {
                 rows={4}
                 required
               />
-              <p className="text-right text-xs text-neutral-500">{rejectReason.length}/500</p>
+              <p className="text-right text-xs text-text-secondary">{rejectReason.length}/500</p>
             </div>
             <DialogFooter>
               <Button

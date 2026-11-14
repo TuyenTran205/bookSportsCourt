@@ -24,6 +24,7 @@ export const applicationViewOpenApi: SchemaObject = {
   properties: {
     id,
     userId: id,
+    applicantName: text,
     businessName: { type: "string" },
     phone: { type: "string" },
     address: { type: "string" },

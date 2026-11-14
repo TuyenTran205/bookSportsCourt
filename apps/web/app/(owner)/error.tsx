@@ -21,7 +21,7 @@ export default function OwnerError({
     <div className="flex min-h-[50vh] items-center justify-center p-6">
       <div
         role="alert"
-        className="flex w-full max-w-md flex-col items-center gap-3 rounded-card border border-neutral-200 bg-white p-8 text-center shadow-sm"
+        className="flex w-full max-w-md flex-col items-center gap-3 rounded-card border border-border bg-bg-card p-8 text-center shadow-sm"
       >
         <div className="flex size-12 items-center justify-center rounded-full bg-danger/10 text-danger">
           <AlertTriangle className="size-6" aria-hidden="true" />

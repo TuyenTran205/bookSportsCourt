@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-climbing" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-climbing" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#c2410c" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-climbing)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-climbing)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#c2410c" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Colorful Climbing holds on wall -->
+      <polygon points="16,15 19,14 18,17 15,17" fill="#EF4444" />
+      <polygon points="28,14 31,16 29,18 26,16" fill="#3B82F6" />
+      <polygon points="18,24 21,23 20,26 17,25" fill="#10B981" />
+      <polygon points="29,23 32,24 30,26 27,25" fill="#FACC15" />
+      <!-- Climber athlete silhouette -->
+      <circle cx="23.5" cy="16" r="2.2" fill="#9A3412" />
+      <line x1="23.5" y1="18" x2="23.5" y2="23" stroke="#9A3412" stroke-width="1.8" stroke-linecap="round" />
+      <!-- Reaching right arm -->
+      <path d="M 23.5 19 L 26 17 L 28 15" fill="none" stroke="#9A3412" stroke-width="1.5" stroke-linecap="round" />
+      <!-- Left arm on hold -->
+      <path d="M 23.5 19 L 20 18 L 18 16" fill="none" stroke="#9A3412" stroke-width="1.5" stroke-linecap="round" />
+      <!-- Legs gripping lower holds -->
+      <path d="M 23.5 23 L 21 24.5 L 20 25.5" fill="none" stroke="#9A3412" stroke-width="1.5" stroke-linecap="round" />
+      <path d="M 23.5 23 L 26 24 L 28 25" fill="none" stroke="#9A3412" stroke-width="1.5" stroke-linecap="round" />
+  </g>
+</svg>

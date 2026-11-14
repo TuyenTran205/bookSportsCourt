@@ -63,6 +63,7 @@
  * không có dark mode (token đã là CSS variable nên thêm sau rất rẻ).
  */
 :root {
+  color-scheme: light;
   /* === PRIMARY – Xanh sân cỏ đậm === */
   --color-primary-50: #f0fdf4;
   --color-primary-100: #dcfce7;
@@ -180,6 +181,35 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
+
+/* Đảm bảo các control trình duyệt, scrollbar và các lớp bg-white sót lại đồng bộ chế độ tối */
+.dark input,
+.dark select,
+.dark textarea,
+.dark option {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.dark .bg-white:not([data-keep-white]) {
+  background-color: var(--color-bg-card);
+}
+
+.dark .bg-white\/95:not([data-keep-white]) {
+  background-color: color-mix(in srgb, var(--color-bg-card) 95%, transparent);
+}
+
+.dark .bg-white\/90:not([data-keep-white]) {
+  background-color: color-mix(in srgb, var(--color-bg-card) 90%, transparent);
+}
+
+.dark .bg-white\/80:not([data-keep-white]) {
+  background-color: color-mix(in srgb, var(--color-bg-card) 80%, transparent);
 }
 
 @layer base {

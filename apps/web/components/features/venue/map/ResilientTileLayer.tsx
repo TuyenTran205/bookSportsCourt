@@ -220,7 +220,7 @@ export function MapLibreCanvas({
             <button
               type="button"
               onClick={handleRetryWebgl}
-              className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-btn border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 shadow-xs transition hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              className="inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-btn border border-border bg-bg-card px-4 py-2 text-xs font-semibold text-text-primary shadow-xs transition hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             >
               <RefreshCw className="size-3.5" aria-hidden="true" />
               <span>Thử tải lại bản đồ</span>

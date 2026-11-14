@@ -17,6 +17,8 @@ export interface PaginationProps {
   siblingCount?: number;
   /** Class CSS bổ sung */
   className?: string;
+  /** Luôn hiển thị kể cả khi chỉ có 1 trang (mặc định: false) */
+  alwaysShow?: boolean;
 }
 
 /**
@@ -73,20 +75,22 @@ export function Pagination({
   disabled = false,
   siblingCount = 1,
   className,
+  alwaysShow = false,
 }: PaginationProps) {
-  if (totalPages <= 1) {
+  if (!alwaysShow && totalPages <= 1) {
     return null;
   }
 
-  const range = generatePaginationRange(currentPage, totalPages, siblingCount);
+  const safeTotalPages = Math.max(1, totalPages);
+  const range = generatePaginationRange(currentPage, safeTotalPages, siblingCount);
 
   const handlePageClick = (page: number) => {
-    if (disabled || page === currentPage || page < 1 || page > totalPages) return;
+    if (disabled || page === currentPage || page < 1 || page > safeTotalPages) return;
     onPageChange(page);
   };
 
   const isFirstPage = currentPage <= 1;
-  const isLastPage = currentPage >= totalPages;
+  const isLastPage = currentPage >= safeTotalPages;
 
   return (
     <nav
@@ -102,7 +106,7 @@ export function Pagination({
         onClick={() => handlePageClick(currentPage - 1)}
         className={cn(
           'inline-flex min-h-11 min-w-11 items-center justify-center rounded-btn border border-border bg-bg-card px-3 text-sm font-medium text-text-primary transition-colors',
-          'hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
+          'hover:bg-bg-subtle active:bg-neutral-200',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
           'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-bg-card',
         )}
@@ -140,7 +144,7 @@ export function Pagination({
               'disabled:cursor-not-allowed disabled:opacity-50',
               isCurrent
                 ? 'bg-primary-700 text-white font-semibold shadow-xs hover:bg-primary-600'
-                : 'border border-border bg-bg-card text-text-primary hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
+                : 'border border-border bg-bg-card text-text-primary hover:bg-bg-subtle active:bg-neutral-200',
             )}
           >
             {item}
@@ -156,7 +160,7 @@ export function Pagination({
         onClick={() => handlePageClick(currentPage + 1)}
         className={cn(
           'inline-flex min-h-11 min-w-11 items-center justify-center rounded-btn border border-border bg-bg-card px-3 text-sm font-medium text-text-primary transition-colors',
-          'hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
+          'hover:bg-bg-subtle active:bg-neutral-200',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2',
           'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-bg-card',
         )}

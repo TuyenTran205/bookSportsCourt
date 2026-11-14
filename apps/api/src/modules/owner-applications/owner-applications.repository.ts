@@ -105,8 +105,12 @@ export class OwnerApplicationsRepository {
         if (!Number.isSafeInteger(offset) || offset >= total)
           return { rows: [], total };
         const rows = await tx
-          .select()
+          .select({
+            app: ownerApplications,
+            applicantName: users.fullName,
+          })
           .from(ownerApplications)
+          .leftJoin(users, eq(users.id, ownerApplications.userId))
           .where(condition)
           .orderBy(
             desc(ownerApplications.createdAt),
@@ -114,7 +118,13 @@ export class OwnerApplicationsRepository {
           )
           .limit(query.limit)
           .offset(offset);
-        return { rows, total };
+        return {
+          rows: rows.map((row) => ({
+            ...row.app,
+            applicantName: row.applicantName ?? null,
+          })),
+          total,
+        };
       },
       { isolationLevel: "repeatable read", accessMode: "read only" },
     );

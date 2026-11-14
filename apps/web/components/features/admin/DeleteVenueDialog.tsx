@@ -75,11 +75,11 @@ export function DeleteVenueDialog({
             <span className="font-medium text-neutral-800">{venue.ownerName}</span>?
           </p>
 
-          <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
               <p className="font-medium">Lưu ý quan trọng:</p>
-              <p className="mt-0.5 text-amber-700">
+              <p className="mt-0.5 text-amber-700 dark:text-amber-300">
                 Cơ sở chỉ có thể xóa khi không còn booking nào đang chờ duyệt hoặc đã xác nhận. Dữ liệu lịch sử giao dịch vẫn được lưu trữ.
               </p>
             </div>

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-basketball" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-basketball" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ea580c" />
+      <stop offset="100%" stop-color="#c2410c" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-basketball)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-basketball)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#c2410c" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Basketball base -->
+      <circle cx="24" cy="20" r="9" fill="#EA580C" stroke="#9A3412" stroke-width="1.2" />
+      <!-- Texture highlight -->
+      <ellipse cx="21" cy="16" rx="4" ry="2" fill="#FB923C" opacity="0.5" />
+      <!-- Horizontal equator seam -->
+      <line x1="15" y1="20" x2="33" y2="20" stroke="#7C2D12" stroke-width="0.9" />
+      <!-- Vertical meridian seam -->
+      <line x1="24" y1="11" x2="24" y2="29" stroke="#7C2D12" stroke-width="0.9" />
+      <!-- Left curved seam -->
+      <path d="M 18.5 12.5 Q 22 20 18.5 27.5" fill="none" stroke="#7C2D12" stroke-width="0.9" />
+      <!-- Right curved seam -->
+      <path d="M 29.5 12.5 Q 26 20 29.5 27.5" fill="none" stroke="#7C2D12" stroke-width="0.9" />
+  </g>
+</svg>

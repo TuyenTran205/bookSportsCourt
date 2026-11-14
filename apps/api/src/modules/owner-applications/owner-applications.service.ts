@@ -48,11 +48,14 @@ export class OwnerApplicationsService {
   private view(
     app: NonNullable<
       Awaited<ReturnType<OwnerApplicationsRepository["findById"]>>
-    >,
+    > & { applicantName?: string | null },
   ) {
     return ownerApplicationViewSchema.parse({
       id: app.id,
       userId: app.userId,
+      ...(app.applicantName !== undefined
+        ? { applicantName: app.applicantName }
+        : {}),
       businessName: app.businessName,
       phone: app.phone,
       address: app.address,

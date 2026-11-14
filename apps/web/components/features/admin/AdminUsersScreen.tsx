@@ -94,23 +94,23 @@ export function AdminUsersScreen() {
     switch (role) {
       case 'admin':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
-            <ShieldAlert className="size-3 text-purple-600" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+            <ShieldAlert className="size-3 text-purple-600 dark:text-purple-400" />
             Quản trị viên
           </span>
         );
       case 'owner':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-            <Shield className="size-3 text-blue-600" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300">
+            <Shield className="size-3 text-blue-600 dark:text-blue-400" />
             Chủ sân
           </span>
         );
       case 'customer':
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
-            <UserIcon className="size-3 text-neutral-500" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-bg-subtle px-2 py-0.5 text-xs font-medium text-text-secondary">
+            <UserIcon className="size-3 text-text-secondary" />
             Khách hàng
           </span>
         );

@@ -14,6 +14,35 @@ import { venues } from '../fixtures/venues';
 import { err, newId, ok, okList, paginate, readPaging, simulateLatency, transferCode } from '../utils';
 import { publish, publishSlotUpdate } from '../realtime';
 
+const DEFAULT_CANCEL_POLICY = {
+  cancelBeforeHours: 24,
+  refundPercent: 100,
+  depositPercent: 50,
+};
+
+function evaluateMockCancellation(record: (typeof db.bookings)[number]) {
+  const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
+  const venue = db.venues.find((v) => v.id === venueId) ?? venues.find((v) => v.id === venueId);
+  const policy = venue?.cancellationPolicy ?? DEFAULT_CANCEL_POLICY;
+  const bookingStartMs = new Date(record.booking.during.start).getTime();
+  const deadlineMs = bookingStartMs - policy.cancelBeforeHours * 3_600_000;
+  const deadline = new Date(deadlineMs).toISOString();
+  const now = Date.now();
+
+  if (['completed', 'cancelled', 'expired', 'no_show'].includes(record.booking.status)) {
+    return { canCancel: false, refundPercent: 0, refundAmount: 0, cancelBeforeHours: policy.cancelBeforeHours, deadline };
+  }
+  if (record.booking.status === 'held') {
+    const expired = record.booking.expiresAt !== null && now >= new Date(record.booking.expiresAt).getTime();
+    return { canCancel: !expired, refundPercent: 0, refundAmount: 0, cancelBeforeHours: policy.cancelBeforeHours, deadline };
+  }
+  const canCancel = now < bookingStartMs && now <= deadlineMs;
+  const basePaid = record.payment?.status === 'completed' ? record.payment.amount : 0;
+  const refundPercent = canCancel ? policy.refundPercent : 0;
+  const refundAmount = canCancel ? Math.round((basePaid * refundPercent) / 100) : 0;
+  return { canCancel, refundPercent, refundAmount, cancelBeforeHours: policy.cancelBeforeHours, deadline };
+}
+
 /**
  * Phát sự kiện realtime cho đúng những ô vừa đổi.
  *
@@ -430,6 +459,13 @@ export const bookingHandlers = [
     return ok(toDetail(record));
   }),
 
+  http.get('/api/v1/bookings/:id/cancellation-preview', async ({ params }) => {
+    await simulateLatency(200);
+    const record = db.bookings.find((b) => b.booking.id === params.id);
+    if (!record) return err(404, 'NOT_FOUND', 'Không tìm thấy đơn đặt sân');
+    return ok(evaluateMockCancellation(record));
+  }),
+
   /** Khách tự huỷ — hoàn tiền theo chính sách của cơ sở. */
   http.patch('/api/v1/bookings/:id/cancel', async ({ params, request }) => {
     await simulateLatency(400);
@@ -440,20 +476,20 @@ export const bookingHandlers = [
       return err(409, 'ALREADY_EXISTS', 'Đơn này không thể huỷ ở trạng thái hiện tại');
     }
 
+    const user = currentUser();
+    const preview = evaluateMockCancellation(record);
+    if (user?.role === 'customer' && record.booking.status !== 'held' && !preview.canCancel) {
+      return err(
+        422,
+        'CANCELLATION_NOT_ALLOWED',
+        `Theo chính sách của cơ sở, khách hàng chỉ được huỷ trước giờ bắt đầu tối thiểu ${preview.cancelBeforeHours} giờ.`,
+      );
+    }
+
     const body = (await request.json().catch(() => ({}))) as { reason?: string };
     const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
-    const venue = venues.find((v) => v.id === venueId);
-    const policy = venue?.cancellationPolicy;
-
-    // Hoàn theo chính sách: huỷ đủ sớm thì hoàn theo %, muộn quá thì mất cọc.
-    let refundAmount = 0;
-    if (policy && record.payment?.status === 'completed') {
-      const hoursUntil = (new Date(record.booking.during.start).getTime() - Date.now()) / 3_600_000;
-      refundAmount =
-        hoursUntil >= policy.cancelBeforeHours
-          ? Math.round((record.payment.amount * policy.refundPercent) / 100)
-          : 0;
-    }
+    const venue = db.venues.find((v) => v.id === venueId) ?? venues.find((v) => v.id === venueId);
+    const refundAmount = preview.refundAmount;
 
     record.booking.status = 'cancelled';
     record.booking.cancelledAt = new Date().toISOString();
@@ -492,20 +528,20 @@ export const bookingHandlers = [
       return err(409, 'ALREADY_EXISTS', 'Đơn này không thể huỷ ở trạng thái hiện tại');
     }
 
+    const user = currentUser();
+    const preview = evaluateMockCancellation(record);
+    if (user?.role === 'customer' && record.booking.status !== 'held' && !preview.canCancel) {
+      return err(
+        422,
+        'CANCELLATION_NOT_ALLOWED',
+        `Theo chính sách của cơ sở, khách hàng chỉ được huỷ trước giờ bắt đầu tối thiểu ${preview.cancelBeforeHours} giờ.`,
+      );
+    }
+
     const body = (await request.json().catch(() => ({}))) as { reason?: string };
     const venueId = venueIdByCourtId[record.booking.courtId] ?? '';
-    const venue = venues.find((v) => v.id === venueId);
-    const policy = venue?.cancellationPolicy;
-
-    // Hoàn theo chính sách: huỷ đủ sớm thì hoàn theo %, muộn quá thì mất cọc.
-    let refundAmount = 0;
-    if (policy && record.payment?.status === 'completed') {
-      const hoursUntil = (new Date(record.booking.during.start).getTime() - Date.now()) / 3_600_000;
-      refundAmount =
-        hoursUntil >= policy.cancelBeforeHours
-          ? Math.round((record.payment.amount * policy.refundPercent) / 100)
-          : 0;
-    }
+    const venue = db.venues.find((v) => v.id === venueId) ?? venues.find((v) => v.id === venueId);
+    const refundAmount = preview.refundAmount;
 
     record.booking.status = 'cancelled';
     record.booking.cancelledAt = new Date().toISOString();

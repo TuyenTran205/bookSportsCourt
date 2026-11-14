@@ -12,9 +12,11 @@ import type { AuthenticatedUser } from "../../../../../packages/shared/src/types
 import { createReviewSchema } from "../../../../../packages/shared/src/schemas.js";
 import {
   adminReviewQuerySchema,
+  moderateReviewReportSchema,
   noQuerySchema,
   phase4IdSchema,
   publicReviewQuerySchema,
+  reportReviewSchema,
   reviewVisibilitySchema,
 } from "../../../../../packages/shared/src/phase4-schemas.js";
 import {
@@ -57,6 +59,7 @@ export class ReviewsService {
   private view(
     row: NonNullable<Awaited<ReturnType<ReviewsRepository["findReview"]>>>,
     admin: boolean,
+    extra?: { venueName?: string | null; customerName?: string | null },
   ) {
     const data = {
       id: row.id,
@@ -74,6 +77,16 @@ export class ReviewsService {
           customerId: row.customerId,
           isVisible: row.isVisible,
           updatedAt: row.updatedAt.toISOString(),
+          ...(extra?.venueName !== undefined
+            ? { venueName: extra.venueName }
+            : {}),
+          ...(extra?.customerName !== undefined
+            ? { customerName: extra.customerName }
+            : {}),
+          reportStatus: row.reportStatus,
+          reportReason: row.reportReason,
+          reportImageUrl: row.reportImageUrl,
+          reportedAt: row.reportedAt?.toISOString() ?? null,
         })
       : reviewPublicSchema.parse(data);
   }
@@ -191,7 +204,15 @@ export class ReviewsService {
     admin: boolean,
   ) {
     return {
-      data: result.rows.map((row) => this.view(row, admin)),
+      data: result.rows.map((entry) =>
+        this.view(
+          entry.review,
+          admin,
+          admin
+            ? { venueName: entry.venueName, customerName: entry.customerName }
+            : undefined,
+        ),
+      ),
       meta: {
         total: result.total,
         totalPages: Math.ceil(result.total / query.limit),
@@ -269,6 +290,10 @@ export class ReviewsService {
       content: r.comment,
       ownerReply: r.ownerReply,
       ownerRepliedAt: r.ownerRepliedAt?.toISOString() ?? null,
+      reportStatus: r.reportStatus,
+      reportReason: r.reportReason,
+      reportImageUrl: r.reportImageUrl,
+      reportedAt: r.reportedAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
     }));
     return { data, meta: { page, limit, total, totalPages } };
@@ -303,5 +328,122 @@ export class ReviewsService {
       ownerRepliedAt: result.ownerRepliedAt?.toISOString() ?? null,
       createdAt: result.createdAt.toISOString(),
     };
+  }
+
+  async ownerReport(
+    user: AuthenticatedUser,
+    rawId: string,
+    body: unknown,
+    uploadImage?: () => Promise<string | null>,
+  ) {
+    const id = validate(phase4IdSchema, rawId);
+    const normalizedBody =
+      body && typeof body === "object"
+        ? {
+            reason: "reason" in body ? body.reason : undefined,
+            ...("imageUrl" in body &&
+            typeof (body as { imageUrl?: unknown }).imageUrl === "string" &&
+            (body as { imageUrl: string }).imageUrl.trim() !== ""
+              ? { imageUrl: (body as { imageUrl: string }).imageUrl.trim() }
+              : "imageUrl" in body &&
+                  (body as { imageUrl?: unknown }).imageUrl === null
+                ? { imageUrl: null }
+                : {}),
+          }
+        : body;
+    const input = validate(reportReviewSchema, normalizedBody);
+
+    return this.safe(() =>
+      this.repo.transaction(async (tx) => {
+        const active = await this.auth.requireActiveUser(user.id, tx);
+        if (active.role !== "owner" && active.role !== "admin") {
+          throw new ForbiddenException({
+            code: "FORBIDDEN",
+            message: "Không có quyền thực hiện thao tác này.",
+          });
+        }
+        const lookup = await this.repo.findReviewWithOwner(tx, id);
+        if (!lookup) {
+          throw new NotFoundException({
+            code: "NOT_FOUND",
+            message: "Không tìm thấy đánh giá.",
+          });
+        }
+        if (active.role !== "admin" && lookup.ownerId !== active.id) {
+          throw new ForbiddenException({
+            code: "NOT_VENUE_OWNER",
+            message: "Bạn không phải chủ sở hữu của cơ sở được đánh giá.",
+          });
+        }
+        const venue = await this.repo.lockVenue(tx, lookup.review.venueId);
+        if (!venue) this.missing();
+        const row = await this.repo.findReview(tx, id, true);
+        if (!row) this.missing();
+        if (row.venueId !== venue.id) {
+          throw Object.assign(new Error("Review parent changed"), {
+            code: "40001",
+          });
+        }
+        if (row.reportStatus === "pending") {
+          throw new ConflictException({
+            code: "ALREADY_EXISTS",
+            message: "Đánh giá này đang có báo cáo chờ Admin xét duyệt.",
+          });
+        }
+        if (row.reportStatus === "resolved") {
+          throw new ConflictException({
+            code: "ALREADY_EXISTS",
+            message: "Báo cáo cho đánh giá này đã được duyệt xử lý.",
+          });
+        }
+
+        const imageUrl =
+          (uploadImage ? await uploadImage() : null) ??
+          input.imageUrl ??
+          null;
+        return this.view(
+          await this.repo.report(tx, row, active.id, input.reason, imageUrl),
+          true,
+        );
+      }),
+    );
+  }
+
+  async moderateReport(
+    actor: string,
+    rawId: string,
+    body: unknown,
+    query: unknown = {},
+  ) {
+    await this.role(actor, "admin");
+    const id = validate(phase4IdSchema, rawId);
+    validate(noQuerySchema, query);
+    const input = validate(moderateReviewReportSchema, body);
+    return this.safe(() =>
+      this.repo.transaction(async (tx) => {
+        await this.role(actor, "admin", tx);
+        const lookup = await this.repo.findReview(tx, id);
+        if (!lookup) this.missing();
+        const venue = await this.repo.lockVenue(tx, lookup.venueId);
+        if (!venue) this.missing();
+        const row = await this.repo.findReview(tx, id, true);
+        if (!row) this.missing();
+        if (row.venueId !== venue.id) {
+          throw Object.assign(new Error("Review parent changed"), {
+            code: "40001",
+          });
+        }
+        if (row.reportStatus !== "pending") {
+          throw new ConflictException({
+            code: "INVALID_STATE",
+            message: "Đánh giá này không có báo cáo đang chờ xét duyệt.",
+          });
+        }
+        return this.view(
+          await this.repo.moderateReport(tx, row, input.action, actor),
+          true,
+        );
+      }),
+    );
   }
 }

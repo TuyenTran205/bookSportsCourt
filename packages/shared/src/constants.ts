@@ -122,12 +122,17 @@ export const AUDIT_ACTION_ENTITIES = {
   'owner_application.reviewed': 'owner_application',
   'user.status_changed': 'user',
   'review.visibility_changed': 'review',
+  'review.reported': 'review',
+  'review.report_moderated': 'review',
   'payment.approved': 'payment',
   'payment.rejected': 'payment',
   'payment.refunded': 'payment',
   'payment.review_expired': 'payment',
 } as const;
 export type AuditAction = keyof typeof AUDIT_ACTION_ENTITIES;
+
+export const REVIEW_REPORT_STATUSES = ['none', 'pending', 'resolved', 'dismissed'] as const;
+export type ReviewReportStatus = (typeof REVIEW_REPORT_STATUSES)[number];
 
 export const NOTIFICATION_TYPES = [
   'booking_created',

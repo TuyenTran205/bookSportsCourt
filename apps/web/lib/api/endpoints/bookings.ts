@@ -137,6 +137,20 @@ export async function getBooking(id: string) {
   } as unknown as BookingDetail;
 }
 
+export interface CancellationPreview {
+  canCancel: boolean;
+  refundPercent: number;
+  refundAmount: number;
+  cancelBeforeHours: number;
+  deadline: string;
+}
+
+export function getCancellationPreview(id: string) {
+  return apiFetch<CancellationPreview>(
+    `/bookings/${encodeURIComponent(id)}/cancellation-preview`,
+  );
+}
+
 export function cancelBooking(id: string, reason?: string) {
   return apiFetch<BookingDetail>(`/bookings/${encodeURIComponent(id)}/cancel`, {
     method: 'PATCH',

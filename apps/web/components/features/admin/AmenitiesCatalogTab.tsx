@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { Pagination } from '@/components/common/Pagination';
 import { AmenityFormDialog } from '@/components/features/admin/AmenityFormDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,9 +17,12 @@ import { ApiError } from '@/lib/api/errors';
 import { useAmenitiesList, useDeleteAmenity } from '@/lib/hooks/useAdminCatalogs';
 import { renderCatalogIcon } from './catalog-icons';
 
+const AMENITIES_PAGE_SIZE = 10;
+
 export function AmenitiesCatalogTab() {
   const tCommon = useTranslations('common');
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [page, setPage] = React.useState(1);
   const [deletingAmenity, setDeletingAmenity] = React.useState<{ id: string; name: string } | null>(
     null,
   );
@@ -27,6 +31,12 @@ export function AmenitiesCatalogTab() {
   const deleteMutation = useDeleteAmenity();
 
   const amenities = amenitiesQuery.data ?? [];
+  const totalPages = Math.max(1, Math.ceil(amenities.length / AMENITIES_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedAmenities = amenities.slice(
+    (safePage - 1) * AMENITIES_PAGE_SIZE,
+    safePage * AMENITIES_PAGE_SIZE,
+  );
 
   const handleDelete = (id: string, name: string) => {
     setDeletingAmenity({ id, name });
@@ -46,7 +56,7 @@ export function AmenitiesCatalogTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-text-secondary">
           Danh mục tiện ích tiêu chuẩn áp dụng cho các cơ sở thể thao ({amenities.length} tiện ích).
         </p>
         <Button onClick={() => setDialogOpen(true)} size="sm">
@@ -79,21 +89,21 @@ export function AmenitiesCatalogTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900/50 dark:text-neutral-400">
+                <tr className="border-b border-border bg-bg-subtle text-xs font-semibold uppercase text-text-secondary">
                   <th className="py-3 px-4">Tên tiện ích</th>
                   <th className="py-3 px-4">Số cơ sở áp dụng</th>
                   <th className="py-3 px-4 text-right">Hành động</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {amenities.map((amenity) => (
-                  <tr key={amenity.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/40">
+              <tbody className="divide-y divide-border">
+                {paginatedAmenities.map((amenity) => (
+                  <tr key={amenity.id} className="hover:bg-bg-subtle/60">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 items-center justify-center rounded-btn bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                        <div className="flex size-8 items-center justify-center rounded-btn bg-bg-subtle text-text-secondary">
                           {renderCatalogIcon(amenity.icon, Sparkles)}
                         </div>
-                        <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                        <span className="font-semibold text-text-primary">
                           {amenity.name}
                         </span>
                       </div>
@@ -103,7 +113,7 @@ export function AmenitiesCatalogTab() {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           (amenity.venueCount ?? 0) > 0
                             ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'
-                            : 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400'
+                            : 'bg-bg-subtle text-text-secondary'
                         }`}
                       >
                         {(amenity.venueCount ?? 0) > 0
@@ -127,6 +137,15 @@ export function AmenitiesCatalogTab() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="border-t border-border px-4 py-3">
+            <Pagination
+              page={safePage}
+              totalPages={totalPages}
+              total={amenities.length}
+              limit={AMENITIES_PAGE_SIZE}
+              onPageChange={setPage}
+            />
           </div>
         </Card>
       )}

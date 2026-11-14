@@ -10,6 +10,7 @@ import type { OpeningHour, PricingRule } from '@bsc/shared';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { Pagination } from '@/components/common/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import { formatCurrency } from '@/lib/utils/format';
 import { PricingRuleDialog } from './PricingRuleDialog';
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
+const RULES_PAGE_SIZE = 8;
 type PricingTab = 'hours' | 'prices';
 
 export function OwnerPricingScreen() {
@@ -38,6 +40,7 @@ export function OwnerPricingScreen() {
   const [hoursError, setHoursError] = React.useState('');
   const [ruleDialogOpen, setRuleDialogOpen] = React.useState(false);
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
+  const [rulesPage, setRulesPage] = React.useState(1);
 
   const venuesQuery = useQuery({
     queryKey: ['owner', 'venues'],
@@ -138,8 +141,8 @@ export function OwnerPricingScreen() {
     onError: (error) => toast.error(error instanceof Error ? error.message : t('deletePricingRuleFailed')),
   });
 
-  const rules = rulesQuery.data ?? [];
   const uniqueRules = React.useMemo(() => {
+    const rules = rulesQuery.data ?? [];
     const seen = new Set<string>();
     return rules.filter((rule) => {
       const weekdaysKey = (rule.weekdays ?? []).slice().sort().join(',');
@@ -148,7 +151,18 @@ export function OwnerPricingScreen() {
       seen.add(key);
       return true;
     });
-  }, [rules]);
+  }, [rulesQuery.data]);
+  const rulesTotal = uniqueRules.length;
+  const rulesTotalPages = Math.max(1, Math.ceil(rulesTotal / RULES_PAGE_SIZE));
+  const safeRulesPage = Math.min(rulesPage, rulesTotalPages);
+  const pagedRules = React.useMemo(
+    () =>
+      uniqueRules.slice(
+        (safeRulesPage - 1) * RULES_PAGE_SIZE,
+        safeRulesPage * RULES_PAGE_SIZE,
+      ),
+    [safeRulesPage, uniqueRules],
+  );
   const weekdayLabels: Record<number, string> = {
     1: t('weekday1'),
     2: t('weekday2'),
@@ -234,11 +248,12 @@ export function OwnerPricingScreen() {
             onValueChange={(val) => {
               setSelectedVenueId(val);
               setPendingDeleteId(null);
+              setRulesPage(1);
             }}
           >
             <SelectTrigger
               id="owner-pricing-venue-select"
-              className="h-11 w-full bg-white border-neutral-300 shadow-sm transition-all hover:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-600/20"
+              className="h-11 w-full bg-bg-card border-border shadow-sm transition-all hover:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-600/20"
             >
               <div className="flex items-center gap-2.5 truncate text-left">
                 <div className="flex size-7 shrink-0 items-center justify-center rounded-btn bg-primary-50 text-primary-700">
@@ -445,84 +460,97 @@ export function OwnerPricingScreen() {
                 />
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-sm">
-                  <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    <tr>
-                      <th scope="col" className="px-4 py-3 sm:px-5">{t('ruleLabel')}</th>
-                      <th scope="col" className="px-4 py-3">{t('ruleWeekdays')}</th>
-                      <th scope="col" className="px-4 py-3">{t('ruleTimeRange')}</th>
-                      <th scope="col" className="px-4 py-3 text-right">{t('pricePerBlockColumn')}</th>
-                      <th scope="col" className="px-4 py-3 text-right">{t('pricePerHourColumn')}</th>
-                      <th scope="col" className="px-4 py-3 text-right">{t('actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {uniqueRules.map((rule) => (
-                      <tr key={rule.id} className="hover:bg-neutral-50/60">
-                        <th scope="row" className="px-4 py-3 text-left font-semibold text-neutral-800 sm:px-5">
-                          {rule.label}
-                        </th>
-                        <td className="px-4 py-3">
-                          <div className="flex max-w-64 flex-wrap gap-1">
-                            {WEEKDAYS.filter((day) => rule.weekdays.includes(day)).map((day) => (
-                              <span key={day} className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600">
-                                {weekdayLabels[day]}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-neutral-700">
-                          {rule.startTime} – {rule.endTime}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-neutral-900">
-                          {formatCurrency(rule.pricePerSlot)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-primary-700">
-                          {formatCurrency(rule.pricePerSlot * 2)}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {pendingDeleteId === rule.id ? (
-                            <div className="inline-flex items-center gap-2">
-                              <span className="text-xs text-neutral-600">{t('deleteRuleConfirm')}</span>
-                              <Button
-                                type="button"
-                                variant="danger"
-                                size="sm"
-                                loading={deleteRuleMutation.isPending}
-                                onClick={() =>
-                                  deleteRuleMutation.mutate({ id: rule.id, courtId: rule.courtId })
-                                }
-                              >
-                                {t('confirmDeleteRule')}
-                              </Button>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-sm">
+                    <thead className="bg-bg-subtle text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 sm:px-5">{t('ruleLabel')}</th>
+                        <th scope="col" className="px-4 py-3">{t('ruleWeekdays')}</th>
+                        <th scope="col" className="px-4 py-3">{t('ruleTimeRange')}</th>
+                        <th scope="col" className="px-4 py-3 text-right">{t('pricePerBlockColumn')}</th>
+                        <th scope="col" className="px-4 py-3 text-right">{t('pricePerHourColumn')}</th>
+                        <th scope="col" className="px-4 py-3 text-right">{t('actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {pagedRules.map((rule) => (
+                        <tr key={rule.id} className="hover:bg-bg-subtle/60">
+                          <th scope="row" className="px-4 py-3 text-left font-semibold text-text-primary sm:px-5">
+                            {rule.label}
+                          </th>
+                          <td className="px-4 py-3">
+                            <div className="flex max-w-64 flex-wrap gap-1">
+                              {WEEKDAYS.filter((day) => rule.weekdays.includes(day)).map((day) => (
+                                <span key={day} className="rounded bg-bg-subtle px-1.5 py-0.5 text-[11px] text-text-secondary">
+                                  {weekdayLabels[day]}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-xs tabular-nums text-text-secondary">
+                            {rule.startTime} – {rule.endTime}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-text-primary">
+                            {formatCurrency(rule.pricePerSlot)}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-semibold tabular-nums text-primary-600 dark:text-primary-400">
+                            {formatCurrency(rule.pricePerSlot * 2)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {pendingDeleteId === rule.id ? (
+                              <div className="inline-flex items-center gap-2">
+                                <span className="text-xs text-text-secondary">{t('deleteRuleConfirm')}</span>
+                                <Button
+                                  type="button"
+                                  variant="danger"
+                                  size="sm"
+                                  loading={deleteRuleMutation.isPending}
+                                  onClick={() =>
+                                    deleteRuleMutation.mutate({ id: rule.id, courtId: rule.courtId })
+                                  }
+                                >
+                                  {t('confirmDeleteRule')}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={deleteRuleMutation.isPending}
+                                  onClick={() => setPendingDeleteId(null)}
+                                >
+                                  {t('cancelAction')}
+                                </Button>
+                              </div>
+                            ) : (
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                disabled={deleteRuleMutation.isPending}
-                                onClick={() => setPendingDeleteId(null)}
+                                size="icon"
+                                aria-label={t('deletePricingRuleNamed', { name: rule.label })}
+                                onClick={() => setPendingDeleteId(rule.id)}
                               >
-                                {t('cancelAction')}
+                                <Trash2 className="text-danger" aria-hidden="true" />
                               </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={t('deletePricingRuleNamed', { name: rule.label })}
-                              onClick={() => setPendingDeleteId(rule.id)}
-                            >
-                              <Trash2 className="text-danger" aria-hidden="true" />
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="border-t border-border px-4 py-3 sm:px-5">
+                  <Pagination
+                    meta={{
+                      page: safeRulesPage,
+                      limit: RULES_PAGE_SIZE,
+                      total: rulesTotal,
+                      totalPages: rulesTotalPages,
+                    }}
+                    onPageChange={setRulesPage}
+                  />
+                </div>
+              </>
             )}
           </Card>
         </section>
