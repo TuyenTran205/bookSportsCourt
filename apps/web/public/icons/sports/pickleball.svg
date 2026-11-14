@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-pickleball" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-pickleball" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-pickleball)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-pickleball)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#d97706" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Paddle face (rectangular with rounded corners, tilted) -->
+      <g transform="rotate(-25 21 20)">
+        <!-- Paddle head -->
+        <rect x="16" y="11" width="10" height="12" rx="3" fill="#F59E0B" stroke="#B45309" stroke-width="1" />
+        <!-- Inner accent line on paddle -->
+        <rect x="17.5" y="12.5" width="7" height="9" rx="2" fill="none" stroke="#FDE68A" stroke-width="0.6" stroke-dasharray="1.5 1" />
+        <!-- Handle neck -->
+        <path d="M 19.5 23 L 22.5 23 L 22 28 L 20 28 Z" fill="#B45309" stroke="#92400E" stroke-width="0.8" />
+        <!-- Handle grip tape wraps -->
+        <line x1="20" y1="24.5" x2="22" y2="24.5" stroke="#FFFFFF" stroke-width="0.6" />
+        <line x1="20" y1="26" x2="22" y2="26" stroke="#FFFFFF" stroke-width="0.6" />
+      </g>
+      <!-- Pickleball (perforated ball with signature circular holes) -->
+      <g transform="translate(28, 20)">
+        <circle cx="0" cy="0" r="5" fill="#FDE047" stroke="#CA8A04" stroke-width="1" />
+        <!-- Holes -->
+        <circle cx="0" cy="0" r="0.9" fill="#CA8A04" />
+        <circle cx="-2.3" cy="-1.5" r="0.8" fill="#CA8A04" />
+        <circle cx="2.3" cy="-1.5" r="0.8" fill="#CA8A04" />
+        <circle cx="-2.3" cy="1.8" r="0.8" fill="#CA8A04" />
+        <circle cx="2.3" cy="1.8" r="0.8" fill="#CA8A04" />
+        <circle cx="0" cy="-3.3" r="0.7" fill="#CA8A04" />
+        <circle cx="0" cy="3.3" r="0.7" fill="#CA8A04" />
+      </g>
+  </g>
+</svg>

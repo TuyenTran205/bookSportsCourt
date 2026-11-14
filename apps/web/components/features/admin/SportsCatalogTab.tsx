@@ -99,9 +99,9 @@ export function SportsCatalogTab() {
                 {paginatedSports.map((sport) => (
                   <tr key={sport.id} className="hover:bg-bg-subtle/60">
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 items-center justify-center rounded-btn bg-primary-50 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400">
-                          {renderCatalogIcon(sport.icon, Activity)}
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-7 shrink-0 items-center justify-center">
+                          {renderCatalogIcon(sport.icon || sport.slug, undefined, 'h-8.5 w-7')}
                         </div>
                         <span className="font-semibold text-text-primary">
                           {sport.name}

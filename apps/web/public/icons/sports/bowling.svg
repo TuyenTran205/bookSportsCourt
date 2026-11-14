@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-bowling" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-bowling" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d946ef" />
+      <stop offset="100%" stop-color="#a21caf" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-bowling)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-bowling)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#a21caf" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- White bowling pin on left -->
+      <g transform="translate(14, 11)">
+        <!-- Pin silhouette -->
+        <path d="M 4 2 C 3.2 2 2.5 2.8 2.5 3.8 C 2.5 4.8 3 5.5 3 6.5 C 2.5 7.5 1 9.5 1 12 C 1 14.5 1.5 16 1.8 17 L 6.2 17 C 6.5 16 7 14.5 7 12 C 7 9.5 5.5 7.5 5 6.5 C 5 5.5 5.5 4.8 5.5 3.8 C 5.5 2.8 4.8 2 4 2 Z" fill="#F8FAFC" stroke="#A21CAF" stroke-width="0.8" />
+        <!-- Red neck stripes -->
+        <line x1="2.8" y1="6" x2="5.2" y2="6" stroke="#EF4444" stroke-width="0.8" />
+        <line x1="2.7" y1="7.2" x2="5.3" y2="7.2" stroke="#EF4444" stroke-width="0.8" />
+      </g>
+      <!-- Bowling ball on right -->
+      <circle cx="28" cy="21" r="6" fill="#1E1B4B" stroke="#A21CAF" stroke-width="1" />
+      <!-- Highlight -->
+      <ellipse cx="26.5" cy="18" rx="2" ry="1" fill="#6366F1" opacity="0.4" />
+      <!-- 3 finger holes -->
+      <circle cx="26.5" cy="19.5" r="0.8" fill="#F8FAFC" />
+      <circle cx="29" cy="19.5" r="0.8" fill="#F8FAFC" />
+      <circle cx="27.8" cy="22" r="0.8" fill="#F8FAFC" />
+  </g>
+</svg>
