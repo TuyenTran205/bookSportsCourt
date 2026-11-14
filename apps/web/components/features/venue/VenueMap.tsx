@@ -196,7 +196,7 @@ function VenueMarkerPin({
           hasMultipleIcons ? 'gap-1 px-2' : 'w-7',
           isSelected
             ? 'border-white bg-primary-600 text-white shadow-lg'
-            : 'border-primary-600 bg-white text-primary-700 group-hover:bg-primary-50',
+            : 'border-primary-600 bg-bg-card text-primary-700 group-hover:bg-primary-50',
         )}
       >
         {icons.map((SportIcon, index) => (
@@ -220,7 +220,7 @@ function VenueMarkerPin({
           'relative z-[2] -mt-1 size-2 rotate-45 border-b-[1.5px] border-r-[1.5px] transition-colors duration-150',
           isSelected
             ? 'border-white bg-primary-600'
-            : 'border-primary-600 bg-white group-hover:bg-primary-50',
+            : 'border-primary-600 bg-bg-card group-hover:bg-primary-50',
         )}
       />
     </button>
@@ -773,7 +773,7 @@ export function VenueMap({
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-60',
               userLocation && !isAwayFromUser
                 ? 'border-primary-300 bg-primary-50/95 text-primary-700 hover:bg-primary-100'
-                : 'border-neutral-300 bg-white/95 text-neutral-700 hover:border-primary-400 hover:bg-neutral-50 hover:text-primary-700',
+                : 'border-border bg-bg-card/95 text-text-primary hover:border-primary-400 hover:bg-bg-subtle hover:text-primary-700',
             )}
           >
             {isLocating ? (
@@ -787,7 +787,7 @@ export function VenueMap({
             <div
               role="status"
               aria-live="polite"
-              className="max-w-[240px] rounded-md border border-neutral-200 bg-white/95 px-2.5 py-1.5 text-xs text-neutral-700 shadow-md backdrop-blur-xs"
+              className="max-w-[240px] rounded-md border border-border bg-bg-card/95 px-2.5 py-1.5 text-xs text-text-primary shadow-md backdrop-blur-xs"
             >
               {locationNotice}
             </div>

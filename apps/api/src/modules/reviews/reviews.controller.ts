@@ -5,12 +5,17 @@ import {
   Header,
   Param,
   Patch,
+  PayloadTooLargeException,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiBody,
+  ApiConsumes,
   ApiCookieAuth,
   ApiOperation,
   ApiParam,
@@ -18,13 +23,31 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import {
+  REVIEW_REPORT_STATUSES,
+  UPLOAD_ACCEPTED_TYPES,
+  UPLOAD_MAX_BYTES,
+} from "../../../../../packages/shared/src/constants.js";
 import type { AuthenticatedUser } from "../../../../../packages/shared/src/types.js";
 import { CurrentUser } from "../../common/decorators/current-user.decorator.js";
 import { Roles } from "../../common/decorators/roles.decorator.js";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard.js";
 import { RolesGuard } from "../../common/guards/roles.guard.js";
+import { invalidImage, type ProofFile } from "../uploads/proof-image.js";
+import { PublicStorage } from "../uploads/public-storage.js";
 import { ReviewsService } from "./reviews.service.js";
 import { reviewPageResponse, reviewResponse } from "./reviews.swagger.js";
+
+const ReviewReportUploadInterceptor = FileInterceptor("file", {
+  limits: { fileSize: UPLOAD_MAX_BYTES, files: 1 },
+  fileFilter: (_request, file, callback) =>
+    callback(
+      UPLOAD_ACCEPTED_TYPES.some((type) => type === file.mimetype)
+        ? null
+        : invalidImage(),
+      true,
+    ),
+});
 
 @ApiTags("Reviews")
 @ApiResponse({ status: 400, description: "VALIDATION_ERROR" })
@@ -34,7 +57,10 @@ import { reviewPageResponse, reviewResponse } from "./reviews.swagger.js";
 @ApiResponse({ status: 503, description: "SERVICE_UNAVAILABLE" })
 @Controller()
 export class ReviewsController {
-  constructor(private readonly service: ReviewsService) {}
+  constructor(
+    private readonly service: ReviewsService,
+    private readonly storage: PublicStorage,
+  ) {}
   @Post("reviews")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles("customer")
@@ -108,6 +134,14 @@ export class ReviewsController {
     schema: {
       type: "boolean",
       description: "Chỉ true/false, bỏ qua là tất cả",
+    },
+  })
+  @ApiQuery({
+    name: "reportStatus",
+    required: false,
+    schema: {
+      type: "string",
+      enum: [...REVIEW_REPORT_STATUSES],
     },
   })
   @ApiQuery({
@@ -186,5 +220,46 @@ export class ReviewsController {
     @Body("ownerReply") reply: string,
   ) {
     return this.service.ownerReply(user, id, reply);
+  }
+
+  @Post("owner/reviews/:id/report")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("owner", "admin")
+  @UseInterceptors(ReviewReportUploadInterceptor)
+  @ApiCookieAuth("access_token")
+  @ApiConsumes("multipart/form-data", "application/json")
+  @Header("Cache-Control", "no-store")
+  @ApiOperation({ summary: "[Owner] Báo cáo đánh giá xấu kèm lý do và ảnh minh chứng" })
+  ownerReport(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @UploadedFile() file: ProofFile | undefined,
+    @Body() body: unknown,
+  ) {
+    if (file && (file.size > UPLOAD_MAX_BYTES || file.buffer.length > UPLOAD_MAX_BYTES)) {
+      throw new PayloadTooLargeException({
+        code: "FILE_TOO_LARGE",
+        message: "Ảnh minh chứng tối đa 5 MB.",
+      });
+    }
+    const uploadImage = file
+      ? () => this.storage.saveReviewReportImage(id, file.buffer, file.mimetype)
+      : undefined;
+    return this.service.ownerReport(user, id, body, uploadImage);
+  }
+
+  @Patch("admin/reviews/:id/report")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("admin")
+  @ApiCookieAuth("access_token")
+  @Header("Cache-Control", "no-store")
+  @ApiOperation({ summary: "[Admin] Duyệt hoặc từ chối báo cáo đánh giá từ chủ sân" })
+  moderateReport(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Query() query: unknown,
+  ) {
+    return this.service.moderateReport(user.id, id, body, query);
   }
 }

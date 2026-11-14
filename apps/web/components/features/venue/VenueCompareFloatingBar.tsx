@@ -32,7 +32,7 @@ export function VenueCompareFloatingBar() {
         {/* Khu vực bên trái: Tiêu đề, badge & thumbnails */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-neutral-900 sm:text-sm dark:text-white">
+            <span className="text-xs font-bold text-text-primary sm:text-sm">
               {t('floatingBarTitle')}
             </span>
             <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
@@ -44,9 +44,9 @@ export function VenueCompareFloatingBar() {
             {venues.map((venue) => (
               <div
                 key={venue.id}
-                className="group relative flex items-center gap-1.5 rounded-btn border border-neutral-200 bg-neutral-50 py-1 pl-1 pr-2 dark:border-neutral-700 dark:bg-neutral-800"
+                className="group relative flex items-center gap-1.5 rounded-btn border border-border bg-bg-subtle py-1 pl-1 pr-2"
               >
-                <div className="relative size-8 shrink-0 overflow-hidden rounded-md bg-neutral-200 dark:bg-neutral-700">
+                <div className="relative size-8 shrink-0 overflow-hidden rounded-md bg-neutral-200">
                   {venue.coverUrl ? (
                     <Image
                       src={venue.coverUrl}
@@ -57,13 +57,13 @@ export function VenueCompareFloatingBar() {
                       sizes="32px"
                     />
                   ) : (
-                    <div className="flex size-full items-center justify-center text-neutral-400">
+                    <div className="flex size-full items-center justify-center text-text-disabled">
                       <Building2 className="size-4" aria-hidden="true" />
                     </div>
                   )}
                 </div>
 
-                <span className="max-w-[70px] truncate text-xs font-medium text-neutral-800 sm:max-w-[120px] dark:text-neutral-200">
+                <span className="max-w-[70px] truncate text-xs font-medium text-text-primary sm:max-w-[120px]">
                   {venue.name}
                 </span>
 
@@ -71,7 +71,7 @@ export function VenueCompareFloatingBar() {
                   type="button"
                   onClick={() => removeVenue(venue.id)}
                   aria-label={t('removeVenueAria', { name: venue.name })}
-                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-200 hover:text-danger dark:hover:bg-neutral-700"
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-text-secondary transition-colors hover:bg-neutral-200 hover:text-danger"
                 >
                   <X className="size-3" aria-hidden="true" />
                 </button>
@@ -82,7 +82,7 @@ export function VenueCompareFloatingBar() {
             {Array.from({ length: emptySlotsCount }).map((_, idx) => (
               <div
                 key={idx}
-                className="hidden size-9 items-center justify-center rounded-btn border border-dashed border-neutral-300 text-xs text-neutral-400 sm:flex dark:border-neutral-700"
+                className="hidden size-9 items-center justify-center rounded-btn border border-dashed border-border text-xs text-text-disabled sm:flex"
                 title={t('selectMoreVenues')}
               >
                 +
@@ -98,7 +98,7 @@ export function VenueCompareFloatingBar() {
             variant="ghost"
             size="sm"
             onClick={clearVenues}
-            className="text-xs text-neutral-500 hover:text-danger dark:text-neutral-400"
+            className="text-xs text-text-secondary hover:text-danger"
           >
             <Trash2 className="size-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">{t('clearAll')}</span>

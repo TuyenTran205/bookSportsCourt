@@ -1,4 +1,5 @@
 import type { SchemaObject } from "@nestjs/swagger/dist/interfaces/open-api-spec.interface.js";
+import { REVIEW_REPORT_STATUSES } from "../../../../../packages/shared/src/constants.js";
 
 const id: SchemaObject = { type: "string", format: "uuid" };
 const timestamp: SchemaObject = { type: "string", format: "date-time" };
@@ -39,6 +40,12 @@ export const reviewAdminOpenApi: SchemaObject = {
     customerId: id,
     isVisible: { type: "boolean" },
     updatedAt: timestamp,
+    venueName: { type: "string", nullable: true },
+    customerName: { type: "string", nullable: true },
+    reportStatus: { type: "string", enum: [...REVIEW_REPORT_STATUSES] },
+    reportReason: { type: "string", nullable: true },
+    reportImageUrl: { type: "string", nullable: true },
+    reportedAt: { ...timestamp, nullable: true },
   },
 };
 export const reviewResponse: SchemaObject = {

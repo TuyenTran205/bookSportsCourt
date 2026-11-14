@@ -97,9 +97,9 @@ export function MapResilienceControl({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-auto inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700 shadow-sm"
+          className="pointer-events-auto inline-flex items-center gap-2 rounded-md border border-border bg-bg-card px-3 py-1.5 text-xs text-text-primary shadow-sm"
         >
-          <Loader2 className="size-3.5 shrink-0 animate-spin text-neutral-500" aria-hidden="true" />
+          <Loader2 className="size-3.5 shrink-0 animate-spin text-text-secondary" aria-hidden="true" />
           <span>{t('mapLoading')}</span>
         </div>
       )}
@@ -108,9 +108,9 @@ export function MapResilienceControl({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-auto inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-xs text-neutral-700 shadow-sm"
+          className="pointer-events-auto inline-flex items-center gap-2 rounded-md border border-border bg-bg-subtle px-3 py-1.5 text-xs text-text-primary shadow-sm"
         >
-          <Loader2 className="size-3.5 shrink-0 animate-spin text-neutral-500" aria-hidden="true" />
+          <Loader2 className="size-3.5 shrink-0 animate-spin text-text-secondary" aria-hidden="true" />
           <span>{t('providerSwitched')}</span>
         </div>
       )}
@@ -119,7 +119,7 @@ export function MapResilienceControl({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-auto inline-flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-700 shadow-sm"
+          className="pointer-events-auto inline-flex items-center gap-2 rounded-md border border-border bg-bg-card px-3 py-1.5 text-xs text-text-primary shadow-sm"
         >
           <Check className="size-3.5 shrink-0 text-primary-600" aria-hidden="true" />
           <span>{providerLabel ?? t('providerSwitched')}</span>
@@ -130,16 +130,16 @@ export function MapResilienceControl({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-auto flex items-center gap-2 rounded-md border border-neutral-200 bg-white p-1.5 pl-3 text-xs text-neutral-900 shadow-sm"
+          className="pointer-events-auto flex items-center gap-2 rounded-md border border-border bg-bg-card p-1.5 pl-3 text-xs text-text-primary shadow-sm"
         >
           <span className="font-medium">{t('allProvidersFailed')}</span>
           {onRetry && (
             <button
               type="button"
               onClick={onRetry}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-900 transition-colors duration-150 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 active:bg-neutral-200"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-md border border-border bg-bg-card px-3 text-xs font-semibold text-text-primary transition-colors duration-150 hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 active:bg-neutral-200"
             >
-              <RefreshCw className="size-3.5 shrink-0 text-neutral-600" aria-hidden="true" />
+              <RefreshCw className="size-3.5 shrink-0 text-text-secondary" aria-hidden="true" />
               <span>{t('retryAction')}</span>
             </button>
           )}

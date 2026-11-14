@@ -121,6 +121,8 @@ const stats: SchemaObject = {
     "groupBy",
     "summary",
     "series",
+    "userGrowthSeries",
+    "venueGrowthSeries",
     "dataQuality",
   ],
   properties: {
@@ -149,6 +151,31 @@ const stats: SchemaObject = {
         additionalProperties: false,
         required: ["date", ...Object.keys(revenue)],
         properties: { date: { type: "string", format: "date" }, ...revenue },
+      },
+    },
+    userGrowthSeries: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["date", "owners", "customers"],
+        properties: {
+          date: { type: "string", format: "date" },
+          owners: money,
+          customers: money,
+        },
+      },
+    },
+    venueGrowthSeries: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["date", "venues"],
+        properties: {
+          date: { type: "string", format: "date" },
+          venues: money,
+        },
       },
     },
     dataQuality: {

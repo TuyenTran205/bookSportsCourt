@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Pagination } from '@/components/common/Pagination';
 import { SlotGrid } from '@/components/features/booking/SlotGrid';
+import { BookingConfirmDialog } from '@/components/features/venue/BookingConfirmDialog';
 import { VenueLocationMapWrapper } from '@/components/features/venue/VenueLocationMapWrapper';
 import { VenueOpeningHours } from '@/components/features/venue/VenueOpeningHours';
 import { VenueJsonLd } from '@/components/features/venue/VenueJsonLd';
@@ -70,6 +71,7 @@ export function VenueDetailScreen() {
   const [selected, setSelected] = React.useState<string[]>([]);
   const [activeImage, setActiveImage] = React.useState(0);
   const [reviewPage, setReviewPage] = React.useState(1);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   const slotsQuery = useVenueSlots(slug, date);
   const summaryQuery = useReviewSummary(slug);
@@ -120,8 +122,27 @@ export function VenueDetailScreen() {
     return formatTimeRange(minStart, maxEnd);
   }, [slotsQuery.data]);
 
-  const selectedSlots = courtSlots[0]?.slots ?? [];
+  const selectedSlots = React.useMemo(
+    () => courtSlots[0]?.slots ?? [],
+    [courtSlots],
+  );
   const total = totalPrice(selectedSlots, selected);
+  const pickedSlotItems = React.useMemo(
+    () =>
+      [...selected]
+        .sort()
+        .map((start) => selectedSlots.find((s) => s.start === start))
+        .filter((s): s is NonNullable<typeof s> => Boolean(s)),
+    [selected, selectedSlots],
+  );
+  const selectedCourt = React.useMemo(
+    () => activeCourts.find((c) => c.id === courtId) ?? null,
+    [activeCourts, courtId],
+  );
+  const selectedSportName = React.useMemo(
+    () => venue?.sports.find((s) => s.id === selectedCourt?.sportId)?.name ?? null,
+    [venue?.sports, selectedCourt?.sportId],
+  );
   const sortedSelected = [...selected].sort();
   const firstKey = sortedSelected[0];
   const lastKey = sortedSelected[sortedSelected.length - 1];
@@ -142,8 +163,14 @@ export function VenueDetailScreen() {
   const images = [...venue.images].sort((a, b) => a.sortOrder - b.sortOrder);
   const hero = images[activeImage] ?? images[0];
   const loginHref = `/login?next=${encodeURIComponent(pathname)}`;
+  const selectedRangeText = firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null;
 
-  const onContinue = async () => {
+  const onOpenConfirm = () => {
+    if (!isAuthenticated || !courtId || selected.length === 0 || hold.isPending) return;
+    setConfirmOpen(true);
+  };
+
+  const onConfirmHold = async () => {
     if (!isAuthenticated || !courtId || selected.length === 0 || hold.isPending) return;
     // Mỗi key là `start` ISO của một block 30 phút; API nhận từng block riêng.
     // Lấy đúng cặp start/end từ danh sách slot thật để giữ nguyên định dạng múi giờ (+07:00).
@@ -163,10 +190,12 @@ export function VenueDetailScreen() {
         slots,
         idempotencyKey: idempotencyKey.current,
       });
+      setConfirmOpen(false);
       router.push(`/checkout/${result.booking.id}`);
     } catch (err) {
       // Lần thử sau là một ý định mới (vd. slot vừa bị người khác giữ) nên cần khoá mới.
       idempotencyKey.current = null;
+      setConfirmOpen(false);
       setSelected([]);
       void slotsQuery.refetch();
       toast.error(err instanceof ApiError ? err.message : t('holdFailed'));
@@ -451,10 +480,10 @@ export function VenueDetailScreen() {
             <BookingBar
               count={selected.length}
               total={total}
-              range={firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null}
+              range={selectedRangeText}
               isAuthenticated={isAuthenticated}
               loginHref={loginHref}
-              onContinue={onContinue}
+              onContinue={onOpenConfirm}
               pending={hold.isPending}
             />
           </Card>
@@ -466,13 +495,29 @@ export function VenueDetailScreen() {
         <BookingBar
           count={selected.length}
           total={total}
-          range={firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null}
+          range={selectedRangeText}
           isAuthenticated={isAuthenticated}
           loginHref={loginHref}
-          onContinue={onContinue}
+          onContinue={onOpenConfirm}
           pending={hold.isPending}
         />
       </div>
+
+      <BookingConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        venueName={venue.name}
+        venueAddress={venue.address}
+        courtName={selectedCourt?.name ?? 'Sân thi đấu'}
+        sportName={selectedSportName}
+        date={date}
+        timeRange={selectedRangeText}
+        slots={pickedSlotItems}
+        totalPrice={total}
+        cancellationPolicy={venue.cancellationPolicy}
+        pending={hold.isPending}
+        onConfirm={onConfirmHold}
+      />
     </main>
   );
 }

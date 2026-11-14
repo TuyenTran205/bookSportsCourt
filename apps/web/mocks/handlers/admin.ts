@@ -48,20 +48,144 @@ function writeAudit(
 
 export const adminHandlers = [
     /** Thống kê tổng quan cho dashboard. */
-    http.get("/api/v1/admin/stats", async () => {
+    http.get("/api/v1/admin/stats", async ({ request }) => {
         await simulateLatency(400);
         const guard = requireAdmin();
         if (guard.error) return guard.error;
 
+        const url = new URL(request.url);
+        const groupBy = (url.searchParams.get("groupBy") ?? "day") as "day" | "week" | "month";
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const defaultFrom = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
+        const from = url.searchParams.get("from") || defaultFrom;
+        const to = url.searchParams.get("to") || todayStr;
+
         const active = db.bookings.filter((b) => !["cancelled", "expired"].includes(b.booking.status));
+
+        const dates: string[] = [];
+        const startMs = Date.parse(`${from}T00:00:00Z`);
+        const endMs = Date.parse(`${to}T00:00:00Z`);
+        if (Number.isFinite(startMs) && Number.isFinite(endMs) && startMs <= endMs) {
+            const cursor = new Date(startMs);
+            if (groupBy === "week") cursor.setUTCDate(cursor.getUTCDate() - ((cursor.getUTCDay() + 6) % 7));
+            if (groupBy === "month") cursor.setUTCDate(1);
+            while (cursor.getTime() <= endMs && dates.length < 400) {
+                dates.push(cursor.toISOString().slice(0, 10));
+                if (groupBy === "month") cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+                else cursor.setUTCDate(cursor.getUTCDate() + (groupBy === "week" ? 7 : 1));
+            }
+        }
+        if (dates.length === 0) dates.push(todayStr);
+
+        const toBucketDate = (iso: string): string => {
+            const day = iso.slice(0, 10);
+            if (groupBy === "month") return `${day.slice(0, 7)}-01`;
+            if (groupBy === "week") {
+                const d = new Date(`${day}T00:00:00Z`);
+                d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+                return d.toISOString().slice(0, 10);
+            }
+            return day;
+        };
+
+        const emptyCounts = () => ({
+            held: 0,
+            pending_payment: 0,
+            confirmed: 0,
+            completed: 0,
+            cancelled: 0,
+            expired: 0,
+            no_show: 0,
+        });
+
+        const seriesMap = new Map(
+            dates.map((date) => [
+                date,
+                {
+                    date,
+                    bookingCountsByStatus: emptyCounts(),
+                    grossRevenue: 0,
+                    refundedAmount: 0,
+                    netRevenue: 0,
+                },
+            ]),
+        );
+
+        for (const item of db.bookings) {
+            const bucketKey = toBucketDate(item.booking.during.start || item.booking.createdAt);
+            const bucket = seriesMap.get(bucketKey);
+            if (bucket && item.booking.status in bucket.bookingCountsByStatus) {
+                bucket.bookingCountsByStatus[item.booking.status] += 1;
+            }
+            if (item.payment && (item.payment.status === "completed" || item.payment.status === "refunded")) {
+                const payKey = toBucketDate(item.payment.paidAt ?? item.booking.createdAt);
+                const payBucket = seriesMap.get(payKey);
+                if (payBucket) {
+                    payBucket.grossRevenue += item.payment.amount;
+                    payBucket.refundedAmount += item.payment.refundAmount ?? 0;
+                    payBucket.netRevenue = payBucket.grossRevenue - payBucket.refundedAmount;
+                }
+            }
+        }
+
+        const firstBucket = dates[0]!;
+        let owners = db.users.filter((u) => u.role === "owner" && (u.createdAt ?? "").slice(0, 10) < firstBucket).length;
+        let customers = db.users.filter((u) => u.role === "customer" && (u.createdAt ?? "").slice(0, 10) < firstBucket).length;
+        let totalVenuesRunning = db.venues.filter(
+            (v) => ((v as { createdAt?: string }).createdAt ?? "").slice(0, 10) < firstBucket,
+        ).length;
+
+        const userGrowthSeries = dates.map((date) => {
+            owners += db.users.filter((u) => u.role === "owner" && toBucketDate(u.createdAt ?? "") === date).length;
+            customers += db.users.filter((u) => u.role === "customer" && toBucketDate(u.createdAt ?? "") === date).length;
+            return { date, owners, customers };
+        });
+        const venueGrowthSeries = dates.map((date) => {
+            totalVenuesRunning += db.venues.filter(
+                (v) => toBucketDate((v as { createdAt?: string }).createdAt ?? "") === date,
+            ).length;
+            return { date, venues: totalVenuesRunning };
+        });
+
+        const bookingCountsByStatus = emptyCounts();
+        for (const item of db.bookings) {
+            bookingCountsByStatus[item.booking.status] += 1;
+        }
+        const grossRevenue = active.reduce((s, b) => s + b.booking.totalPrice, 0);
+        const refundedAmount = db.bookings.reduce((s, b) => s + (b.payment?.refundAmount ?? 0), 0);
 
         return ok({
             totalUsers: db.users.length,
             totalVenues: venues.length,
             totalBookings: db.bookings.length,
-            totalRevenue: active.reduce((s, b) => s + b.booking.totalPrice, 0),
+            totalRevenue: grossRevenue,
             pendingOwnerApplications: db.ownerApplications.filter((a) => a.status === "pending").length,
             pendingVenues: venues.filter((v) => v.status === "pending").length,
+            generatedAt: new Date().toISOString(),
+            from,
+            to,
+            groupBy,
+            summary: {
+                bookingCountsByStatus,
+                grossRevenue,
+                refundedAmount,
+                netRevenue: grossRevenue - refundedAmount,
+                userCountsByRole: {
+                    customer: db.users.filter((u) => u.role === "customer").length,
+                    owner: db.users.filter((u) => u.role === "owner").length,
+                    admin: db.users.filter((u) => u.role === "admin").length,
+                },
+                venueCountsByStatus: {
+                    pending: db.venues.filter((v) => v.status === "pending").length,
+                    approved: db.venues.filter((v) => v.status === "approved").length,
+                    rejected: db.venues.filter((v) => v.status === "rejected").length,
+                    suspended: db.venues.filter((v) => v.status === "suspended").length,
+                },
+            },
+            series: Array.from(seriesMap.values()),
+            userGrowthSeries,
+            venueGrowthSeries,
+            dataQuality: { excludedPaymentCount: 0 },
         });
     }),
 
@@ -75,7 +199,13 @@ export const adminHandlers = [
         const { page, limit } = readPaging(url);
         const status = url.searchParams.get("status");
 
-        let list = [...db.ownerApplications];
+        let list = db.ownerApplications.map((a) => ({
+            ...a,
+            applicantName:
+                a.applicantName ??
+                db.users.find((u) => u.id === (a.userId ?? a.user?.id))?.fullName ??
+                null,
+        }));
         if (status && status !== 'all') list = list.filter((a) => a.status === status);
         list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
@@ -560,6 +690,7 @@ export const adminHandlers = [
         const { page, limit } = readPaging(url);
         const venueId = url.searchParams.get("venueId");
         const isVisibleParam = url.searchParams.get("isVisible");
+        const reportStatusParam = url.searchParams.get("reportStatus");
         const ratingParam = url.searchParams.get("rating");
         const q = url.searchParams.get("q")?.toLowerCase().trim();
 
@@ -573,6 +704,10 @@ export const adminHandlers = [
                 customerName: customer?.fullName ?? "Khách hàng",
                 customerEmail: customer?.email,
                 isVisible: r.isVisible ?? true,
+                reportStatus: r.reportStatus ?? "none",
+                reportReason: r.reportReason ?? null,
+                reportImageUrl: r.reportImageUrl ?? null,
+                reportedAt: r.reportedAt ?? null,
             };
         });
 
@@ -582,6 +717,9 @@ export const adminHandlers = [
         if (isVisibleParam !== null && isVisibleParam !== undefined && isVisibleParam !== "") {
             const isVisible = isVisibleParam === "true";
             list = list.filter((r) => r.isVisible === isVisible);
+        }
+        if (reportStatusParam) {
+            list = list.filter((r) => r.reportStatus === reportStatusParam);
         }
         if (ratingParam) {
             const rating = Number(ratingParam);
@@ -635,6 +773,42 @@ export const adminHandlers = [
             isVisible: review.isVisible,
         };
         return ok(resultRow);
+    }),
+
+    http.patch("/api/v1/admin/reviews/:id/report", async ({ params, request }) => {
+        await simulateLatency(350);
+        const guard = requireAdmin();
+        if (guard.error) return guard.error;
+
+        const review = db.reviews.find((r) => r.id === params.id);
+        if (!review) return err(404, "NOT_FOUND", "Không tìm thấy đánh giá");
+        if ((review.reportStatus ?? "none") !== "pending") {
+            return err(409, "INVALID_STATE", "Đánh giá này không có báo cáo đang chờ xét duyệt");
+        }
+
+        const body = (await request.json().catch(() => ({}))) as { action?: "approve" | "reject" };
+        if (body.action !== "approve" && body.action !== "reject") {
+            return err(422, "VALIDATION_ERROR", "Hành động không hợp lệ");
+        }
+
+        review.reportStatus = body.action === "approve" ? "resolved" : "dismissed";
+        if (body.action === "approve") {
+            review.isVisible = false;
+        }
+        writeAudit("review.report_moderated", "review", review.id, {
+            isVisible: review.isVisible,
+            reportStatus: review.reportStatus,
+        });
+        persist();
+
+        const venue = venues.find((v) => v.id === review.venueId);
+        const customer = db.users.find((u) => u.id === review.customerId);
+        return ok({
+            ...review,
+            venueName: venue?.name ?? "Cơ sở thể thao",
+            customerName: customer?.fullName ?? "Khách hàng",
+            isVisible: review.isVisible ?? true,
+        });
     }),
 
     http.patch("/api/v1/reviews/:id/visibility", async ({ params, request }) => {

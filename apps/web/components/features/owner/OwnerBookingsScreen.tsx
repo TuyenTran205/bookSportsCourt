@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
+import { Pagination } from '@/components/common/Pagination';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NativeSelect } from '@/components/ui/select';
@@ -285,7 +286,7 @@ export function OwnerBookingsScreen() {
           }
         />
       ) : (
-        <Card className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-none">
+        <Card className="overflow-hidden rounded-lg border border-border bg-bg-card shadow-none">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
               <thead>
@@ -391,37 +392,17 @@ export function OwnerBookingsScreen() {
             </table>
           </div>
 
-          <footer className="flex flex-col gap-3 border-t border-neutral-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-neutral-500">
-              {t('bookingPaginationSummary', { from: firstItem, to: lastItem, total })}
-            </p>
-            <nav aria-label={t('bookingPaginationLabel')} className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="min-h-11 min-w-11"
-                aria-label={t('previousPage')}
-                disabled={currentPage <= 1 || bookingsQuery.isFetching}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-              >
-                <ChevronLeft aria-hidden="true" />
-              </Button>
-              <span className="min-w-20 text-center text-sm text-neutral-600">
-                {t('pageOf', { page: currentPage, totalPages })}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="min-h-11 min-w-11"
-                aria-label={t('nextPage')}
-                disabled={currentPage >= totalPages || bookingsQuery.isFetching}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-              >
-                <ChevronRight aria-hidden="true" />
-              </Button>
-            </nav>
+          <footer className="border-t border-border px-4 py-3">
+            <Pagination
+              meta={{
+                page: currentPage,
+                limit: PAGE_SIZE,
+                total,
+                totalPages,
+              }}
+              onPageChange={setPage}
+              disabled={bookingsQuery.isFetching}
+            />
           </footer>
         </Card>
       )}

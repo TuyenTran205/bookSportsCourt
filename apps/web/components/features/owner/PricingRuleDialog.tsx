@@ -115,7 +115,7 @@ export function PricingRuleDialog({
                     className={`min-h-9 rounded-btn border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
                       selected
                         ? 'border-primary-700 bg-primary-700 text-white'
-                        : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50'
+                        : 'border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary'
                     }`}
                   >
                     {t(`weekday${weekday}`)}
