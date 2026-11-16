@@ -618,6 +618,35 @@ Khi chạy **từng file test FE riêng lẻ** (`npx vitest run <file>.test.tsx`
 
 ---
 
+## ADR-029: `socket.io-client` cho realtime end-to-end ở FE
+
+**Ngày:** 2026-11-14 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+Backend đã có `RealtimeGateway` (namespace `/ws`, xác thực bằng cookie `access_token`, room `venue:{id}:date:{date}` / `owner:{id}` / `user:{id}`) và consumer đọc transactional outbox kênh `realtime`. Phía FE trước đó chỉ có `BroadcastChannel` mô phỏng (`mocks/realtime.ts`) nên hai tab/trình duyệt khác nhau không nhận được sự kiện thật. Cần thư viện client tương thích giao thức Socket.IO v4 của NestJS gateway.
+
+**Quyết định:**
+1. Thêm dependency `socket.io-client@^4.8.1` cho `@bsc/web` (runtime dependency, cùng major với `socket.io` của `@bsc/api`).
+2. `SocketProvider` chọn chế độ theo cấu hình: có `NEXT_PUBLIC_SOCKET_URL` và MSW tắt → Socket.IO thật; còn `NEXT_PUBLIC_API_MOCKING=enabled` → giữ nguyên mock `BroadcastChannel`.
+3. Client nối `${NEXT_PUBLIC_SOCKET_URL}/ws` với `withCredentials: true` (cookie httpOnly), tự `join_venue`/`leave_venue` theo sân+ngày đang xem và join lại room sau reconnect.
+
+**Lý do:**
+- Cùng giao thức với gateway NestJS (`@nestjs/websockets` + `socket.io` v4) nên không cần adapter riêng.
+- `withCredentials` khớp cơ chế auth cookie httpOnly hiện có — không phải đưa access token vào JS (giảm rủi ro XSS).
+- Giữ nguyên interface `RealtimeEvent` nên mọi hook/component đang dùng (`useRealtime`, `useOwnerRealtime`) không phải sửa.
+
+**Loại bỏ:**
+- Tự viết WebSocket thuần: phải tự làm reconnect/ack/namespace, trùng lặp tính năng Socket.IO đã có sẵn ở BE.
+- `EventSource`/SSE: gateway hiện tại là Socket.IO, đổi cả hai phía không cần thiết.
+
+**Hệ quả:**
+- `pnpm install` phát sinh thêm `socket.io-client` (và `engine.io-client`) trong `apps/web`.
+- Nếu BE chạy khác origin, cần cấu hình CORS `credentials: true` + `NEXT_PUBLIC_SOCKET_URL` trỏ đúng gốc BE (không kèm `/ws`).
+- Test FE hiện có không bị ảnh hưởng vì mock mode mặc định vẫn bật trong môi trường test.
+
+---
+
+
 ## Template ADR mới
 
 ```markdown

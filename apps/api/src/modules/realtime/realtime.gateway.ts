@@ -94,6 +94,10 @@ export class RealtimeGateway {
     this.server?.to(`owner:${ownerId}`).emit(event, payload);
   }
 
+  emitToUser(userId: string, event: string, payload: unknown) {
+    this.server?.to(`user:${userId}`).emit(event, payload);
+  }
+
   onModuleDestroy() {
     this.logger.log("Realtime gateway stopped");
   }

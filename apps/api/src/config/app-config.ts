@@ -38,6 +38,10 @@ export const AppConfigSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((v) => v === "true"),
+    REALTIME_OUTBOX_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     RESEND_API_KEY: z.preprocess(
       (value) => (value === "" ? undefined : value),
       z.string().min(1).optional(),

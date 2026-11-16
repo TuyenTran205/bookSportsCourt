@@ -31,6 +31,7 @@ import {
   useVenueSlots,
 } from '@/lib/hooks/useVenue';
 import { useAppRouter } from '@/lib/navigation/navigate';
+import { useVenueRoom } from '@/lib/hooks/useVenueRoom';
 import { cn } from '@/lib/utils/cn';
 import {
   addDays,
@@ -73,6 +74,9 @@ export function VenueDetailScreen() {
   const slotsQuery = useVenueSlots(slug, date);
   const summaryQuery = useReviewSummary(slug);
   const reviewsQuery = useVenueReviews(slug, reviewPage);
+
+  // Realtime: vào room của sân+ngày để lưới slot tự cập nhật khi có người giữ/đặt/huỷ.
+  useVenueRoom(venue?.id, date);
 
   const activeCourts = React.useMemo(
     () => (venue?.courts ?? []).filter((c) => c.status === 'active'),

@@ -179,6 +179,8 @@ export class VenuesService {
             ? previous.amenityIds
             : unique(input.amenityIds);
 
+        if (user.role !== "admin" && input.ownerId !== undefined)
+          throw invalid("Chỉ Admin được đổi chủ sân.");
         let targetOwnerId = venue.ownerId;
         if (
           user.role === "admin" &&
@@ -502,6 +504,8 @@ export class VenuesService {
             code: "FORBIDDEN",
             message: "Chỉ Owner hoặc Admin được tạo địa điểm.",
           });
+        if (user.role !== "admin" && input.ownerId !== undefined)
+          throw invalid("Chỉ Admin được chỉ định chủ sân khi tạo hộ.");
         let targetOwnerId = user.id;
         if (user.role === "admin") {
           if (!input.ownerId) {
