@@ -49,7 +49,10 @@ test("Password recovery acceptance against PostgreSQL", async (t) => {
     JWT_REFRESH_SECRET: randomBytes(32).toString("hex"),
     ALLOWED_ORIGINS: "http://localhost:3000",
     NODE_ENV: "test",
+    // The rate-limit acceptance case deliberately exercises a ten-request budget.
+    AUTH_RATE_LIMIT_MAX: "10",
     BUSINESS_MAIL_ENABLED: "false",
+    MAIL_PROVIDER: "resend",
     RESEND_API_KEY: "test-not-real",
     MAIL_FROM: "noreply@example.test",
     AUTH_FRONTEND_URL: "http://localhost:3000",
@@ -95,6 +98,9 @@ test("Password recovery acceptance against PostgreSQL", async (t) => {
         query: (text: string, values?: unknown[]) => pool.query(text, values),
       })
       .compile();
+    // Keep real provider validation while replacing only the network delivery.
+    const configuredTransport = new MailTransport(module.get(ConfigService));
+    transport.assertConfigured = () => configuredTransport.assertConfigured();
     const app = module.createNestApplication();
     app.setGlobalPrefix("api/v1");
     configureHttpSecurity(app);

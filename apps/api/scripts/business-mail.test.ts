@@ -233,6 +233,7 @@ test("Email worker and reminder producer against isolated PostgreSQL", async (t)
       (await pool.query("SELECT * FROM outbox_deliveries WHERE id=$1", [id]))
         .rows[0];
     const reset = async () => {
+      config.set("MAIL_PROVIDER", "resend");
       await pool.query(
         "DELETE FROM outbox_deliveries; DELETE FROM notifications",
       );
@@ -240,6 +241,100 @@ test("Email worker and reminder producer against isolated PostgreSQL", async (t)
       send = async () => {};
     };
     try {
+      await t.test(
+        "Gmail concurrent delivery and explicit temporary rejection can retry",
+        async () => {
+          config.set("MAIL_PROVIDER", "gmail");
+          const id = await enqueue();
+          send = async () => {
+            throw new MailDeliveryError("MAIL_PROVIDER_ERROR", true);
+          };
+          await Promise.all([worker.deliverOne(), worker.deliverOne()]);
+          assert.equal(deliveries.length, 1);
+          assert.equal((await get(id)).status, "pending");
+          assert.equal((await get(id)).email_request.provider, "gmail");
+          await pool.query(
+            "UPDATE outbox_deliveries SET next_attempt_at=now()-interval '1 second' WHERE id=$1",
+            [id],
+          );
+          send = async () => {};
+          await worker.deliverOne();
+          assert.equal((await get(id)).status, "delivered");
+          assert.deepEqual(deliveries[0], deliveries[1]);
+          await reset();
+        },
+      );
+      await t.test(
+        "Gmail ambiguous delivery parks immediately and cannot be operator-retried",
+        async () => {
+          config.set("MAIL_PROVIDER", "gmail");
+          const id = await enqueue();
+          send = async () => {
+            throw new MailDeliveryError("DELIVERY_AMBIGUOUS", false);
+          };
+          await worker.deliverOne();
+          assert.equal((await get(id)).status, "delivery_unknown");
+          assert.equal(await repo.retryFailed(id), false);
+          await worker.deliverOne();
+          assert.equal(deliveries.length, 1);
+          await reset();
+        },
+      );
+      await t.test(
+        "Gmail accepted then acknowledgement fails: expired lease never replays SMTP",
+        async () => {
+          config.set("MAIL_PROVIDER", "gmail");
+          const id = await enqueue();
+          await pool.query(`CREATE FUNCTION reject_gmail_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+          IF NEW.status='delivered' THEN RAISE EXCEPTION 'test'; END IF; RETURN NEW; END $$;
+          CREATE TRIGGER reject_gmail_ack BEFORE UPDATE ON outbox_deliveries FOR EACH ROW EXECUTE FUNCTION reject_gmail_ack()`);
+          try {
+            await assert.rejects(() => worker.deliverOne());
+          } finally {
+            await pool.query(
+              "DROP TRIGGER reject_gmail_ack ON outbox_deliveries; DROP FUNCTION reject_gmail_ack()",
+            );
+          }
+          await pool.query(
+            "UPDATE outbox_deliveries SET lease_expires_at=now()-interval '1 second' WHERE id=$1",
+            [id],
+          );
+          await worker.deliverOne();
+          assert.equal((await get(id)).status, "delivery_unknown");
+          assert.equal(deliveries.length, 1);
+          await reset();
+        },
+      );
+      await t.test(
+        "Frozen provider cannot change, including legacy Resend snapshots",
+        async () => {
+          for (const legacy of [false, true]) {
+            const id = await enqueue();
+            send = async () => {
+              throw new MailDeliveryError("MAIL_PROVIDER_ERROR", true);
+            };
+            await worker.deliverOne();
+            if (legacy)
+              await pool.query(
+                "UPDATE outbox_deliveries SET email_request=email_request-'provider' WHERE id=$1",
+                [id],
+              );
+            config.set("MAIL_PROVIDER", "gmail");
+            await pool.query(
+              "UPDATE outbox_deliveries SET next_attempt_at=now()-interval '1 second' WHERE id=$1",
+              [id],
+            );
+            await worker.deliverOne();
+            assert.equal((await get(id)).status, "delivery_unknown");
+            assert.equal(
+              (await get(id)).last_error_code,
+              "PROVIDER_CHANGED_RECONCILE",
+            );
+            assert.equal(deliveries.length, 1);
+            await reset();
+          }
+        },
+      );
       await t.test(
         "two workers claim once; network runs without a DB transaction; realtime remains pending",
         async () => {
