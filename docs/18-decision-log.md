@@ -1,6 +1,6 @@
 # 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.6.1 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.6.2 | **Cập nhật lần cuối:** 2026-11-17
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
 
@@ -36,6 +36,7 @@
 | 028 | @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
 | 029 | Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số |
 | 030 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông |
+| 032 | Gmail SMTP tùy chọn cho email giao dịch |
 
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
@@ -701,6 +702,18 @@ Sau khi tích hợp `protomaps-leaflet` trên nền Leaflet (ADR-030), trải ng
 - Thiết bị người dùng cần hỗ trợ WebGL; bổ sung UI fallback thân thiện nếu khởi tạo WebGL thất bại hoặc mất context (`webglcontextlost`).
 
 ---
+
+## ADR-032: Gmail SMTP tùy chọn cho email giao dịch
+
+**Ngày:** 2026-11-17 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Team cần gửi email demo khi chưa có quyền chỉnh DNS; transport hiện tại chỉ hỗ trợ Resend.
+
+**Quyết định:** Thêm `nodemailer` và dev dependency `@types/nodemailer` vào `apps/api`. Chọn `MAIL_PROVIDER=resend|gmail`, mặc định Resend để tương thích cấu hình cũ. Gmail dùng App Password, TLS cổng 465 hoặc bắt buộc STARTTLS cổng 587; địa chỉ gửi phải trùng SMTP_USER. Không log thông tin xác thực hoặc phản hồi SMTP. Auth và worker dùng chung transport; không đổi REST contract.
+
+**Hệ quả:** SMTP không có idempotency phía provider. Snapshot JSONB email_request lưu provider (legacy thiếu field hiểu là Resend); không cần đổi schema DB. Timeout/kết quả không rõ hoặc lease Gmail hết hạn sau freeze chuyển delivery_unknown, không tự gửi lại. Chỉ retry lỗi SMTP từ chối tạm thời rõ ràng; không tự chuyển provider cho snapshot cũ. Gmail phù hợp demo nhỏ, không chạy SMTP trên Render Free. Khi đổi provider cần dừng/drain worker cũ trước khi khởi động worker mới; không rolling deploy hai phiên bản worker với quy tắc retry khác nhau.
+
+**Loại bỏ:** Tự viết SMTP client hoặc tự động fallback Resend → Gmail vì tăng rủi ro gửi trùng.
 
 ## Template ADR mới
 

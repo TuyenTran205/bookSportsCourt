@@ -1,6 +1,8 @@
 # 02 – Tính năng theo vai trò
 
-> **Phiên bản:** 1.3.4 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.3.5 | **Cập nhật lần cuối:** 2026-11-17
+
+**Email giao dịch:** CUS-01/CUS-16 và email BSC-045 dùng transport chung, mặc định Resend; có thể chọn Gmail SMTP cho demo qua cấu hình backend. Xem [cấu hình và giới hạn retry](gmail-smtp-setup.md), ADR-032.
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
 
