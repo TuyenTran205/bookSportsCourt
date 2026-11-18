@@ -120,13 +120,17 @@ export async function runVenueReadCases(
     },
   );
   await t.test(
-    "Admin defaults pending, literal case-insensitive search and private moderation fields",
+    "Admin list spans every status with literal case-insensitive search and private moderation fields",
     async () => {
-      const pending = await list("/admin/venues", "admin");
-      assert.ok(pending.data.length > 0);
-      assert.ok(pending.data.every((v) => v.status === "pending"));
+      const all = await list("/admin/venues", "admin");
+      assert.equal(all.meta.total, 7);
+      assert.deepEqual(
+        [...new Set(all.data.map((v) => v.status))].sort(),
+        ["approved", "pending", "rejected", "suspended"],
+      );
+      assert.ok(all.data.every((v) => v.id !== ids.venues.deletedA));
       assert.ok(
-        pending.data.every(
+        all.data.every(
           (v) =>
             "description" in v && "sportIds" in v && "rejectionReason" in v,
         ),

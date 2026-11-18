@@ -21,10 +21,12 @@ import { getWsToken } from '@/lib/api/endpoints/auth';
 
 interface SocketContextValue {
   connected: boolean;
-  /** Lần kết nối lại gần nhất – dùng để hiện banner "đang kết nối lại". */
+  /** Sự kiện realtime gần nhất – dùng để hiện banner "đang kết nối lại". */
   lastEvent: RealtimeEvent | null;
   subscribeToEvents: (listener: (e: RealtimeEvent) => void) => () => void;
+  /** Vào room `venue:{id}:date:{date}` để nhận SLOT_UPDATED của lưới slot. */
   joinVenue: (venueId: string, date: string) => void;
+  /** Rời room khi đổi ngày hoặc unmount. */
   leaveVenue: (venueId: string, date: string) => void;
 }
 
@@ -43,11 +45,15 @@ function extractAuthUserId(data: unknown): string | null {
  * - Khi chạy với backend thật, kết nối trực tiếp Socket.IO tới namespace `/ws` của Backend
  *   kèm short-lived `ws-token` (hoặc `{ guest: true }` khi chưa đăng nhập), tự động
  *   tham gia lại room `venue:<id>:date:<date>` và invalidate cache TanStack Query.
+ *   Gateway tự đưa socket đã xác thực vào room `owner:` / `user:`; client chỉ cần
+ *   `join_venue` để nhận lưới slot của sân đang xem.
  */
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [lastEvent, setLastEvent] = useState<RealtimeEvent | null>(null);
   const queryClient = useQueryClient();
+  /** Room đã join – join lại sau khi reconnect để không mất cập nhật lưới slot. */
+  const joinedRooms = useRef(new Set<string>());
 
   const [authUserId, setAuthUserId] = useState<string | null>(() =>
     extractAuthUserId(queryClient.getQueryData(['auth', 'me'])),
@@ -74,6 +80,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   const joinVenue = useCallback((venueId: string, date: string) => {
     if (!venueId || !date) return;
+    // Ghi nhớ room để join lại sau reconnect (mock & thật đều cần).
+    joinedRooms.current.add(`venue:${venueId}:date:${date}`);
     activeRoomRef.current = { venueId, date };
     const socket = socketRef.current;
     if (socket?.connected) {
@@ -82,6 +90,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const leaveVenue = useCallback((venueId: string, date: string) => {
+    joinedRooms.current.delete(`venue:${venueId}:date:${date}`);
     const active = activeRoomRef.current;
     if (active && active.venueId === venueId && active.date === date) {
       activeRoomRef.current = null;
@@ -209,6 +218,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         const room = activeRoomRef.current;
         if (room && socket?.connected) {
           socket.emit(SOCKET_EVENTS.JOIN_VENUE, room);
+        }
+        // Reconnect: vào lại mọi room đang mở (server xoá room cũ theo socket).
+        for (const key of joinedRooms.current) {
+          const [, venueId, , date] = key.split(':');
+          const redundant = room && room.venueId === venueId && room.date === date;
+          if (!redundant && venueId && date && socket?.connected) {
+            socket.emit(SOCKET_EVENTS.JOIN_VENUE, { venueId, date });
+          }
         }
       };
 
