@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { AdminVenuesScreen } from './AdminVenuesScreen';
 import * as adminEndpoints from '@/lib/api/endpoints/admin';
 import * as ownerEndpoints from '@/lib/api/endpoints/owner';
+import * as venueEndpoints from '@/lib/api/endpoints/venues';
 
 const mockVenues: adminEndpoints.AdminVenueRow[] = [
   {
@@ -93,6 +94,19 @@ vi.mock('@/lib/api/endpoints/owner', async (importOriginal) => {
     updateOwnerVenue: vi.fn().mockResolvedValue({ id: 'venue-1', name: 'Sân Cập Nhật' }),
     deleteVenue: vi.fn().mockResolvedValue(undefined),
     uploadVenueImage: vi.fn().mockResolvedValue({ id: 'img-1', url: 'https://example.com/img.jpg' }),
+  };
+});
+
+vi.mock('@/lib/api/endpoints/venues', async (importOriginal) => {
+  const actual = await importOriginal<typeof venueEndpoints>();
+  return {
+    ...actual,
+    listSports: vi.fn().mockResolvedValue([
+      { id: 's-1', name: 'Cầu lông', slug: 'cau-long', icon: null },
+      { id: 's-2', name: 'Bóng đá', slug: 'bong-da', icon: null },
+    ]),
+    listAmenities: vi.fn().mockResolvedValue([]),
+    listWards: vi.fn().mockResolvedValue([]),
   };
 });
 

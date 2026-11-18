@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { OptionalJwtAuthGuard } from "../../common/guards/optional-jwt-auth.guard.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { RealtimeModule } from "../realtime/realtime.module.js";
@@ -12,7 +12,7 @@ import { BookingsService } from "./bookings.service.js";
 import { OwnerReportingService } from "./owner-reporting.service.js";
 
 @Module({
-  imports: [AuthModule, RealtimeModule],
+  imports: [AuthModule, forwardRef(() => RealtimeModule)],
   controllers: [
     BookingsController,
     OwnerBookingsController,

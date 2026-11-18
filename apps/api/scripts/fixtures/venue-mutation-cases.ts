@@ -75,7 +75,6 @@ export async function runVenueMutationCases(
         for (const [who, status] of [
           ["guest", 401],
           ["customer", 403],
-          ["admin", 403],
           ["suspendedOwner", 403],
           ["ownerB", 403],
         ] as const) {
@@ -105,6 +104,27 @@ export async function runVenueMutationCases(
       ])
         assert.equal((await request("PATCH", venue.id, body)).status, 400);
       assert.equal((await row(venue.id)).name, venue.name);
+      const adminEditTarget = await create();
+      const adminEdit = await request(
+        "PATCH",
+        adminEditTarget.id,
+        { name: "Sân Admin sửa" },
+        "admin",
+      );
+      assert.equal(adminEdit.status, 200);
+      assert.equal((await read(adminEdit)).data.name, "Sân Admin sửa");
+      assert.equal((await row(adminEditTarget.id)).name, "Sân Admin sửa");
+      const adminDeleteTarget = await create();
+      assert.equal(
+        (
+          await request("DELETE", adminDeleteTarget.id, undefined, "admin")
+        ).status,
+        204,
+      );
+      assert.equal(
+        (await request("GET", adminDeleteTarget.id)).status,
+        404,
+      );
     },
   );
   await t.test(

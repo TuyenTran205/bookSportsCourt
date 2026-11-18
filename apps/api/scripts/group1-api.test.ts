@@ -183,6 +183,9 @@ test("Group 1 VenuesService uses transactional area validation and UUID-suffixed
       assert.equal(tx, transaction);
       return { ...values, createdAt: new Date(), updatedAt: new Date() };
     },
+    // Chủ sân trong test chưa có hồ sơ ngân hàng → không tự gán tài khoản nhận tiền.
+    findOwnerApplicationBank: async () => null,
+    upsertPaymentAccount: async () => undefined,
   };
   const auth: any = {
     requireActiveUser: async (_id: string, tx: unknown) => {

@@ -39,6 +39,10 @@ export const AppConfigSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((v) => v === "true"),
+    REALTIME_OUTBOX_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     MAIL_PROVIDER: z.enum(["resend", "gmail"]).default("resend"),
     SMTP_HOST: optionalText(),
     SMTP_PORT: optionalText(),

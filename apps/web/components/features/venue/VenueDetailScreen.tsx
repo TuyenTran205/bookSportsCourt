@@ -24,7 +24,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCreateHold } from '@/lib/hooks/useBookings';
-import { useOptionalSocket } from '@/lib/hooks/useSocket';
 import { ApiError } from '@/lib/api/errors';
 import {
   useReviewSummary,
@@ -33,6 +32,7 @@ import {
   useVenueSlots,
 } from '@/lib/hooks/useVenue';
 import { useAppRouter } from '@/lib/navigation/navigate';
+import { useVenueRoom } from '@/lib/hooks/useVenueRoom';
 import { cn } from '@/lib/utils/cn';
 import {
   addDays,
@@ -77,14 +77,9 @@ export function VenueDetailScreen() {
   const summaryQuery = useReviewSummary(slug);
   const reviewsQuery = useVenueReviews(slug, reviewPage);
 
-  const socket = useOptionalSocket();
-  const joinVenue = socket?.joinVenue;
-  const leaveVenue = socket?.leaveVenue;
-  React.useEffect(() => {
-    if (!joinVenue || !leaveVenue || !venue?.id || !date) return;
-    joinVenue(venue.id, date);
-    return () => leaveVenue(venue.id, date);
-  }, [joinVenue, leaveVenue, venue?.id, date]);
+  // Realtime: vào room của sân+ngày để lưới slot tự cập nhật khi có người giữ/đặt/huỷ.
+  // `useVenueRoom` tự bỏ qua khi SocketProvider không mount (vd. trang public/Storybook).
+  useVenueRoom(venue?.id, date);
 
   const activeCourts = React.useMemo(
     () => (venue?.courts ?? []).filter((c) => c.status === 'active'),

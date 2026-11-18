@@ -217,7 +217,7 @@ PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính
 
 **Quyền và thứ tự kiểm tra**
 
-- Create/update/delete và owner list chỉ Owner; duyệt và admin list chỉ Admin. Admin không bypass route Owner.
+- Create/update/delete: Owner đúng chủ; Admin được tạo/sửa/xoá hộ chủ sân theo ADM-VENUES-EXT (ADR-030). Owner list chỉ Owner; duyệt status và admin list chỉ Admin.
 - Role lấy từ user đang hoạt động trong DB. Customer có hồ sơ Owner pending vẫn là Customer → 403 FORBIDDEN; không thêm cờ owner-approved. OWNER_NOT_APPROVED không phát sinh ở bảy route này.
 - Mutation kiểm tra theo thứ tự: auth/role → UUID và tài nguyên chưa xoá/ownership → body → nghiệp vụ; kiểm tra lại tài khoản/quyền trong transaction. Route public không xác thực để mở rộng phạm vi.
 - Venue đã xoá hoặc không tồn tại → 404 NOT_FOUND (kể cả DELETE lặp, Admin duyệt và PATCH). DELETE lặp bởi Owner khác cũng 404; Venue còn sống khác chủ → 403 NOT_VENUE_OWNER.
@@ -227,11 +227,11 @@ PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính
 - DTO aliases, query schema Owner/Admin, ZodValidationPipe và metadata Swagger trong `apps/api/src/modules/venues/dto` đã gắn vào controller/service thật ở Bước 5–7. Bước 4 có test contract riêng; các bước sau bổ sung HTTP/PostgreSQL thật.
 - Query page/limit nhận JSON number nguyên dương an toàn hoặc chuỗi chỉ chứa chữ số 0–9; không nhận chuỗi rỗng, khoảng trắng, số mũ, số thập phân, boolean, array/object (kể cả query lặp). page tối đa Number.MAX_SAFE_INTEGER; limit tối đa 100. Schema query strict, status chỉ có ở Admin. q sau trim rỗng giữ "" và repository hiểu là không lọc. Đây là quy tắc parse chung dùng khi viết DTO/Swagger/test.
 
-- POST: name trim 2–200, address trim 5–500, description tùy chọn tối đa 5000, provinceId/districtId UUID bắt buộc, lat/lng JSON number hữu hạn bắt buộc trong [-90,90]/[-180,180]; sportIds/amenityIds mặc định [].
-- PATCH: chỉ các trường POST, tất cả tùy chọn; object phải có ít nhất một field. Mảng không gửi giữ nguyên, [] xoá liên kết; loại ID trùng trước ghi. Field ngoài allowlist (ownerId/status/slug/cache/deletedAt/coverUrl...) → 400 VALIDATION_ERROR. Không nhận null cho field input; description="" bỏ nội dung.
+- POST: name trim 2–200, address trim 5–500, description tùy chọn tối đa 5000, provinceId/districtId UUID bắt buộc, lat/lng JSON number hữu hạn bắt buộc trong [-90,90]/[-180,180]; sportIds/amenityIds mặc định []. `ownerId` chỉ Admin được gửi (bắt buộc với Admin, tạo hộ chủ sân → approved); Owner gửi ownerId → 400 VALIDATION_ERROR.
+- PATCH: chỉ các trường POST, tất cả tùy chọn; object phải có ít nhất một field. Mảng không gửi giữ nguyên, [] xoá liên kết; loại ID trùng trước ghi. `ownerId` chỉ Admin được gửi để đổi chủ sân; Owner gửi ownerId → 400 VALIDATION_ERROR. Field ngoài allowlist (status/slug/cache/deletedAt/coverUrl...) → 400 VALIDATION_ERROR. Không nhận null cho field input; description="" bỏ nội dung.
 - Tỉnh/quận và danh mục phải tồn tại; quận thuộc tỉnh, đúng type; PATCH validate cặp cuối sau ghép dữ liệu. Toạ độ chuẩn hoá 7 chữ số thập phân trước so sánh/lưu; không ép null hoặc chuỗi rỗng thành 0.
 - POST trả 201; PATCH/update-status và các GET trả 200; DELETE đầu tiên thành công trả 204 không body.
-- Owner list: page/limit. Admin list: status/q/page/limit, status mặc định pending, q trim tối đa 200 ký tự tìm chuỗi con trong name không phân biệt hoa thường (không bỏ dấu), rỗng = không lọc. Không hỗ trợ status=all. Hai danh sách chỉ lấy deleted_at IS NULL; page mặc định 1, limit 20, tối đa 100; số nguyên dương; query lạ/sai → 400. Sort created_at DESC, id DESC.
+- Owner list: page/limit. Admin list: status/q/page/limit, không truyền status → mọi trạng thái còn sống (màn "Tất cả" của Admin), q trim tối đa 200 ký tự tìm chuỗi con trong name không phân biệt hoa thường (không bỏ dấu), rỗng = không lọc. Không hỗ trợ status=all (→ 400). Hai danh sách chỉ lấy deleted_at IS NULL; page mặc định 1, limit 20, tối đa 100; số nguyên dương; query lạ/sai → 400. Sort created_at DESC, id DESC.
 - Response danh sách { data: [], meta: { page, limit, total, totalPages } }; totalPages=ceil(total/limit), total=0 thì totalPages=0. Trang vượt cuối trả [] nhưng giữ total/totalPages thực tế.
 
 **Lý do từ chối**

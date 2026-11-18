@@ -144,13 +144,12 @@ test("create and read Venue against isolated PostgreSQL", async (t) => {
         ).rows[0];
 
       await t.test(
-        "real auth denies anonymous, Customer, Admin and suspended Owner",
+        "real auth denies anonymous, Customer and suspended Owner",
         async () => {
           const before = await counts();
           for (const [who, status] of [
             ["anonymous", 401],
             ["customer", 403],
-            ["admin", 403],
             ["suspendedOwner", 403],
           ] as const) {
             const response = await request(venueCreatePayload(), who);
@@ -158,6 +157,31 @@ test("create and read Venue against isolated PostgreSQL", async (t) => {
             assert.ok((await responseBody(response)).error.code);
           }
           assert.deepEqual(await counts(), before);
+        },
+      );
+      await t.test(
+        "Admin creates on behalf of an explicit owner and auto-approves",
+        async () => {
+          const before = await counts();
+          const missingOwner = await request(venueCreatePayload(), "admin");
+          assert.equal(missingOwner.status, 400);
+          assert.equal(
+            (await responseBody(missingOwner)).error.code,
+            "VALIDATION_ERROR",
+          );
+          const response = await request(
+            { ...venueCreatePayload(), ownerId: ids.users.ownerB },
+            "admin",
+          );
+          assert.equal(response.status, 201);
+          const { data } = await responseBody(response);
+          assert.equal(data.ownerId, ids.users.ownerB);
+          assert.equal(data.status, "approved");
+          assert.equal(data.rejectionReason, null);
+          const after = await counts();
+          assert.equal(after.venues, before.venues + 1);
+          assert.equal(after.sports, before.sports + 1);
+          assert.equal(after.amenities, before.amenities + 1);
         },
       );
       await t.test(
