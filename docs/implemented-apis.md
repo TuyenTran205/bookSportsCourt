@@ -132,12 +132,12 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sá
 | POST | `/api/v1/auth/verify-email` | Token xác thực email | `token` | 204, cập nhật thời điểm xác thực email |
 | GET | `/api/v1/users/me` | Cookie `access_token`; tài khoản active, cả ba role | Không có | 200, hồ sơ hiện tại từ DB |
 | GET | `/api/v1/health` | Công khai | Không có | 200, trạng thái API và kết nối DB |
-| POST | `/api/v1/venues` | Cookie `access_token`; Owner active | `name`, `address`, `provinceId`, `districtId`, `lat`, `lng`, `description?`, `sportIds?`, `amenityIds?` | 201, OwnerVenueResponse với status pending |
+| POST | `/api/v1/venues` | Cookie `access_token`; Owner active đúng chủ hoặc Admin (kèm `ownerId`) | `name`, `address`, `provinceId`, `districtId`, `lat`, `lng`, `description?`, `sportIds?`, `amenityIds?`, `ownerId?` (chỉ Admin) | 201, OwnerVenueResponse; Owner → pending, Admin tạo hộ → approved; Owner gửi `ownerId` → 400 |
 | GET | `/api/v1/owner/venues` | Cookie; Owner active | Query page/limit | 200, danh sách của mình và meta; có trạng thái/reason |
-| GET | `/api/v1/admin/venues` | Cookie; Admin active | Query status/q/page/limit, mặc định pending | 200, private projection đủ duyệt và meta |
+| GET | `/api/v1/admin/venues` | Cookie; Admin active | Query status/q/page/limit; không truyền status → mọi trạng thái còn sống | 200, private projection đủ duyệt và meta |
 | GET | `/api/v1/venues/:slug` | Công khai | Exact slug hoặc UUID | 200 VenueDetail approved/chưa xoá; còn lại 404 |
-| PATCH | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ | UUID, body updateVenueSchema strict không rỗng | 200 OwnerVenueResponse; thay đổi approved/rejected về pending |
-| DELETE | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ | UUID | 204 không body; 409 nếu còn booking chặn, gọi lại 404 |
+| PATCH | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ hoặc Admin | UUID, body updateVenueSchema strict không rỗng; `ownerId` chỉ Admin | 200 OwnerVenueResponse; thay đổi approved/rejected về pending; Owner gửi `ownerId` → 400 |
+| DELETE | `/api/v1/venues/:id` | Cookie; Owner active đúng chủ hoặc Admin | UUID | 204 không body; 409 nếu còn booking chặn, gọi lại 404 |
 | PATCH | `/api/v1/venues/:id/status` | Cookie; Admin active | UUID, status và reason chỉ khi rejected | 200 AdminVenueResponse; transition sai 400; audit thay đổi cùng transaction |
 | PATCH | `/api/v1/users/me` | Cookie `access_token`; tài khoản active | `fullName`, `phone?`, `avatarUrl?` | 200, hồ sơ user sau cập nhật |
 | PATCH | `/api/v1/users/me/password` | Cookie `access_token`; tài khoản active | `currentPassword`, `newPassword`, `confirmPassword` | 204, đổi mật khẩu và xoá cookie |

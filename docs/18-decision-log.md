@@ -1,6 +1,6 @@
 # 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.6.1 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.6.2 | **Cập nhật lần cuối:** 2026-11-17
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
 
@@ -34,8 +34,11 @@
 | 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
 | 027 | Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) |
 | 028 | @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
-| 029 | Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số |
-| 030 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông |
+| 029 | `socket.io-client` cho realtime end-to-end ở FE |
+| 030 | Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số |
+| 031 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông |
+| 032 | Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache |
+| 033 | Gmail SMTP tùy chọn cho email giao dịch |
 
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
@@ -620,7 +623,37 @@ Khi chạy **từng file test FE riêng lẻ** (`npx vitest run <file>.test.tsx`
 
 ---
 
-## ADR-029: Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số
+## ADR-029: `socket.io-client` cho realtime end-to-end ở FE
+
+**Ngày:** 2026-11-14 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+Backend đã có `RealtimeGateway` (namespace `/ws`, xác thực bằng cookie `access_token`, room `venue:{id}:date:{date}` / `owner:{id}` / `user:{id}`) và consumer đọc transactional outbox kênh `realtime`. Phía FE trước đó chỉ có `BroadcastChannel` mô phỏng (`mocks/realtime.ts`) nên hai tab/trình duyệt khác nhau không nhận được sự kiện thật. Cần thư viện client tương thích giao thức Socket.IO v4 của NestJS gateway.
+
+**Quyết định:**
+1. Thêm dependency `socket.io-client@^4.8.1` cho `@bsc/web` (runtime dependency, cùng major với `socket.io` của `@bsc/api`).
+2. `SocketProvider` chọn chế độ theo cấu hình: có `NEXT_PUBLIC_SOCKET_URL` và MSW tắt → Socket.IO thật; còn `NEXT_PUBLIC_API_MOCKING=enabled` → giữ nguyên mock `BroadcastChannel`.
+3. Client nối `${NEXT_PUBLIC_SOCKET_URL}/ws` với `withCredentials: true` (cookie httpOnly), tự `join_venue`/`leave_venue` theo sân+ngày đang xem và join lại room sau reconnect.
+
+**Lý do:**
+- Cùng giao thức với gateway NestJS (`@nestjs/websockets` + `socket.io` v4) nên không cần adapter riêng.
+- `withCredentials` khớp cơ chế auth cookie httpOnly hiện có — không phải đưa access token vào JS (giảm rủi ro XSS).
+- Giữ nguyên interface `RealtimeEvent` nên mọi hook/component đang dùng (`useRealtime`, `useOwnerRealtime`) không phải sửa.
+
+**Loại bỏ:**
+- Tự viết WebSocket thuần: phải tự làm reconnect/ack/namespace, trùng lặp tính năng Socket.IO đã có sẵn ở BE.
+- `EventSource`/SSE: gateway hiện tại là Socket.IO, đổi cả hai phía không cần thiết.
+
+**Hệ quả:**
+- `pnpm install` phát sinh thêm `socket.io-client` (và `engine.io-client`) trong `apps/web`.
+- Nếu BE chạy khác origin, cần cấu hình CORS `credentials: true` + `NEXT_PUBLIC_SOCKET_URL` trỏ đúng gốc BE (không kèm `/ws`).
+- Test FE hiện có không bị ảnh hưởng vì mock mode mặc định vẫn bật trong môi trường test.
+
+---
+
+---
+
+## ADR-030: Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số
 
 **Ngày:** 2026-11-12 | **Trạng thái:** Accepted
 
@@ -644,9 +677,9 @@ Khi chạy **từng file test FE riêng lẻ** (`npx vitest run <file>.test.tsx`
 
 ---
 
-## ADR-030: Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông
+## ADR-031: Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông
 
-**Ngày:** 2026-11-13 | **Trạng thái:** Superseded by ADR-031
+**Ngày:** 2026-11-13 | **Trạng thái:** Superseded by ADR-032
 
 **Bối cảnh:**
 Các nguồn tile công cộng hiện tại (Esri, CARTO, OSM) phụ thuộc vào máy chủ nước ngoài, khó đồng bộ màu sắc theo Design System của BookSportsCourt, không làm nổi bật các khu vực thể thao/công viên, và không chủ động kiểm soát được nhãn tiếng Việt đối với Biển Đông, Quần đảo Hoàng Sa, Quần đảo Trường Sa.
@@ -671,12 +704,12 @@ Các nguồn tile công cộng hiện tại (Esri, CARTO, OSM) phụ thuộc và
 
 ---
 
-## ADR-031: Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache
+## ADR-032: Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache
 
 **Ngày:** 2026-11-13 | **Trạng thái:** Accepted
 
 **Bối cảnh:**
-Sau khi tích hợp `protomaps-leaflet` trên nền Leaflet (ADR-030), trải nghiệm thực tế khi thu/phóng hoặc kéo bản đồ vẫn xuất hiện các ô vuông xám lộ ra trong lúc chờ tải và vẽ lại do 4 nguyên nhân:
+Sau khi tích hợp `protomaps-leaflet` trên nền Leaflet (ADR-031), trải nghiệm thực tế khi thu/phóng hoặc kéo bản đồ vẫn xuất hiện các ô vuông xám lộ ra trong lúc chờ tải và vẽ lại do 4 nguyên nhân:
 1. CSS mặc định của Leaflet tô nền `.leaflet-container` màu xám `#ddd` lộ ra khi ô `<canvas>` mới đang render.
 2. `protomaps-leaflet` vẽ vector tile bằng Canvas 2D trên luồng JS chính (CPU), nhân độ phân giải theo `window.devicePixelRatio` và có độ trễ `tileDelay`, gây chậm khung hình trên màn hình DPI cao.
 3. Thư viện `pmtiles` đặt `chromeWindowsNoCache = true` ép `cache: "no-store"` khi `fetch()` trên trình duyệt nhân Chromium Windows, vô hiệu hoá HTTP disk cache của trình duyệt.
@@ -701,6 +734,18 @@ Sau khi tích hợp `protomaps-leaflet` trên nền Leaflet (ADR-030), trải ng
 - Thiết bị người dùng cần hỗ trợ WebGL; bổ sung UI fallback thân thiện nếu khởi tạo WebGL thất bại hoặc mất context (`webglcontextlost`).
 
 ---
+
+## ADR-033: Gmail SMTP tùy chọn cho email giao dịch
+
+**Ngày:** 2026-11-17 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Team cần gửi email demo khi chưa có quyền chỉnh DNS; transport hiện tại chỉ hỗ trợ Resend.
+
+**Quyết định:** Thêm `nodemailer` và dev dependency `@types/nodemailer` vào `apps/api`. Chọn `MAIL_PROVIDER=resend|gmail`, mặc định Resend để tương thích cấu hình cũ. Gmail dùng App Password, TLS cổng 465 hoặc bắt buộc STARTTLS cổng 587; địa chỉ gửi phải trùng SMTP_USER. Không log thông tin xác thực hoặc phản hồi SMTP. Auth và worker dùng chung transport; không đổi REST contract.
+
+**Hệ quả:** SMTP không có idempotency phía provider. Snapshot JSONB email_request lưu provider (legacy thiếu field hiểu là Resend); không cần đổi schema DB. Timeout/kết quả không rõ hoặc lease Gmail hết hạn sau freeze chuyển delivery_unknown, không tự gửi lại. Chỉ retry lỗi SMTP từ chối tạm thời rõ ràng; không tự chuyển provider cho snapshot cũ. Gmail phù hợp demo nhỏ, không chạy SMTP trên Render Free. Khi đổi provider cần dừng/drain worker cũ trước khi khởi động worker mới; không rolling deploy hai phiên bản worker với quy tắc retry khác nhau.
+
+**Loại bỏ:** Tự viết SMTP client hoặc tự động fallback Resend → Gmail vì tăng rủi ro gửi trùng.
 
 ## Template ADR mới
 

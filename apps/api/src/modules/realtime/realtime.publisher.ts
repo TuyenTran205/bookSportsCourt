@@ -39,7 +39,7 @@ export class RealtimePublisher {
 
   emitBookingCreated(
     ownerId: string,
-    customerId: string,
+    customerId: string | null,
     payload: BookingCreatedRealtimePayload,
   ) {
     void this.sessions.sendPrivate(
@@ -47,13 +47,20 @@ export class RealtimePublisher {
       SOCKET_EVENTS.BOOKING_CREATED,
       payload,
     );
-    if (customerId !== ownerId) {
+    if (customerId && customerId !== ownerId) {
       void this.sessions.sendPrivate(
         customerId,
         SOCKET_EVENTS.BOOKING_CREATED,
         payload,
       );
     }
+  }
+
+  emitNotification(
+    userId: string,
+    payload: { id: string; type: string; title: string },
+  ) {
+    this.gateway.emitToUser(userId, SOCKET_EVENTS.NOTIFICATION_CREATED, payload);
   }
 
   emitBookingCancelled(
