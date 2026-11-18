@@ -1,6 +1,13 @@
 import { z } from 'zod';
-import { BOOKING_STATUSES, OWNER_APPLICATION_STATUSES, PAYMENT_STATUSES, USER_ROLES, USER_STATUSES } from './constants.js';
-import { uuidSchema, venuePageFields, updateOwnerApplicationStatusSchema, updateUserStatusSchema } from './schemas.js';
+import {
+  BOOKING_STATUSES,
+  OWNER_APPLICATION_STATUSES,
+  PAYMENT_STATUSES,
+  REVIEW_REPORT_STATUSES,
+  USER_ROLES,
+  USER_STATUSES,
+} from './constants.js';
+import { uuidSchema, venuePageFields, updateOwnerApplicationStatusSchema, updateUserStatusSchema, reportReviewSchema } from './schemas.js';
 
 export const phase4IdSchema = uuidSchema.transform((value) => value.toLowerCase());
 export const vndSchema = z.number().int().nonnegative().safe();
@@ -15,9 +22,9 @@ export const paymentAccountInputSchema = z.object({
   accountName: z.string().trim().min(2).max(200),
 }).strict();
 export const ownerPaymentQuerySchema = z.object({
-  ...venuePageFields, status: z.enum(PAYMENT_STATUSES).default('submitted'), venueId: phase4IdSchema.optional(),
+  ...venuePageFields, status: z.union([z.enum(PAYMENT_STATUSES), z.literal('all')]).default('submitted'), venueId: phase4IdSchema.optional(),
 }).strict();
-export const adminOwnerApplicationQuerySchema = z.object({ ...venuePageFields, status: z.enum(OWNER_APPLICATION_STATUSES).default('pending') }).strict();
+export const adminOwnerApplicationQuerySchema = z.object({ ...venuePageFields, status: z.union([z.enum(OWNER_APPLICATION_STATUSES), z.literal('all')]).default('pending') }).strict();
 export const ownerApplicationDecisionSchema = updateOwnerApplicationStatusSchema;
 export const userStatusUpdateSchema = updateUserStatusSchema;
 export const adminUserQuerySchema = z.object({
@@ -53,6 +60,7 @@ export const adminReviewQuerySchema = z.object({
   ...venuePageFields,
   venueId: phase4IdSchema.optional(),
   isVisible: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  reportStatus: z.enum(REVIEW_REPORT_STATUSES).optional(),
   rating: z
     .union([
       z.number().int().min(1).max(5),
@@ -62,6 +70,10 @@ export const adminReviewQuerySchema = z.object({
   q: z.string().trim().max(200).optional(),
 }).strict();
 export const reviewVisibilitySchema = z.object({ isVisible: z.boolean() }).strict();
+export { reportReviewSchema };
+export const moderateReviewReportSchema = z.object({
+  action: z.enum(['approve', 'reject']),
+}).strict();
 export const googleCallbackQuerySchema = z.object({
   code: z.string().min(1).max(4096).optional(), state: z.string().min(1).max(512),
   error: z.string().min(1).max(200).optional(), error_description: z.string().max(1000).optional(),
@@ -86,4 +98,6 @@ export type AdminAuditQueryInput = z.infer<typeof adminAuditQuerySchema>;
 export type PublicReviewQueryInput = z.infer<typeof publicReviewQuerySchema>;
 export type AdminReviewQueryInput = z.infer<typeof adminReviewQuerySchema>;
 export type ReviewVisibilityInput = z.infer<typeof reviewVisibilitySchema>;
+export type ReportReviewInput = z.infer<typeof reportReviewSchema>;
+export type ModerateReviewReportInput = z.infer<typeof moderateReviewReportSchema>;
 export type GoogleCallbackQueryInput = z.infer<typeof googleCallbackQuerySchema>;

@@ -234,8 +234,18 @@ export class CourtsRepository {
       .select()
       .from(pricingRules)
       .where(inArray(pricingRules.courtId, courtIds))
-      .orderBy(asc(pricingRules.startTime));
-    return rows.map((row) => mapPricingRuleRow(row, venueId));
+      .orderBy(asc(pricingRules.startTime), asc(pricingRules.createdAt));
+
+    // Deduplicate rules replicated across all courts of the venue
+    const seen = new Map<string, typeof rows[0]>();
+    for (const row of rows) {
+      const weekdaysKey = (row.dayOfWeek ?? []).slice().sort().join(',');
+      const key = `${row.name}|${row.startTime}|${row.endTime}|${weekdaysKey}|${row.pricePerSlot}`;
+      if (!seen.has(key)) {
+        seen.set(key, row);
+      }
+    }
+    return Array.from(seen.values()).map((row) => mapPricingRuleRow(row, venueId));
   }
 
   async findPricingRuleById(courtId: string, ruleId: string) {
@@ -313,6 +323,30 @@ export class CourtsRepository {
       )
       .returning();
     return row ?? null;
+  }
+
+  async deleteVenuePricingRule(
+    venueId: string,
+    rule: typeof pricingRules.$inferSelect,
+  ) {
+    const venueCourts = await this.findCourtsByVenueId(venueId, false);
+    const courtIds = venueCourts.map((c) => c.id);
+    if (courtIds.length === 0) {
+      await this.deletePricingRule(rule.courtId, rule.id);
+      return;
+    }
+
+    await this.db
+      .delete(pricingRules)
+      .where(
+        and(
+          inArray(pricingRules.courtId, courtIds),
+          eq(pricingRules.name, rule.name),
+          eq(pricingRules.startTime, rule.startTime),
+          eq(pricingRules.endTime, rule.endTime),
+          eq(pricingRules.pricePerSlot, rule.pricePerSlot),
+        ),
+      );
   }
 
   // ===== Blackouts =====

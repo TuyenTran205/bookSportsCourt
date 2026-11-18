@@ -16,7 +16,7 @@ export class AuthMailService {
   ) {}
 
   assertConfigured(): void {
-    for (const key of ["RESEND_API_KEY", "MAIL_FROM", "AUTH_FRONTEND_URL"]) {
+    for (const key of ["MAIL_FROM", "AUTH_FRONTEND_URL"]) {
       if (!this.config.get<string>(key)) {
         throw new ServiceUnavailableException({
           code: "SERVICE_UNAVAILABLE",
@@ -25,6 +25,7 @@ export class AuthMailService {
       }
     }
     try {
+      this.transport.assertConfigured();
       const url = new URL(this.config.getOrThrow<string>("AUTH_FRONTEND_URL"));
       const mode = this.config.get<string>("NODE_ENV") ?? "development";
       const allowed = parseAllowedOrigins(

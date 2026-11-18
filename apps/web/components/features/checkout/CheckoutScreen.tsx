@@ -84,10 +84,10 @@ export function CheckoutScreen() {
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-text-primary">
               {t('expiredTitle')}
             </h1>
-            <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm leading-relaxed text-text-secondary">
               {t('expiredDesc')}
             </p>
           </div>
@@ -127,10 +127,10 @@ export function CheckoutScreen() {
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-text-primary">
               {t('pendingTitle')}
             </h1>
-            <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm leading-relaxed text-text-secondary">
               {t('pendingDesc')}
             </p>
           </div>
@@ -158,10 +158,10 @@ export function CheckoutScreen() {
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-text-primary">
               Đơn đặt sân đã được xác nhận
             </h1>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-sm text-text-secondary">
               Chuyển hướng sang trang chi tiết đơn đặt sân...
             </p>
           </div>
@@ -182,7 +182,7 @@ export function CheckoutScreen() {
   return (
     <main className="container max-w-6xl space-y-6 py-6 pb-24 lg:py-8">
       {/* Breadcrumb điều hướng */}
-      <nav aria-label="breadcrumb" className="text-xs text-neutral-600 dark:text-neutral-400">
+      <nav aria-label="breadcrumb" className="text-xs text-text-secondary">
         <ol className="flex flex-wrap items-center gap-1.5">
           <li>
             <Link href="/" className="hover:text-primary-700 hover:underline">
@@ -205,17 +205,17 @@ export function CheckoutScreen() {
             </Link>
           </li>
           <li aria-hidden="true">/</li>
-          <li className="font-semibold text-neutral-900 dark:text-white">
+          <li className="font-semibold text-text-primary">
             {t('breadcrumb')}
           </li>
         </ol>
       </nav>
 
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl dark:text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
           {t('title')}
         </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-text-secondary">
           {t('subtitle')}
         </p>
       </div>

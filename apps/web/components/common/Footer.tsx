@@ -36,7 +36,7 @@ export function Footer() {
               </div>
               <span className="tracking-tight text-text-primary">{tCommon('appName')}</span>
             </Link>
-            <p className="max-w-sm text-sm leading-relaxed text-text-secondary">
+            <p className="max-w-md text-sm leading-relaxed text-text-secondary">
               {t('brandDescription')}
             </p>
             <div className="flex flex-col gap-2.5 pt-1 text-xs text-text-secondary">

@@ -73,11 +73,11 @@ export function MockProvider({ children }: { children: React.ReactNode }) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--color-bg)',
             fontFamily:
               'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           }}
-          className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-white"
+          className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-bg"
         >
           <div
             style={{

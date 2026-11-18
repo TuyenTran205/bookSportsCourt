@@ -1,6 +1,6 @@
 # 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.6.1 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.6.2 | **Cập nhật lần cuối:** 2026-11-17
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
 
@@ -34,6 +34,11 @@
 | 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
 | 027 | Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) |
 | 028 | @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
+| 029 | `socket.io-client` cho realtime end-to-end ở FE |
+| 030 | Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số |
+| 031 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông |
+| 032 | Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache |
+| 033 | Gmail SMTP tùy chọn cho email giao dịch |
 
 
 > ADR-012 → ADR-021 được bổ sung ngày 2026-10-12 để khớp quy tắc "mọi dependency phải có ADR". Trước đó các công nghệ này đã dùng trong kiến trúc và code mẫu nhưng chưa có ADR ghi lại lý do.
@@ -646,6 +651,101 @@ Backend đã có `RealtimeGateway` (namespace `/ws`, xác thực bằng cookie `
 
 ---
 
+---
+
+## ADR-030: Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số
+
+**Ngày:** 2026-11-12 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+1. Khách hàng khi đăng ký làm chủ sân (`/owner/apply`) đã điền đầy đủ thông tin tài khoản ngân hàng (VietinBank, STK, Chủ TK). Tuy nhiên khi được duyệt và tạo cơ sở, trang Cài đặt & Chính sách (`/owner/settings`) lại bị trống thông tin tài khoản ngân hàng nhận tiền chuyển khoản, buộc chủ sân phải nhập lại.
+2. Form đăng ký cho phép nhập số CCCD cá nhân (12 chữ số) thay cho Mã số thuế (MST 10 hoặc 13 chữ số), nhưng CSDL bảng `owner_applications` trước đó có CHECK constraint chỉ nhận 10 hoặc 13 chữ số, dẫn đến lỗi khi lưu.
+3. Khi Admin lọc hồ sơ duyệt chủ sân, tab "Tất cả" chỉ trả về hồ sơ "Chờ duyệt" do schema backend ép mặc định `status: 'pending'` và repo lọc cứng theo status.
+4. Màn hình chi tiết cơ sở (`/venues/[slug]`) hiển thị "Đang cập nhật giờ mở cửa" do API `publicDetail` chưa query bảng `opening_hours`.
+
+**Quyết định:**
+1. Tạo migration `0014_allow_12_digit_cccd_owner_applications.sql`: Nới lỏng CHECK constraint `chk_owner_app_tax_code` chấp nhận cả 10, 12, hoặc 13 chữ số: `CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$')`.
+2. Tạo migration `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin`, `bank_name`, `account_no`, `account_name` vào bảng `owner_applications`.
+3. Kế thừa dữ liệu: Khi cơ sở thể thao được tạo, hoặc khi gọi API `GET /owner/venues/:id/payment-account` mà cơ sở chưa từng cấu hình tài khoản riêng, hệ thống tự động fallback nạp thông tin ngân hàng từ hồ sơ chủ sân đã duyệt của người dùng đó.
+4. Mở rộng `adminOwnerApplicationQuerySchema` chấp nhận `status: 'all'` để hỗ trợ tab "Tất cả" hiển thị mọi trạng thái hồ sơ.
+5. Endpoint công khai `GET /venues/:idOrSlug` query thêm bảng `opening_hours` để trả về giờ mở cửa chi tiết cho từng ngày trong tuần.
+
+**Hệ quả:**
+- Không phát sinh dependency mới (tuân thủ Rule 9).
+- Đảm bảo tính nhất quán dữ liệu, người dùng không phải nhập lại thông tin ngân hàng.
+- Mọi thành viên khác khi pull code cần chạy migration: `pnpm --filter @bsc/api db:migrate` để đồng bộ DB.
+
+---
+
+## ADR-031: Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông
+
+**Ngày:** 2026-11-13 | **Trạng thái:** Superseded by ADR-032
+
+**Bối cảnh:**
+Các nguồn tile công cộng hiện tại (Esri, CARTO, OSM) phụ thuộc vào máy chủ nước ngoài, khó đồng bộ màu sắc theo Design System của BookSportsCourt, không làm nổi bật các khu vực thể thao/công viên, và không chủ động kiểm soát được nhãn tiếng Việt đối với Biển Đông, Quần đảo Hoàng Sa, Quần đảo Trường Sa.
+
+**Quyết định:**
+1. Thêm `protomaps-leaflet` và `pmtiles` vào `@bsc/web` để đọc trực tiếp file vector tile `vietnam.pmtiles` đặt trên Cloudflare R2 (qua HTTP Range Request `206 Partial Content`) ngay bên trong hệ thống Leaflet hiện tại.
+2. Tự thiết kế bảng màu & quy tắc vẽ vector (custom paint/label rules) tại `apps/web/lib/map/vietnam-theme.ts` đồng bộ với token màu xanh sân cỏ (`#16a34a`) và nền Slate, ưu tiên nhãn tiếng Việt (`name:vi`) và làm nổi bật các sân vận động/khu thể thao.
+3. Bổ sung lớp GeoJSON tĩnh (`apps/web/public/geo/vietnam-islands.geojson`) để luôn hiển thị chuẩn xác nhãn tiếng Việt cho Biển Đông, Quần đảo Hoàng Sa và Quần đảo Trường Sa trên bản đồ.
+4. Giữ nguyên hệ thống tự phục hồi `ResilientTileLayer` (SPEC-MAP-002): khi `NEXT_PUBLIC_VIETNAM_PMTILES_URL` được cấu hình, `vietnam-pmtiles` là nguồn ưu tiên cao nhất; nếu chưa cấu hình hoặc R2 lỗi/bị chặn, hệ thống tự động fallback sang Esri / OSM France / OpenTopoMap / OSM Standard.
+
+**Lý do:**
+- Tận dụng hạ tầng Cloudflare R2 sẵn có (chi phí 0đ, miễn phí egress, CDN edge tốc độ cao tại Việt Nam), không cần thuê Tile Server chạy 24/7.
+- Giữ nguyên 100% component, marker, popup và bộ test Leaflet đang ổn định (`VenueMap`, `VenueLocationMap`, `SPEC-MAP-002`).
+
+**Loại bỏ:**
+- **Thay bằng `maplibre-gl`:** Yêu cầu viết lại toàn bộ component bản đồ, marker, popup và cơ chế fallback hiện có.
+- **Tự dựng `TileServer GL` / `Martin`:** Tốn server chạy nền, không phù hợp kiến trúc chi phí 0đ trên Render Free.
+
+**Hệ quả:**
+- Khi bật `NEXT_PUBLIC_VIETNAM_PMTILES_URL`, bucket Cloudflare R2 bắt buộc cấu hình CORS cho phép method `GET, HEAD` và header `Range`.
+- Khi chưa thiết lập `NEXT_PUBLIC_VIETNAM_PMTILES_URL`, ứng dụng hoạt động bình thường với danh sách provider miễn phí hiện tại.
+
+---
+
+## ADR-032: Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache
+
+**Ngày:** 2026-11-13 | **Trạng thái:** Accepted
+
+**Bối cảnh:**
+Sau khi tích hợp `protomaps-leaflet` trên nền Leaflet (ADR-031), trải nghiệm thực tế khi thu/phóng hoặc kéo bản đồ vẫn xuất hiện các ô vuông xám lộ ra trong lúc chờ tải và vẽ lại do 4 nguyên nhân:
+1. CSS mặc định của Leaflet tô nền `.leaflet-container` màu xám `#ddd` lộ ra khi ô `<canvas>` mới đang render.
+2. `protomaps-leaflet` vẽ vector tile bằng Canvas 2D trên luồng JS chính (CPU), nhân độ phân giải theo `window.devicePixelRatio` và có độ trễ `tileDelay`, gây chậm khung hình trên màn hình DPI cao.
+3. Thư viện `pmtiles` đặt `chromeWindowsNoCache = true` ép `cache: "no-store"` khi `fetch()` trên trình duyệt nhân Chromium Windows, vô hiệu hoá HTTP disk cache của trình duyệt.
+4. `ResilientTileLayer` tạo `new PMTiles(url)` mỗi lần mount với `SharedPromiseCache` mặc định chỉ 100 entry, làm mất cache RAM khi chuyển màn hình hoặc zoom/pan qua lại.
+
+**Quyết định:**
+1. Chuyển engine bản đồ `@bsc/web` từ `leaflet` / `react-leaflet` / `protomaps-leaflet` sang **`maplibre-gl`** (WebGL 60fps trên GPU) kết hợp **`@protomaps/basemaps`** để sinh MapLibre Style Spec v8 (vẫn dùng bảng màu Slate + nhấn xanh sân thể thao `#16a34a`, ưu tiên nhãn tiếng Việt `name:vi`).
+2. Tạo lớp `PMTiles` Singleton (`apps/web/lib/map/pmtiles-protocol.ts`) dùng chung `SharedPromiseCache(1000)` kết hợp LRU cache tile trong RAM (512 tile gần nhất) và đăng ký giao thức `pmtiles://` duy nhất một lần qua `maplibregl.addProtocol`.
+3. Upload bộ font glyphs `.pbf` mã nguồn mở hỗ trợ tiếng Việt (`Noto Sans Regular/Medium/Italic`) lên Cloudflare R2 (`scripts/map/upload-r2-fonts.mjs`) để MapLibre render nhãn tiếng Việt không tốn phí (fallback về CDN Protomaps miễn phí nếu không cấu hình `NEXT_PUBLIC_MAP_GLYPHS_URL`).
+4. Chuyển lớp chủ quyền **Biển Đông**, **Quần đảo Hoàng Sa**, **Quần đảo Trường Sa** (`vietnam-islands.json`) sang GeoJSON source + `symbol` layer trên WebGL, tự động gắn lại kể cả khi fallback sang nguồn raster dự phòng (Esri / OSM).
+5. Giữ nguyên giao diện props `VenueMapProps`, `VenueLocationMapProps` và cơ chế tự phục hồi `SPEC-MAP-002` thông qua `map.setStyle(buildRasterFallbackStyle(provider))`.
+
+**Lý do:**
+- MapLibre GL JS render trên GPU ở tốc độ 60fps và tự động giữ tile mức zoom cũ phóng to tạm thời (overzoom mượt) trong lúc chờ tile mới, triệt tiêu hoàn toàn hiện tượng nháy ô vuông xám khi thu/phóng.
+- Vẫn đảm bảo chi phí **0đ** (BSD-3-Clause, không cần API key, dùng chung bucket R2 và CORS sẵn có).
+
+**Loại bỏ:**
+- **Chỉ giữ Leaflet + tối ưu thông số `protomaps-leaflet`:** Giảm được một phần độ trễ nhưng vẫn render Canvas 2D trên CPU, không có hiệu ứng overzoom WebGL 60fps.
+
+**Hệ quả:**
+- Cần gỡ bỏ `leaflet`, `react-leaflet`, `@types/leaflet`, `protomaps-leaflet` khỏi `@bsc/web` và cập nhật CSS sang `maplibre-gl/dist/maplibre-gl.css`.
+- Thiết bị người dùng cần hỗ trợ WebGL; bổ sung UI fallback thân thiện nếu khởi tạo WebGL thất bại hoặc mất context (`webglcontextlost`).
+
+---
+
+## ADR-033: Gmail SMTP tùy chọn cho email giao dịch
+
+**Ngày:** 2026-11-17 | **Trạng thái:** Accepted
+
+**Bối cảnh:** Team cần gửi email demo khi chưa có quyền chỉnh DNS; transport hiện tại chỉ hỗ trợ Resend.
+
+**Quyết định:** Thêm `nodemailer` và dev dependency `@types/nodemailer` vào `apps/api`. Chọn `MAIL_PROVIDER=resend|gmail`, mặc định Resend để tương thích cấu hình cũ. Gmail dùng App Password, TLS cổng 465 hoặc bắt buộc STARTTLS cổng 587; địa chỉ gửi phải trùng SMTP_USER. Không log thông tin xác thực hoặc phản hồi SMTP. Auth và worker dùng chung transport; không đổi REST contract.
+
+**Hệ quả:** SMTP không có idempotency phía provider. Snapshot JSONB email_request lưu provider (legacy thiếu field hiểu là Resend); không cần đổi schema DB. Timeout/kết quả không rõ hoặc lease Gmail hết hạn sau freeze chuyển delivery_unknown, không tự gửi lại. Chỉ retry lỗi SMTP từ chối tạm thời rõ ràng; không tự chuyển provider cho snapshot cũ. Gmail phù hợp demo nhỏ, không chạy SMTP trên Render Free. Khi đổi provider cần dừng/drain worker cũ trước khi khởi động worker mới; không rolling deploy hai phiên bản worker với quy tắc retry khác nhau.
+
+**Loại bỏ:** Tự viết SMTP client hoặc tự động fallback Resend → Gmail vì tăng rủi ro gửi trùng.
 
 ## Template ADR mới
 

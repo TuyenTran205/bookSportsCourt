@@ -258,7 +258,7 @@ export class CourtsService {
         message: "Bạn không sở hữu cơ sở chứa khung giá này.",
       });
     }
-    await this.repo.deletePricingRule(found.rule.courtId, ruleId);
+    await this.repo.deleteVenuePricingRule(found.venueId, found.rule);
   }
 
   // ===== Blackouts =====

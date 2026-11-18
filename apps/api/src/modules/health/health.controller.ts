@@ -10,4 +10,9 @@ export class HealthController {
   check() {
     return this.healthService.check();
   }
+
+  @Get('ping')
+  ping() {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
 }

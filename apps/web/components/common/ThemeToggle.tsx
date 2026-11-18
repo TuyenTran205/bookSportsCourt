@@ -40,7 +40,7 @@ export function ThemeToggle({ className, align = 'end' }: ThemeToggleProps) {
         disabled
         aria-label={t('toggle')}
         className={cn(
-          'inline-flex size-9 min-h-[36px] min-w-[36px] items-center justify-center rounded-btn border border-neutral-200 bg-white text-neutral-600 transition-colors',
+          'inline-flex size-9 min-h-[36px] min-w-[36px] items-center justify-center rounded-btn border border-border bg-bg-card text-text-secondary transition-colors',
           className,
         )}
       >
@@ -56,12 +56,12 @@ export function ThemeToggle({ className, align = 'end' }: ThemeToggleProps) {
           type="button"
           aria-label={t('toggle')}
           className={cn(
-            'inline-flex size-9 min-h-[36px] min-w-[36px] items-center justify-center rounded-btn border border-neutral-200 bg-white text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100',
+            'inline-flex size-9 min-h-[36px] min-w-[36px] items-center justify-center rounded-btn border border-border bg-bg-card text-text-primary transition-colors hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
             className,
           )}
         >
           {resolvedTheme === 'dark' ? (
-            <Moon className="size-4 text-neutral-200" aria-hidden="true" />
+            <Moon className="size-4 text-text-primary" aria-hidden="true" />
           ) : (
             <Sun className="size-4 text-amber-500" aria-hidden="true" />
           )}

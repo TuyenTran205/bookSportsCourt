@@ -53,6 +53,8 @@ export class EmailOutboxRepository {
       if (!job) return null;
       // A crashed process may already have reached the provider. Never replay after its key window.
       if (
+        (job.status === "processing" &&
+          job.emailRequest?.provider === "gmail") ||
         job.attempts >= 5 ||
         (job.firstAttemptAt &&
           job.firstAttemptAt.getTime() < Date.now() - 23 * 3600000)

@@ -158,7 +158,10 @@ export function PaymentPanel({ bookingId, payment, expiresAt, onExpired }: Payme
       </div>
 
       <div className="grid gap-6 sm:grid-cols-[240px_minmax(0,1fr)]">
-        <div className="mx-auto flex size-60 items-center justify-center rounded-card border border-neutral-200 bg-white p-2">
+        <div
+          data-keep-white="true"
+          className="mx-auto flex size-60 items-center justify-center rounded-card border border-border bg-white p-2"
+        >
           {qrSrc ? (
             <Image
               src={qrSrc}

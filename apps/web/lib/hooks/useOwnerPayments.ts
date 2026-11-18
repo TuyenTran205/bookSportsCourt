@@ -1,9 +1,10 @@
+import type { PaymentStatus } from '@bsc/shared';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { listOwnerPayments } from '@/lib/api/endpoints/owner';
 
 export function useOwnerPayments(
-  status?: string,
+  status?: PaymentStatus | 'all',
   page = 1,
   limit = 20,
   enabled = true,

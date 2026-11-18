@@ -71,47 +71,406 @@ export function extractAddressAndNote(raw: string): { address: string; note: str
   return { address, note };
 }
 
-/** Geocode: Nhập địa chỉ -> Tìm tọa độ [lat, lng] */
-export async function geocodeAddress(rawAddress: string): Promise<[number, number] | null> {
+export interface GeocodeAddressOptions {
+  focusLat?: number;
+  focusLng?: number;
+  preferredProvince?: string;
+}
+
+interface ParsedAddressQuery {
+  houseNumber: string | null;
+  baseHouseNumber: string | null;
+  isStreetAddress: boolean;
+  streetCore: string;
+  firstSegment: string;
+  province: Province | null;
+}
+
+interface ScoredCandidate {
+  coordinates: [number, number];
+  score: number;
+  hasHouseMatch: boolean;
+  hasStreetMatch: boolean;
+}
+
+interface PhotonFeature {
+  geometry?: { coordinates?: unknown };
+  properties?: {
+    countrycode?: string;
+    housenumber?: string;
+    street?: string;
+    name?: string;
+    locality?: string;
+    district?: string;
+    county?: string;
+    city?: string;
+    state?: string;
+  };
+}
+
+interface NominatimItem {
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+  address?: {
+    house_number?: string;
+    road?: string;
+    suburb?: string;
+    ward?: string;
+    quarter?: string;
+    district?: string;
+    county?: string;
+    city?: string;
+    state?: string;
+    province?: string;
+    country_code?: string;
+  };
+}
+
+function normalizeText(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripProvincePrefix(value: string): string {
+  return normalizeText(value)
+    .replace(/^(thanh pho|tp\.?|tinh)\s+/g, '')
+    .trim();
+}
+
+function stripStreetPrefix(value: string): string {
+  return normalizeText(value)
+    .replace(/^(duong|pho|ngo|hem|ngach|dai lo|quoc lo|tinh lo)\s+/g, '')
+    .trim();
+}
+
+function isVietnamCoordinate(lat: number, lng: number): boolean {
+  return lat >= 6 && lat <= 24.5 && lng >= 101 && lng <= 118;
+}
+
+function detectProvinceFromText(raw: string, preferredProvince?: string): Province | null {
+  const candidates = [preferredProvince, ...raw.split(',').reverse()].filter(Boolean) as string[];
+  for (const part of candidates) {
+    const cleaned = stripProvincePrefix(part);
+    if (cleaned.length < 2) continue;
+    for (const province of PROVINCES) {
+      const pClean = stripProvincePrefix(province.name);
+      if (cleaned === pClean || cleaned.includes(pClean) || pClean.includes(cleaned)) {
+        return province;
+      }
+    }
+  }
+  return null;
+}
+
+/** Phân tích số nhà, tên đường và tỉnh/thành từ chuỗi địa chỉ nhập tay. */
+export function parseAddressQuery(raw: string, preferredProvince?: string): ParsedAddressQuery {
+  const segments = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const firstRaw = segments[0] ?? raw.trim();
+  const normalizedFirst = normalizeText(firstRaw)
+    .replace(/^(so nha|so)\s+/g, '')
+    .trim();
+
+  let houseNumber: string | null = null;
+  let restAfterHouse = normalizedFirst;
+  let hadAlleyPrefix = false;
+
+  const alleyMatch = normalizedFirst.match(/^(ngo|hem|ngach)\s+(\d+[a-z]?(\/\d+[a-z]?)?)\s+(.+)$/i);
+  if (alleyMatch) {
+    hadAlleyPrefix = true;
+    houseNumber = alleyMatch[2]?.toLowerCase() ?? null;
+    restAfterHouse = alleyMatch[4]?.trim() ?? '';
+  } else {
+    const numMatch = normalizedFirst.match(/^(\d+[a-z]?(?:\/\d+[a-z]?)*)\s+(.+)$/i);
+    if (numMatch) {
+      houseNumber = numMatch[1]?.toLowerCase() ?? null;
+      restAfterHouse = numMatch[2]?.trim() ?? '';
+    }
+  }
+
+  const hasRoadPrefix = /^(duong|pho|ngo|hem|ngach|dai lo|quoc lo|tinh lo)\s+/i.test(
+    restAfterHouse,
+  );
+  const streetCore = stripStreetPrefix(restAfterHouse);
+  const baseHouseNumber = houseNumber ? (houseNumber.split('/')[0] ?? houseNumber) : null;
+  const province = detectProvinceFromText(raw, preferredProvince);
+
+  return {
+    houseNumber,
+    baseHouseNumber,
+    isStreetAddress: Boolean(houseNumber) || hasRoadPrefix || hadAlleyPrefix,
+    streetCore,
+    firstSegment: stripStreetPrefix(firstRaw),
+    province,
+  };
+}
+
+/** Tạo câu truy vấn rút gọn `[số nhà + đường], [Tỉnh/TP]` để tránh nhiễu khi Photon chấm điểm tên dài. */
+function buildSimplifiedStreetQuery(raw: string, parsed: ParsedAddressQuery): string | null {
+  const firstPart = raw.split(',')[0]?.trim();
+  if (!firstPart) return null;
+
+  const parts = [firstPart];
+  if (parsed.province) {
+    const cleanProvince = parsed.province.name
+      .replace(/^(Thành phố|TP\.?|Tỉnh)\s+/i, '')
+      .trim();
+    if (cleanProvince) {
+      parts.push(cleanProvince);
+    }
+  }
+  const simplified = parts.join(', ');
+  return normalizeText(simplified) === normalizeText(raw) ? null : simplified;
+}
+
+function containsHouseToken(text: string, houseNumber: string): boolean {
+  const escaped = houseNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^0-9a-z])${escaped}([^0-9a-z]|$)`, 'i').test(text);
+}
+
+function scoreCandidate(
+  fields: {
+    lat: number;
+    lng: number;
+    countryCode?: string;
+    houseNumber?: string;
+    street?: string;
+    name?: string;
+    city?: string;
+    state?: string;
+    county?: string;
+  },
+  parsed: ParsedAddressQuery,
+  index: number,
+): ScoredCandidate | null {
+  if (!Number.isFinite(fields.lat) || !Number.isFinite(fields.lng)) return null;
+  if (fields.countryCode && fields.countryCode.toUpperCase() !== 'VN') return null;
+  if (!isVietnamCoordinate(fields.lat, fields.lng)) return null;
+
+  let score = -index * 0.5;
+  let hasHouseMatch = false;
+  let hasStreetMatch = false;
+
+  const normStreet = stripStreetPrefix(fields.street ?? '');
+  const normName = normalizeText(fields.name ?? '');
+  const normHouse = normalizeText(fields.houseNumber ?? '');
+  const normRegions = [fields.city, fields.state, fields.county]
+    .map((item) => stripProvincePrefix(item ?? ''))
+    .filter(Boolean);
+
+  if (parsed.province) {
+    const targetProvince = stripProvincePrefix(parsed.province.name);
+    if (normRegions.length > 0) {
+      const matchedRegion = normRegions.some(
+        (region) => region.includes(targetProvince) || targetProvince.includes(region),
+      );
+      score += matchedRegion ? 50 : -150;
+    }
+  }
+
+  if (parsed.isStreetAddress && parsed.streetCore.length >= 2) {
+    const streetMatched =
+      Boolean(normStreet) &&
+      (normStreet.includes(parsed.streetCore) || parsed.streetCore.includes(normStreet));
+    const nameHasStreet = Boolean(normName) && normName.includes(parsed.streetCore);
+
+    if (streetMatched) {
+      score += 100;
+      hasStreetMatch = true;
+    } else if (nameHasStreet) {
+      score += 80;
+      hasStreetMatch = true;
+    } else if (normStreet) {
+      score -= 120;
+    } else {
+      score -= 40;
+    }
+  } else if (parsed.firstSegment.length >= 3) {
+    if (normName && (normName.includes(parsed.firstSegment) || parsed.firstSegment.includes(normName))) {
+      score += 80;
+      hasStreetMatch = true;
+    } else if (
+      normStreet &&
+      (normStreet.includes(parsed.firstSegment) || parsed.firstSegment.includes(normStreet))
+    ) {
+      score += 60;
+      hasStreetMatch = true;
+    }
+  }
+
+  if (parsed.houseNumber) {
+    if (normHouse) {
+      if (normHouse === parsed.houseNumber) {
+        score += 120;
+        hasHouseMatch = true;
+      } else if (parsed.baseHouseNumber && normHouse === parsed.baseHouseNumber) {
+        score += 100;
+        hasHouseMatch = true;
+      } else {
+        score -= 60;
+      }
+    } else if (
+      hasStreetMatch &&
+      normName &&
+      (containsHouseToken(normName, parsed.houseNumber) ||
+        (parsed.baseHouseNumber ? containsHouseToken(normName, parsed.baseHouseNumber) : false))
+    ) {
+      score += 65;
+      hasHouseMatch = true;
+    }
+  }
+
+  return {
+    coordinates: [fields.lat, fields.lng],
+    score,
+    hasHouseMatch,
+    hasStreetMatch,
+  };
+}
+
+async function queryPhotonCandidates(
+  query: string,
+  parsed: ParsedAddressQuery,
+  focusLat: number,
+  focusLng: number,
+): Promise<ScoredCandidate | null> {
+  try {
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=10&lat=${focusLat}&lon=${focusLng}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { features?: PhotonFeature[] };
+    const features = Array.isArray(data.features) ? data.features : [];
+
+    let best: ScoredCandidate | null = null;
+    for (let i = 0; i < features.length; i += 1) {
+      const feature = features[i];
+      const coords = feature?.geometry?.coordinates;
+      if (
+        !Array.isArray(coords) ||
+        coords.length < 2 ||
+        typeof coords[0] !== 'number' ||
+        typeof coords[1] !== 'number'
+      ) {
+        continue;
+      }
+      const p = feature?.properties;
+      const scored = scoreCandidate(
+        {
+          lat: coords[1],
+          lng: coords[0],
+          countryCode: p?.countrycode,
+          houseNumber: p?.housenumber,
+          street: p?.street,
+          name: p?.name,
+          city: p?.city,
+          state: p?.state,
+          county: p?.county,
+        },
+        parsed,
+        i,
+      );
+      if (scored && (!best || scored.score > best.score)) {
+        best = scored;
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
+async function queryNominatimCandidates(
+  query: string,
+  parsed: ParsedAddressQuery,
+): Promise<ScoredCandidate | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&countrycodes=vn&accept-language=vi&addressdetails=1`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as NominatimItem[];
+    if (!Array.isArray(data)) return null;
+
+    let best: ScoredCandidate | null = null;
+    for (let i = 0; i < data.length; i += 1) {
+      const item = data[i];
+      if (!item?.lat || !item?.lon) continue;
+      const addr = item.address;
+      const scored = scoreCandidate(
+        {
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          countryCode: addr?.country_code,
+          houseNumber: addr?.house_number,
+          street: addr?.road,
+          name: item.display_name,
+          city: addr?.city,
+          state: addr?.state ?? addr?.province,
+          county: addr?.district ?? addr?.county,
+        },
+        parsed,
+        i,
+      );
+      if (scored && (!best || scored.score > best.score)) {
+        best = scored;
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
+/** Geocode: Nhập địa chỉ -> Tìm tọa độ `[lat, lng]` chuẩn xác trong Việt Nam */
+export async function geocodeAddress(
+  rawAddress: string,
+  options?: GeocodeAddressOptions,
+): Promise<[number, number] | null> {
   const { address } = extractAddressAndNote(rawAddress);
   if (!address || address.length < 3) return null;
 
-  // 1. Thử Photon (OpenStreetMap - Komoot)
-  try {
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      const coords = data.features?.[0]?.geometry?.coordinates;
-      if (
-        Array.isArray(coords) &&
-        coords.length >= 2 &&
-        typeof coords[0] === 'number' &&
-        typeof coords[1] === 'number'
-      ) {
-        // Photon trả về [lng, lat] -> đổi sang [lat, lng]
-        return [coords[1], coords[0]];
+  const parsed = parseAddressQuery(address, options?.preferredProvince);
+  const provinceCenter = parsed.province ? getProvinceCenter(parsed.province.code) : null;
+  const focusLat = options?.focusLat ?? provinceCenter?.[0] ?? 16.05;
+  const focusLng = options?.focusLng ?? provinceCenter?.[1] ?? 107.5;
+
+  let best = await queryPhotonCandidates(address, parsed, focusLat, focusLng);
+
+  const needsRefinement =
+    !best ||
+    !best.hasStreetMatch ||
+    (Boolean(parsed.houseNumber) && !best.hasHouseMatch) ||
+    best.score < 120;
+
+  if (needsRefinement) {
+    const simplified = buildSimplifiedStreetQuery(address, parsed);
+    if (simplified) {
+      const simplifiedBest = await queryPhotonCandidates(simplified, parsed, focusLat, focusLng);
+      if (simplifiedBest && (!best || simplifiedBest.score > best.score)) {
+        best = simplifiedBest;
       }
     }
-  } catch {
-    // Bỏ qua lỗi mạng, thử fallback
   }
 
-  // 2. Fallback Nominatim
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=vn&accept-language=vi`;
-    const res = await fetch(url, { headers: { 'User-Agent': 'BookSportsCourt/1.0' } });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data[0]?.lat && data[0]?.lon) {
-        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      }
-    }
-  } catch {
-    // Bỏ qua
+  if (best && best.score > 0) {
+    return best.coordinates;
   }
 
-  return null;
+  // Fallback Nominatim nếu Photon lỗi mạng hoặc không tìm thấy ứng viên hợp lệ
+  const nominatimBest = await queryNominatimCandidates(address, parsed);
+  if (nominatimBest && nominatimBest.score > 0) {
+    return nominatimBest.coordinates;
+  }
+
+  return best?.coordinates ?? nominatimBest?.coordinates ?? null;
 }
 
 /** Reverse Geocode chi tiết: Cắm ghim [lat, lng] -> Lấy địa chỉ, tỉnh, huyện, xã */
@@ -183,19 +542,20 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
 
 /** Tự động đối soát tên Tỉnh/Thành phố từ kết quả Reverse Geocode sang Province */
 export function matchProvinceFromLocation(details: ReverseGeocodeDetails): Province | null {
-  const candidateNames = [
-    details.city,
-    details.formattedAddress,
-  ].filter(Boolean) as string[];
+  const candidateNames = [details.city, details.formattedAddress].filter(Boolean) as string[];
+  const compact = (value: string) => normalizeText(value).replace(/\s+/g, '');
 
   for (const text of candidateNames) {
-    const cleanText = text.toLowerCase().replace(/^(thành phố|thanh pho|tp\.?|tỉnh|tinh)\s*/gi, '').trim();
+    const cleanText = stripProvincePrefix(text.replace(/\s+(city|province)$/i, ''));
+    const compactText = compact(cleanText);
 
     for (const p of PROVINCES) {
-      const pClean = p.name.toLowerCase().replace(/^(thành phố|thanh pho|tp\.?|tỉnh|tinh)\s*/gi, '').trim();
+      const pClean = stripProvincePrefix(p.name);
+      const pCompact = compact(pClean);
       if (
         cleanText.includes(pClean) ||
         pClean.includes(cleanText) ||
+        compactText.includes(pCompact) ||
         matchUnaccent(cleanText, pClean) ||
         matchUnaccent(pClean, cleanText)
       ) {
@@ -206,22 +566,27 @@ export function matchProvinceFromLocation(details: ReverseGeocodeDetails): Provi
   return null;
 }
 
+function cleanWardKeyword(value: string): string {
+  return normalizeText(value)
+    .replace(/^(phuong|xa|thi tran)\s+/gi, '')
+    .replace(/\s+(ward|commune|town)$/gi, '')
+    .trim();
+}
+
 /** Tự động đối soát tên Xã/Phường từ kết quả Reverse Geocode sang Ward */
 export function matchWardFromLocation(wards: Ward[], details: ReverseGeocodeDetails): Ward | null {
   if (!wards.length) return null;
 
-  const candidateKeywords = [
-    details.locality,
-    details.district,
-    details.street,
-  ].filter(Boolean) as string[];
+  const candidateKeywords = [details.locality, details.district, details.street].filter(
+    Boolean,
+  ) as string[];
 
   for (const kw of candidateKeywords) {
-    const cleanKw = kw.toLowerCase().replace(/^(phường|phuong|xã|xa|thị trấn|thi tran)\s*/gi, '').trim();
+    const cleanKw = cleanWardKeyword(kw);
     if (cleanKw.length < 2) continue;
 
     for (const w of wards) {
-      const wClean = w.name.toLowerCase().replace(/^(phường|phuong|xã|xa|thị trấn|thi tran)\s*/gi, '').trim();
+      const wClean = cleanWardKeyword(w.name);
       if (
         wClean === cleanKw ||
         matchUnaccent(cleanKw, wClean) ||
@@ -232,10 +597,10 @@ export function matchWardFromLocation(wards: Ward[], details: ReverseGeocodeDeta
     }
   }
 
-  const fullAddress = details.formattedAddress.toLowerCase();
+  const fullAddress = normalizeText(details.formattedAddress);
   for (const w of wards) {
-    const wClean = w.name.toLowerCase().replace(/^(phường|phuong|xã|xa|thị trấn|thi tran)\s*/gi, '').trim();
-    if (wClean.length >= 3 && matchUnaccent(fullAddress, wClean)) {
+    const wClean = cleanWardKeyword(w.name);
+    if (wClean.length >= 3 && (fullAddress.includes(wClean) || matchUnaccent(fullAddress, wClean))) {
       return w;
     }
   }

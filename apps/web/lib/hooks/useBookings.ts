@@ -9,6 +9,7 @@ import {
   createHold,
   createReview,
   getBooking,
+  getCancellationPreview,
   getHold,
   listFavorites,
   listMyBookings,
@@ -23,6 +24,7 @@ export const bookingKeys = {
     [...bookingKeys.all, 'list', status ?? 'all', page] as const,
   detail: (id: string) => [...bookingKeys.all, 'detail', id] as const,
   hold: (id: string) => [...bookingKeys.all, 'hold', id] as const,
+  cancelPreview: (id: string) => [...bookingKeys.all, 'cancel-preview', id] as const,
 };
 
 export const favoriteKeys = {
@@ -41,6 +43,15 @@ export function useBookingDetail(id: string) {
   return useQuery({
     queryKey: bookingKeys.detail(id),
     queryFn: () => getBooking(id),
+  });
+}
+
+export function useCancellationPreview(id: string, enabled = true) {
+  return useQuery({
+    queryKey: bookingKeys.cancelPreview(id),
+    queryFn: () => getCancellationPreview(id),
+    enabled: Boolean(id) && enabled,
+    staleTime: 15 * 1000,
   });
 }
 

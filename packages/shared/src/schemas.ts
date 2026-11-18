@@ -238,6 +238,11 @@ export const replyReviewSchema = z.object({
     ownerReply: z.string().trim().min(1, "Vui lòng nhập nội dung trả lời").max(2000, "Nội dung tối đa 2000 ký tự"),
 });
 
+export const reportReviewSchema = z.object({
+    reason: z.string().trim().min(5, "Lý do báo cáo phải có ít nhất 5 ký tự").max(1000),
+    imageUrl: z.string().trim().min(1).max(500).optional().nullable(),
+}).strict();
+
 // ===== Owner: cơ sở, sân con, giá, khoá sân =====
 
 /**

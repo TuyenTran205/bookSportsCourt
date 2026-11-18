@@ -1,6 +1,8 @@
 # 05 – Đặt sân & Realtime
 
-> **Phiên bản:** 1.4.2 | **Cập nhật lần cuối:** 2026-11-08 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+> **Phiên bản:** 1.4.3 | **Cập nhật lần cuối:** 2026-11-17 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+
+**Email Gmail SMTP (ADR-032):** SMTP không có idempotency: lỗi chưa rõ kết quả hoặc lease hết hạn sau freeze chuyển delivery_unknown ngay; chỉ retry từ chối tạm thời rõ ràng. Snapshot lưu provider, legacy là Resend; không chuyển provider khi retry. Không cam kết exactly-once. Xem [hướng dẫn Gmail SMTP](gmail-smtp-setup.md).
 
 **Bổ sung Phase 4 đã chốt:** snapshot/deadline/retry/lock/outbox. Protocol này cần được Phase 2 và Phase 4 cùng triển khai; chưa xác nhận runtime đã có. Các ví dụ SQL dưới đây minh hoạ chuyển trạng thái, không thay thế lock/recheck/outbox trong contract.
 
@@ -146,7 +148,7 @@ async hold(courtId: string, during: TsTzRange, customerId: string): Promise<Book
   return this.db.transaction(async (tx) => {
     // 1. Expire các hold quá hạn của court này TRƯỚC (vì EXCLUDE áp dụng cho 'held')
     await tx.update(bookings)
-      .set({ status: 'expired', updated_at: new Date() })
+      .set({ status: 'expired', expires_at: null, updated_at: new Date() })
       .where(and(
         eq(bookings.court_id, courtId),
         eq(bookings.status, 'held'),
@@ -188,7 +190,7 @@ async hold(courtId: string, during: TsTzRange, customerId: string): Promise<Book
 async expireHolds() {
   await this.db.transaction(async (tx) => {
     const expired = await tx.update(bookings)
-      .set({ status: 'expired', updated_at: new Date() })
+      .set({ status: 'expired', expires_at: null, updated_at: new Date() })
       .where(and(
         eq(bookings.status, 'held'),
         lt(bookings.expires_at, new Date())

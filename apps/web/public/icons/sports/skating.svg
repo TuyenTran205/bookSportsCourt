@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-skating" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-skating" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#6d28d9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-skating)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-skating)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#6d28d9" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Skateboard Deck tilted -->
+      <path d="M 14 22.5 Q 13 20.5 15.5 21 L 30.5 16.5 Q 33 16 33 18" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" />
+      <!-- Grip tape highlight -->
+      <path d="M 16.5 21 L 29.5 17" stroke="#DDD6FE" stroke-width="0.9" stroke-linecap="round" />
+      <!-- Front truck & wheel -->
+      <rect x="27" y="18.5" width="2" height="2" fill="#475569" />
+      <circle cx="28" cy="22" r="2.3" fill="#F43F5E" stroke="#BE123C" stroke-width="0.7" />
+      <circle cx="28" cy="22" r="0.8" fill="#FFFFFF" />
+      <!-- Rear truck & wheel -->
+      <rect x="17.5" y="22" width="2" height="2" fill="#475569" />
+      <circle cx="18.5" cy="25.5" r="2.3" fill="#F43F5E" stroke="#BE123C" stroke-width="0.7" />
+      <circle cx="18.5" cy="25.5" r="0.8" fill="#FFFFFF" />
+  </g>
+</svg>

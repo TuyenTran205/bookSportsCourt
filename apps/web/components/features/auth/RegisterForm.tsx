@@ -198,7 +198,7 @@ export function RegisterForm() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-neutral-200" />
           </div>
-          <span className="relative bg-white px-2 text-xs uppercase text-neutral-400">
+          <span className="relative bg-bg-card px-2 text-xs uppercase text-text-disabled">
             {tAuth('orContinueWith')}
           </span>
         </div>

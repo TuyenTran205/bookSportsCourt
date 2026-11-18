@@ -28,6 +28,19 @@ export class BusinessMailService implements OnModuleInit {
     if (!claimed) return false;
     if (claimed.parked) return true;
     let job = claimed.job;
+    const provider =
+      this.config.get<"resend" | "gmail">("MAIL_PROVIDER") ?? "resend";
+    if (
+      job.emailRequest &&
+      (job.emailRequest.provider ?? "resend") !== provider
+    ) {
+      await this.repo.finish(
+        job,
+        "delivery_unknown",
+        "PROVIDER_CHANGED_RECONCILE",
+      );
+      return true;
+    }
     const payload = MailEventPayload.safeParse(job.payload);
     const view = payload.success
       ? await this.repo.view(payload.data.bookingId, payload.data.paymentId)
@@ -70,6 +83,7 @@ export class BusinessMailService implements OnModuleInit {
       this.mail.assertConfigured();
       if (!job.emailRequest) {
         const frozen = await this.repo.freeze(job, {
+          provider,
           from: this.config.getOrThrow<string>("MAIL_FROM"),
           to: [email],
           ...renderBookingMail(job.eventType, payload.data.bookingId, {
@@ -93,13 +107,15 @@ export class BusinessMailService implements OnModuleInit {
       const code = known ? error.code : "DELIVERY_AMBIGUOUS";
       await this.repo.finish(
         job,
-        job.attempts >= 5
-          ? code === "DELIVERY_AMBIGUOUS"
-            ? "delivery_unknown"
-            : "failed"
-          : known && !error.retryable
-            ? "failed"
-            : "pending",
+        provider === "gmail" && code === "DELIVERY_AMBIGUOUS"
+          ? "delivery_unknown"
+          : job.attempts >= 5
+            ? code === "DELIVERY_AMBIGUOUS"
+              ? "delivery_unknown"
+              : "failed"
+            : known && !error.retryable
+              ? "failed"
+              : "pending",
         code,
       );
       return true;

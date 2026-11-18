@@ -115,6 +115,8 @@ export class AdminReportingService {
         const bookings = await this.repo.bookingGroups(tx, range, group),
           flows = await this.repo.moneyFlows(tx, range, group),
           populations = await this.repo.populations(tx),
+          userGrowth = await this.repo.userGrowth(tx, range, group),
+          venueGrowth = await this.repo.venueGrowth(tx, range, group),
           excluded = await this.repo.dataQuality(tx);
         const series = reportBuckets(range, group).map((date) => ({
             date,
@@ -179,6 +181,48 @@ export class AdminReportingService {
             row.status as (typeof VENUE_STATUSES)[number]
           ] = safeReportInteger(row.n);
         }
+        let runningOwners = 0;
+        let runningCustomers = 0;
+        for (const row of userGrowth.baseline) {
+          if (row.role === "owner") runningOwners = safeReportInteger(row.n);
+          else if (row.role === "customer")
+            runningCustomers = safeReportInteger(row.n);
+        }
+        const userInc = new Map<string, { owners: number; customers: number }>();
+        for (const row of userGrowth.increments) {
+          const entry = userInc.get(row.date) ?? { owners: 0, customers: 0 };
+          if (row.role === "owner") entry.owners = safeReportInteger(row.n);
+          else if (row.role === "customer")
+            entry.customers = safeReportInteger(row.n);
+          userInc.set(row.date, entry);
+        }
+        let runningVenues = safeReportInteger(venueGrowth.baseline);
+        const venueInc = new Map<string, number>();
+        for (const row of venueGrowth.increments) {
+          venueInc.set(row.date, safeReportInteger(row.n));
+        }
+        const userGrowthSeries = series.map((bucket) => {
+          const inc = userInc.get(bucket.date);
+          if (inc) {
+            runningOwners = safeReportInteger(
+              BigInt(runningOwners) + BigInt(inc.owners),
+            );
+            runningCustomers = safeReportInteger(
+              BigInt(runningCustomers) + BigInt(inc.customers),
+            );
+          }
+          return {
+            date: bucket.date,
+            owners: runningOwners,
+            customers: runningCustomers,
+          };
+        });
+        const venueGrowthSeries = series.map((bucket) => {
+          runningVenues = safeReportInteger(
+            BigInt(runningVenues) + BigInt(venueInc.get(bucket.date) ?? 0),
+          );
+          return { date: bucket.date, venues: runningVenues };
+        });
         return adminStatsSchema.parse({
           generatedAt: now.toISOString(),
           from: range.from,
@@ -186,6 +230,8 @@ export class AdminReportingService {
           groupBy: group,
           summary,
           series,
+          userGrowthSeries,
+          venueGrowthSeries,
           dataQuality: { excludedPaymentCount: safeReportInteger(excluded) },
         });
       }),

@@ -1,25 +1,5 @@
 import * as React from 'react';
 import {
-  Activity,
-  Trophy,
-  Target,
-  Dumbbell,
-  Flame,
-  Zap,
-  Medal,
-  Footprints,
-  Heart,
-  Timer,
-  Shield,
-  Bike,
-  Waves,
-  Flag,
-  Swords,
-  CircleDot,
-  Circle,
-  Table2,
-  CircleDashed,
-  Sparkles,
   Car,
   Coffee,
   Utensils,
@@ -31,36 +11,48 @@ import {
   BatteryCharging,
   Tv,
   Store,
+  Sparkles,
+  Bike,
   type LucideIcon,
 } from 'lucide-react';
+
+import { SportPinIcon } from '@/components/common/SportPinIcon';
 
 export interface CatalogIconOption {
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+function createSportPinComponent(sportId: string) {
+  const Component = ({ className }: { className?: string }) => (
+    <SportPinIcon sport={sportId} className={className} />
+  );
+  Component.displayName = `SportPin_${sportId}`;
+  return Component;
 }
 
 export const SPORT_ICON_OPTIONS: CatalogIconOption[] = [
-  { id: 'activity', label: 'Vận động chung', icon: Activity },
-  { id: 'circle-dot', label: 'Bóng đá', icon: CircleDot },
-  { id: 'table-2', label: 'Pickleball / Bóng bàn', icon: Table2 },
-  { id: 'circle', label: 'Tennis / Quần vợt', icon: Circle },
-  { id: 'circle-dashed', label: 'Bóng rổ', icon: CircleDashed },
-  { id: 'trophy', label: 'Cúp giải đấu', icon: Trophy },
-  { id: 'medal', label: 'Huy chương', icon: Medal },
-  { id: 'target', label: 'Mục tiêu / Bắn cung', icon: Target },
-  { id: 'dumbbell', label: 'Gym / Thể hình', icon: Dumbbell },
-  { id: 'waves', label: 'Bơi lội / Nước', icon: Waves },
-  { id: 'bike', label: 'Đua xe đạp', icon: Bike },
-  { id: 'footprints', label: 'Điền kinh / Chạy bộ', icon: Footprints },
-  { id: 'flame', label: 'Nhiệt huyết / Khởi động', icon: Flame },
-  { id: 'zap', label: 'Tốc độ / Phản xạ', icon: Zap },
-  { id: 'heart', label: 'Yoga / Sức khoẻ', icon: Heart },
-  { id: 'timer', label: 'Tính giờ / Thể lực', icon: Timer },
-  { id: 'shield', label: 'Võ thuật / Tự vệ', icon: Shield },
-  { id: 'flag', label: 'Golf / Cờ', icon: Flag },
-  { id: 'swords', label: 'Đối kháng / Kiếm', icon: Swords },
-  { id: 'sparkles', label: 'Khác', icon: Sparkles },
+  { id: 'badminton', label: 'Cầu lông', icon: createSportPinComponent('badminton') },
+  { id: 'soccer', label: 'Bóng đá / Bóng mini', icon: createSportPinComponent('soccer') },
+  { id: 'pickleball', label: 'Pickleball', icon: createSportPinComponent('pickleball') },
+  { id: 'tennis', label: 'Tennis / Quần vợt', icon: createSportPinComponent('tennis') },
+  { id: 'basketball', label: 'Bóng rổ', icon: createSportPinComponent('basketball') },
+  { id: 'volleyball', label: 'Bóng chuyền', icon: createSportPinComponent('volleyball') },
+  { id: 'table-tennis', label: 'Bóng bàn', icon: createSportPinComponent('table-tennis') },
+  { id: 'swimming', label: 'Bơi lội', icon: createSportPinComponent('swimming') },
+  { id: 'gym', label: 'Gym / Thể hình', icon: createSportPinComponent('gym') },
+  { id: 'running', label: 'Điền kinh / Chạy bộ', icon: createSportPinComponent('running') },
+  { id: 'golf', label: 'Golf', icon: createSportPinComponent('golf') },
+  { id: 'billiards', label: 'Bida / Billiards', icon: createSportPinComponent('billiards') },
+  { id: 'martial-arts', label: 'Võ thuật / Tự vệ', icon: createSportPinComponent('martial-arts') },
+  { id: 'bowling', label: 'Bowling', icon: createSportPinComponent('bowling') },
+  { id: 'archery', label: 'Bắn cung', icon: createSportPinComponent('archery') },
+  { id: 'cycling', label: 'Đua xe đạp', icon: createSportPinComponent('cycling') },
+  { id: 'climbing', label: 'Leo núi nhân tạo', icon: createSportPinComponent('climbing') },
+  { id: 'skating', label: 'Trượt patin / Ván trượt', icon: createSportPinComponent('skating') },
+  { id: 'yoga', label: 'Yoga / Pilates', icon: createSportPinComponent('yoga') },
+  { id: 'general', label: 'Thể thao khác / Chung', icon: createSportPinComponent('general') },
 ];
 
 export const AMENITY_ICON_OPTIONS: CatalogIconOption[] = [
@@ -76,61 +68,68 @@ export const AMENITY_ICON_OPTIONS: CatalogIconOption[] = [
   { id: 'battery-charging', label: 'Trạm sạc xe điện', icon: BatteryCharging },
   { id: 'tv', label: 'Màn hình TV / Trực tiếp', icon: Tv },
   { id: 'store', label: 'Cho thuê đồ / Phụ kiện', icon: Store },
-  { id: 'trophy', label: 'Khán đài / Cổ vũ', icon: Trophy },
   { id: 'sparkles', label: 'Tiện ích tiêu chuẩn', icon: Sparkles },
 ];
 
-const ALL_ICONS_MAP: Record<string, LucideIcon> = {
-  // Sports
-  activity: Activity,
-  'circle-dot': CircleDot,
-  'table-2': Table2,
-  circle: Circle,
-  'circle-dashed': CircleDashed,
-  trophy: Trophy,
-  medal: Medal,
-  target: Target,
-  dumbbell: Dumbbell,
-  waves: Waves,
-  bike: Bike,
-  footprints: Footprints,
-  flame: Flame,
-  zap: Zap,
-  heart: Heart,
-  timer: Timer,
-  shield: Shield,
-  flag: Flag,
-  swords: Swords,
-  badminton: Activity,
-  soccer: CircleDot,
-  tennis: Circle,
-  pickleball: Table2,
-  volleyball: CircleDot,
-
-  // Amenities
+const AMENITY_ICONS_MAP: Record<string, LucideIcon> = {
   car: Car,
+  'bai-do-xe': Car,
+  bike: Bike,
+  'xe-may': Bike,
   coffee: Coffee,
+  canteen: Coffee,
+  'cang-tin': Coffee,
   utensils: Utensils,
+  'an-uong': Utensils,
   wifi: Wifi,
+  'wifi-mien-phi': Wifi,
   'shower-head': ShowerHead,
   shower: ShowerHead,
+  'nha-ve-sinh': ShowerHead,
   shirt: Shirt,
   locker: Shirt,
   'phong-thay-do': Shirt,
   lightbulb: Lightbulb,
   'den-chieu-sang': Lightbulb,
+  'den-led': Lightbulb,
   fan: Fan,
+  'dieu-hoa': Fan,
+  snowflake: Fan,
   'battery-charging': BatteryCharging,
   tv: Tv,
   store: Store,
+  'thue-dung-cu': Store,
+  'cho-thue-dung-cu': Store,
+  backpack: Store,
+  sports_tennis: Store,
+  'may-ban-nuoc': Coffee,
+  'cup-soda': Coffee,
+  camera: Tv,
+  video: Tv,
   sparkles: Sparkles,
 };
 
 export function renderCatalogIcon(
   iconName: string | null | undefined,
-  fallback: LucideIcon = Sparkles,
+  fallback?: React.ComponentType<{ className?: string }>,
   className = 'size-4',
 ) {
-  const IconComponent = (iconName ? ALL_ICONS_MAP[iconName.toLowerCase()] : null) ?? fallback;
-  return <IconComponent className={className} />;
+  if (!iconName) {
+    if (fallback) {
+      const FallbackComponent = fallback;
+      return <FallbackComponent className={className} />;
+    }
+    return <SportPinIcon sport="general" className={className} />;
+  }
+
+  const key = iconName.toLowerCase().trim();
+
+  // If matched in amenity icons map, render amenity icon (Lucide)
+  const AmenityComponent = AMENITY_ICONS_MAP[key];
+  if (AmenityComponent) {
+    return <AmenityComponent className={className} />;
+  }
+
+  // Otherwise, render inverted teardrop sport pin icon
+  return <SportPinIcon sport={key} className={className} />;
 }

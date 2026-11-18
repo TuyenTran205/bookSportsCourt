@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-gym" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-gym" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#64748b" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-gym)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-gym)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#475569" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Dumbbell tilted -->
+      <g transform="rotate(-35 24 20)">
+        <!-- Bar handle -->
+        <rect x="18" y="19" width="12" height="2" rx="0.5" fill="#CBD5E1" stroke="#334155" stroke-width="0.6" />
+        <!-- Left plates -->
+        <rect x="15" y="15" width="2.5" height="10" rx="1" fill="#475569" stroke="#1E293B" stroke-width="0.8" />
+        <rect x="13.5" y="16.5" width="1.5" height="7" rx="0.7" fill="#64748B" stroke="#1E293B" stroke-width="0.6" />
+        <!-- Right plates -->
+        <rect x="30.5" y="15" width="2.5" height="10" rx="1" fill="#475569" stroke="#1E293B" stroke-width="0.8" />
+        <rect x="33" y="16.5" width="1.5" height="7" rx="0.7" fill="#64748B" stroke="#1E293B" stroke-width="0.6" />
+        <!-- Inner stoppers -->
+        <rect x="17.5" y="18" width="0.8" height="4" fill="#334155" />
+        <rect x="29.7" y="18" width="0.8" height="4" fill="#334155" />
+      </g>
+  </g>
+</svg>

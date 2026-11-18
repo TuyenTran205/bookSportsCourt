@@ -58,6 +58,11 @@ export function ProfileScreen() {
 function AvatarSection({ user }: { user: User }) {
   const queryClient = useQueryClient();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [avatarError, setAvatarError] = React.useState(false);
+
+  React.useEffect(() => {
+    setAvatarError(false);
+  }, [user.avatarUrl]);
 
   const uploadMutation = useMutation({
     mutationFn: uploadAvatar,
@@ -92,13 +97,14 @@ function AvatarSection({ user }: { user: User }) {
     <Card>
       <CardContent className="flex flex-col items-center gap-4 py-6 sm:flex-row sm:gap-6">
         <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-2 border-border bg-bg-subtle shadow-xs">
-          {user.avatarUrl ? (
+          {user.avatarUrl && !avatarError ? (
             <Image
               src={user.avatarUrl}
               alt={user.fullName}
               width={96}
               height={96}
               unoptimized
+              onError={() => setAvatarError(true)}
               className="size-full rounded-full object-cover"
             />
           ) : (

@@ -91,7 +91,7 @@ export function OwnerDashboardScreen() {
           {/* 2. Bốn thẻ chỉ số (KPIs) */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Card 1: Doanh thu 7 ngày */}
-            <Card className="rounded-lg border border-neutral-200 bg-white p-5 shadow-none transition-shadow hover:shadow-sm">
+            <Card className="rounded-lg border border-border bg-bg-card p-5 shadow-none transition-shadow hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-neutral-600">
                   {t('revenue7Days')}
@@ -110,7 +110,7 @@ export function OwnerDashboardScreen() {
             </Card>
 
             {/* Card 2: Chờ duyệt tiền */}
-            <Card className="rounded-lg border border-neutral-200 bg-white p-5 shadow-none transition-shadow hover:shadow-sm">
+            <Card className="rounded-lg border border-border bg-bg-card p-5 shadow-none transition-shadow hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-neutral-600">
                   {t('pendingPayments')}
@@ -129,7 +129,7 @@ export function OwnerDashboardScreen() {
             </Card>
 
             {/* Card 3: Lượt đặt 7 ngày */}
-            <Card className="rounded-lg border border-neutral-200 bg-white p-5 shadow-none transition-shadow hover:shadow-sm">
+            <Card className="rounded-lg border border-border bg-bg-card p-5 shadow-none transition-shadow hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-neutral-600">
                   {t('bookings7Days')}
@@ -148,7 +148,7 @@ export function OwnerDashboardScreen() {
             </Card>
 
             {/* Card 4: Tỷ lệ lấp đầy */}
-            <Card className="rounded-lg border border-neutral-200 bg-white p-5 shadow-none transition-shadow hover:shadow-sm">
+            <Card className="rounded-lg border border-border bg-bg-card p-5 shadow-none transition-shadow hover:shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-neutral-600">
                   {t('occupancyRate')}
@@ -266,7 +266,7 @@ export function OwnerDashboardScreen() {
               </Link>
             </div>
 
-            <Card className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-none">
+            <Card className="overflow-hidden rounded-lg border border-border bg-bg-card shadow-none">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] border-collapse text-left text-sm">
                   <thead>

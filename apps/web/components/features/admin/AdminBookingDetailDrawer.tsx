@@ -137,7 +137,7 @@ export function AdminBookingDetailDrawer({
           )}
 
           {booking.status === 'cancelled' && (
-            <div className="rounded-card border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+            <div className="rounded-card border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
               <p className="font-semibold">Đơn đã bị huỷ</p>
               {booking.cancelledAt && (
                 <p className="mt-0.5">Thời gian huỷ: {formatDate(booking.cancelledAt)}</p>

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-billiards" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-billiards" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7c3aed" />
+      <stop offset="100%" stop-color="#5b21b6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-billiards)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-billiards)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#5b21b6" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Pool Cue stick angled -->
+      <line x1="13" y1="27" x2="20" y2="23" stroke="#D97706" stroke-width="2" stroke-linecap="round" />
+      <line x1="13" y1="27" x2="16" y2="25.3" stroke="#92400E" stroke-width="2.4" />
+      <circle cx="20.5" cy="22.7" r="0.9" fill="#F8FAFC" />
+      <!-- 8-Ball -->
+      <circle cx="25.5" cy="19.5" r="7.5" fill="#18181B" stroke="#27272A" stroke-width="1" />
+      <!-- Highlight shine -->
+      <ellipse cx="23.5" cy="16.5" rx="2.5" ry="1.2" fill="#52525B" opacity="0.6" />
+      <!-- White central circle -->
+      <circle cx="25.5" cy="19.5" r="3.2" fill="#FFFFFF" />
+      <!-- Number 8 -->
+      <text x="25.5" y="21.8" font-size="6" font-weight="900" font-family="Arial, sans-serif" text-anchor="middle" fill="#18181B">8</text>
+  </g>
+</svg>

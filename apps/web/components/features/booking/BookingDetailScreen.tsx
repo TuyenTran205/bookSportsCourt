@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { CalendarClock, ExternalLink, MapPin, Star } from 'lucide-react';
+import { AlertTriangle, CalendarClock, ExternalLink, MapPin, ShieldAlert, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
@@ -27,6 +27,7 @@ import {
   bookingKeys,
   useBookingDetail,
   useCancelBooking,
+  useCancellationPreview,
   useCreateReview,
   useHoldInfo,
 } from '@/lib/hooks/useBookings';
@@ -45,6 +46,12 @@ export function BookingDetailScreen() {
 
   const needsPayment = booking?.status === 'held';
   const hold = useHoldInfo(id, needsPayment);
+  const isCancellableStatus =
+    booking?.status === 'held' ||
+    booking?.status === 'pending_payment' ||
+    booking?.status === 'confirmed';
+  const cancelPreviewQuery = useCancellationPreview(id, Boolean(isCancellableStatus));
+  const cancelPreview = cancelPreviewQuery.data;
 
   const [cancelOpen, setCancelOpen] = React.useState(false);
 
@@ -69,22 +76,35 @@ export function BookingDetailScreen() {
   const { court, payment } = booking;
   const canCancel = booking.status === 'held' || booking.status === 'pending_payment' || booking.status === 'confirmed';
   const canReview = booking.status === 'completed' && !booking.review;
+  const isBlockedByDeadline = Boolean(canCancel && cancelPreview && !cancelPreview.canCancel);
+
+  const policySummaryText = cancelPreview
+    ? booking.status === 'confirmed'
+      ? cancelPreview.canCancel
+        ? `Chủ sân cấu hình huỷ trước tối thiểu ${cancelPreview.cancelBeforeHours} giờ (hạn chót ${formatDateTime(cancelPreview.deadline)}). Khi huỷ ngay bây giờ bạn được hoàn ${cancelPreview.refundPercent}% tiền cọc (${formatCurrency(cancelPreview.refundAmount)}).`
+        : `Đã quá thời hạn huỷ đơn theo quy định của chủ sân (cần huỷ trước giờ bắt đầu tối thiểu ${cancelPreview.cancelBeforeHours} giờ, hạn chót ${formatDateTime(cancelPreview.deadline)}).`
+      : cancelPreview.cancelBeforeHours > 0
+        ? `Chủ sân quy định huỷ trước tối thiểu ${cancelPreview.cancelBeforeHours} giờ (hạn chót ${formatDateTime(cancelPreview.deadline)}). Đơn chưa thanh toán cọc sẽ giải phóng khung giờ ngay.`
+        : t('cancelPolicyUnpaid')
+    : booking.status === 'confirmed'
+      ? t('cancelPolicyConfirmed')
+      : t('cancelPolicyUnpaid');
 
   return (
     <main className="container max-w-3xl space-y-6 py-8">
-      <nav aria-label="breadcrumb" className="text-sm text-neutral-600">
-        <Link href="/bookings" className="hover:text-primary-700 hover:underline">
+      <nav aria-label="breadcrumb" className="text-sm text-text-secondary">
+        <Link href="/bookings" className="hover:text-primary-600 hover:underline">
           {t('myBookings')}
         </Link>
         <span aria-hidden="true"> / </span>
-        <span className="text-neutral-900">{court.venue.name}</span>
+        <span className="text-text-primary">{court.venue.name}</span>
       </nav>
 
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-neutral-900">{court.venue.name}</h1>
-            <p className="mt-1 flex items-start gap-1.5 text-sm text-neutral-600">
+            <h1 className="text-2xl font-bold text-text-primary">{court.venue.name}</h1>
+            <p className="mt-1 flex items-start gap-1.5 text-sm text-text-secondary">
               <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               {court.venue.address}
             </p>
@@ -106,7 +126,7 @@ export function BookingDetailScreen() {
         </dl>
 
         {booking.status === 'cancelled' && (
-          <p className="rounded-btn bg-neutral-50 p-3 text-sm text-neutral-700">
+          <p className="rounded-btn bg-bg-subtle p-3 text-sm text-text-secondary">
             {t('cancelledNote', { reason: booking.cancelReason ?? '—' })}
             {payment?.refundAmount ? ` ${t('refunded', { amount: formatCurrency(payment.refundAmount) })}` : ''}
           </p>
@@ -117,7 +137,30 @@ export function BookingDetailScreen() {
           </p>
         )}
         {booking.status === 'pending_payment' && (
-          <p className="rounded-btn bg-warning/10 p-3 text-sm text-neutral-800">{t('waitingReview')}</p>
+          <p className="rounded-btn bg-warning/10 p-3 text-sm text-text-primary">{t('waitingReview')}</p>
+        )}
+
+        {canCancel && cancelPreview && (
+          <div
+            className={cn(
+              'flex items-start gap-2.5 rounded-btn border p-3 text-xs',
+              isBlockedByDeadline
+                ? 'border-danger/30 bg-danger/10 text-danger'
+                : 'border-border bg-bg-subtle text-text-secondary',
+            )}
+          >
+            {isBlockedByDeadline ? (
+              <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+            )}
+            <div className="space-y-0.5">
+              <p className="font-semibold text-text-primary">
+                Chính sách huỷ sân của cơ sở: trước {cancelPreview.cancelBeforeHours} giờ
+              </p>
+              <p>{policySummaryText}</p>
+            </div>
+          </div>
         )}
       </Card>
 
@@ -145,13 +188,13 @@ export function BookingDetailScreen() {
 
       {booking.review && (
         <Card className="space-y-2 p-5">
-          <h2 className="text-lg font-semibold text-neutral-900">{t('yourReview')}</h2>
+          <h2 className="text-lg font-semibold text-text-primary">{t('yourReview')}</h2>
           <Stars value={booking.review.rating} />
-          {booking.review.comment && <p className="text-sm text-neutral-700">{booking.review.comment}</p>}
+          {booking.review.comment && <p className="text-sm text-text-secondary">{booking.review.comment}</p>}
           {booking.review.ownerReply && (
-            <div className="rounded-btn bg-neutral-50 p-3 text-sm">
-              <p className="mb-0.5 text-xs font-semibold text-neutral-600">{t('ownerReply')}</p>
-              <p className="text-neutral-700">{booking.review.ownerReply}</p>
+            <div className="rounded-btn bg-bg-subtle p-3 text-sm">
+              <p className="mb-0.5 text-xs font-semibold text-text-secondary">{t('ownerReply')}</p>
+              <p className="text-text-primary">{booking.review.ownerReply}</p>
             </div>
           )}
         </Card>
@@ -160,10 +203,19 @@ export function BookingDetailScreen() {
       {canReview && <ReviewForm bookingId={booking.id} />}
 
       {canCancel && (
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={() => setCancelOpen(true)}>
+        <div className="flex flex-col items-end gap-2">
+          <Button
+            variant="outline"
+            disabled={isBlockedByDeadline}
+            onClick={() => setCancelOpen(true)}
+          >
             {t('cancel')}
           </Button>
+          {isBlockedByDeadline && cancelPreview && (
+            <p className="text-xs text-danger">
+              Đã quá hạn huỷ trước {cancelPreview.cancelBeforeHours} giờ ({formatDateTime(cancelPreview.deadline)}).
+            </p>
+          )}
         </div>
       )}
 
@@ -171,11 +223,7 @@ export function BookingDetailScreen() {
         bookingId={booking.id}
         open={cancelOpen}
         onOpenChange={setCancelOpen}
-        policy={
-          booking.status === 'confirmed'
-            ? t('cancelPolicyConfirmed')
-            : t('cancelPolicyUnpaid')
-        }
+        policy={policySummaryText}
       />
     </main>
   );
@@ -184,9 +232,9 @@ export function BookingDetailScreen() {
 function Info({ label, value, icon }: { label: string; value: React.ReactNode; icon?: boolean }) {
   return (
     <div>
-      <dt className="text-xs text-neutral-500">{label}</dt>
-      <dd className="mt-0.5 flex items-center gap-1.5 text-neutral-900">
-        {icon && <CalendarClock className="size-4 shrink-0 text-neutral-500" aria-hidden="true" />}
+      <dt className="text-xs text-text-secondary">{label}</dt>
+      <dd className="mt-0.5 flex items-center gap-1.5 text-text-primary">
+        {icon && <CalendarClock className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />}
         {value}
       </dd>
     </div>
@@ -199,7 +247,7 @@ function Stars({ value }: { value: number }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
-          className={cn('size-5', i < value ? 'fill-amber-400 text-amber-400' : 'text-neutral-300')}
+          className={cn('size-5', i < value ? 'fill-amber-400 text-amber-400' : 'text-text-disabled')}
           aria-hidden="true"
         />
       ))}
@@ -239,7 +287,7 @@ function CancelDialog({
           <DialogTitle>{t('cancelTitle')}</DialogTitle>
           <DialogDescription>{policy}</DialogDescription>
         </DialogHeader>
-        <label htmlFor="cancel-reason" className="mb-1.5 block text-sm font-medium text-neutral-800">
+        <label htmlFor="cancel-reason" className="mb-1.5 block text-sm font-medium text-text-primary">
           {t('cancelReason')}
         </label>
         <Textarea

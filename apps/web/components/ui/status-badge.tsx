@@ -32,14 +32,14 @@ const badgeVariants = cva(
           'border-primary-200 bg-primary-50 text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300',
         red:
           'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300',
-        gray: 'border-border bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+        gray: 'border-border bg-bg-subtle text-text-secondary',
         'gray-light':
           'border-border bg-bg-subtle text-text-secondary',
         orange:
           'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300',
         // Venue
         'gray-strong':
-          'border-neutral-400 bg-neutral-200 text-neutral-800 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200',
+          'border-border bg-neutral-200 text-text-primary',
         // Payment
         purple:
           'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300',

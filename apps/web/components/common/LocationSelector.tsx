@@ -24,6 +24,8 @@ export interface LocationSelectorProps {
   };
   layout?: 'horizontal' | 'vertical' | 'compact';
   showFooterNotice?: boolean;
+  /** Ẩn viền ô chọn (dùng trong thanh/sidebar bộ lọc tìm sân). */
+  borderless?: boolean;
   className?: string;
 }
 
@@ -38,6 +40,7 @@ export function LocationSelector({
   error,
   layout = 'horizontal',
   showFooterNotice = false,
+  borderless = false,
   className,
 }: LocationSelectorProps) {
   const provinceInputRef = React.useRef<HTMLInputElement>(null);
@@ -213,11 +216,13 @@ export function LocationSelector({
                 aria-label="Tỉnh / Thành phố"
                 disabled={disabled}
                 className={cn(
-                  'flex min-h-11 w-full items-center justify-between rounded-btn border border-border bg-bg-card px-3 py-2 text-left text-xs text-text-primary transition-colors',
-                  'hover:border-neutral-400 dark:hover:border-neutral-500',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:border-transparent',
+                  'flex min-h-11 w-full items-center justify-between rounded-btn px-3 py-2 text-left text-xs text-text-primary transition-colors',
+                  borderless
+                    ? 'border-0 bg-bg-subtle hover:bg-neutral-200/70'
+                    : 'border border-border bg-bg-card hover:border-neutral-400',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
                   disabled && 'cursor-not-allowed opacity-50 bg-bg-subtle text-text-disabled',
-                  error?.province && 'border-danger text-danger focus-visible:ring-danger',
+                  error?.province && 'border border-danger text-danger focus-visible:ring-danger',
                 )}
               >
                 <span className="flex items-center gap-2 truncate">
@@ -329,11 +334,13 @@ export function LocationSelector({
                 aria-label="Xã / Phường / Đặc khu"
                 disabled={disabled || !activeProvinceTarget}
                 className={cn(
-                  'flex min-h-11 w-full items-center justify-between rounded-btn border border-border bg-bg-card px-3 py-2 text-left text-xs text-text-primary transition-colors',
-                  'hover:border-neutral-400 dark:hover:border-neutral-500',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:border-transparent',
+                  'flex min-h-11 w-full items-center justify-between rounded-btn px-3 py-2 text-left text-xs text-text-primary transition-colors',
+                  borderless
+                    ? 'border-0 bg-bg-subtle hover:bg-neutral-200/70'
+                    : 'border border-border bg-bg-card hover:border-neutral-400',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
                   (!activeProvinceTarget || disabled) && 'cursor-not-allowed opacity-50 bg-bg-subtle text-text-disabled',
-                  error?.ward && 'border-danger text-danger focus-visible:ring-danger',
+                  error?.ward && 'border border-danger text-danger focus-visible:ring-danger',
                 )}
               >
                 <span className="flex items-center gap-2 truncate">

@@ -140,11 +140,46 @@ export function SlotGrid({
     else onSelectedChange(keys);
   };
 
+  const renderSlotCell = (court: CourtSlots, slot: Slot, index: number) => (
+    <SlotCell
+      slot={slot}
+      index={index}
+      isSelected={selectedSet.has(slot.start)}
+      isPreview={previewKeys.has(slot.start)}
+      onPointerDown={(i) => {
+        if (!isSelectable(slot.status)) return;
+        draggingRef.current = true;
+        setAnchor({ courtId: court.courtId, index: i });
+        setHovered({ courtId: court.courtId, index: i });
+      }}
+      onPointerEnter={(i) => {
+        if (!draggingRef.current) return;
+        setHovered({ courtId: court.courtId, index: i });
+      }}
+      onPointerUp={(i) => {
+        if (!draggingRef.current || !anchor || anchor.courtId !== court.courtId) return;
+        const selectable = court.slots.map((s) => isSelectable(s.status));
+        const indexes = computeDragRange(anchor.index, i, selectable);
+        const keys = indexes.map((n) => court.slots[n]!.start);
+        if (keys.length === 1 && selectedSet.has(keys[0]!)) {
+          onSelectedChange(selected.filter((k) => k !== keys[0]));
+        } else {
+          commit(keys);
+        }
+        draggingRef.current = false;
+        setAnchor(null);
+        setHovered(null);
+      }}
+      onKeyDown={handleKeyDown}
+      label={t(slot.status === 'held' && slot.mine ? 'myHold' : slot.status)}
+    />
+  );
+
   if (timeRows.length === 0) {
     return (
-      <div className={cn('rounded-card border border-neutral-200 bg-white p-8 text-center', className)}>
-        <p className="text-base font-medium text-neutral-900">{t('noSlots')}</p>
-        <p className="mt-1 text-sm text-neutral-600">{t('noSlotsDesc')}</p>
+      <div className={cn('rounded-card border border-border bg-bg-card p-8 text-center', className)}>
+        <p className="text-base font-medium text-text-primary">{t('noSlots')}</p>
+        <p className="mt-1 text-sm text-text-secondary">{t('noSlotsDesc')}</p>
       </div>
     );
   }
@@ -154,10 +189,22 @@ export function SlotGrid({
       {/* Chú thích màu — không chỉ dựa vào màu để truyền đạt trạng thái. */}
       <SlotLegend />
 
-      {/*
-        Bọc cuộn ngang cho desktop nhiều sân. `overscroll-x-contain` giữ thao
-        tác kéo chọn không đẩy trang sang ngang.
-      */}
+      {courts.length === 1 ? (
+        <div
+          className="-mx-4 flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:mx-0 sm:px-0"
+          role="group"
+          aria-label={t('selectHint')}
+        >
+          {courts[0]!.slots.map((slot, index) => (
+            <div key={slot.start} className="w-24 shrink-0 sm:w-28">
+              <p className="mb-1 text-center text-xs tabular-nums text-text-secondary">
+                {formatTime(slot.start)}
+              </p>
+              {renderSlotCell(courts[0]!, slot, index)}
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:px-0">
         <table className="w-full min-w-[520px] border-separate border-spacing-1">
           <caption className="sr-only">{t('selectHint')}</caption>
@@ -196,40 +243,7 @@ export function SlotGrid({
                   const index = court.slots.indexOf(slot);
                   return (
                     <td key={court.courtId} className="p-0">
-                      <SlotCell
-                        slot={slot}
-                        index={index}
-                        isSelected={selectedSet.has(slot.start)}
-                        isPreview={previewKeys.has(slot.start)}
-                        onPointerDown={(i) => {
-                          if (!isSelectable(slot.status)) return;
-                          draggingRef.current = true;
-                          setAnchor({ courtId: court.courtId, index: i });
-                          setHovered({ courtId: court.courtId, index: i });
-                        }}
-                        onPointerEnter={(i) => {
-                          if (!draggingRef.current) return;
-                          setHovered({ courtId: court.courtId, index: i });
-                        }}
-                        onPointerUp={(i) => {
-                          if (!draggingRef.current) return;
-                          if (!anchor || anchor.courtId !== court.courtId) return;
-                          const selectable = court.slots.map((s) => isSelectable(s.status));
-                          const indexes = computeDragRange(anchor.index, i, selectable);
-                          const keys = indexes.map((n) => court.slots[n]!.start);
-                          // Bấm đơn (không kéo) vào block đã chọn → bỏ chọn block đó.
-                          if (keys.length === 1 && selectedSet.has(keys[0]!)) {
-                            onSelectedChange(selected.filter((k) => k !== keys[0]));
-                          } else {
-                            commit(keys);
-                          }
-                          draggingRef.current = false;
-                          setAnchor(null);
-                          setHovered(null);
-                        }}
-                        onKeyDown={handleKeyDown}
-                        label={t(slot.status === 'held' && slot.mine ? 'myHold' : slot.status)}
-                      />
+                      {renderSlotCell(court, slot, index)}
                     </td>
                   );
                 })}
@@ -238,6 +252,7 @@ export function SlotGrid({
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

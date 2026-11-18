@@ -28,7 +28,9 @@ import {
   cancellationPolicies,
   bookings,
   venuePaymentAccounts,
+  ownerApplications,
   users,
+  openingHours,
 } from "../../database/schema/index.js";
 import type {
   AdminVenueQueryDto,
@@ -307,6 +309,20 @@ export class VenuesRepository {
           })
           .from(cancellationPolicies)
           .where(eq(cancellationPolicies.venueId, venue.id));
+        const courtIds = courtRows.map((c) => c.id);
+        const openingHourRows = courtIds.length
+          ? await tx
+              .select({
+                id: openingHours.id,
+                courtId: openingHours.courtId,
+                dayOfWeek: openingHours.dayOfWeek,
+                openTime: openingHours.openTime,
+                closeTime: openingHours.closeTime,
+              })
+              .from(openingHours)
+              .where(inArray(openingHours.courtId, courtIds))
+              .orderBy(openingHours.dayOfWeek, openingHours.openTime)
+          : [];
         return {
           venue,
           areaRows,
@@ -315,6 +331,7 @@ export class VenuesRepository {
           images,
           courts: courtRows,
           policy,
+          openingHours: openingHourRows,
         };
       },
       { isolationLevel: "repeatable read", accessMode: "read only" },
@@ -697,6 +714,93 @@ export class VenuesRepository {
       .where(eq(venuePaymentAccounts.venueId, venueId))
       .limit(1);
     return row ?? null;
+  }
+
+  async findOwnerBankAccount(
+    ownerId: string,
+    tx: AuthTransaction | DrizzleDb = this.db,
+  ) {
+    const [existing] = await tx
+      .select({
+        bankBin: venuePaymentAccounts.bankBin,
+        accountNo: venuePaymentAccounts.accountNo,
+        accountName: venuePaymentAccounts.accountName,
+      })
+      .from(venuePaymentAccounts)
+      .innerJoin(venues, eq(venues.id, venuePaymentAccounts.venueId))
+      .where(and(eq(venues.ownerId, ownerId), isNull(venues.deletedAt)))
+      .orderBy(desc(venuePaymentAccounts.updatedAt))
+      .limit(1);
+    if (existing) return existing;
+
+    const [app] = await tx
+      .select({
+        bankBin: ownerApplications.bankBin,
+        accountNo: ownerApplications.accountNo,
+        accountName: ownerApplications.accountName,
+      })
+      .from(ownerApplications)
+      .where(
+        and(
+          eq(ownerApplications.userId, ownerId),
+          eq(ownerApplications.status, "approved"),
+          isNotNull(ownerApplications.bankBin),
+          isNotNull(ownerApplications.accountNo),
+        ),
+      )
+      .orderBy(desc(ownerApplications.createdAt), desc(ownerApplications.id))
+      .limit(1);
+
+    if (app?.bankBin && app.accountNo && app.accountName) {
+      return {
+        bankBin: app.bankBin,
+        accountNo: app.accountNo,
+        accountName: app.accountName,
+      };
+    }
+    return null;
+  }
+
+  async findOwnerApplicationBank(
+    venueId: string,
+    tx: AuthTransaction | DrizzleDb = this.db,
+  ) {
+    const [venue] = await tx
+      .select({ ownerId: venues.ownerId })
+      .from(venues)
+      .where(eq(venues.id, venueId))
+      .limit(1);
+    if (!venue) return null;
+
+    return this.findOwnerBankAccount(venue.ownerId, tx);
+  }
+
+  async upsertOwnerPaymentAccounts(
+    ownerId: string,
+    input: BankAccountInput,
+    tx: AuthTransaction,
+  ) {
+    const ownerVenues = await tx
+      .select({ id: venues.id })
+      .from(venues)
+      .where(and(eq(venues.ownerId, ownerId), isNull(venues.deletedAt)));
+    for (const v of ownerVenues) {
+      await this.upsertPaymentAccount(v.id, input, tx);
+    }
+    await tx
+      .update(ownerApplications)
+      .set({
+        bankBin: input.bankBin,
+        accountNo: input.accountNo,
+        accountName: input.accountName,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(ownerApplications.userId, ownerId),
+          eq(ownerApplications.status, "approved"),
+        ),
+      );
   }
 
   async upsertPaymentAccount(

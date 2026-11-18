@@ -86,7 +86,7 @@ export function VenueCompareButton({
       <ArrowLeftRight
         className={cn(
           'size-4 transition-transform duration-150',
-          active ? 'rotate-180 text-primary-700 dark:text-primary-300' : 'text-neutral-600 dark:text-neutral-300',
+          active ? 'rotate-180 text-primary-700 dark:text-primary-300' : 'text-text-secondary',
         )}
         aria-hidden="true"
       />

@@ -88,27 +88,27 @@ export function NotificationsScreen() {
   const getNotificationIcon = (type: string) => {
     if (type === 'booking_created' || type === 'booking_confirmed') {
       return (
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-700">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
           <CalendarCheck className="size-5" />
         </div>
       );
     }
     if (type === 'payment_submitted') {
       return (
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
           <CreditCard className="size-5" />
         </div>
       );
     }
     if (type === 'booking_cancelled' || type === 'hold_expired' || type === 'payment_rejected') {
       return (
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
           <AlertCircle className="size-5" />
         </div>
       );
     }
     return (
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-text-secondary">
         <Bell className="size-5" />
       </div>
     );

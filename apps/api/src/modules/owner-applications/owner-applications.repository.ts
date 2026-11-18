@@ -80,6 +80,10 @@ export class OwnerApplicationsRepository {
         lng: input.lng !== undefined && input.lng !== null ? String(input.lng) : null,
         note: input.note ?? null,
         taxCode: input.taxCode ?? null,
+        bankBin: input.bankBin ?? null,
+        bankName: input.bankName ?? null,
+        accountNo: input.accountNo ?? null,
+        accountName: input.accountName ?? null,
         status: "pending",
       })
       .returning();
@@ -88,7 +92,10 @@ export class OwnerApplicationsRepository {
   async list(query: AdminOwnerApplicationQueryInput) {
     return this.db.transaction(
       async (tx) => {
-        const condition = eq(ownerApplications.status, query.status);
+        const condition =
+          query.status && query.status !== "all"
+            ? eq(ownerApplications.status, query.status)
+            : undefined;
         const totals = await tx
           .select({ total: count() })
           .from(ownerApplications)
@@ -98,8 +105,12 @@ export class OwnerApplicationsRepository {
         if (!Number.isSafeInteger(offset) || offset >= total)
           return { rows: [], total };
         const rows = await tx
-          .select()
+          .select({
+            app: ownerApplications,
+            applicantName: users.fullName,
+          })
           .from(ownerApplications)
+          .leftJoin(users, eq(users.id, ownerApplications.userId))
           .where(condition)
           .orderBy(
             desc(ownerApplications.createdAt),
@@ -107,7 +118,13 @@ export class OwnerApplicationsRepository {
           )
           .limit(query.limit)
           .offset(offset);
-        return { rows, total };
+        return {
+          rows: rows.map((row) => ({
+            ...row.app,
+            applicantName: row.applicantName ?? null,
+          })),
+          total,
+        };
       },
       { isolationLevel: "repeatable read", accessMode: "read only" },
     );

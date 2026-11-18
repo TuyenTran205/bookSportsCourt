@@ -35,6 +35,8 @@ export interface VenueFiltersProps {
   onReset: () => void;
   totalResults?: number;
   isLoading?: boolean;
+  /** Bố cục thanh ngang mặc định hoặc cột sidebar dọc ở màn tìm sân (Phương án B). */
+  layout?: 'horizontal' | 'sidebar';
   className?: string;
 }
 
@@ -66,9 +68,12 @@ export function VenueFilters({
   onReset,
   totalResults,
   isLoading = false,
+  layout = 'horizontal',
   className,
 }: VenueFiltersProps) {
   const [isAdvancedOpen, setIsAdvancedOpen] = React.useState(false);
+  const isSidebar = layout === 'sidebar';
+  const showAdvanced = isSidebar || isAdvancedOpen;
 
   // Danh mục Môn thể thao
   const sportsQuery = useQuery({
@@ -183,12 +188,46 @@ export function VenueFilters({
   return (
     <section
       aria-label="Bộ lọc tìm kiếm sân"
-      className={cn('rounded-card border border-border bg-bg-card p-4 shadow-xs text-text-primary', className)}
+      className={cn(
+        'rounded-card border-0 bg-bg-card p-4 text-text-primary shadow-xs',
+        className,
+      )}
     >
-      {/* Hàng lọc nhanh cơ bản */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Tiêu đề cột sidebar (Phương án B) */}
+      {isSidebar && (
+        <div className="mb-4 flex items-center justify-between gap-2 pb-2">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="size-4 text-primary-700 dark:text-primary-400" aria-hidden="true" />
+            <span className="text-sm font-bold text-text-primary">Bộ lọc</span>
+            {activeFiltersCount > 0 && (
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
+                {activeFiltersCount}
+              </span>
+            )}
+          </div>
+          {activeFiltersCount > 0 && (
+            <button
+              type="button"
+              onClick={onReset}
+              className="inline-flex min-h-8 items-center gap-1 rounded-btn px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+            >
+              <RotateCcw className="size-3" aria-hidden="true" />
+              <span>Xóa bộ lọc</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Hàng / Cột lọc nhanh cơ bản */}
+      <div
+        className={
+          isSidebar
+            ? 'grid grid-cols-1 gap-3.5'
+            : 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'
+        }
+      >
         {/* Tỉnh/Thành phố & Xã/Phường qua LocationSelector */}
-        <div className="sm:col-span-2">
+        <div className={isSidebar ? undefined : 'sm:col-span-2'}>
           <LocationSelector
             provinceId={values.provinceId}
             provinceCode={values.provinceCode}
@@ -197,7 +236,8 @@ export function VenueFilters({
             onProvinceChange={handleProvinceChange}
             onWardChange={handleWardChange}
             disabled={isLoading}
-            layout="horizontal"
+            layout={isSidebar ? 'vertical' : 'horizontal'}
+            borderless
           />
         </div>
 
@@ -212,7 +252,7 @@ export function VenueFilters({
             value={values.maxPrice ? String(values.maxPrice) : ''}
             onChange={handlePriceChange}
             disabled={isLoading}
-            className="min-h-11"
+            className="min-h-11 border-0 bg-bg-subtle shadow-none"
           >
             {PRICE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -233,7 +273,7 @@ export function VenueFilters({
             value={values.sort ?? 'rating_desc'}
             onChange={handleSortChange}
             disabled={isLoading}
-            className="min-h-11"
+            className="min-h-11 border-0 bg-bg-subtle shadow-none"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -244,46 +284,48 @@ export function VenueFilters({
         </div>
       </div>
 
-      {/* Thanh công cụ phụ: Nút Mở rộng bộ lọc & Đặt lại */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsAdvancedOpen((prev) => !prev)}
-            aria-expanded={isAdvancedOpen}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-          >
-            <SlidersHorizontal className="size-3.5 text-text-secondary" aria-hidden="true" />
-            <span>{isAdvancedOpen ? 'Thu gọn bộ lọc' : 'Bộ lọc nâng cao'}</span>
-            {activeFiltersCount > 0 && (
-              <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700 dark:bg-primary-950 dark:text-primary-300">
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-
-          {activeFiltersCount > 0 && (
+      {/* Thanh công cụ phụ ở layout ngang: Nút Mở rộng bộ lọc & Đặt lại */}
+      {!isSidebar && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-3">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onReset}
+              onClick={() => setIsAdvancedOpen((prev) => !prev)}
+              aria-expanded={isAdvancedOpen}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             >
-              <RotateCcw className="size-3.5 text-text-secondary" aria-hidden="true" />
-              <span>Xóa bộ lọc</span>
+              <SlidersHorizontal className="size-3.5 text-text-secondary" aria-hidden="true" />
+              <span>{isAdvancedOpen ? 'Thu gọn bộ lọc' : 'Bộ lọc nâng cao'}</span>
+              {activeFiltersCount > 0 && (
+                <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary-100 text-[11px] font-semibold text-primary-700">
+                  {activeFiltersCount}
+                </span>
+              )}
             </button>
+
+            {activeFiltersCount > 0 && (
+              <button
+                type="button"
+                onClick={onReset}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-btn px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+              >
+                <RotateCcw className="size-3.5 text-text-secondary" aria-hidden="true" />
+                <span>Xóa bộ lọc</span>
+              </button>
+            )}
+          </div>
+
+          {totalResults !== undefined && (
+            <span className="text-xs text-text-secondary">
+              Tìm thấy <strong className="font-semibold text-text-primary">{totalResults}</strong> cơ sở
+            </span>
           )}
         </div>
+      )}
 
-        {totalResults !== undefined && (
-          <span className="text-xs text-text-secondary">
-            Tìm thấy <strong className="font-semibold text-text-primary">{totalResults}</strong> cơ sở
-          </span>
-        )}
-      </div>
-
-      {/* Vùng bộ lọc nâng cao */}
-      {isAdvancedOpen && (
-        <div className="mt-4 flex flex-col gap-4 border-t border-border pt-4">
+      {/* Vùng bộ lọc nâng cao (luôn mở ở sidebar) */}
+      {showAdvanced && (
+        <div className="mt-4 flex flex-col gap-4 pt-2">
           {/* Môn thể thao (chọn nhiều) */}
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-text-secondary">Môn thể thao</span>
@@ -297,10 +339,11 @@ export function VenueFilters({
                     onClick={() => handleSportToggle(sport.id)}
                     aria-pressed={isSelected}
                     className={cn(
-                      'inline-flex min-h-11 items-center rounded-btn px-3 py-1.5 text-xs font-medium transition-colors',
+                      'inline-flex items-center rounded-btn border-0 px-3 py-1.5 text-xs font-medium transition-colors',
+                      isSidebar ? 'min-h-9' : 'min-h-11',
                       isSelected
-                        ? 'bg-primary-700 text-white font-semibold dark:bg-primary-600'
-                        : 'border border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
+                        ? 'bg-primary-700 font-semibold text-white'
+                        : 'bg-bg-subtle text-text-secondary hover:bg-neutral-200/70 hover:text-text-primary',
                     )}
                   >
                     {sport.name}
@@ -311,7 +354,7 @@ export function VenueFilters({
           </div>
 
           {/* Đánh giá tối thiểu */}
-          <div className="flex flex-col gap-1.5 sm:max-w-xs">
+          <div className={cn('flex flex-col gap-1.5', !isSidebar && 'sm:max-w-xs')}>
             <label htmlFor="filter-rating" className="text-xs font-semibold text-text-secondary">
               Đánh giá sao tối thiểu
             </label>
@@ -321,7 +364,7 @@ export function VenueFilters({
               value={values.minRating ? String(values.minRating) : ''}
               onChange={handleRatingChange}
               disabled={isLoading}
-              className="min-h-11"
+              className="min-h-11 border-0 bg-bg-subtle shadow-none"
             >
               {RATING_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -335,17 +378,24 @@ export function VenueFilters({
           {amenities.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="text-xs font-semibold text-text-secondary">Tiện ích đi kèm</span>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+              <div
+                className={
+                  isSidebar
+                    ? 'grid grid-cols-1 gap-1.5'
+                    : 'grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4'
+                }
+              >
                 {amenities.map((amenity) => {
                   const isChecked = values.amenityIds?.includes(amenity.id) ?? false;
                   return (
                     <label
                       key={amenity.id}
                       className={cn(
-                        'flex min-h-11 cursor-pointer items-center gap-2 rounded-btn border p-2 text-xs transition-colors',
+                        'flex cursor-pointer items-center gap-2 rounded-btn border-0 p-2 text-xs transition-colors',
+                        isSidebar ? 'min-h-10' : 'min-h-11',
                         isChecked
-                          ? 'border-primary-600 bg-primary-50 text-primary-900 font-medium dark:bg-primary-950/40 dark:text-primary-200 dark:border-primary-500'
-                          : 'border-border bg-bg-card text-text-secondary hover:bg-bg-subtle hover:text-text-primary',
+                          ? 'bg-primary-50 font-semibold text-primary-700 ring-1 ring-primary-500/40'
+                          : 'bg-bg-subtle text-text-secondary hover:bg-neutral-200/70 hover:text-text-primary',
                       )}
                     >
                       <input
@@ -365,8 +415,13 @@ export function VenueFilters({
       )}
 
       {/* Dòng ghi chú bản quyền & mốc dữ liệu ĐVHC */}
-      <div className="mt-3 border-t border-border pt-2 text-right">
-        <p className="text-[11px] text-text-disabled">
+      <div
+        className={cn(
+          'mt-3 pt-2.5',
+          isSidebar ? 'text-left' : 'text-right',
+        )}
+      >
+        <p className="text-[11px] leading-relaxed text-text-disabled">
           Dữ liệu hành chính cập nhật đến 03/11/2026 — Nguồn: Tổng cục Thống kê &amp; CSDL Quốc gia về Đơn vị Hành chính
         </p>
       </div>

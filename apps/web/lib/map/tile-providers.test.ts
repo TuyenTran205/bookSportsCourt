@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_MAP_GLYPHS_URL,
   FALLBACK_ERROR_TILE_URL,
   TILE_PROVIDERS,
+  expandRasterTileUrls,
+  getMapGlyphsUrl,
   getTileProviders,
 } from './tile-providers';
 import type { MapProviderId } from './types';
 
 describe('tile-providers module (SPEC-MAP-003)', () => {
   const emptyEnv = {
+    NEXT_PUBLIC_VIETNAM_PMTILES_URL: undefined,
     NEXT_PUBLIC_CARTO_API_KEY: undefined,
     NEXT_PUBLIC_MAPTILER_API_KEY: undefined,
     NEXT_PUBLIC_STADIA_API_KEY: undefined,
@@ -186,20 +190,27 @@ describe('tile-providers module (SPEC-MAP-003)', () => {
 
     it('100% provider có attribution hợp lệ độ dài > 10 ký tự, maxNativeZoom <= maxZoom', () => {
       const allProviders = Object.values(TILE_PROVIDERS);
-      expect(allProviders.length).toBeGreaterThanOrEqual(9);
+      expect(allProviders.length).toBeGreaterThanOrEqual(10);
 
       allProviders.forEach((provider) => {
         expect(provider.id).toBeTruthy();
         expect(provider.name).toBeTruthy();
-        expect(provider.url).toContain('{z}');
-        expect(provider.url).toContain('{x}');
-        expect(provider.url).toContain('{y}');
         expect(provider.attribution).toBeTruthy();
         expect(provider.attribution.length).toBeGreaterThan(10);
         expect(provider.maxZoom).toBeGreaterThanOrEqual(17);
-        expect(provider.maxNativeZoom).toBeGreaterThanOrEqual(17);
         expect(provider.maxNativeZoom).toBeLessThanOrEqual(provider.maxZoom);
-        expect(provider.priority).toBeGreaterThanOrEqual(0);
+
+        if (provider.format === 'pmtiles') {
+          expect(provider.url).toContain('{pmtilesUrl}');
+          expect(provider.maxNativeZoom).toBeGreaterThanOrEqual(14);
+          expect(provider.priority).toBe(-1);
+        } else {
+          expect(provider.url).toContain('{z}');
+          expect(provider.url).toContain('{x}');
+          expect(provider.url).toContain('{y}');
+          expect(provider.maxNativeZoom).toBeGreaterThanOrEqual(17);
+          expect(provider.priority).toBeGreaterThanOrEqual(0);
+        }
       });
     });
 
@@ -213,6 +224,70 @@ describe('tile-providers module (SPEC-MAP-003)', () => {
       expect(run1).toEqual(run2);
       expect(TILE_PROVIDERS['carto-voyager'].url).toBe(originalCartoUrl);
       expect(JSON.stringify(TILE_PROVIDERS)).toBe(originalProvidersSnapshot);
+    });
+  });
+
+  describe('UT-MAP-07: Kích hoạt bản đồ Việt Nam PMTiles khi cấu hình NEXT_PUBLIC_VIETNAM_PMTILES_URL', () => {
+    it('đưa vietnam-pmtiles lên vị trí đầu tiên (priority -1) trước cả CARTO và Esri', () => {
+      const pmtilesUrl = 'https://pub-demo.r2.dev/vietnam.pmtiles';
+      const providers = getTileProviders({
+        ...emptyEnv,
+        NEXT_PUBLIC_VIETNAM_PMTILES_URL: pmtilesUrl,
+        NEXT_PUBLIC_CARTO_API_KEY: 'carto-key',
+      });
+
+      expect(providers[0]!.id).toBe('vietnam-pmtiles');
+      expect(providers[0]!.format).toBe('pmtiles');
+      expect(providers[0]!.url).toBe(pmtilesUrl);
+      expect(providers[1]!.id).toBe('carto-voyager');
+      expect(providers[2]!.id).toBe('esri-world-street');
+    });
+
+    it('bỏ qua vietnam-pmtiles khi URL rỗng hoặc chỉ chứa khoảng trắng', () => {
+      const providers = getTileProviders({
+        ...emptyEnv,
+        NEXT_PUBLIC_VIETNAM_PMTILES_URL: '   ',
+      });
+
+      expect(providers.find((p) => p.id === 'vietnam-pmtiles')).toBeUndefined();
+      expect(providers[0]!.id).toBe('esri-world-street');
+    });
+  });
+
+  describe('UT-MAP-08: expandRasterTileUrls & getMapGlyphsUrl (ADR-031)', () => {
+    it('mở rộng subdomain {s} và hậu tố retina {r} cho các raster provider của MapLibre', () => {
+      const osmUrls = expandRasterTileUrls(TILE_PROVIDERS['osm-standard']);
+      expect(osmUrls).toEqual([
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ]);
+
+      const cartoUrls = expandRasterTileUrls(
+        {
+          ...TILE_PROVIDERS['carto-voyager'],
+          url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=test',
+        },
+        true,
+      );
+      expect(cartoUrls).toEqual([
+        'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png?key=test',
+        'https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png?key=test',
+        'https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png?key=test',
+        'https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png?key=test',
+      ]);
+
+      const esriUrls = expandRasterTileUrls(TILE_PROVIDERS['esri-world-street']);
+      expect(esriUrls).toEqual([TILE_PROVIDERS['esri-world-street'].url]);
+    });
+
+    it('ưu tiên NEXT_PUBLIC_MAP_GLYPHS_URL khi cấu hình và fallback về DEFAULT_MAP_GLYPHS_URL', () => {
+      expect(getMapGlyphsUrl({ NEXT_PUBLIC_MAP_GLYPHS_URL: '   ' })).toBe(DEFAULT_MAP_GLYPHS_URL);
+      expect(
+        getMapGlyphsUrl({
+          NEXT_PUBLIC_MAP_GLYPHS_URL: 'https://map.booksportscourt.id.vn/map/fonts/{fontstack}/{range}.pbf',
+        }),
+      ).toBe('https://map.booksportscourt.id.vn/map/fonts/{fontstack}/{range}.pbf');
     });
   });
 });

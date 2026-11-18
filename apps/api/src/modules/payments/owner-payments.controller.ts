@@ -59,7 +59,7 @@ export class OwnerPaymentsController {
   @ApiQuery({
     name: "status",
     required: false,
-    enum: [...PAYMENT_STATUSES],
+    enum: [...PAYMENT_STATUSES, "all"],
     schema: { default: "submitted" },
   })
   @ApiQuery({

@@ -12,7 +12,7 @@ export interface PageSkeletonProps extends React.HTMLAttributes<HTMLDivElement> 
 
 /** Khối xám dùng chung — đồng bộ màu `bg-neutral-100` theo spec §6.3. */
 function Bar({ className, ...props }: React.ComponentProps<typeof Skeleton>) {
-  return <Skeleton className={cn('bg-neutral-100 dark:bg-neutral-800/80', className)} {...props} />;
+  return <Skeleton className={cn('bg-bg-subtle', className)} {...props} />;
 }
 
 /**

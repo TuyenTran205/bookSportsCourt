@@ -66,22 +66,29 @@ export class PublicStorage {
       }
     }
 
-    // Fallback lưu local: apps/web/public/uploads/avatars
-    const uploadDir = fileURLToPath(
-      new URL("../../../../web/public/uploads/avatars", import.meta.url),
-    );
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), buffer);
-    return `/uploads/avatars/${filename}`;
+    if (this.config.get<string>("NODE_ENV") === "production") {
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
+    }
+
+    // Fallback lưu local khi chạy dev: apps/web/public/uploads/avatars
+    try {
+      const uploadDir = fileURLToPath(
+        new URL("../../../../web/public/uploads/avatars", import.meta.url),
+      );
+      await mkdir(uploadDir, { recursive: true });
+      await writeFile(path.join(uploadDir, filename), buffer);
+      return `/uploads/avatars/${filename}`;
+    } catch {
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
+    }
   }
 
-  /**
-   * Lưu ảnh cơ sở thể thao (Venue image):
-   * - Tối ưu hóa ảnh với sharp: resize max 1920x1080 (fit inside, withoutEnlargement), WebP 85%.
-   * - Nếu cấu hình Cloudflare R2: Đẩy trực tiếp lên R2 Bucket với prefix `venues/` và trả về Public URL CDN.
-   * - Nếu chưa có cấu hình hoặc lỗi: Lưu fallback vào thư mục static `apps/web/public/uploads/venues`.
-   */
-  async saveVenueImage(venueId: string, buffer: Buffer, mimeType: string = "image/webp"): Promise<string> {
+  private async saveOptimizedPublicImage(
+    folder: "venues" | "review-reports",
+    filenamePrefix: string,
+    buffer: Buffer,
+    mimeType: string = "image/webp",
+  ): Promise<string> {
     let processedBuffer = buffer;
     let finalMime = mimeType;
     let ext = mimeType.split("/")[1] || "webp";
@@ -97,11 +104,11 @@ export class PublicStorage {
       // nếu sharp không convert được (SVG hoặc lỗi codec), giữ nguyên
     }
 
-    const filename = `venue-${venueId}-${Date.now()}.${ext}`;
+    const filename = `${filenamePrefix}-${Date.now()}.${ext}`;
     const r2 = this.getR2Config();
 
     if (r2) {
-      const key = `venues/${filename}`;
+      const key = `${folder}/${filename}`;
       try {
         await r2.client.send(
           new PutObjectCommand({
@@ -112,19 +119,44 @@ export class PublicStorage {
             CacheControl: "public, max-age=31536000, immutable",
           }),
         );
-        this.logger.log(`Đã tải ảnh cơ sở lên Cloudflare R2: ${key}`);
+        this.logger.log(`Đã tải ảnh lên Cloudflare R2: ${key}`);
         return `${r2.publicUrl}/${key}`;
       } catch (err) {
-        this.logger.error("Không thể tải ảnh cơ sở lên Cloudflare R2, chuyển sang lưu tạm thư mục local:", err);
+        this.logger.error(`Không thể tải ảnh ${folder} lên Cloudflare R2, chuyển sang lưu local:`, err);
       }
     }
 
-    // Fallback lưu local: apps/web/public/uploads/venues
-    const uploadDir = fileURLToPath(
-      new URL("../../../../web/public/uploads/venues", import.meta.url),
-    );
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, filename), processedBuffer);
-    return `/uploads/venues/${filename}`;
+    if (this.config.get<string>("NODE_ENV") === "production") {
+      return `data:${finalMime};base64,${processedBuffer.toString("base64")}`;
+    }
+
+    // Fallback lưu local khi chạy dev: apps/web/public/uploads/${folder}
+    try {
+      const uploadDir = fileURLToPath(
+        new URL(`../../../../web/public/uploads/${folder}`, import.meta.url),
+      );
+      await mkdir(uploadDir, { recursive: true });
+      await writeFile(path.join(uploadDir, filename), processedBuffer);
+      return `/uploads/${folder}/${filename}`;
+    } catch {
+      return `data:${finalMime};base64,${processedBuffer.toString("base64")}`;
+    }
+  }
+
+  /**
+   * Lưu ảnh cơ sở thể thao (Venue image):
+   * - Tối ưu hóa ảnh với sharp: resize max 1920x1080 (fit inside, withoutEnlargement), WebP 85%.
+   * - Nếu cấu hình Cloudflare R2: Đẩy trực tiếp lên R2 Bucket với prefix `venues/` và trả về Public URL CDN.
+   * - Nếu chưa có cấu hình hoặc lỗi: Lưu fallback vào thư mục static `apps/web/public/uploads/venues`.
+   */
+  async saveVenueImage(venueId: string, buffer: Buffer, mimeType: string = "image/webp"): Promise<string> {
+    return this.saveOptimizedPublicImage("venues", `venue-${venueId}`, buffer, mimeType);
+  }
+
+  /**
+   * Lưu ảnh minh chứng báo cáo đánh giá của chủ sân.
+   */
+  async saveReviewReportImage(reviewId: string, buffer: Buffer, mimeType: string = "image/webp"): Promise<string> {
+    return this.saveOptimizedPublicImage("review-reports", `report-${reviewId}`, buffer, mimeType);
   }
 }

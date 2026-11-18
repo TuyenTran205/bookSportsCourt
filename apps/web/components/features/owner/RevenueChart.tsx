@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { EmptyState } from '@/components/common/EmptyState';
 import { formatCurrency, formatShortDate } from '@/lib/utils/format';
+import { RECHARTS_TOOLTIP_PROPS } from '@/lib/utils/chart';
 import type { RevenuePoint } from '@bsc/shared';
 
 const ResponsiveContainer = Recharts.ResponsiveContainer as unknown as React.ComponentType<Record<string, unknown>>;
@@ -89,6 +90,7 @@ export function RevenueChart() {
                 tickFormatter={(value: number) => formatCurrency(value)}
               />
               <Tooltip
+                {...RECHARTS_TOOLTIP_PROPS}
                 formatter={(val: number) => [formatCurrency(val), t('revenue')]}
               />
               <Legend />

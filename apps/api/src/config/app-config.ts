@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseAllowedOrigins } from "./allowed-origins.js";
+import { GmailConfigSchema } from "./mail-config.js";
 const optionalText = () =>
   z.preprocess(
     (value) => (value === "" ? undefined : value),
@@ -42,6 +43,12 @@ export const AppConfigSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((v) => v === "true"),
+    MAIL_PROVIDER: z.enum(["resend", "gmail"]).default("resend"),
+    SMTP_HOST: optionalText(),
+    SMTP_PORT: optionalText(),
+    SMTP_SECURE: optionalText(),
+    SMTP_USER: optionalText(),
+    SMTP_PASS: optionalText(),
     RESEND_API_KEY: z.preprocess(
       (value) => (value === "" ? undefined : value),
       z.string().min(1).optional(),
@@ -111,8 +118,21 @@ export const AppConfigSchema = z
         });
       }
     }
+    if (config.MAIL_PROVIDER === "gmail") {
+      const gmail = GmailConfigSchema.safeParse(config);
+      if (!gmail.success) {
+        for (const issue of gmail.error.issues) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: issue.path,
+            message: "Invalid Gmail SMTP configuration.",
+          });
+        }
+      }
+    }
     if (
       config.BUSINESS_MAIL_ENABLED &&
+      config.MAIL_PROVIDER === "resend" &&
       (!config.RESEND_API_KEY || !config.MAIL_FROM)
     ) {
       ctx.addIssue({

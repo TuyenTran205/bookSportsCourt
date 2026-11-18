@@ -25,7 +25,7 @@ import { SPORT_ICON_OPTIONS } from './catalog-icons';
 
 const sportFormSchema = z.object({
   name: z.string().min(2, 'Tên môn thể thao ít nhất 2 ký tự').max(50),
-  icon: z.string().default('activity'),
+  icon: z.string().default('badminton'),
 });
 
 type SportFormData = z.infer<typeof sportFormSchema>;
@@ -50,7 +50,7 @@ export function SportFormDialog({ open, onClose }: SportFormDialogProps) {
     resolver: zodResolver(sportFormSchema),
     defaultValues: {
       name: '',
-      icon: 'activity',
+      icon: 'badminton',
     },
   });
 
@@ -58,7 +58,7 @@ export function SportFormDialog({ open, onClose }: SportFormDialogProps) {
 
   React.useEffect(() => {
     if (open) {
-      reset({ name: '', icon: 'activity' });
+      reset({ name: '', icon: 'badminton' });
     }
   }, [open, reset]);
 

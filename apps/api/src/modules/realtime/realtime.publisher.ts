@@ -42,29 +42,18 @@ export class RealtimePublisher {
     customerId: string | null,
     payload: BookingCreatedRealtimePayload,
   ) {
-    this.gateway.emitToOwner(
+    void this.sessions.sendPrivate(
       ownerId,
       SOCKET_EVENTS.BOOKING_CREATED,
       payload,
     );
-    if (customerId) {
+    if (customerId && customerId !== ownerId) {
       void this.sessions.sendPrivate(
         customerId,
         SOCKET_EVENTS.BOOKING_CREATED,
         payload,
       );
     }
-  }
-
-  emitHoldExpired(
-    customerId: string,
-    payload: { courtId: string; bookingId: string },
-  ) {
-    void this.sessions.sendPrivate(
-      customerId,
-      SOCKET_EVENTS.HOLD_EXPIRED,
-      payload,
-    );
   }
 
   emitNotification(
@@ -77,23 +66,26 @@ export class RealtimePublisher {
   emitBookingCancelled(
     customerId: string,
     payload: BookingCancelledRealtimePayload,
+    ownerId?: string,
   ) {
     void this.sessions.sendPrivate(
       customerId,
       SOCKET_EVENTS.BOOKING_CANCELLED,
       payload,
     );
+    if (ownerId && ownerId !== customerId) {
+      void this.sessions.sendPrivate(
+        ownerId,
+        SOCKET_EVENTS.BOOKING_CANCELLED,
+        payload,
+      );
+    }
   }
 
   emitPaymentSubmitted(
     ownerId: string,
     payload: PaymentSubmittedRealtimePayload,
   ) {
-    this.gateway.emitToOwner(
-      ownerId,
-      SOCKET_EVENTS.PAYMENT_SUBMITTED,
-      payload,
-    );
     void this.sessions.sendPrivate(
       ownerId,
       SOCKET_EVENTS.PAYMENT_SUBMITTED,
@@ -103,13 +95,21 @@ export class RealtimePublisher {
 
   emitBookingConfirmed(
     customerId: string,
-    payload: { paymentId: string; bookingId: string },
+    payload: { paymentId?: string; bookingId: string },
+    ownerId?: string,
   ) {
     void this.sessions.sendPrivate(
       customerId,
       SOCKET_EVENTS.BOOKING_CONFIRMED,
       payload,
     );
+    if (ownerId && ownerId !== customerId) {
+      void this.sessions.sendPrivate(
+        ownerId,
+        SOCKET_EVENTS.BOOKING_CONFIRMED,
+        payload,
+      );
+    }
   }
 
   emitPaymentRejected(
@@ -119,6 +119,36 @@ export class RealtimePublisher {
     void this.sessions.sendPrivate(
       customerId,
       SOCKET_EVENTS.PAYMENT_REJECTED,
+      payload,
+    );
+  }
+
+  emitHoldExpired(
+    customerId: string,
+    payload: { courtId: string; bookingId: string },
+    ownerId?: string,
+  ) {
+    void this.sessions.sendPrivate(
+      customerId,
+      SOCKET_EVENTS.HOLD_EXPIRED,
+      payload,
+    );
+    if (ownerId && ownerId !== customerId) {
+      void this.sessions.sendPrivate(
+        ownerId,
+        SOCKET_EVENTS.HOLD_EXPIRED,
+        payload,
+      );
+    }
+  }
+
+  emitNotificationCreated(
+    userId: string,
+    payload: { id: string; type: string; title: string },
+  ) {
+    void this.sessions.sendPrivate(
+      userId,
+      SOCKET_EVENTS.NOTIFICATION_CREATED,
       payload,
     );
   }

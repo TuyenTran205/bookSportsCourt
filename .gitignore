@@ -50,3 +50,7 @@ tmp/
 .tmp/
 *.txt
 /.merge-backup/
+
+# Bản đồ vector dung lượng lớn (lưu trên Cloudflare R2, không commit Git)
+*.pmtiles
+*.osm.pbf

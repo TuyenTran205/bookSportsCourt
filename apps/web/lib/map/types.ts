@@ -4,6 +4,7 @@
 
 /** Danh sách định danh các nhà cung cấp tile bản đồ được hỗ trợ */
 export type MapProviderId =
+  | 'vietnam-pmtiles'
   | 'carto-voyager'
   | 'esri-world-street'
   | 'osm-france-hot'
@@ -14,6 +15,9 @@ export type MapProviderId =
   | 'geoapify-osm-bright'
   | 'thunderforest-transport';
 
+/** Định dạng nguồn dữ liệu bản đồ */
+export type MapTileFormat = 'raster' | 'pmtiles';
+
 /** Cấu hình chi tiết của một nhà cung cấp tile */
 export interface TileProviderConfig {
   /** Định danh duy nhất */
@@ -22,7 +26,7 @@ export interface TileProviderConfig {
   name: string;
   /** Nhãn thân thiện cho người dùng */
   label?: string;
-  /** Mẫu URL tile có chứa {z}/{x}/{y} và các tham số {s}, {r}, {apiKey} nếu có */
+  /** Mẫu URL tile có chứa {z}/{x}/{y} hoặc đường dẫn file .pmtiles */
   url: string;
   /** Chuỗi HTML ghi nhận quyền tác giả bắt buộc */
   attribution: string;
@@ -32,11 +36,15 @@ export interface TileProviderConfig {
   maxZoom: number;
   /** Độ phóng đại tối đa thực tế của máy chủ tile (Leaflet tự co phóng khi zoom sâu hơn) */
   maxNativeZoom: number;
+  /** Độ phóng đại tối đa của dữ liệu vector gốc trong file PMTiles */
+  maxDataZoom?: number;
   /** Độ phóng đại tối thiểu */
   minZoom?: number;
-  /** Có bắt buộc API key hay không */
+  /** Định dạng nguồn tile (mặc định raster PNG/JPG) */
+  format?: MapTileFormat;
+  /** Có bắt buộc API key hay URL cấu hình hay không */
   requiresKey: boolean;
-  /** Tên biến môi trường NEXT_PUBLIC_* chứa API key */
+  /** Tên biến môi trường NEXT_PUBLIC_* chứa API key hoặc URL cấu hình */
   keyEnvVar?: string;
   /** Điểm ưu tiên cơ bản (số càng nhỏ độ ưu tiên càng cao) */
   priority: number;

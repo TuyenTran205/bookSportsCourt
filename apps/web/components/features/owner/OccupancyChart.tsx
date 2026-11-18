@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { EmptyState } from '@/components/common/EmptyState';
 import { formatPercent, formatShortDate } from '@/lib/utils/format';
+import { RECHARTS_TOOLTIP_PROPS } from '@/lib/utils/chart';
 
 const ResponsiveContainer = Recharts.ResponsiveContainer as unknown as React.ComponentType<Record<string, unknown>>;
 const BarChart = Recharts.BarChart as unknown as React.ComponentType<Record<string, unknown>>;
@@ -89,6 +90,7 @@ export function OccupancyChart() {
                 axisLine={false}
               />
               <Tooltip
+                {...RECHARTS_TOOLTIP_PROPS}
                 formatter={(val: number) => [formatPercent(val / 100), t('occupancyRate')]}
               />
               <Legend />

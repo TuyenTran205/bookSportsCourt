@@ -68,10 +68,10 @@ export function HoldCountdown({ expiresAt, onExpire, className }: HoldCountdownP
       className={cn(
         'flex items-center gap-2 rounded-input border px-3 py-2',
         expired
-          ? 'border-danger/30 bg-danger/5 text-danger'
+          ? 'border-danger/30 bg-danger/10 text-danger'
           : urgent
-            ? 'border-amber-300 bg-amber-50 text-amber-800'
-            : 'border-neutral-200 bg-neutral-50 text-neutral-700',
+            ? 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200'
+            : 'border-border bg-bg-subtle text-text-secondary',
         className,
       )}
     >

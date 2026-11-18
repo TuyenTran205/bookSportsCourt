@@ -28,11 +28,11 @@ const buttonVariants = cva(
       variant: {
         primary: 'bg-primary-700 text-white hover:bg-primary-600 active:bg-primary-800',
         secondary:
-          'bg-bg-subtle text-text-primary hover:bg-neutral-200 dark:hover:bg-neutral-700 active:bg-neutral-300 dark:active:bg-neutral-600',
+          'bg-bg-subtle text-text-primary hover:bg-neutral-200 active:bg-neutral-300',
         outline:
-          'border border-border bg-bg text-text-primary hover:bg-bg-subtle active:bg-neutral-200 dark:active:bg-neutral-700',
+          'border border-border bg-bg-card text-text-primary hover:bg-bg-subtle active:bg-neutral-200',
         ghost:
-          'text-text-secondary hover:bg-bg-subtle hover:text-text-primary active:bg-neutral-200 dark:active:bg-neutral-700',
+          'text-text-secondary hover:bg-bg-subtle hover:text-text-primary active:bg-neutral-200',
         danger: 'bg-danger text-white hover:bg-red-700 active:bg-red-800',
       },
       size: {

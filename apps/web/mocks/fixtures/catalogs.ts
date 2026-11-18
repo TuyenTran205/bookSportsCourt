@@ -58,11 +58,11 @@ export const areas: Area[] = [
 ];
 
 export const sports: Sport[] = [
-  { id: '019273c5-7f00-7001-0000-000000000001', name: 'Cầu lông', slug: 'cau-long', icon: 'activity' },
-  { id: '019273c5-7f00-7001-0000-000000000002', name: 'Bóng đá', slug: 'bong-da', icon: 'circle-dot' },
-  { id: '019273c5-7f00-7001-0000-000000000003', name: 'Pickleball', slug: 'pickleball', icon: 'table-2' },
-  { id: '019273c5-7f00-7001-0000-000000000004', name: 'Tennis', slug: 'tennis', icon: 'circle' },
-  { id: '019273c5-7f00-7001-0000-000000000005', name: 'Bóng rổ', slug: 'bong-ro', icon: 'circle-dashed' },
+  { id: '019273c5-7f00-7001-0000-000000000001', name: 'Cầu lông', slug: 'cau-long', icon: 'badminton' },
+  { id: '019273c5-7f00-7001-0000-000000000002', name: 'Bóng đá', slug: 'bong-da', icon: 'soccer' },
+  { id: '019273c5-7f00-7001-0000-000000000003', name: 'Pickleball', slug: 'pickleball', icon: 'pickleball' },
+  { id: '019273c5-7f00-7001-0000-000000000004', name: 'Tennis', slug: 'tennis', icon: 'tennis' },
+  { id: '019273c5-7f00-7001-0000-000000000005', name: 'Bóng rổ', slug: 'bong-ro', icon: 'basketball' },
   { id: '019273c5-7f00-7001-0000-000000000006', name: 'Bóng chuyền', slug: 'bong-chuyen', icon: 'volleyball' },
 ];
 

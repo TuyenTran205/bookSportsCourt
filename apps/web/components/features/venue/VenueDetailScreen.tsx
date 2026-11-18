@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
 import { Pagination } from '@/components/common/Pagination';
 import { SlotGrid } from '@/components/features/booking/SlotGrid';
+import { BookingConfirmDialog } from '@/components/features/venue/BookingConfirmDialog';
 import { VenueLocationMapWrapper } from '@/components/features/venue/VenueLocationMapWrapper';
 import { VenueOpeningHours } from '@/components/features/venue/VenueOpeningHours';
 import { VenueJsonLd } from '@/components/features/venue/VenueJsonLd';
@@ -70,12 +71,14 @@ export function VenueDetailScreen() {
   const [selected, setSelected] = React.useState<string[]>([]);
   const [activeImage, setActiveImage] = React.useState(0);
   const [reviewPage, setReviewPage] = React.useState(1);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
 
   const slotsQuery = useVenueSlots(slug, date);
   const summaryQuery = useReviewSummary(slug);
   const reviewsQuery = useVenueReviews(slug, reviewPage);
 
   // Realtime: vào room của sân+ngày để lưới slot tự cập nhật khi có người giữ/đặt/huỷ.
+  // `useVenueRoom` tự bỏ qua khi SocketProvider không mount (vd. trang public/Storybook).
   useVenueRoom(venue?.id, date);
 
   const activeCourts = React.useMemo(
@@ -114,8 +117,27 @@ export function VenueDetailScreen() {
     return formatTimeRange(minStart, maxEnd);
   }, [slotsQuery.data]);
 
-  const selectedSlots = courtSlots[0]?.slots ?? [];
+  const selectedSlots = React.useMemo(
+    () => courtSlots[0]?.slots ?? [],
+    [courtSlots],
+  );
   const total = totalPrice(selectedSlots, selected);
+  const pickedSlotItems = React.useMemo(
+    () =>
+      [...selected]
+        .sort()
+        .map((start) => selectedSlots.find((s) => s.start === start))
+        .filter((s): s is NonNullable<typeof s> => Boolean(s)),
+    [selected, selectedSlots],
+  );
+  const selectedCourt = React.useMemo(
+    () => activeCourts.find((c) => c.id === courtId) ?? null,
+    [activeCourts, courtId],
+  );
+  const selectedSportName = React.useMemo(
+    () => venue?.sports.find((s) => s.id === selectedCourt?.sportId)?.name ?? null,
+    [venue?.sports, selectedCourt?.sportId],
+  );
   const sortedSelected = [...selected].sort();
   const firstKey = sortedSelected[0];
   const lastKey = sortedSelected[sortedSelected.length - 1];
@@ -136,8 +158,14 @@ export function VenueDetailScreen() {
   const images = [...venue.images].sort((a, b) => a.sortOrder - b.sortOrder);
   const hero = images[activeImage] ?? images[0];
   const loginHref = `/login?next=${encodeURIComponent(pathname)}`;
+  const selectedRangeText = firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null;
 
-  const onContinue = async () => {
+  const onOpenConfirm = () => {
+    if (!isAuthenticated || !courtId || selected.length === 0 || hold.isPending) return;
+    setConfirmOpen(true);
+  };
+
+  const onConfirmHold = async () => {
     if (!isAuthenticated || !courtId || selected.length === 0 || hold.isPending) return;
     // Mỗi key là `start` ISO của một block 30 phút; API nhận từng block riêng.
     // Lấy đúng cặp start/end từ danh sách slot thật để giữ nguyên định dạng múi giờ (+07:00).
@@ -157,10 +185,12 @@ export function VenueDetailScreen() {
         slots,
         idempotencyKey: idempotencyKey.current,
       });
+      setConfirmOpen(false);
       router.push(`/checkout/${result.booking.id}`);
     } catch (err) {
       // Lần thử sau là một ý định mới (vd. slot vừa bị người khác giữ) nên cần khoá mới.
       idempotencyKey.current = null;
+      setConfirmOpen(false);
       setSelected([]);
       void slotsQuery.refetch();
       toast.error(err instanceof ApiError ? err.message : t('holdFailed'));
@@ -178,11 +208,11 @@ export function VenueDetailScreen() {
         <span className="text-neutral-900">{venue.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 gap-8">
         {/* ===== Cột trái: thông tin ===== */}
         <div className="min-w-0 space-y-8">
           <section aria-label={t('gallery')}>
-            <div className="relative aspect-[16/9] overflow-hidden rounded-card bg-neutral-100">
+            <div className="relative aspect-[32/9] min-h-40 overflow-hidden rounded-card bg-neutral-100">
               {hero ? (
                 <Image
                   src={hero.url}
@@ -275,6 +305,101 @@ export function VenueDetailScreen() {
             {venue.description && <p className="leading-relaxed text-neutral-700">{venue.description}</p>}
           </section>
 
+          <Card className="space-y-4 p-4" aria-labelledby="booking-panel-heading">
+            <h2 id="booking-panel-heading" className="text-lg font-semibold text-neutral-900">
+              {t('pickSlot')}
+            </h2>
+            <div className="flex min-w-0 items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
+                disabled={date <= today}
+                onClick={() => {
+                  setDate(addDays(date, -1));
+                  resetSelection();
+                }}
+              >
+                {t('prevDay')}
+              </Button>
+              <Input
+                type="date"
+                className="min-w-0 flex-1"
+                value={date}
+                min={today}
+                aria-label={t('date')}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  setDate(e.target.value);
+                  resetSelection();
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
+                onClick={() => {
+                  setDate(addDays(date, 1));
+                  resetSelection();
+                }}
+              >
+                {t('nextDay')}
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-600">
+              <p>{formatDateWithWeekday(date)}</p>
+              {dayOperatingHours && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
+                  <Clock className="size-3.5" aria-hidden="true" />
+                  <span>
+                    {t('openHours')}: {dayOperatingHours}
+                  </span>
+                </span>
+              )}
+            </div>
+            {activeCourts.length > 1 && (
+              <Tabs
+                value={courtId ?? activeCourts[0]?.id ?? ''}
+                onValueChange={(v) => {
+                  setCourtId(v);
+                  resetSelection();
+                }}
+              >
+                <TabsList aria-label={t('courts')}>
+                  {activeCourts.map((c) => (
+                    <TabsTrigger key={c.id} value={c.id}>
+                      {c.name}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+            {slotsQuery.isLoading ? (
+              <Skeleton className="h-32 w-full" />
+            ) : slotsQuery.isError ? (
+              <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
+            ) : (
+              <SlotGrid
+                courts={courtSlots}
+                courtNames={courtNames}
+                selected={selected}
+                onSelectedChange={setSelected}
+                onLimitReached={(max) => toast.warning(tSlot('maxSlotsReached', { max }))}
+              />
+            )}
+            <div className="border-t border-border pt-4">
+              <BookingBar
+                count={selected.length}
+                total={total}
+                range={selectedRangeText}
+                isAuthenticated={isAuthenticated}
+                loginHref={loginHref}
+                onContinue={onOpenConfirm}
+                pending={hold.isPending}
+              />
+            </div>
+          </Card>
+
           {typeof venue.lat === 'number' &&
             typeof venue.lng === 'number' &&
             Number.isFinite(venue.lat) &&
@@ -353,120 +478,23 @@ export function VenueDetailScreen() {
             onPageChange={setReviewPage}
           />
         </div>
-
-        {/* ===== Cột phải: chọn lịch ===== */}
-        <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start" aria-label={t('bookingPanel')}>
-          <Card className="space-y-4 p-4">
-            <h2 className="text-lg font-semibold text-neutral-900">{t('pickSlot')}</h2>
-
-            <div className="flex min-w-0 items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
-                disabled={date <= today}
-                onClick={() => {
-                  setDate(addDays(date, -1));
-                  resetSelection();
-                }}
-              >
-                {t('prevDay')}
-              </Button>
-              <Input
-                type="date"
-                className="min-w-0 flex-1"
-                value={date}
-                min={today}
-                aria-label={t('date')}
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  setDate(e.target.value);
-                  resetSelection();
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
-                onClick={() => {
-                  setDate(addDays(date, 1));
-                  resetSelection();
-                }}
-              >
-                {t('nextDay')}
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-600">
-              <p>{formatDateWithWeekday(date)}</p>
-              {dayOperatingHours && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                  <Clock className="size-3.5" aria-hidden="true" />
-                  <span>
-                    {t('openHours')}: {dayOperatingHours}
-                  </span>
-                </span>
-              )}
-            </div>
-
-            {activeCourts.length > 1 && (
-              <Tabs
-                value={courtId ?? activeCourts[0]?.id ?? ''}
-                onValueChange={(v) => {
-                  setCourtId(v);
-                  resetSelection();
-                }}
-              >
-                <TabsList aria-label={t('courts')}>
-                  {activeCourts.map((c) => (
-                    <TabsTrigger key={c.id} value={c.id}>
-                      {c.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            )}
-
-            {slotsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
-            ) : slotsQuery.isError ? (
-              <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
-            ) : (
-              <SlotGrid
-                courts={courtSlots}
-                courtNames={courtNames}
-                selected={selected}
-                onSelectedChange={setSelected}
-                onLimitReached={(max) => toast.warning(tSlot('maxSlotsReached', { max }))}
-              />
-            )}
-          </Card>
-
-          <Card className="hidden space-y-3 p-4 lg:block">
-            <BookingBar
-              count={selected.length}
-              total={total}
-              range={firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null}
-              isAuthenticated={isAuthenticated}
-              loginHref={loginHref}
-              onContinue={onContinue}
-              pending={hold.isPending}
-            />
-          </Card>
-        </aside>
       </div>
 
-      {/* Thanh đặt sân cố định ở đáy cho mobile */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg-card p-4 shadow-lg lg:hidden">
-        <BookingBar
-          count={selected.length}
-          total={total}
-          range={firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null}
-          isAuthenticated={isAuthenticated}
-          loginHref={loginHref}
-          onContinue={onContinue}
-          pending={hold.isPending}
-        />
-      </div>
+      <BookingConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        venueName={venue.name}
+        venueAddress={venue.address}
+        courtName={selectedCourt?.name ?? 'Sân thi đấu'}
+        sportName={selectedSportName}
+        date={date}
+        timeRange={selectedRangeText}
+        slots={pickedSlotItems}
+        totalPrice={total}
+        cancellationPolicy={venue.cancellationPolicy}
+        pending={hold.isPending}
+        onConfirm={onConfirmHold}
+      />
     </main>
   );
 }

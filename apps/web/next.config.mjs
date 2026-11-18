@@ -28,11 +28,25 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: '**.r2.dev' },
+      { protocol: 'https', hostname: 'booksportscourt.id.vn' },
+      { protocol: 'https', hostname: '**.booksportscourt.id.vn' },
     ],
   },
 
   eslint: {
     dirs: ['app', 'components', 'lib', 'hooks', 'store', 'mocks', 'types'],
+  },
+
+  async rewrites() {
+    const backendUrl = (
+      process.env.NEXT_PUBLIC_API_URL || 'https://booksportscourt.onrender.com'
+    ).replace(/\/+$/, '');
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+    ];
   },
 };
 

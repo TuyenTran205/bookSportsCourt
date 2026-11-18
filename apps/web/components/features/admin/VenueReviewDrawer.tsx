@@ -108,20 +108,20 @@ export function VenueReviewDrawer({ venue, open, onClose, onEdit, onDelete }: Ve
                 Danh sách sân con ({venue.courts?.length ?? 0}):
               </span>
               {(venue.courts ?? []).length > 0 ? (
-                <div className="max-h-44 overflow-y-auto rounded-card border border-neutral-200 divide-y divide-neutral-100 bg-white">
+                <div className="max-h-44 overflow-y-auto rounded-card border border-border divide-y divide-border bg-bg-card">
                   {venue.courts!.map((court) => {
                     const sportName = court.sportId ? sportsMap.get(court.sportId) : null;
                     return (
-                      <div key={court.id} className="flex items-center justify-between p-2 hover:bg-neutral-50/60">
+                      <div key={court.id} className="flex items-center justify-between p-2 hover:bg-bg-subtle/60">
                         <div className="flex flex-col">
-                          <p className="font-medium text-neutral-900">{court.name}</p>
+                          <p className="font-medium text-text-primary">{court.name}</p>
                           {court.description && (
-                            <p className="text-[11px] text-neutral-500 line-clamp-1">{court.description}</p>
+                            <p className="text-[11px] text-text-secondary line-clamp-1">{court.description}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
                           {sportName && (
-                            <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600">
+                            <span className="rounded bg-bg-subtle px-1.5 py-0.5 text-[11px] font-medium text-text-secondary">
                               {sportName}
                             </span>
                           )}
@@ -129,8 +129,8 @@ export function VenueReviewDrawer({ venue, open, onClose, onEdit, onDelete }: Ve
                             className={cn(
                               "inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-semibold",
                               court.status === 'active'
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-neutral-100 text-neutral-600 border border-neutral-200"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60"
+                                : "bg-bg-subtle text-text-secondary border border-border"
                             )}
                           >
                             {court.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}

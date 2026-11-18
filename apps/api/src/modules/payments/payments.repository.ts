@@ -38,7 +38,9 @@ export class PaymentsRepository {
       async (tx) => {
         const scope = and(
           eq(venues.ownerId, ownerId),
-          eq(payments.status, query.status),
+          query.status && query.status !== "all"
+            ? eq(payments.status, query.status)
+            : undefined,
           query.venueId ? eq(venues.id, query.venueId) : undefined,
         );
         const counts = await tx
@@ -58,6 +60,8 @@ export class PaymentsRepository {
             booking: bookings,
             court: courts,
             venue: venues,
+            customerFullName: users.fullName,
+            customerPhone: users.phone,
             start: sql`lower(${bookings.during})`.mapWith(
               (value) => new Date(String(value)),
             ),
@@ -69,6 +73,7 @@ export class PaymentsRepository {
           .innerJoin(bookings, eq(bookings.id, payments.bookingId))
           .innerJoin(courts, eq(courts.id, bookings.courtId))
           .innerJoin(venues, eq(venues.id, courts.venueId))
+          .leftJoin(users, eq(users.id, bookings.customerId))
           .where(scope)
           .orderBy(desc(payments.createdAt), desc(payments.id))
           .limit(query.limit)

@@ -86,7 +86,7 @@ export class OwnerApplicationsController {
   @ApiQuery({
     name: "status",
     required: false,
-    enum: [...OWNER_APPLICATION_STATUSES],
+    enum: [...OWNER_APPLICATION_STATUSES, "all"],
     schema: { default: "pending" },
   })
   @ApiQuery({

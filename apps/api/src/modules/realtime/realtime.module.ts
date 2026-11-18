@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 
 import { AuthModule } from "../auth/auth.module.js";
 import { BookingsModule } from "../bookings/bookings.module.js";
@@ -9,7 +9,9 @@ import { RealtimePublisher } from "./realtime.publisher.js";
 
 @Module({
   // ScheduleModule.forRoot() đã đăng ký toàn cục ở AppModule — @Interval hoạt động bình thường.
-  imports: [AuthModule, BookingsModule],
+  // forwardRef: BookingsModule cũng import RealtimeModule (publisher) → phá vòng lặp ESM
+  // "Cannot access 'BookingsModule' before initialization".
+  imports: [AuthModule, forwardRef(() => BookingsModule)],
   providers: [
     RealtimeGateway,
     RealtimePublisher,

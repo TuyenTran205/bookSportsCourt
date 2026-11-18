@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "name": "vietnam_maritime_labels",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hoang-sa",
+        "kind": "archipelago",
+        "name": "Quần đảo Hoàng Sa",
+        "subtitle": "(TP. Đà Nẵng, Việt Nam)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [112.0, 16.5]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "truong-sa",
+        "kind": "archipelago",
+        "name": "Quần đảo Trường Sa",
+        "subtitle": "(Tỉnh Khánh Hòa, Việt Nam)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [114.2, 10.2]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "bien-dong",
+        "kind": "sea",
+        "name": "BIỂN ĐÔNG",
+        "subtitle": "Việt Nam"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [112.8, 13.5]
+      }
+    }
+  ]
+}

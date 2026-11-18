@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import type { User, UserRole, UserStatus } from '@bsc/shared';
 
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState';
@@ -38,6 +39,7 @@ export function AdminUsersScreen() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+  const [pendingStatusUser, setPendingStatusUser] = React.useState<User | null>(null);
 
   // Debounce search query
   React.useEffect(() => {
@@ -60,25 +62,29 @@ export function AdminUsersScreen() {
   const users = usersQuery.data?.data ?? [];
   const meta = usersQuery.data?.meta;
 
-  const handleToggleStatus = async (user: User) => {
+  const handleToggleStatus = (user: User) => {
     const isLocking = user.status === 'active';
-    const actionLabel = isLocking ? 'khoá' : 'mở khoá';
 
     if (user.role === 'admin' && isLocking) {
       toast.error('Không thể khoá tài khoản Quản trị viên');
       return;
     }
 
-    if (!window.confirm(`Bạn có chắc chắn muốn ${actionLabel} tài khoản "${user.fullName || user.email}"?`)) {
-      return;
-    }
+    setPendingStatusUser(user);
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!pendingStatusUser) return;
+    const isLocking = pendingStatusUser.status === 'active';
+    const actionLabel = isLocking ? 'khoá' : 'mở khoá';
 
     try {
       await statusMutation.mutateAsync({
-        id: user.id,
+        id: pendingStatusUser.id,
         status: isLocking ? 'suspended' : 'active',
       });
       toast.success(`Đã ${actionLabel} tài khoản thành công`);
+      setPendingStatusUser(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : tCommon('error'));
     }
@@ -88,23 +94,23 @@ export function AdminUsersScreen() {
     switch (role) {
       case 'admin':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700">
-            <ShieldAlert className="size-3 text-purple-600" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700 dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
+            <ShieldAlert className="size-3 text-purple-600 dark:text-purple-400" />
             Quản trị viên
           </span>
         );
       case 'owner':
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-            <Shield className="size-3 text-blue-600" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300">
+            <Shield className="size-3 text-blue-600 dark:text-blue-400" />
             Chủ sân
           </span>
         );
       case 'customer':
       default:
         return (
-          <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
-            <UserIcon className="size-3 text-neutral-500" />
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-bg-subtle px-2 py-0.5 text-xs font-medium text-text-secondary">
+            <UserIcon className="size-3 text-text-secondary" />
             Khách hàng
           </span>
         );
@@ -295,6 +301,35 @@ export function AdminUsersScreen() {
           setRoleDialogOpen(false);
           setSelectedUser(null);
         }}
+      />
+
+      <ConfirmDialog
+        open={pendingStatusUser !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingStatusUser(null);
+        }}
+        variant={pendingStatusUser?.status === 'active' ? 'danger' : 'primary'}
+        icon={pendingStatusUser?.status === 'active' ? Lock : Unlock}
+        title={
+          pendingStatusUser?.status === 'active'
+            ? 'Xác nhận khoá tài khoản'
+            : 'Xác nhận mở khoá tài khoản'
+        }
+        description={
+          pendingStatusUser && (
+            <>
+              Bạn có chắc chắn muốn{' '}
+              {pendingStatusUser.status === 'active' ? 'khoá' : 'mở khoá'} tài khoản{' '}
+              <span className="font-semibold text-text-primary">
+                &ldquo;{pendingStatusUser.fullName || pendingStatusUser.email}&rdquo;
+              </span>
+              ?
+            </>
+          )
+        }
+        confirmLabel={pendingStatusUser?.status === 'active' ? 'Khoá tài khoản' : 'Mở khoá'}
+        isPending={statusMutation.isPending}
+        onConfirm={confirmToggleStatus}
       />
     </div>
   );

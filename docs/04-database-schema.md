@@ -1,10 +1,15 @@
 # 04 – Database Schema
 
-> **Phiên bản:** 1.8.4 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-11-12
 
 ## Quy ước chung
 
-### Bổ sung ĐVHC 2 cấp (34 Tỉnh / 3.321 Xã) – migration 0012
+### Bổ sung thông tin tài khoản ngân hàng và CCCD hồ sơ chủ sân – migration 0014, 0015
+
+- `0014_allow_12_digit_cccd_owner_applications.sql`: Nới lỏng ràng buộc `chk_owner_app_tax_code` trên bảng `owner_applications` để chấp nhận 10 chữ số (MST doanh nghiệp ngắn), 12 chữ số (CCCD cá nhân chủ hộ) hoặc 13 chữ số (MST chi nhánh/hộ kinh doanh cá thể): `CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$')`.
+- `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin TEXT`, `bank_name TEXT`, `account_no TEXT`, `account_name TEXT` vào bảng `owner_applications`. Người dùng khi đăng ký làm chủ sân khai báo ngay số tài khoản nhận tiền chuyển khoản. Khi cơ sở đầu tiên được tạo hoặc khi xem tài khoản thanh toán cơ sở (`venue_payment_accounts`), hệ thống tự động kế thừa thông tin này để chủ sân không phải nhập lại từ đầu. Xem [ADR-029](18-decision-log.md).
+
+### Bổ sung ĐVHC 2 cấp (34 Tỉnh / 3.321 Xã) – migration 0012, 0013
 
 `0012_add-administrative-units-columns.sql` bổ sung cột `areas.code VARCHAR(10)`, `areas.unaccent_name TEXT`, nới lỏng `venues.district_id DROP NOT NULL` và thêm `venues.ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT`. Mở rộng ràng buộc `areas_type_check` chấp nhận `('province', 'ward', 'district')` và cập nhật ràng buộc phân cấp `areas_check` cho phép `ward` có `parent_id IS NOT NULL`. Bổ sung index `idx_areas_code`, `idx_areas_type_parent`, `idx_areas_unaccent_trgm` và `idx_venues_province_ward`. Xem [ADR-022, ADR-023](18-decision-log.md).
 
@@ -82,8 +87,8 @@ flowchart LR
 
     USER["<b>NGƯỜI DÙNG</b><br/><u>id</u> · email · họ tên<br/>SĐT · vai trò · trạng thái"]:::entity
     VENUE["<b>CƠ SỞ</b><br/><u>id</u> · tên · slug · địa chỉ<br/>trạng thái"]:::entity
-    AREA["<b>KHU VỰC</b><br/><u>id</u> · loại (tỉnh/quận) · tên"]:::entity
-    APP["<b>HỒ SƠ CHỦ SÂN</b><br/><u>id</u> · tên doanh nghiệp · SĐT<br/>trạng thái duyệt"]:::entity
+    AREA["<b>KHU VỰC</b><br/><u>id</u> · mã GSO · loại (tỉnh/xã) · tên"]:::entity
+    APP["<b>HỒ SƠ CHỦ SÂN</b><br/><u>id</u> · tên doanh nghiệp · SĐT · MST/CCCD<br/>tọa độ · tài khoản ngân hàng · trạng thái duyệt"]:::entity
     BANK["<b>TÀI KHOẢN NHẬN TIỀN</b><br/>ngân hàng · số tài khoản<br/>tên chủ tài khoản"]:::entity
     POLICY["<b>CHÍNH SÁCH HỦY & CỌC</b><br/>hủy trước (giờ) · % hoàn · % cọc"]:::entity
     COURT["<b>SÂN</b><br/><u>id</u> · tên · mô tả<br/>trạng thái"]:::entity
@@ -202,10 +207,15 @@ erDiagram
         id user_id FK
         id reviewed_by FK "nullable"
         string business_name
+        string tax_code "nullable, 10/12/13 chữ số"
         string phone
         string address
         numeric lat "nullable, vĩ độ ghim bản đồ"
         numeric lng "nullable, kinh độ ghim bản đồ"
+        string bank_bin "nullable, mã BIN ngân hàng"
+        string bank_name "nullable, tên ngân hàng"
+        string account_no "nullable, số tài khoản"
+        string account_name "nullable, tên chủ tài khoản"
         string note
         string status "pending, approved, rejected"
         string review_note
@@ -214,9 +224,11 @@ erDiagram
     areas {
         id id PK
         id parent_id FK "nullable, NULL = tỉnh/thành"
-        string type "province, district"
+        string code "UK, mã GSO tỉnh/xã"
+        string type "province, ward, district"
         string name
         string slug "UK cùng parent_id"
+        string unaccent_name "tìm kiếm không dấu"
     }
     venue_payment_accounts {
         id venue_id PK, FK
@@ -470,10 +482,15 @@ erDiagram
         UUID id PK
         UUID user_id FK
         TEXT business_name
+        TEXT tax_code "CHECK 10/12/13 chữ số"
         TEXT phone
         TEXT address
         NUMERIC_10_7 lat "nullable, vĩ độ ghim bản đồ"
         NUMERIC_10_7 lng "nullable, kinh độ ghim bản đồ"
+        TEXT bank_bin "nullable, mã BIN ngân hàng"
+        TEXT bank_name "nullable, tên ngân hàng"
+        TEXT account_no "nullable, số tài khoản"
+        TEXT account_name "nullable, tên chủ tài khoản"
         TEXT note
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected"
         TEXT review_note
@@ -897,11 +914,15 @@ CREATE TABLE owner_applications (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id),
   business_name TEXT NOT NULL,
-  tax_code TEXT CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{13})$'),
+  tax_code      TEXT CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$'),
   phone         TEXT NOT NULL,
   address       TEXT NOT NULL,
   lat           NUMERIC(10, 7),
   lng           NUMERIC(10, 7),
+  bank_bin      TEXT,
+  bank_name     TEXT,
+  account_no    TEXT,
+  account_name  TEXT,
   note          TEXT,
   status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
   review_note   TEXT,

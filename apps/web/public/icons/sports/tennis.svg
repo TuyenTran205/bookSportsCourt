@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56" fill="none">
+  <defs>
+    <!-- Pin shadow filter -->
+    <filter id="shadow-tennis" x="0" y="0" width="48" height="56" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#0F172A" flood-opacity="0.28" />
+    </filter>
+    <!-- Pin gradient -->
+    <linearGradient id="grad-tennis" x1="24" y1="2" x2="24" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#84cc16" />
+      <stop offset="100%" stop-color="#4d7c0f" />
+    </linearGradient>
+  </defs>
+
+  <!-- Inverted Teardrop Pin Silhouette (Map Location Pin) -->
+  <path
+    d="M 24 52 C 15 42 6 30 6 20 A 18 18 0 1 1 42 20 C 42 30 33 42 24 52 Z"
+    fill="url(#grad-tennis)"
+    stroke="#FFFFFF"
+    stroke-width="1.5"
+    filter="url(#shadow-tennis)"
+  />
+
+  <!-- Circular Badge Surface inside Pin -->
+  <circle cx="24" cy="20" r="13.5" fill="#FFFFFF" />
+  <circle cx="24" cy="20" r="13.5" fill="none" stroke="#4d7c0f" stroke-width="0.75" stroke-opacity="0.35" />
+
+  <!-- Sport Representation Symbol Inside Pin -->
+  <g>
+    <!-- Tennis Racket tilted -->
+      <g transform="rotate(-30 22 19)">
+        <!-- Oval racket head -->
+        <ellipse cx="22" cy="15" rx="6.5" ry="7.5" fill="none" stroke="#4D7C0F" stroke-width="1.2" />
+        <!-- Cross strings grid -->
+        <line x1="18.5" y1="12" x2="18.5" y2="18" stroke="#4D7C0F" stroke-width="0.5" opacity="0.6" />
+        <line x1="22" y1="8" x2="22" y2="22" stroke="#4D7C0F" stroke-width="0.5" opacity="0.7" />
+        <line x1="25.5" y1="12" x2="25.5" y2="18" stroke="#4D7C0F" stroke-width="0.5" opacity="0.6" />
+        <line x1="16.5" y1="13" x2="27.5" y2="13" stroke="#4D7C0F" stroke-width="0.5" opacity="0.6" />
+        <line x1="16" y1="16" x2="28" y2="16" stroke="#4D7C0F" stroke-width="0.5" opacity="0.7" />
+        <line x1="17" y1="19" x2="27" y2="19" stroke="#4D7C0F" stroke-width="0.5" opacity="0.6" />
+        <!-- Throat and handle -->
+        <path d="M 20.5 22.5 L 21 28 L 23 28 L 23.5 22.5" fill="#4D7C0F" stroke="#365314" stroke-width="0.8" />
+        <!-- Grip wraps -->
+        <line x1="21" y1="24.5" x2="23" y2="24.5" stroke="#FFFFFF" stroke-width="0.6" />
+        <line x1="21" y1="26.5" x2="23" y2="26.5" stroke="#FFFFFF" stroke-width="0.6" />
+      </g>
+      <!-- Tennis ball with signature curved seam -->
+      <g transform="translate(29, 21)">
+        <circle cx="0" cy="0" r="4.5" fill="#BEF264" stroke="#4D7C0F" stroke-width="1" />
+        <!-- Curved tennis seams -->
+        <path d="M -3 -3 Q 0 0 -3 3" fill="none" stroke="#FFFFFF" stroke-width="0.9" />
+        <path d="M 3 -3 Q 0 0 3 3" fill="none" stroke="#FFFFFF" stroke-width="0.9" />
+      </g>
+  </g>
+</svg>

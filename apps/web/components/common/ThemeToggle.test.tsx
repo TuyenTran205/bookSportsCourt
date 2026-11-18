@@ -82,8 +82,8 @@ describe('ThemeToggle component (SPEC-FE-BATCH3-01 / TODO-13)', () => {
     });
 
     const { container } = render(<ThemeToggle />);
-    // Moon icon từ lucide-react render svg với class size-4 text-neutral-200
-    const icon = container.querySelector('svg.text-neutral-200');
+    // Moon icon từ lucide-react render svg với semantic token text-text-primary
+    const icon = container.querySelector('svg.lucide-moon.text-text-primary');
     expect(icon).not.toBeNull();
   });
 

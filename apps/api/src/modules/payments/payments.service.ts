@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from "@nestjs/common";
@@ -21,6 +22,8 @@ import { PaymentsRepository } from "./payments.repository.js";
 import { ProofStorage } from "../uploads/proof-storage.js";
 import { ProofCleanupService } from "../uploads/proof-cleanup.service.js";
 import { decodeProof, type ProofFile } from "../uploads/proof-image.js";
+import { RealtimePublisher } from "../realtime/realtime.publisher.js";
+import { BookingsService } from "../bookings/bookings.service.js";
 type Bundle = NonNullable<Awaited<ReturnType<PaymentsRepository["lookup"]>>>;
 type Payment = NonNullable<Awaited<ReturnType<PaymentsRepository["payment"]>>>;
 
@@ -32,6 +35,8 @@ export class PaymentsService {
     private readonly storage: ProofStorage,
     private readonly cleanup: ProofCleanupService,
     private readonly config: ConfigService,
+    @Optional() private readonly realtime?: RealtimePublisher,
+    @Optional() private readonly bookings?: BookingsService,
   ) {}
   private id(raw: unknown) {
     const result = phase4IdSchema.safeParse(raw);
@@ -264,6 +269,21 @@ export class PaymentsService {
             };
           });
           // Sign after waiting/committing, so the client receives a fresh 5-minute URL.
+          this.realtime?.emitPaymentSubmitted(result.row.venue.ownerId, {
+            paymentId: result.payment.id,
+            bookingId: result.row.booking.id,
+            venueId: result.row.venue.id,
+          });
+          this.realtime?.emitNotificationCreated(result.row.venue.ownerId, {
+            id: result.payment.id,
+            type: "payment_submitted",
+            title: "Có chứng từ thanh toán mới",
+          });
+          await this.bookings?.publishSlotUpdate(
+            result.row.venue.id,
+            result.row.booking.courtId,
+            result.row.start,
+          );
           return this.view(
             result.row,
             result.payment,

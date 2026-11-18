@@ -10,12 +10,12 @@ import { adminQueryKeys } from './useAdminDashboard';
 
 export const ownerApplicationsQueryKeys = {
   all: ['admin', 'owner-applications'] as const,
-  list: (params: { status?: OwnerApplicationStatus; page?: number; limit?: number }) =>
+  list: (params: { status?: OwnerApplicationStatus | 'all'; page?: number; limit?: number }) =>
     [...ownerApplicationsQueryKeys.all, 'list', params] as const,
 };
 
 export function useOwnerApplications(
-  params: { status?: OwnerApplicationStatus; page?: number; limit?: number } = {},
+  params: { status?: OwnerApplicationStatus | 'all'; page?: number; limit?: number } = {},
 ) {
   return useQuery({
     queryKey: ownerApplicationsQueryKeys.list(params),

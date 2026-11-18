@@ -58,7 +58,7 @@ export function VenueCompareScreen() {
     const singleVenue = venues[0]!;
     return (
       <main className="container max-w-4xl space-y-6 py-8">
-        <nav aria-label="breadcrumb" className="text-xs text-neutral-600 dark:text-neutral-400">
+        <nav aria-label="breadcrumb" className="text-xs text-text-secondary">
           <ol className="flex items-center gap-1.5">
             <li>
               <Link href="/" className="hover:text-primary-700 hover:underline">
@@ -72,15 +72,15 @@ export function VenueCompareScreen() {
               </Link>
             </li>
             <li aria-hidden="true">/</li>
-            <li className="font-semibold text-neutral-900 dark:text-white">{t('title')}</li>
+            <li className="font-semibold text-text-primary">{t('title')}</li>
           </ol>
         </nav>
 
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
             {t('title')}
           </h1>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{t('subtitle')}</p>
+          <p className="mt-1 text-sm text-text-secondary">{t('subtitle')}</p>
         </div>
 
         <div
@@ -98,12 +98,12 @@ export function VenueCompareScreen() {
               type="button"
               onClick={() => removeVenue(singleVenue.id)}
               aria-label={t('removeVenueAria', { name: singleVenue.name })}
-              className="absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-full bg-white/90 text-neutral-500 shadow-xs hover:bg-neutral-100 hover:text-danger dark:bg-neutral-800 dark:text-neutral-300"
+              className="absolute right-3 top-3 z-10 inline-flex size-8 items-center justify-center rounded-full border border-border bg-bg-card/90 text-text-secondary shadow-xs hover:bg-bg-subtle hover:text-danger"
             >
               <X className="size-4" aria-hidden="true" />
             </button>
 
-            <div className="relative aspect-video w-full overflow-hidden rounded-md bg-neutral-100 dark:bg-neutral-800">
+            <div className="relative aspect-video w-full overflow-hidden rounded-md bg-bg-subtle">
               {singleVenue.coverUrl ? (
                 <Image
                   src={singleVenue.coverUrl}
@@ -113,17 +113,17 @@ export function VenueCompareScreen() {
                   className="object-cover"
                 />
               ) : (
-                <div className="flex size-full items-center justify-center text-neutral-400">
+                <div className="flex size-full items-center justify-center text-text-disabled">
                   <Building2 className="size-8" aria-hidden="true" />
                 </div>
               )}
             </div>
 
             <div className="mt-3 space-y-2">
-              <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+              <h3 className="text-base font-bold text-text-primary">
                 {singleVenue.name}
               </h3>
-              <p className="flex items-start gap-1 text-xs text-neutral-600 dark:text-neutral-400">
+              <p className="flex items-start gap-1 text-xs text-text-secondary">
                 <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                 <span className="line-clamp-1">{singleVenue.address}</span>
               </p>
@@ -142,10 +142,10 @@ export function VenueCompareScreen() {
               <Plus className="size-6" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-900 dark:text-white">
+              <p className="text-sm font-semibold text-text-primary">
                 {t('addMore')}
               </p>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="mt-1 text-xs text-text-secondary">
                 {t('selectMoreVenues')}
               </p>
             </div>
@@ -159,7 +159,7 @@ export function VenueCompareScreen() {
   return (
     <main className="container max-w-7xl space-y-6 py-6 pb-24 lg:py-8">
       {/* Breadcrumb điều hướng */}
-      <nav aria-label="breadcrumb" className="text-xs text-neutral-600 dark:text-neutral-400">
+      <nav aria-label="breadcrumb" className="text-xs text-text-secondary">
         <ol className="flex items-center gap-1.5">
           <li>
             <Link href="/" className="hover:text-primary-700 hover:underline">
@@ -173,17 +173,17 @@ export function VenueCompareScreen() {
             </Link>
           </li>
           <li aria-hidden="true">/</li>
-          <li className="font-semibold text-neutral-900 dark:text-white">{t('title')}</li>
+          <li className="font-semibold text-text-primary">{t('title')}</li>
         </ol>
       </nav>
 
       {/* Header trang so sánh */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
             {t('title')}
           </h1>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{t('subtitle')}</p>
+          <p className="mt-1 text-sm text-text-secondary">{t('subtitle')}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ export function VenueCompareScreen() {
             variant="ghost"
             size="sm"
             onClick={clearVenues}
-            className="text-xs text-neutral-500 hover:text-danger dark:text-neutral-400"
+            className="text-xs text-text-secondary hover:text-danger"
           >
             <Trash2 className="size-3.5" aria-hidden="true" />
             <span>{t('clearAll')}</span>
@@ -217,7 +217,7 @@ export function VenueCompareScreen() {
             <tr className="border-b border-border bg-bg-subtle text-text-primary">
               <th
                 scope="col"
-                className="w-40 sm:w-56 p-4 align-top font-bold text-neutral-900 dark:text-white"
+                className="w-40 sm:w-56 p-4 align-top font-bold text-text-primary"
               >
                 {t('criteriaHeader')}
               </th>
@@ -228,7 +228,7 @@ export function VenueCompareScreen() {
                   className="min-w-[240px] sm:min-w-[280px] p-4 align-top"
                 >
                   <div className="space-y-3">
-                    <div className="relative aspect-video w-full overflow-hidden rounded-md border border-neutral-200 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-md border border-border bg-bg-subtle">
                       {venue.coverUrl ? (
                         <Image
                           src={venue.coverUrl}
@@ -238,7 +238,7 @@ export function VenueCompareScreen() {
                           className="object-cover"
                         />
                       ) : (
-                        <div className="flex size-full items-center justify-center text-neutral-400">
+                        <div className="flex size-full items-center justify-center text-text-disabled">
                           <Building2 className="size-8" aria-hidden="true" />
                         </div>
                       )}
@@ -253,7 +253,7 @@ export function VenueCompareScreen() {
                     </div>
 
                     <div>
-                      <h2 className="line-clamp-2 text-base font-bold text-neutral-900 dark:text-white">
+                      <h2 className="line-clamp-2 text-base font-bold text-text-primary">
                         {venue.name}
                       </h2>
                     </div>
@@ -267,12 +267,12 @@ export function VenueCompareScreen() {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
+          <tbody className="divide-y divide-border">
             {/* Hàng 2: Môn thể thao */}
             <tr>
               <th
                 scope="row"
-                className="bg-neutral-50/30 p-4 font-semibold text-neutral-700 dark:bg-neutral-800/20 dark:text-neutral-300"
+                className="bg-bg-subtle/60 p-4 font-semibold text-text-primary"
               >
                 {t('sports')}
               </th>
@@ -283,13 +283,13 @@ export function VenueCompareScreen() {
                       (venue.sports ?? []).map((sport) => (
                         <span
                           key={sport.id}
-                          className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                          className="rounded-full bg-bg-subtle px-2.5 py-0.5 text-xs text-text-primary"
                         >
                           {sport.name}
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-neutral-400">—</span>
+                      <span className="text-xs text-text-disabled">—</span>
                     )}
                   </div>
                 </td>
@@ -300,7 +300,7 @@ export function VenueCompareScreen() {
             <tr>
               <th
                 scope="row"
-                className="bg-neutral-50/30 p-4 font-semibold text-neutral-700 dark:bg-neutral-800/20 dark:text-neutral-300"
+                className="bg-bg-subtle/60 p-4 font-semibold text-text-primary"
               >
                 {t('fromPrice')}
               </th>
@@ -311,7 +311,7 @@ export function VenueCompareScreen() {
                     <div className="space-y-1">
                       <p className="text-base font-bold text-primary-700 dark:text-primary-300">
                         {venue.fromPrice === null ? 'Liên hệ' : formatCurrency(venue.fromPrice)}
-                        <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">
+                        <span className="text-xs font-normal text-text-secondary">
                           {' '}
                           / 30 phút
                         </span>
@@ -332,7 +332,7 @@ export function VenueCompareScreen() {
             <tr>
               <th
                 scope="row"
-                className="bg-neutral-50/30 p-4 font-semibold text-neutral-700 dark:bg-neutral-800/20 dark:text-neutral-300"
+                className="bg-bg-subtle/60 p-4 font-semibold text-text-primary"
               >
                 {t('rating')}
               </th>
@@ -344,15 +344,15 @@ export function VenueCompareScreen() {
                         className="size-4 fill-amber-400 text-amber-400"
                         aria-hidden="true"
                       />
-                      <span className="font-bold text-neutral-900 dark:text-white">
+                      <span className="font-bold text-text-primary">
                         {venue.ratingAvg.toFixed(1)}
                       </span>
-                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                      <span className="text-xs text-text-secondary">
                         ({formatNumber(venue.reviewCount)} đánh giá)
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-neutral-400">Chưa có đánh giá</span>
+                    <span className="text-xs text-text-disabled">Chưa có đánh giá</span>
                   )}
                 </td>
               ))}
@@ -362,7 +362,7 @@ export function VenueCompareScreen() {
             <tr>
               <th
                 scope="row"
-                className="bg-neutral-50/30 p-4 font-semibold text-neutral-700 dark:bg-neutral-800/20 dark:text-neutral-300"
+                className="bg-bg-subtle/60 p-4 font-semibold text-text-primary"
               >
                 {t('location')}
               </th>
@@ -370,12 +370,12 @@ export function VenueCompareScreen() {
                 <td key={venue.id} className="p-4 align-top">
                   <div className="space-y-1">
                     {(venue.districtName || venue.provinceName) && (
-                      <p className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                      <p className="text-xs font-semibold text-text-primary">
                         {[venue.districtName, venue.provinceName].filter(Boolean).join(', ')}
                       </p>
                     )}
-                    <p className="flex items-start gap-1 text-xs text-neutral-600 dark:text-neutral-400">
-                      <MapPin className="mt-0.5 size-3.5 shrink-0 text-neutral-400" aria-hidden="true" />
+                    <p className="flex items-start gap-1 text-xs text-text-secondary">
+                      <MapPin className="mt-0.5 size-3.5 shrink-0 text-text-disabled" aria-hidden="true" />
                       <span>{venue.address}</span>
                     </p>
                   </div>
@@ -387,7 +387,7 @@ export function VenueCompareScreen() {
             <tr>
               <th
                 scope="row"
-                className="bg-neutral-50/30 p-4 font-semibold text-neutral-700 dark:bg-neutral-800/20 dark:text-neutral-300"
+                className="bg-bg-subtle/60 p-4 font-semibold text-text-primary"
               >
                 {t('actions')}
               </th>

@@ -1,6 +1,6 @@
 # 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.4.30 | **Cập nhật lần cuối:** 2026-11-09 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.4.31 | **Cập nhật lần cuối:** 2026-11-17 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -25,6 +25,7 @@
 | `15-team-and-roadmap.md` | Phân công & lộ trình | Tất cả |
 | `16-backlog.md` | Backlog issue | Khi planning |
 | `17-report-outline.md` | Dàn ý báo cáo | Khi viết báo cáo |
+| `gmail-smtp-setup.md` | Cấu hình Gmail SMTP, retry và chuyển provider | Khi dùng Gmail thay Resend |
 | `18-decision-log.md` | Nhật ký quyết định | Khi thêm dep/thay đổi lớn |
 | `implemented-apis.md` | Tổng hợp API thực tế đã triển khai | Khi tích hợp và tra cứu API hiện có |
 | `api-todo.md` | Danh mục toàn bộ API backend cần triển khai | Khi lập kế hoạch và triển khai các API còn thiếu |
@@ -66,6 +67,7 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-11-17 | BSC-045: thêm Gmail SMTP tùy chọn, ADR-032/Nodemailer, kiểm tra TLS/sender/config, bảo vệ retry/crash và chuyển provider; hướng dẫn cấu hình và test hồi quy. | Mail/Auth/config/tests, package/lockfile, `.env.example`, `02`, `05`, `18`, `gmail-smtp-setup` |
 | 2026-11-09 | Tạo tài liệu `api-todo.md` tổng hợp 31 API REST còn thiếu, Socket.IO Gateway và bảng chuẩn hoá FE-BE. | `docs/api-todo.md`, `docs/00-README.md` |
 | 2026-11-08 | Gỡ đường dẫn cũ tới tài liệu và artifact Phase 4 đã chuyển đi; giữ nội dung nghiệp vụ, tiến độ và lịch sử thay đổi. | Mục lục và các tài liệu Markdown tham chiếu Phase 4 |
 | 2026-11-06 | Bước15: backend275/275/shared14/14, typecheck và compiler build đạt; xuất runtime candidate24 paths/25 operations, report pending refund, Postman33 request/13 body validate shared; bổ sung Swagger errors/build/API contract gate, ghi lint/toolchain/Phase2/provider/FE còn thiếu; chưa chốt OpenAPI-3 final | API build config/package, contract script/test/Postman exporter, controller metadata/CI, OpenAPI0.10.0/runtime/report/Postman, Bước15/progress/plan, docs10/11/API thực tế/roadmap/00 |

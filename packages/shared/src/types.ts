@@ -164,6 +164,8 @@ export interface OwnerProfile {
 
 export interface OwnerApplication {
   id: string;
+  userId?: string;
+  applicantName?: string | null;
   user: UserSummary;
   businessName: string;
   phone?: string;
@@ -172,15 +174,18 @@ export interface OwnerApplication {
   lng?: number | null;
   taxCode: string | null;
   idCardUrl: string | null;
-  bankBin?: string;
-  bankName?: string;
-  accountNo?: string;
-  accountName?: string;
+  bankBin?: string | null;
+  bankName?: string | null;
+  accountNo?: string | null;
+  accountName?: string | null;
   note?: string | null;
   status: OwnerApplicationStatus;
   rejectReason: string | null;
+  reviewNote?: string | null;
+  reviewedBy?: string | null;
   reviewedAt: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // ===== Cơ sở & sân con =====
@@ -418,6 +423,10 @@ export interface Review {
   ownerReply: string | null;
   ownerRepliedAt: string | null;
   isVisible?: boolean;
+  reportStatus?: 'none' | 'pending' | 'resolved' | 'dismissed';
+  reportReason?: string | null;
+  reportImageUrl?: string | null;
+  reportedAt?: string | null;
   createdAt: string;
   customer?: Pick<UserSummary, 'id' | 'fullName' | 'avatarUrl'>;
 }
