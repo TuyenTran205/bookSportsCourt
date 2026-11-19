@@ -77,21 +77,112 @@ export function SlotGrid({
   const [anchor, setAnchor] = React.useState<{ courtId: string; index: number } | null>(null);
   const [hovered, setHovered] = React.useState<{ courtId: string; index: number } | null>(null);
   const draggingRef = React.useRef(false);
+  const dragModeRef = React.useRef<'add' | 'remove'>('add');
+  const pointerClientXRef = React.useRef<number | null>(null);
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const anchorRef = React.useRef<{ courtId: string; index: number } | null>(null);
+  const hoveredRef = React.useRef<{ courtId: string; index: number } | null>(null);
+
+  const updateHoveredFromPointer = React.useCallback(
+    (clientX: number) => {
+      const currentAnchor = anchorRef.current;
+      const container = scrollContainerRef.current;
+      if (!currentAnchor || !container) return;
+
+      const cells = Array.from(
+        container.querySelectorAll<HTMLButtonElement>('[data-slot-court][data-slot-index]'),
+      ).filter((cell) => cell.dataset.slotCourt === currentAnchor.courtId);
+      if (cells.length === 0) return;
+
+      let bestIndex = 0;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (const cell of cells) {
+        const rect = cell.getBoundingClientRect();
+        const distance = clientX < rect.left
+          ? rect.left - clientX
+          : clientX > rect.right
+            ? clientX - rect.right
+            : 0;
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = Number(cell.dataset.slotIndex);
+        }
+      }
+      const nextHovered = { courtId: currentAnchor.courtId, index: bestIndex };
+      hoveredRef.current = nextHovered;
+      setHovered(nextHovered);
+    },
+    [],
+  );
 
   // Kéo ra ngoài lưới rồi nhả chuột vẫn phải kết thúc thao tác.
   React.useEffect(() => {
     const stop = () => {
       draggingRef.current = false;
+      anchorRef.current = null;
+      hoveredRef.current = null;
+      pointerClientXRef.current = null;
       setAnchor(null);
       setHovered(null);
     };
-    window.addEventListener('pointerup', stop);
     window.addEventListener('pointercancel', stop);
     return () => {
-      window.removeEventListener('pointerup', stop);
       window.removeEventListener('pointercancel', stop);
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!anchor) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!draggingRef.current) return;
+      pointerClientXRef.current = event.clientX;
+      updateHoveredFromPointer(event.clientX);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+
+    let rafId = 0;
+    const EDGE_ZONE = 56;
+    const tickAutoScroll = () => {
+      const container = scrollContainerRef.current;
+      const clientX = pointerClientXRef.current;
+      if (container && clientX !== null && draggingRef.current) {
+        const rect = container.getBoundingClientRect();
+        const rightDistance = rect.right - clientX;
+        const leftDistance = clientX - rect.left;
+        let delta = 0;
+
+        if (
+          rightDistance >= 0 &&
+          rightDistance < EDGE_ZONE &&
+          container.scrollLeft + container.clientWidth < container.scrollWidth - 1
+        ) {
+          const intensity = Math.min(2.5, Math.max(0.2, (EDGE_ZONE - rightDistance) / EDGE_ZONE));
+          delta = Math.ceil(intensity * 14);
+        } else if (
+          leftDistance >= 0 &&
+          leftDistance < EDGE_ZONE &&
+          container.scrollLeft > 0
+        ) {
+          const intensity = Math.min(2.5, Math.max(0.2, (EDGE_ZONE - leftDistance) / EDGE_ZONE));
+          delta = -Math.ceil(intensity * 14);
+        }
+
+        if (delta !== 0) {
+          container.scrollLeft += delta;
+          updateHoveredFromPointer(clientX);
+        }
+      }
+      if (draggingRef.current) rafId = window.requestAnimationFrame(tickAutoScroll);
+    };
+    rafId = window.requestAnimationFrame(tickAutoScroll);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [anchor, updateHoveredFromPointer]);
 
   /**
    * Realtime: block đang chọn bị người khác đặt mất thì tự bỏ khỏi lựa chọn,
@@ -121,14 +212,46 @@ export function SlotGrid({
   }, [anchor, hovered, courts]);
 
   const commit = React.useCallback(
-    (keys: string[]) => {
+    (keys: string[], mode: 'add' | 'remove' = 'add') => {
       if (keys.length === 0) return;
+      if (mode === 'remove') {
+        const removed = new Set(keys);
+        const next = selected.filter((key) => !removed.has(key));
+        if (next.length !== selected.length) onSelectedChange(next);
+        return;
+      }
       const { keys: next, truncated } = mergeSelection(selected, keys, MAX_SLOTS_PER_BOOKING);
       if (truncated) onLimitReached?.(MAX_SLOTS_PER_BOOKING);
       if (next.length !== selected.length) onSelectedChange(next);
     },
     [selected, onSelectedChange, onLimitReached],
   );
+
+  React.useEffect(() => {
+    const finishDrag = () => {
+      if (!draggingRef.current) return;
+      const currentAnchor = anchorRef.current;
+      const currentHovered = hoveredRef.current;
+      if (currentAnchor && currentHovered && currentAnchor.courtId === currentHovered.courtId) {
+        const court = courts.find((c) => c.courtId === currentAnchor.courtId);
+        if (court) {
+          const selectable = court.slots.map((s) => isSelectable(s.status));
+          const indexes = computeDragRange(currentAnchor.index, currentHovered.index, selectable);
+          const keys = indexes.map((i) => court.slots[i]!.start);
+          commit(keys, dragModeRef.current);
+        }
+      }
+      draggingRef.current = false;
+      anchorRef.current = null;
+      hoveredRef.current = null;
+      pointerClientXRef.current = null;
+      setAnchor(null);
+      setHovered(null);
+    };
+
+    window.addEventListener('pointerup', finishDrag);
+    return () => window.removeEventListener('pointerup', finishDrag);
+  }, [courts, commit]);
 
   /** Bàn phím: Enter/Space bật tắt một block — đường vào không cần chuột. */
   const handleKeyDown = (event: React.KeyboardEvent, slot: Slot) => {
@@ -142,33 +265,27 @@ export function SlotGrid({
 
   const renderSlotCell = (court: CourtSlots, slot: Slot, index: number) => (
     <SlotCell
+      courtId={court.courtId}
       slot={slot}
       index={index}
       isSelected={selectedSet.has(slot.start)}
       isPreview={previewKeys.has(slot.start)}
+      isPreviewRemoving={dragModeRef.current === 'remove'}
       onPointerDown={(i) => {
         if (!isSelectable(slot.status)) return;
         draggingRef.current = true;
-        setAnchor({ courtId: court.courtId, index: i });
-        setHovered({ courtId: court.courtId, index: i });
+        dragModeRef.current = selectedSet.has(slot.start) ? 'remove' : 'add';
+        const nextAnchor = { courtId: court.courtId, index: i };
+        anchorRef.current = nextAnchor;
+        hoveredRef.current = nextAnchor;
+        setAnchor(nextAnchor);
+        setHovered(nextAnchor);
       }}
       onPointerEnter={(i) => {
         if (!draggingRef.current) return;
-        setHovered({ courtId: court.courtId, index: i });
-      }}
-      onPointerUp={(i) => {
-        if (!draggingRef.current || !anchor || anchor.courtId !== court.courtId) return;
-        const selectable = court.slots.map((s) => isSelectable(s.status));
-        const indexes = computeDragRange(anchor.index, i, selectable);
-        const keys = indexes.map((n) => court.slots[n]!.start);
-        if (keys.length === 1 && selectedSet.has(keys[0]!)) {
-          onSelectedChange(selected.filter((k) => k !== keys[0]));
-        } else {
-          commit(keys);
-        }
-        draggingRef.current = false;
-        setAnchor(null);
-        setHovered(null);
+        const nextHovered = { courtId: court.courtId, index: i };
+        hoveredRef.current = nextHovered;
+        setHovered(nextHovered);
       }}
       onKeyDown={handleKeyDown}
       label={t(slot.status === 'held' && slot.mine ? 'myHold' : slot.status)}
@@ -191,6 +308,7 @@ export function SlotGrid({
 
       {courts.length === 1 ? (
         <div
+          ref={scrollContainerRef}
           className="-mx-4 flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:mx-0 sm:px-0"
           role="group"
           aria-label={t('selectHint')}
@@ -205,7 +323,10 @@ export function SlotGrid({
           ))}
         </div>
       ) : (
-      <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:px-0">
+      <div
+        ref={scrollContainerRef}
+        className="-mx-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:px-0"
+      >
         <table className="w-full min-w-[520px] border-separate border-spacing-1">
           <caption className="sr-only">{t('selectHint')}</caption>
           <thead>
@@ -258,26 +379,28 @@ export function SlotGrid({
 }
 
 interface SlotCellProps {
+  courtId: string;
   slot: Slot;
   index: number;
   isSelected: boolean;
   isPreview: boolean;
+  isPreviewRemoving: boolean;
   label: string;
   onPointerDown: (index: number) => void;
   onPointerEnter: (index: number) => void;
-  onPointerUp: (index: number) => void;
   onKeyDown: (event: React.KeyboardEvent, slot: Slot) => void;
 }
 
 function SlotCell({
+  courtId,
   slot,
   index,
   isSelected,
   isPreview,
+  isPreviewRemoving,
   label,
   onPointerDown,
   onPointerEnter,
-  onPointerUp,
   onKeyDown,
 }: SlotCellProps) {
   const selectable = isSelectable(slot.status);
@@ -285,6 +408,8 @@ function SlotCell({
   return (
     <button
       type="button"
+      data-slot-court={courtId}
+      data-slot-index={index}
       // `aria-pressed` để trình đọc màn hình biết block đã được chọn hay chưa.
       aria-pressed={isSelected}
       aria-label={`${formatTime(slot.start)} ${label}${
@@ -296,14 +421,17 @@ function SlotCell({
         onPointerDown(index);
       }}
       onPointerEnter={() => onPointerEnter(index)}
-      onPointerUp={() => onPointerUp(index)}
       onKeyDown={(e) => onKeyDown(e, slot)}
       className={cn(
         'flex h-11 w-full touch-none select-none flex-col items-center justify-center rounded-btn',
         'text-xs leading-tight transition-[filter,box-shadow] duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1',
         SLOT_CLASSES[slot.status],
-        (isSelected || isPreview) && SELECTED_CLASSES,
+        isPreview
+          ? isPreviewRemoving
+            ? 'ring-2 ring-neutral-500 ring-offset-1 opacity-60'
+            : SELECTED_CLASSES
+          : isSelected && SELECTED_CLASSES,
       )}
     >
       <span className="font-medium">{formatCurrency(slot.price)}</span>
