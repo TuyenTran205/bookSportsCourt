@@ -55,11 +55,11 @@ export function AmenitiesCatalogTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-text-secondary">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <p className="text-xs sm:text-sm text-text-secondary">
           Danh mục tiện ích tiêu chuẩn áp dụng cho các cơ sở thể thao ({amenities.length} tiện ích).
         </p>
-        <Button onClick={() => setDialogOpen(true)} size="sm">
+        <Button onClick={() => setDialogOpen(true)} size="sm" className="self-start sm:self-auto">
           <Plus className="mr-1.5 size-4" />
           Thêm tiện ích
         </Button>

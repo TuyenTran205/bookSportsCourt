@@ -14,6 +14,7 @@ import { Pagination } from '@/components/common/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -356,7 +357,55 @@ export function OwnerPricingScreen() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile & Tablet View (lg:hidden) */}
+                <div className="divide-y divide-neutral-100 lg:hidden">
+                  {hoursDraft.map((hour) => (
+                    <div key={hour.weekday} className="p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm text-neutral-800">
+                          {weekdayLabels[hour.weekday]}
+                        </span>
+                        <label className="inline-flex items-center gap-2 text-xs text-neutral-600">
+                          <input
+                            type="checkbox"
+                            checked={!hour.isClosed}
+                            onChange={(event) => updateHour(hour.weekday, { isClosed: !event.target.checked })}
+                            className="size-4 accent-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                            aria-label={t('openDayLabel', { day: weekdayLabels[hour.weekday] })}
+                          />
+                          <span>{hour.isClosed ? t('closedDay') : t('openDay')}</span>
+                        </label>
+                      </div>
+                      {!hour.isClosed && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-[11px] text-neutral-500 block mb-1">{t('openTimeColumn')}</span>
+                            <TimeSelect
+                              value={hour.openTime}
+                              disabled={hour.isClosed}
+                              onChange={(event) => updateHour(hour.weekday, { openTime: event.target.value })}
+                              aria-label={t('openTimeForDay', { day: weekdayLabels[hour.weekday] })}
+                              className="h-9 w-full"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[11px] text-neutral-500 block mb-1">{t('closeTimeColumn')}</span>
+                            <TimeSelect
+                              value={hour.closeTime}
+                              disabled={hour.isClosed}
+                              onChange={(event) => updateHour(hour.weekday, { closeTime: event.target.value })}
+                              aria-label={t('closeTimeForDay', { day: weekdayLabels[hour.weekday] })}
+                              className="h-9 w-full"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table (hidden lg:block) */}
+                <div className="hidden lg:block overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm">
                     <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
                       <tr>
@@ -385,23 +434,21 @@ export function OwnerPricingScreen() {
                             </label>
                           </td>
                           <td className="px-4 py-3">
-                            <Input
-                              type="time"
+                            <TimeSelect
                               value={hour.openTime}
                               disabled={hour.isClosed}
                               onChange={(event) => updateHour(hour.weekday, { openTime: event.target.value })}
                               aria-label={t('openTimeForDay', { day: weekdayLabels[hour.weekday] })}
-                              className="h-9 max-w-40 tabular-nums"
+                              className="h-9 w-32"
                             />
                           </td>
                           <td className="px-4 py-3 sm:px-5">
-                            <Input
-                              type="time"
+                            <TimeSelect
                               value={hour.closeTime}
                               disabled={hour.isClosed}
                               onChange={(event) => updateHour(hour.weekday, { closeTime: event.target.value })}
                               aria-label={t('closeTimeForDay', { day: weekdayLabels[hour.weekday] })}
-                              className="h-9 max-w-40 tabular-nums"
+                              className="h-9 w-32"
                             />
                           </td>
                         </tr>
@@ -461,7 +508,68 @@ export function OwnerPricingScreen() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile & Tablet View (lg:hidden) */}
+                <div className="divide-y divide-border lg:hidden">
+                  {pagedRules.map((rule) => (
+                    <div key={rule.id} className="p-3.5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm text-text-primary">{rule.label}</span>
+                        {pendingDeleteId === rule.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              loading={deleteRuleMutation.isPending}
+                              onClick={() => deleteRuleMutation.mutate({ id: rule.id, courtId: rule.courtId })}
+                            >
+                              {t('confirmDeleteRule')}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              disabled={deleteRuleMutation.isPending}
+                              onClick={() => setPendingDeleteId(null)}
+                            >
+                              {t('cancelAction')}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label={t('deletePricingRuleNamed', { name: rule.label })}
+                            onClick={() => setPendingDeleteId(rule.id)}
+                          >
+                            <Trash2 className="size-4 text-danger" aria-hidden="true" />
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {WEEKDAYS.filter((day) => rule.weekdays.includes(day)).map((day) => (
+                          <span key={day} className="rounded bg-bg-subtle px-1.5 py-0.5 text-[11px] text-text-secondary">
+                            {weekdayLabels[day]}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-border/60">
+                        <span className="font-mono text-text-secondary">{rule.startTime} – {rule.endTime}</span>
+                        <div className="text-right">
+                          <span className="font-semibold text-text-primary">{formatCurrency(rule.pricePerSlot)}</span>
+                          <span className="text-[11px] text-neutral-500"> / block</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table (hidden lg:block) */}
+                <div className="hidden lg:block overflow-x-auto">
                   <table className="w-full min-w-[760px] text-sm">
                     <thead className="bg-bg-subtle text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
                       <tr>

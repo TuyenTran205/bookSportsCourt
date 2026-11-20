@@ -71,7 +71,7 @@ export function OccupancyChart() {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={chartData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 25 }}
+              margin={{ top: 10, right: 24, left: 4, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
               <XAxis
@@ -88,6 +88,7 @@ export function OccupancyChart() {
                 tickFormatter={(value: number) => `${value}%`}
                 tickLine={false}
                 axisLine={false}
+                width={36}
               />
               <Tooltip
                 {...RECHARTS_TOOLTIP_PROPS}

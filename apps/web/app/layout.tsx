@@ -70,6 +70,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `(function(){var r=document.documentElement;try{var shown=sessionStorage.getItem('bsc_welcome_splash_shown');var q=new URLSearchParams(window.location.search);var forced=q.get('splash')==='force'||q.get('welcome')==='1';if(!forced&&shown==='true'){r.classList.remove('bsc-splash-active');return;}r.classList.add('bsc-splash-active');setTimeout(function(){r.classList.remove('bsc-splash-active');},8000);}catch(e){r.classList.remove('bsc-splash-active');}})();`,
           }}
         />
+        {/* Dự phòng cho môi trường dev local khi Node.js không tải được Google Fonts lúc khởi động */}
+        {process.env.NODE_ENV === 'development' && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+            {/* eslint-disable-next-line @next/next/no-page-custom-font -- Chỉ nạp fallback trong dev ở root layout khi next/font/google không tải được */}
+            <link
+              rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+            />
+          </>
+        )}
         {/* Tối ưu kết nối trước đến các CDN Tile của Bản đồ (Ưu tiên Esri mặc định) */}
         <link rel="preconnect" href="https://server.arcgisonline.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://a.tile.openstreetmap.fr" crossOrigin="anonymous" />

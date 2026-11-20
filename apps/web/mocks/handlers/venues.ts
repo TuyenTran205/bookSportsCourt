@@ -7,6 +7,16 @@ import { venues } from '../fixtures/venues';
 import { courtNameByCourtId, venueIdByCourtId } from '../fixtures/bookings';
 import { err, ok, okList, paginate, readArray, readPaging, simulateLatency } from '../utils';
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
+
 /** Bỏ các trường chỉ dùng ở trang chi tiết để danh sách nhẹ hơn. */
 function toListItem(v: (typeof venues)[number]): VenueListItem {
   const {
@@ -47,14 +57,23 @@ export const venueHandlers = [
     let list = venues.filter((v) => v.status === 'approved');
 
     if (q) {
-      list = list.filter(
-        (v) =>
-          v.name.toLowerCase().includes(q) ||
-          v.address.toLowerCase().includes(q) ||
-          (v.province?.name.toLowerCase().includes(q) ?? false) ||
-          (v.ward?.name.toLowerCase().includes(q) ?? false) ||
-          (v.district?.name.toLowerCase().includes(q) ?? false),
-      );
+      const unaccentQ = normalizeSearchText(q);
+      const areaAlias = /^(tp\.?\s*hcm|hcm|sai\s*gon)$/i.test(unaccentQ) ? 'ho chi minh' : unaccentQ;
+      list = list.filter((v) => {
+        const fields = [
+          v.name,
+          v.address,
+          v.province?.name ?? '',
+          v.ward?.name ?? '',
+          v.district?.name ?? '',
+          ...v.sports.map((s) => s.name),
+        ];
+        return fields.some((f) => {
+          const lower = f.toLowerCase();
+          const norm = normalizeSearchText(f);
+          return lower.includes(q) || norm.includes(areaAlias);
+        });
+      });
     }
     if (provinceId) list = list.filter((v) => v.provinceId === provinceId);
     if (provinceCode) list = list.filter((v) => v.province?.code === provinceCode);

@@ -201,45 +201,111 @@ export function AdminUsersScreen() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <Card className="overflow-hidden p-0">
+          {/* Mobile Cards (< 640px) */}
+          <div className="space-y-3 sm:hidden">
+            {users.map((user) => (
+              <Card key={user.id} className="p-4 space-y-3 border border-border">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                      {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-neutral-900 truncate">{user.fullName || 'Người dùng'}</p>
+                      <p className="text-xs text-neutral-500 truncate">{user.email}</p>
+                    </div>
+                  </div>
+                  <StatusBadge kind="user" status={user.status} />
+                </div>
+
+                <div className="flex items-center justify-between border-t border-neutral-100 pt-2 text-xs">
+                  <div>{getRoleBadge(user.role)}</div>
+                  <div className="text-neutral-500 text-[11px]">
+                    {user.phone ? <span className="font-mono">{user.phone}</span> : `Tạo: ${formatDate(user.createdAt)}`}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-1.5 border-t border-neutral-100 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 text-xs"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setRoleDialogOpen(true);
+                    }}
+                  >
+                    <Shield className="mr-1 size-3.5" />
+                    Phân quyền
+                  </Button>
+                  {user.status === 'active' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={statusMutation.isPending || user.role === 'admin'}
+                      onClick={() => handleToggleStatus(user)}
+                      className="h-8 px-2.5 text-xs text-danger hover:bg-danger/10 hover:text-danger"
+                    >
+                      <Lock className="mr-1 size-3.5" />
+                      Khoá
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={statusMutation.isPending}
+                      onClick={() => handleToggleStatus(user)}
+                      className="h-8 px-2.5 text-xs text-primary-700"
+                    >
+                      <Unlock className="mr-1 size-3.5" />
+                      Mở khoá
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Desktop Table (>= 640px) */}
+          <Card className="hidden sm:block overflow-hidden p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase text-neutral-500">
-                    <th className="py-3 px-4">Người dùng</th>
-                    <th className="py-3 px-4">Số điện thoại</th>
-                    <th className="py-3 px-4">Vai trò</th>
-                    <th className="py-3 px-4">Ngày tham gia</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Hành động</th>
+                    <th className="py-2.5 px-3">Người dùng</th>
+                    <th className="py-2.5 px-3">Số điện thoại</th>
+                    <th className="py-2.5 px-3">Vai trò</th>
+                    <th className="hidden lg:table-cell py-2.5 px-3">Ngày tham gia</th>
+                    <th className="py-2.5 px-3 text-center">Trạng thái</th>
+                    <th className="py-2.5 px-3 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {users.map((user) => (
                     <tr key={user.id} className="hover:bg-neutral-50/50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700">
                             {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <p className="font-semibold text-neutral-900">{user.fullName || 'Người dùng'}</p>
-                            <p className="text-xs text-neutral-500">{user.email}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-neutral-900 truncate max-w-[160px] md:max-w-xs">{user.fullName || 'Người dùng'}</p>
+                            <p className="text-xs text-neutral-500 truncate">{user.email}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-xs font-mono text-neutral-600">
+                      <td className="py-2.5 px-3 text-xs font-mono text-neutral-600 whitespace-nowrap">
                         {user.phone ?? '—'}
                       </td>
-                      <td className="py-3 px-4">{getRoleBadge(user.role)}</td>
-                      <td className="py-3 px-4 text-xs text-neutral-500">
+                      <td className="py-2.5 px-3 whitespace-nowrap">{getRoleBadge(user.role)}</td>
+                      <td className="hidden lg:table-cell py-2.5 px-3 text-xs text-neutral-500 whitespace-nowrap">
                         {formatDate(user.createdAt)}
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <StatusBadge kind="user" status={user.status} />
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="outline"

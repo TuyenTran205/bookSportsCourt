@@ -134,8 +134,8 @@ describe('AdminVenuesScreen Features (ADM-VENUES-EXT)', () => {
     // Kiểm tra nút Thêm cơ sở trên Header và các hàng dữ liệu
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Thêm cơ sở/i })).toBeDefined();
-      expect(screen.getByText('CLB Cầu Lông Cầu Giấy')).toBeDefined();
-      expect(screen.getByText('Sân Bóng Đá Mini Nam Sài Gòn')).toBeDefined();
+      expect(screen.getAllByText('CLB Cầu Lông Cầu Giấy').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Sân Bóng Đá Mini Nam Sài Gòn').length).toBeGreaterThan(0);
     });
 
     // Kiểm tra các nút hành động (Xem, Sửa, Xóa)

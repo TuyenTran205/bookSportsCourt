@@ -54,6 +54,7 @@ function formatDateTimeInVietnam(value: string | null): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
     hourCycle: 'h23',
   }).format(date);
 }
@@ -176,76 +177,153 @@ export function PaymentsManagement() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border bg-bg-subtle text-xs font-medium text-text-secondary">
-                  <th scope="col" className="px-3 py-3">{t('colBookingCode')}</th>
-                  <th scope="col" className="px-3 py-3">{t('colCustomer')}</th>
-                  <th scope="col" className="px-3 py-3">{t('colCourtVenue')}</th>
-                  <th scope="col" className="px-3 py-3">{t('colTime')}</th>
-                  <th scope="col" className="px-3 py-3 text-right">Tiền cọc / Tổng đơn</th>
-                  <th scope="col" className="px-3 py-3">{t('colProofTime')}</th>
-                  <th scope="col" className="px-3 py-3">{t('colStatus')}</th>
-                  <th scope="col" className="px-3 py-3 text-right">{t('colActions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((payment) => (
-                  <tr key={payment.id} className="border-b border-border/60 last:border-0 hover:bg-bg-subtle/50">
-                    <td className="px-3 py-3 font-mono text-xs text-text-secondary" title={payment.bookingId}>
-                      {payment.bookingId.slice(0, 8)}…
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="font-medium text-text-primary">{payment.booking?.customerName || 'Khách hàng'}</div>
+          <>
+            {/* Mobile & Tablet Card List (lg:hidden) */}
+            <div className="space-y-3 p-3 lg:hidden">
+              {items.map((payment) => (
+                <div key={payment.id} className="rounded-card border border-border bg-bg-card p-3.5 space-y-2.5 shadow-none">
+                  {/* Header: Code & Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-semibold text-text-secondary" title={payment.bookingId}>
+                      #{payment.bookingId.slice(0, 8)}
+                    </span>
+                    <StatusBadge kind="payment" status={payment.status} size="sm" />
+                  </div>
+
+                  {/* Customer & Court info */}
+                  <div className="border-t border-border/60 pt-2 space-y-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-medium text-text-primary">
+                        {payment.booking?.customerName || 'Khách hàng'}
+                      </span>
                       {payment.booking?.customerPhone && (
-                        <div className="mt-0.5 text-xs text-text-secondary">{payment.booking.customerPhone}</div>
+                        <span className="text-xs text-text-secondary">
+                          {payment.booking.customerPhone}
+                        </span>
                       )}
-                    </td>
-                    <td className="max-w-56 px-3 py-3">
-                      <div className="font-medium text-text-primary">{payment.booking?.courtName || 'Sân thi đấu'}</div>
-                      <div className="truncate text-xs text-text-secondary" title={payment.booking?.venueName || ''}>
-                        {payment.booking?.venueName || 'Cơ sở'}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-primary">
+                    </div>
+                    <div className="text-xs text-text-secondary">
+                      <span className="font-medium text-text-primary">{payment.booking?.courtName || 'Sân thi đấu'}</span>
+                      {' • '}
+                      <span>{payment.booking?.venueName || 'Cơ sở'}</span>
+                    </div>
+                    <div className="text-xs tabular-nums text-text-secondary">
                       {payment.booking?.during?.start && payment.booking?.during?.end
                         ? formatDateTimeRangeInVietnam(payment.booking.during.start, payment.booking.during.end)
                         : '—'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-text-primary">
-                      <div>{formatCurrency(payment.amount)}</div>
+                    </div>
+                  </div>
+
+                  {/* Amount & Proof time */}
+                  <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                    <div className="text-xs text-text-secondary">
+                      <span>Minh chứng: </span>
+                      <span className="tabular-nums">{formatDateTimeInVietnam(payment.proofUploadedAt)}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold tabular-nums text-text-primary">
+                        {formatCurrency(payment.amount)}
+                      </div>
                       {payment.booking.totalPrice > 0 && payment.booking.totalPrice !== payment.amount && (
-                        <div className="text-[11px] font-normal text-text-secondary">
+                        <div className="text-[10px] text-text-secondary">
                           Tổng: {formatCurrency(payment.booking.totalPrice)}
                         </div>
                       )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-secondary">
-                      {formatDateTimeInVietnam(payment.proofUploadedAt)}
-                    </td>
-                    <td className="px-3 py-3">
-                      <StatusBadge kind="payment" status={payment.status} size="sm" />
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setFailedImageId(null);
-                          setSelectedPayment(payment);
-                        }}
-                      >
-                        <Eye aria-hidden="true" />
-                        {t('viewProof')}
-                      </Button>
-                    </td>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-9 w-full text-xs"
+                      onClick={() => {
+                        setFailedImageId(null);
+                        setSelectedPayment(payment);
+                      }}
+                    >
+                      <Eye className="size-3.5" aria-hidden="true" />
+                      <span>{t('viewProof')}</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table (hidden lg:block) */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-bg-subtle text-xs font-medium text-text-secondary">
+                    <th scope="col" className="px-3 py-3">{t('colBookingCode')}</th>
+                    <th scope="col" className="px-3 py-3">{t('colCustomer')}</th>
+                    <th scope="col" className="px-3 py-3">{t('colCourtVenue')}</th>
+                    <th scope="col" className="px-3 py-3">{t('colTime')}</th>
+                    <th scope="col" className="px-3 py-3 text-right">Tiền cọc / Tổng đơn</th>
+                    <th scope="col" className="px-3 py-3">{t('colProofTime')}</th>
+                    <th scope="col" className="px-3 py-3">{t('colStatus')}</th>
+                    <th scope="col" className="px-3 py-3 text-right">{t('colActions')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {items.map((payment) => (
+                    <tr key={payment.id} className="border-b border-border/60 last:border-0 hover:bg-bg-subtle/50">
+                      <td className="px-3 py-3 font-mono text-xs text-text-secondary" title={payment.bookingId}>
+                        {payment.bookingId.slice(0, 8)}…
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="font-medium text-text-primary">{payment.booking?.customerName || 'Khách hàng'}</div>
+                        {payment.booking?.customerPhone && (
+                          <div className="mt-0.5 text-xs text-text-secondary">{payment.booking.customerPhone}</div>
+                        )}
+                      </td>
+                      <td className="max-w-56 px-3 py-3">
+                        <div className="font-medium text-text-primary">{payment.booking?.courtName || 'Sân thi đấu'}</div>
+                        <div className="truncate text-xs text-text-secondary" title={payment.booking?.venueName || ''}>
+                          {payment.booking?.venueName || 'Cơ sở'}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-primary">
+                        {payment.booking?.during?.start && payment.booking?.during?.end
+                          ? formatDateTimeRangeInVietnam(payment.booking.during.start, payment.booking.during.end)
+                          : '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-text-primary">
+                        <div>{formatCurrency(payment.amount)}</div>
+                        {payment.booking.totalPrice > 0 && payment.booking.totalPrice !== payment.amount && (
+                          <div className="text-[11px] font-normal text-text-secondary">
+                            Tổng: {formatCurrency(payment.booking.totalPrice)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-xs tabular-nums text-text-secondary">
+                        {formatDateTimeInVietnam(payment.proofUploadedAt)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusBadge kind="payment" status={payment.status} size="sm" />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setFailedImageId(null);
+                            setSelectedPayment(payment);
+                          }}
+                        >
+                          <Eye aria-hidden="true" />
+                          {t('viewProof')}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {items.length > 0 && (
