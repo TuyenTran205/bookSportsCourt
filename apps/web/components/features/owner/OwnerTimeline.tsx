@@ -389,7 +389,7 @@ export function OwnerTimeline() {
       window.removeEventListener('pointermove', handlePointerMove);
       window.cancelAnimationFrame(rafId);
     };
-  }, [extendPointerSelection, isPointerSelecting, slotIndexFromClientX]);
+  }, [activeLabelWidth, extendPointerSelection, isPointerSelecting, slotIndexFromClientX]);
 
   React.useEffect(() => {
     const finishPointerSelection = () => {
