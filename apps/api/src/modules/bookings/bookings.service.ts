@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { z } from "zod";
+import { v7 } from "uuid";
 import type {
   BookingSource,
   BookingStatus,
@@ -404,6 +405,33 @@ export class BookingsService {
             now,
           );
         if (recentReleasedCount >= HOLD_RATE_LIMIT_PER_HOUR) {
+          // Gửi thông báo cảnh báo đến Admin
+          try {
+            const alert = await this.repo.notifyAdminsHoldAbuseAlert({
+              customerId: user.id,
+              customerName: user.fullName,
+              customerEmail: user.email,
+              courtId: court.id,
+              courtName: court.name,
+              venueId: venue.id,
+              venueName: venue.name,
+              count: recentReleasedCount,
+              now,
+            });
+
+            if (alert.adminIds.length > 0) {
+              for (const adminId of alert.adminIds) {
+                this.realtime?.emitNotificationCreated(adminId, {
+                  id: v7(),
+                  type: "abuse_alert",
+                  title: alert.title,
+                });
+              }
+            }
+          } catch {
+            // Không để lỗi gửi thông báo cản trở việc chặn rate limit
+          }
+
           throw new HttpException(
             {
               code: "HOLD_RATE_LIMITED",

@@ -52,9 +52,11 @@ function formatShortDate(isoDate: string): string {
 }
 
 function formatCompactMoney(val: number): string {
-  if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}tỷ`;
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}tr`;
-  if (val >= 1_000) return `${Math.round(val / 1_000)}k`;
+  const abs = Math.abs(val);
+  const sign = val < 0 ? '-' : '';
+  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)}tỷ`;
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}tr`;
+  if (abs >= 1_000) return `${sign}${Math.round(abs / 1_000)}k`;
   return String(val);
 }
 
@@ -147,7 +149,7 @@ export function AdminDashboardScreen() {
 
       {statsQuery.isPending ? (
         <div className="mt-6 flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-28 w-full rounded-card" />
             ))}
@@ -156,7 +158,7 @@ export function AdminDashboardScreen() {
             <Skeleton className="h-32 w-full rounded-card" />
             <Skeleton className="h-32 w-full rounded-card" />
           </div>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-card" />
             ))}
@@ -172,7 +174,7 @@ export function AdminDashboardScreen() {
       ) : (
         <div className="mt-6 flex flex-col gap-6">
           {/* 4 Thẻ KPI toàn sàn */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
             <StatCard
               label={t('totalRevenue')}
               value={formatCurrency(stats?.totalRevenue ?? 0)}
@@ -197,13 +199,13 @@ export function AdminDashboardScreen() {
 
           {/* 2 Khối cảnh báo chờ phê duyệt */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Card className="flex items-center justify-between border-amber-200 bg-amber-50/60 p-5 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 sm:p-5 border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/30">
               <div className="flex items-start gap-3.5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
                   <ShieldCheck className="size-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-text-primary">
+                  <h4 className="font-semibold text-text-primary text-sm sm:text-base">
                     Hồ sơ đăng ký chủ sân chờ duyệt
                   </h4>
                   <p className="mt-0.5 text-xs text-text-secondary">
@@ -211,7 +213,7 @@ export function AdminDashboardScreen() {
                   </p>
                 </div>
               </div>
-              <Link href="/admin/owner-applications">
+              <Link href="/admin/owner-applications" className="self-end sm:self-auto shrink-0">
                 <Button size="sm" variant="outline" className="border-amber-300 bg-bg-card hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-950/60">
                   Xử lý ngay
                   <ArrowRight className="ml-1 size-3.5" />
@@ -219,13 +221,13 @@ export function AdminDashboardScreen() {
               </Link>
             </Card>
 
-            <Card className="flex items-center justify-between border-blue-200 bg-blue-50/60 p-5 dark:border-blue-900/50 dark:bg-blue-950/30">
+            <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 sm:p-5 border-blue-200 bg-blue-50/60 dark:border-blue-900/50 dark:bg-blue-950/30">
               <div className="flex items-start gap-3.5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white">
                   <Building2 className="size-5" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-text-primary">
+                  <h4 className="font-semibold text-text-primary text-sm sm:text-base">
                     Cơ sở thể thao mới chờ kiểm duyệt
                   </h4>
                   <p className="mt-0.5 text-xs text-text-secondary">
@@ -233,7 +235,7 @@ export function AdminDashboardScreen() {
                   </p>
                 </div>
               </div>
-              <Link href="/admin/venues">
+              <Link href="/admin/venues" className="self-end sm:self-auto shrink-0">
                 <Button size="sm" variant="outline" className="border-blue-300 bg-bg-card hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/60">
                   Xem danh sách
                   <ArrowRight className="ml-1 size-3.5" />
@@ -243,7 +245,7 @@ export function AdminDashboardScreen() {
           </div>
 
           {/* 4 Biểu đồ động toàn hệ thống */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* 1. Doanh thu */}
             <Card className="p-5">
               <div className="mb-4 flex items-center justify-between gap-2">
@@ -260,7 +262,7 @@ export function AdminDashboardScreen() {
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={revenueData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <AreaChart data={revenueData} margin={{ top: 8, right: 24, left: 4, bottom: 0 }}>
                       <defs>
                         <linearGradient id="adminRevGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#16a34a" stopOpacity={0.25} />
@@ -270,6 +272,7 @@ export function AdminDashboardScreen() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                       <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} minTickGap={16} />
                       <YAxis
+                        width={48}
                         stroke="#94a3b8"
                         fontSize={11}
                         tickLine={false}
@@ -310,10 +313,11 @@ export function AdminDashboardScreen() {
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={userGrowthData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <LineChart data={userGrowthData} margin={{ top: 8, right: 24, left: 4, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                       <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} minTickGap={16} />
                       <YAxis
+                        width={28}
                         stroke="#94a3b8"
                         fontSize={11}
                         tickLine={false}
@@ -372,7 +376,7 @@ export function AdminDashboardScreen() {
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={venueGrowthData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <AreaChart data={venueGrowthData} margin={{ top: 8, right: 24, left: 4, bottom: 0 }}>
                       <defs>
                         <linearGradient id="adminVenueGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
@@ -382,6 +386,7 @@ export function AdminDashboardScreen() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                       <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} minTickGap={16} />
                       <YAxis
+                        width={28}
                         stroke="#94a3b8"
                         fontSize={11}
                         tickLine={false}
@@ -422,10 +427,11 @@ export function AdminDashboardScreen() {
               ) : (
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={bookingData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <BarChart data={bookingData} margin={{ top: 8, right: 24, left: 4, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                       <XAxis dataKey="dateLabel" stroke="#94a3b8" fontSize={11} tickLine={false} minTickGap={16} />
                       <YAxis
+                        width={28}
                         stroke="#94a3b8"
                         fontSize={11}
                         tickLine={false}

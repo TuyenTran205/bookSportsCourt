@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TimeSelect } from '@/components/ui/time-select';
 import type { PricingRule } from '@bsc/shared';
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -128,8 +129,7 @@ export function PricingRuleDialog({
           <div className="grid grid-cols-2 gap-3">
             <label className="block space-y-1.5 text-sm font-medium text-neutral-700">
               <span>{t('ruleStartTime')} <span className="text-danger">*</span></span>
-              <Input
-                type="time"
+              <TimeSelect
                 value={startTime}
                 onChange={(event) => setStartTime(event.target.value)}
                 required
@@ -137,8 +137,7 @@ export function PricingRuleDialog({
             </label>
             <label className="block space-y-1.5 text-sm font-medium text-neutral-700">
               <span>{t('ruleEndTime')} <span className="text-danger">*</span></span>
-              <Input
-                type="time"
+              <TimeSelect
                 value={endTime}
                 onChange={(event) => setEndTime(event.target.value)}
                 required

@@ -168,7 +168,7 @@ export function AdminVenuesScreen() {
       />
 
       {/* Bộ lọc trạng thái */}
-      <div className="mb-6 flex flex-wrap items-center gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-1.5 sm:gap-2">
         <Button
           variant={statusFilter === undefined ? 'primary' : 'outline'}
           size="sm"
@@ -242,56 +242,194 @@ export function AdminVenuesScreen() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <Card className="overflow-hidden p-0">
+          {/* Danh sách thẻ cho Mobile (< 640px) */}
+          <div className="space-y-3 sm:hidden">
+            {venues.map((venue) => (
+              <Card key={venue.id} className="p-4 space-y-3 border border-border">
+                <div className="flex items-start gap-3">
+                  <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-neutral-100 border border-neutral-200">
+                    {venue.coverUrl ? (
+                      <Image
+                        src={venue.coverUrl}
+                        alt={venue.name}
+                        fill
+                        unoptimized={venue.coverUrl.startsWith('data:')}
+                        sizes="48px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-full items-center justify-center text-neutral-400">
+                        <Building2 className="size-6" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <p className="font-semibold text-neutral-900 truncate">{venue.name}</p>
+                      <StatusBadge kind="venue" status={venue.status} />
+                    </div>
+                    <p className="text-xs text-neutral-500 line-clamp-1 mt-0.5">{venue.address}</p>
+                    <p className="text-xs text-neutral-600 mt-1">
+                      <span className="text-neutral-400">Chủ:</span> {venue.ownerName ?? 'Chủ sân'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-2 text-xs">
+                  <div className="flex flex-wrap gap-1">
+                    {(venue.sports ?? []).length > 0 ? (
+                      venue.sports.map((s: { id: string; name: string }) => {
+                        const resolvedName = sportsMap.get(s.id) || (s.name && s.name !== 'Sân thể thao' && !s.name.includes('-') ? s.name : sportsMap.get(s.id) || 'Môn');
+                        return (
+                          <span
+                            key={s.id}
+                            className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-700"
+                          >
+                            {resolvedName}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="text-neutral-400">Chưa có môn</span>
+                    )}
+                  </div>
+                  <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 shrink-0">
+                    {venue.courts?.length ?? 0} sân con
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-neutral-100 pt-2.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 text-xs"
+                    onClick={() => setViewingVenue(venue)}
+                  >
+                    <Eye className="mr-1 size-3.5" />
+                    Chi tiết
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 text-xs"
+                    onClick={() => {
+                      setEditingVenue(venue);
+                      setIsVenueFormOpen(true);
+                    }}
+                  >
+                    <Pencil className="mr-1 size-3.5" />
+                    Sửa
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 text-xs text-danger hover:bg-danger/10 hover:text-danger"
+                    onClick={() => setDeletingVenue(venue)}
+                  >
+                    <Trash2 className="mr-1 size-3.5" />
+                    Xóa
+                  </Button>
+                  {venue.status === 'pending' ? (
+                    <>
+                      <Button
+                        size="sm"
+                        disabled={reviewMutation.isPending}
+                        onClick={() => handleUpdateStatus(venue, 'approved', 'duyệt')}
+                        className="h-8 bg-primary-600 px-2.5 text-xs text-white hover:bg-primary-700"
+                      >
+                        <Check className="mr-1 size-3.5" />
+                        Duyệt
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={reviewMutation.isPending}
+                        onClick={() => setRejectingVenue(venue)}
+                        className="h-8 px-2.5 text-xs text-danger hover:bg-danger/10 hover:text-danger"
+                      >
+                        <X className="mr-1 size-3.5" />
+                        Từ chối
+                      </Button>
+                    </>
+                  ) : venue.status === 'approved' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={reviewMutation.isPending}
+                      onClick={() => handleUpdateStatus(venue, 'suspended', 'tạm đình chỉ')}
+                      className="h-8 px-2.5 text-xs text-amber-700 hover:bg-amber-50"
+                    >
+                      <AlertTriangle className="mr-1 size-3.5" />
+                      Tạm dừng
+                    </Button>
+                  ) : venue.status === 'suspended' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={reviewMutation.isPending}
+                      onClick={() => handleUpdateStatus(venue, 'approved', 'mở lại hoạt động')}
+                      className="h-8 px-2.5 text-xs text-primary-700"
+                    >
+                      <Check className="mr-1 size-3.5" />
+                      Mở lại
+                    </Button>
+                  ) : null}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Bảng dữ liệu Desktop & Tablet (>= 640px) */}
+          <Card className="hidden sm:block overflow-hidden p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase text-neutral-500">
-                    <th className="py-3 px-4">Cơ sở thể thao</th>
-                    <th className="py-3 px-4">Chủ sở hữu</th>
-                    <th className="py-3 px-4">Địa bàn</th>
-                    <th className="py-3 px-4">Môn thể thao</th>
-                    <th className="py-3 px-4 text-center">Sân con</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Hành động</th>
+                    <th className="py-2.5 px-3">Cơ sở thể thao</th>
+                    <th className="py-2.5 px-3">Chủ sở hữu</th>
+                    <th className="py-2.5 px-3">Địa bàn</th>
+                    <th className="py-2.5 px-3">Môn thể thao</th>
+                    <th className="py-2.5 px-3 text-center">Sân con</th>
+                    <th className="py-2.5 px-3 text-center">Trạng thái</th>
+                    <th className="py-2.5 px-3 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {venues.map((venue) => (
                     <tr key={venue.id} className="hover:bg-neutral-50/50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="relative size-10 shrink-0 overflow-hidden rounded bg-neutral-100">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative size-9 shrink-0 overflow-hidden rounded bg-neutral-100">
                             {venue.coverUrl ? (
                               <Image
                                 src={venue.coverUrl}
                                 alt={venue.name}
                                 fill
                                 unoptimized={venue.coverUrl.startsWith('data:')}
-                                sizes="40px"
+                                sizes="36px"
                                 className="object-cover"
                               />
                             ) : (
                               <div className="flex size-full items-center justify-center text-neutral-400">
-                                <Building2 className="size-5" />
+                                <Building2 className="size-4" />
                               </div>
                             )}
                           </div>
-                          <div>
-                            <p className="font-semibold text-neutral-900">{venue.name}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-neutral-900 truncate max-w-[160px] md:max-w-xs">{venue.name}</p>
                             <p className="text-xs text-neutral-500 line-clamp-1">{venue.address}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium text-neutral-800">{venue.ownerName ?? 'Chủ sân'}</p>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <p className="font-medium text-neutral-800 text-xs">{venue.ownerName ?? 'Chủ sân'}</p>
                       </td>
-                      <td className="py-3 px-4 text-xs text-neutral-600">
+                      <td className="py-2.5 px-3 text-xs text-neutral-600 max-w-[140px] truncate">
                         {venue.ward?.name ?? venue.district?.name ?? venue.address}
                         {venue.province ? `, ${venue.province.name}` : ''}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
+                      <td className="py-2.5 px-3">
+                        <div className="flex flex-wrap gap-1 max-w-[150px]">
                           {(venue.sports ?? []).length > 0 ? (
                             venue.sports.map((s: { id: string; name: string }) => {
                               const resolvedName = sportsMap.get(s.id) || (s.name && s.name !== 'Sân thể thao' && !s.name.includes('-') ? s.name : sportsMap.get(s.id) || 'Môn thể thao');
@@ -309,7 +447,7 @@ export function AdminVenuesScreen() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {(venue.courts?.length ?? 0) > 0 ? (
                           <span className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700">
                             {venue.courts?.length} sân
@@ -318,11 +456,11 @@ export function AdminVenuesScreen() {
                           <span className="text-xs text-neutral-400">0 sân</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <StatusBadge kind="venue" status={venue.status} />
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="ghost"

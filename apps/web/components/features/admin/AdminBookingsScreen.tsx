@@ -158,37 +158,102 @@ export function AdminBookingsScreen() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <Card className="overflow-hidden p-0">
+          {/* Mobile Cards (< 640px) */}
+          <div className="space-y-3 sm:hidden">
+            {bookings.map((booking) => {
+              const start = booking.during?.start || (booking as unknown as { start?: string }).start || '';
+              const end = booking.during?.end || (booking as unknown as { end?: string }).end || '';
+              return (
+                <Card key={booking.id} className="p-4 space-y-3 border border-border">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono text-xs font-semibold text-neutral-700">
+                        #{booking.id.slice(0, 8)}
+                      </span>
+                      <p className="font-semibold text-neutral-900 mt-0.5">{booking.customerName}</p>
+                    </div>
+                    <StatusBadge kind="booking" status={booking.status} />
+                  </div>
+
+                  <div className="rounded-lg bg-neutral-50 p-2.5 text-xs space-y-1 border border-neutral-100">
+                    <p className="font-semibold text-neutral-800">{booking.venueName}</p>
+                    <p className="text-neutral-500">{booking.courtName}</p>
+                    <div className="flex items-center justify-between text-neutral-600 pt-1 border-t border-neutral-200/60">
+                      <span>{start ? formatTimeRange(start, end) : '—'}</span>
+                      <span>{start ? formatDate(start) : '—'}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-neutral-100">
+                    <div>
+                      <span className="font-semibold tabular-nums text-primary-700 text-sm">
+                        {formatCurrency(booking.totalPrice)}
+                      </span>
+                      <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] font-medium text-neutral-600">
+                        {booking.source === 'online' ? 'Online' : 'Tại quầy'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2.5 text-xs"
+                        onClick={() => setSelectedBooking(booking)}
+                      >
+                        <Eye className="mr-1 size-3.5" />
+                        Chi tiết
+                      </Button>
+                      {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2.5 text-xs text-danger hover:bg-danger/10 hover:text-danger"
+                          onClick={() => setCancellingBooking(booking)}
+                        >
+                          <Ban className="mr-1 size-3.5" />
+                          Huỷ
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table (>= 640px) */}
+          <Card className="hidden sm:block overflow-hidden p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-neutral-200 bg-neutral-50/50 text-xs font-semibold uppercase text-neutral-500">
-                    <th className="py-3 px-4">Mã đơn</th>
-                    <th className="py-3 px-4">Khách hàng</th>
-                    <th className="py-3 px-4">Cơ sở & Sân</th>
-                    <th className="py-3 px-4">Thời gian chơi</th>
-                    <th className="py-3 px-4 text-right">Tổng tiền</th>
-                    <th className="py-3 px-4">Nguồn</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Hành động</th>
+                    <th className="py-2.5 px-3">Mã đơn</th>
+                    <th className="py-2.5 px-3">Khách hàng</th>
+                    <th className="py-2.5 px-3">Cơ sở & Sân</th>
+                    <th className="py-2.5 px-3">Thời gian chơi</th>
+                    <th className="py-2.5 px-3 text-right">Tổng tiền</th>
+                    <th className="py-2.5 px-3">Nguồn</th>
+                    <th className="py-2.5 px-3 text-center">Trạng thái</th>
+                    <th className="py-2.5 px-3 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {bookings.map((booking) => (
                     <tr key={booking.id} className="hover:bg-neutral-50/50">
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="font-mono text-xs font-medium text-neutral-700">
                           {booking.id.slice(0, 8)}...
                         </span>
                       </td>
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-neutral-900">{booking.customerName}</p>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <p className="font-semibold text-neutral-900 text-xs">{booking.customerName}</p>
                       </td>
-                      <td className="py-3 px-4">
-                        <p className="font-medium text-neutral-800">{booking.venueName}</p>
+                      <td className="py-2.5 px-3">
+                        <p className="font-medium text-neutral-800 text-xs truncate max-w-[140px] md:max-w-xs">{booking.venueName}</p>
                         <p className="text-xs text-neutral-500">{booking.courtName}</p>
                       </td>
-                      <td className="py-3 px-4 text-xs text-neutral-600">
+                      <td className="py-2.5 px-3 text-xs text-neutral-600 whitespace-nowrap">
                         {(() => {
                           const start = booking.during?.start || (booking as unknown as { start?: string }).start || '';
                           const end = booking.during?.end || (booking as unknown as { end?: string }).end || '';
@@ -204,21 +269,21 @@ export function AdminBookingsScreen() {
                           );
                         })()}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="font-semibold tabular-nums text-neutral-900">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <span className="font-semibold tabular-nums text-neutral-900 text-xs">
                           {formatCurrency(booking.totalPrice)}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <span className="rounded-btn bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
                           {booking.source === 'online' ? 'Online' : 'Tại quầy'}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <StatusBadge kind="booking" status={booking.status} />
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="ghost"

@@ -714,6 +714,69 @@ export class BookingsRepository {
     return row?.count ?? 0;
   }
 
+  /**
+   * Tạo thông báo cảnh báo gửi tới tất cả tài khoản Admin khi phát hiện hành vi giữ/huỷ bất thường liên tục (Hold abuse / squatting).
+   */
+  async notifyAdminsHoldAbuseAlert(input: {
+    customerId: string;
+    customerName: string;
+    customerEmail: string;
+    courtId: string;
+    courtName: string;
+    venueId: string;
+    venueName: string;
+    count: number;
+    now: Date;
+  }): Promise<{ adminIds: string[]; title: string; body: string }> {
+    const adminRows = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.role, "admin"), eq(users.status, "active")));
+
+    if (adminRows.length === 0) {
+      return { adminIds: [], title: "", body: "" };
+    }
+
+    const hourBucket = input.now.toISOString().slice(0, 13);
+    const eventKey = `alert:hold_abuse:${input.customerId}:${input.courtId}:${hourBucket}`;
+    const title = "Cảnh báo giữ/huỷ chỗ bất thường";
+    const body = `Tài khoản ${input.customerName || input.customerEmail} (${input.customerEmail}) đã thực hiện ${input.count} lần giữ/huỷ chỗ trong 1 giờ qua trên sân ${input.courtName} (cơ sở ${input.venueName}).`;
+
+    const data = {
+      abuseType: "hold_squatting",
+      customerId: input.customerId,
+      customerName: input.customerName,
+      customerEmail: input.customerEmail,
+      courtId: input.courtId,
+      courtName: input.courtName,
+      venueId: input.venueId,
+      venueName: input.venueName,
+      count: input.count,
+      flaggedAt: input.now.toISOString(),
+    };
+
+    for (const admin of adminRows) {
+      await this.db
+        .insert(notifications)
+        .values({
+          id: v7(),
+          userId: admin.id,
+          type: "abuse_alert",
+          eventKey,
+          title,
+          body,
+          data,
+        })
+        .onConflictDoNothing();
+    }
+
+    return {
+      adminIds: adminRows.map((a) => a.id),
+      title,
+      body,
+    };
+  }
+
   async loadCourtSchedulingConfig(
     tx: AuthTransaction | DrizzleDb,
     courtId: string,

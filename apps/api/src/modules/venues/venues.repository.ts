@@ -11,6 +11,7 @@ import {
   isNotNull,
   isNull,
   lte,
+  or,
 } from "drizzle-orm";
 import {
   InjectDrizzle,
@@ -422,8 +423,57 @@ export class VenuesRepository {
     if (params.q) {
       // Escape ký tự đại diện của LIKE để từ khoá người dùng nhập được hiểu
       // theo nghĩa đen (`%`, `_`, `\`).
-      const escaped = params.q.replace(/[\\%_]/g, (char) => `\\${char}`);
-      conditions.push(ilike(venues.name, `%${escaped}%`));
+      const raw = params.q.trim();
+      const escaped = raw.replace(/[\\%_]/g, (char) => `\\${char}`);
+      const unaccentedRaw = raw
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase();
+      const areaAlias = /^(tp\.?\s*hcm|hcm|sai\s*gon)$/i.test(unaccentedRaw)
+        ? "ho chi minh"
+        : unaccentedRaw;
+      const escapedUnaccent = areaAlias.replace(/[\\%_]/g, (char) => `\\${char}`);
+      const slugQuery = areaAlias
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .replace(/[\\%_]/g, (char) => `\\${char}`);
+
+      const areaConditions = [
+        ilike(areas.name, `%${escaped}%`),
+        ilike(areas.unaccentName, `%${escapedUnaccent}%`),
+      ];
+      if (slugQuery) {
+        areaConditions.push(ilike(areas.slug, `%${slugQuery}%`));
+      }
+
+      const matchingAreaIds = this.db
+        .select({ id: areas.id })
+        .from(areas)
+        .where(or(...areaConditions));
+
+      const sportConditions = [ilike(sports.name, `%${escaped}%`)];
+      if (slugQuery) {
+        sportConditions.push(ilike(sports.slug, `%${slugQuery}%`));
+      }
+      const matchingSportVenueIds = this.db
+        .select({ venueId: venueSports.venueId })
+        .from(venueSports)
+        .innerJoin(sports, eq(venueSports.sportId, sports.id))
+        .where(or(...sportConditions));
+
+      const qCondition = or(
+        ilike(venues.name, `%${escaped}%`),
+        ilike(venues.address, `%${escaped}%`),
+        inArray(venues.provinceId, matchingAreaIds),
+        inArray(venues.districtId, matchingAreaIds),
+        inArray(venues.wardId, matchingAreaIds),
+        inArray(venues.id, matchingSportVenueIds),
+      );
+      if (qCondition) {
+        conditions.push(qCondition);
+      }
     }
     if (params.provinceId) {
       conditions.push(eq(venues.provinceId, params.provinceId));

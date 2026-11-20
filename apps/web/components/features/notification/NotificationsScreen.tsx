@@ -22,6 +22,7 @@ import { Pagination } from '@/components/common/Pagination';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/lib/hooks/useAuth';
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -30,12 +31,14 @@ import {
 } from '@/lib/hooks/useNotifications';
 import { cn } from '@/lib/utils/cn';
 import { timeAgo } from '@/lib/utils/format';
+import { getNotificationTargetUrl } from '@/lib/utils/notification-navigation';
 
 type FilterTab = 'all' | 'unread' | 'booking' | 'payment' | 'system';
 
 export function NotificationsScreen() {
   const t = useTranslations('notifications');
   const router = useRouter();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = React.useState<FilterTab>('all');
   const [page, setPage] = React.useState(1);
@@ -77,11 +80,9 @@ export function NotificationsScreen() {
     if (!item.readAt) {
       markRead.mutate(item.id);
     }
-    const payload = item.payload as Record<string, unknown> | null;
-    if (payload && typeof payload.bookingId === 'string') {
-      router.push(`/bookings/${payload.bookingId}`);
-    } else if (payload && typeof payload.venueId === 'string') {
-      router.push(`/venues/${payload.venueId}`);
+    const targetUrl = getNotificationTargetUrl(item, user?.role);
+    if (targetUrl) {
+      router.push(targetUrl);
     }
   };
 
@@ -103,6 +104,13 @@ export function NotificationsScreen() {
     if (type === 'booking_cancelled' || type === 'hold_expired' || type === 'payment_rejected') {
       return (
         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
+          <AlertCircle className="size-5" />
+        </div>
+      );
+    }
+    if (type === 'abuse_alert') {
+      return (
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-danger/10 text-danger dark:bg-danger/20">
           <AlertCircle className="size-5" />
         </div>
       );

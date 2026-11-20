@@ -4,7 +4,7 @@ import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { Clock, ImageOff, MapPin, Navigation, ShieldCheck, Star } from 'lucide-react';
+import { Clock, ImageOff, Map as MapIcon, MapPin, Navigation, ShieldCheck, Star } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 
@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useCreateHold } from '@/lib/hooks/useBookings';
 import { ApiError } from '@/lib/api/errors';
@@ -159,6 +159,27 @@ export function VenueDetailScreen() {
   const hero = images[activeImage] ?? images[0];
   const loginHref = `/login?next=${encodeURIComponent(pathname)}`;
   const selectedRangeText = firstKey && endOfLast ? formatTimeRange(firstKey, endOfLast) : null;
+  const hasCoordinates =
+    typeof venue.lat === 'number' &&
+    typeof venue.lng === 'number' &&
+    Number.isFinite(venue.lat) &&
+    Number.isFinite(venue.lng) &&
+    (venue.lat !== 0 || venue.lng !== 0);
+  const addressParts: string[] = [];
+  if (venue.address) addressParts.push(venue.address.trim());
+  const lowerAddr = (venue.address ?? '').toLowerCase();
+  if (venue.district?.name && !lowerAddr.includes(venue.district.name.toLowerCase())) {
+    addressParts.push(venue.district.name);
+  }
+  if (
+    venue.province?.name &&
+    !lowerAddr.includes(venue.province.name.toLowerCase().replace(/^(thành phố|tỉnh)\s+/i, ''))
+  ) {
+    addressParts.push(venue.province.name);
+  }
+  const fullAddress = addressParts.join(', ');
+  const googleMapsDestination = hasCoordinates ? `${venue.lat},${venue.lng}` : fullAddress;
+  const googleMapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(googleMapsDestination)}`;
 
   const onOpenConfirm = () => {
     if (!isAuthenticated || !courtId || selected.length === 0 || hold.isPending) return;
@@ -200,7 +221,7 @@ export function VenueDetailScreen() {
   return (
     <main className="container pb-32 pt-6 lg:pb-12">
       <VenueJsonLd venue={venue} />
-      <nav aria-label="breadcrumb" className="mb-4 text-sm text-neutral-600">
+      <nav aria-label="breadcrumb" className="mb-3 text-sm text-neutral-600">
         <Link href="/venues" className="hover:text-primary-700 hover:underline">
           {t('allVenues')}
         </Link>
@@ -208,11 +229,11 @@ export function VenueDetailScreen() {
         <span className="text-neutral-900">{venue.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-8">
-        {/* ===== Cột trái: thông tin ===== */}
-        <div className="min-w-0 space-y-8">
-          <section aria-label={t('gallery')}>
-            <div className="relative aspect-[32/9] min-h-40 overflow-hidden rounded-card bg-neutral-100">
+      <div className="space-y-4 sm:space-y-5">
+        {/* ===== Laptop (lg+): Hàng 1 là Ảnh (1) | Tabs (2) chia 1:1, Hàng 2 là Thông tin chính (col-span-2). Mobile: Ảnh (1) -> Thông tin chính (2) -> Tabs (3) ===== */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-6">
+          <section aria-label={t('gallery')} className="order-1 flex flex-col lg:order-1">
+            <div className="relative aspect-video min-h-48 w-full overflow-hidden rounded-card bg-neutral-100">
               {hero ? (
                 <Image
                   src={hero.url}
@@ -220,7 +241,7 @@ export function VenueDetailScreen() {
                   fill
                   priority
                   unoptimized={hero.url.startsWith('data:')}
-                  sizes="(min-width: 1024px) 60vw, 100vw"
+                  sizes="(min-width: 1024px) 50vw, 100vw"
                   className="object-cover"
                 />
               ) : (
@@ -239,7 +260,7 @@ export function VenueDetailScreen() {
                       aria-label={t('viewImage', { n: i + 1 })}
                       aria-current={i === activeImage}
                       className={cn(
-                        'relative block h-16 w-24 overflow-hidden rounded-btn border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
+                        'relative block h-14 w-20 overflow-hidden rounded-btn border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600',
                         i === activeImage ? 'border-primary-600' : 'border-transparent',
                       )}
                     >
@@ -248,7 +269,7 @@ export function VenueDetailScreen() {
                         alt=""
                         fill
                         unoptimized={img.url.startsWith('data:')}
-                        sizes="96px"
+                        sizes="80px"
                         className="object-cover"
                       />
                     </button>
@@ -258,21 +279,136 @@ export function VenueDetailScreen() {
             )}
           </section>
 
-          <section className="space-y-3">
+          <Card className="order-3 flex flex-col p-3.5 sm:p-4 lg:order-2">
+            <Tabs defaultValue="amenities" className="flex flex-1 flex-col">
+              <TabsList
+                className="grid w-full grid-cols-4 overflow-hidden sm:flex"
+                aria-label="Thông tin chi tiết cơ sở"
+              >
+                <TabsTrigger value="amenities" className="justify-center px-1.5 text-xs sm:justify-start sm:px-2.5 sm:text-sm">
+                  {t('amenities')}
+                </TabsTrigger>
+                <TabsTrigger value="location" className="justify-center px-1.5 text-xs sm:justify-start sm:px-2.5 sm:text-sm">
+                  <span className="sm:hidden">Vị trí</span>
+                  <span className="hidden sm:inline">{t('locationTitle')}</span>
+                </TabsTrigger>
+                <TabsTrigger value="hours" className="justify-center px-1.5 text-xs sm:justify-start sm:px-2.5 sm:text-sm">
+                  <span className="sm:hidden">Giờ mở</span>
+                  <span className="hidden sm:inline">{t('openingHoursTitle')}</span>
+                </TabsTrigger>
+                <TabsTrigger value="policy" className="justify-center px-1.5 text-xs sm:justify-start sm:px-2.5 sm:text-sm">
+                  <span className="sm:hidden">Cọc & huỷ</span>
+                  <span className="hidden sm:inline">{t('policy')}</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="amenities" className="flex-1 pt-3">
+                {venue.amenities.length > 0 ? (
+                  <ul className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                    {venue.amenities.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex items-center gap-1.5 rounded-btn border border-border bg-bg-subtle/60 px-2.5 py-1.5 text-xs text-text-primary sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
+                      >
+                        <ShieldCheck className="size-3.5 shrink-0 text-primary-600 sm:size-4" aria-hidden="true" />
+                        <span className="line-clamp-2">{a.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-btn bg-bg-subtle p-4 text-sm text-text-secondary">
+                    <ShieldCheck className="size-4 shrink-0 text-text-disabled" aria-hidden="true" />
+                    <span>{t('noAmenities')}</span>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="location" className="flex-1 pt-3">
+                {hasCoordinates && typeof venue.lat === 'number' && typeof venue.lng === 'number' ? (
+                  <div className="space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-neutral-600 sm:text-sm">{t('locationAddress')}</p>
+                      <Button asChild variant="outline" size="sm" className="shrink-0">
+                        <a href={googleMapsDirectionsUrl} target="_blank" rel="noopener noreferrer">
+                          <Navigation className="size-3.5" aria-hidden="true" />
+                          {t('getDirections')}
+                        </a>
+                      </Button>
+                    </div>
+                    <VenueLocationMapWrapper
+                      center={[venue.lat, venue.lng]}
+                      marker={[venue.lat, venue.lng]}
+                      className="h-52 overflow-hidden rounded-btn border border-neutral-200 sm:h-60"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-btn bg-bg-subtle p-4 text-sm text-text-secondary">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-text-disabled" aria-hidden="true" />
+                      <span>{t('noLocationCoords')}</span>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <a href={googleMapsDirectionsUrl} target="_blank" rel="noopener noreferrer">
+                        <Navigation className="size-3.5" aria-hidden="true" />
+                        {t('openGoogleMaps')}
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="hours" className="flex-1 pt-3">
+                <VenueOpeningHours openingHours={venue.openingHours ?? []} hideHeader compact />
+              </TabsContent>
+
+              <TabsContent value="policy" className="flex-1 pt-3">
+                {venue.cancellationPolicy ? (
+                  <div className="space-y-2.5 rounded-btn border border-border bg-bg-subtle/60 p-3.5 text-sm text-neutral-700">
+                    <p className="flex items-start gap-2">
+                      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden="true" />
+                      <span>{t('policyDeposit', { percent: venue.cancellationPolicy.depositPercent })}</span>
+                    </p>
+                    <p className="flex items-start gap-2">
+                      <Clock className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden="true" />
+                      <span>
+                        {t('policyRefund', {
+                          hours: venue.cancellationPolicy.cancelBeforeHours,
+                          percent: venue.cancellationPolicy.refundPercent,
+                        })}
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-btn bg-bg-subtle p-4 text-sm text-text-secondary">
+                    <ShieldCheck className="size-4 shrink-0 text-text-disabled" aria-hidden="true" />
+                    <span>{t('noPolicy')}</span>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </Card>
+
+          {/* ===== Thông tin tổng quan sân ===== */}
+          <section className="order-2 space-y-2 lg:order-3 lg:col-span-2">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <h1 className="text-3xl font-bold text-neutral-900">{venue.name}</h1>
+              <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{venue.name}</h1>
               <div className="flex items-center gap-2">
                 <VenueCompareButton venue={venue} variant="button" showText />
               </div>
             </div>
-            <p className="flex items-start gap-1.5 text-neutral-600">
-              <MapPin className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
-              <span>
-                {venue.address}
-                {venue.district && `, ${venue.district.name}`}
-                {venue.province && `, ${venue.province.name}`}
-              </span>
-            </p>
+            <div className="flex items-start gap-2 text-sm text-neutral-600 sm:text-base">
+              <a
+                href={googleMapsDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${t('openGoogleMaps')}: ${fullAddress}`}
+                title={t('openGoogleMaps')}
+                className="relative mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-btn border border-primary-200 bg-primary-50 text-primary-700 transition-colors hover:bg-primary-100 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 before:absolute before:-inset-2 sm:before:inset-0"
+              >
+                <MapIcon className="size-4" strokeWidth={1.75} aria-hidden="true" />
+              </a>
+              <span className="pt-0.5">{fullAddress}</span>
+            </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               {(venue.reviewCount ?? 0) > 0 ? (
                 <span className="inline-flex items-center gap-1">
@@ -292,28 +428,42 @@ export function VenueDetailScreen() {
                 </strong>
                 {venue.fromPrice === null ? null : t('perBlock')}
               </span>
+              {(venue.sports ?? []).length > 0 && (
+                <ul className="flex flex-wrap gap-1.5">
+                  {(venue.sports ?? []).map((s) => (
+                    <li key={s.id} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs text-neutral-700">
+                      {s.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {(venue.sports ?? []).length > 0 && (
-              <ul className="flex flex-wrap gap-1.5">
-                {(venue.sports ?? []).map((s) => (
-                  <li key={s.id} className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700">
-                    {s.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-            {venue.description && <p className="leading-relaxed text-neutral-700">{venue.description}</p>}
+            {venue.description && <p className="text-sm leading-relaxed text-neutral-700">{venue.description}</p>}
           </section>
+        </div>
 
-          <Card className="space-y-4 p-4" aria-labelledby="booking-panel-heading">
-            <h2 id="booking-panel-heading" className="text-lg font-semibold text-neutral-900">
-              {t('pickSlot')}
-            </h2>
-            <div className="flex min-w-0 items-center gap-2">
+        {/* ===== Khối đặt sân: đặt ở vị trí cao, kéo đặt tiện lợi, block thu gọn ===== */}
+        <Card className="space-y-3 p-3 sm:p-4" aria-labelledby="booking-panel-heading">
+          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <h2 id="booking-panel-heading" className="text-lg font-semibold text-neutral-900">
+                {t('pickSlot')}
+              </h2>
+              <span className="text-sm text-neutral-600">{formatDateWithWeekday(date)}</span>
+              {dayOperatingHours && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
+                  <Clock className="size-3.5" aria-hidden="true" />
+                  <span>
+                    {t('openHours')}: {dayOperatingHours}
+                  </span>
+                </span>
+              )}
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
               <Button
                 variant="outline"
                 size="sm"
-                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
+                className="shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
                 disabled={date <= today}
                 onClick={() => {
                   setDate(addDays(date, -1));
@@ -324,7 +474,7 @@ export function VenueDetailScreen() {
               </Button>
               <Input
                 type="date"
-                className="min-w-0 flex-1"
+                className="h-9 min-w-0 flex-1 sm:w-40 sm:flex-none"
                 value={date}
                 min={today}
                 aria-label={t('date')}
@@ -337,7 +487,7 @@ export function VenueDetailScreen() {
               <Button
                 variant="outline"
                 size="sm"
-                className="shrink-0 px-1.5 text-xs sm:px-3 sm:text-sm"
+                className="shrink-0 px-2 text-xs sm:px-3 sm:text-sm"
                 onClick={() => {
                   setDate(addDays(date, 1));
                   resetSelection();
@@ -346,138 +496,81 @@ export function VenueDetailScreen() {
                 {t('nextDay')}
               </Button>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-neutral-600">
-              <p>{formatDateWithWeekday(date)}</p>
-              {dayOperatingHours && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700">
-                  <Clock className="size-3.5" aria-hidden="true" />
-                  <span>
-                    {t('openHours')}: {dayOperatingHours}
-                  </span>
-                </span>
-              )}
-            </div>
-            {activeCourts.length > 1 && (
-              <Tabs
-                value={courtId ?? activeCourts[0]?.id ?? ''}
-                onValueChange={(v) => {
-                  setCourtId(v);
-                  resetSelection();
-                }}
+          </div>
+
+          {activeCourts.length > 1 && (
+            <div className="space-y-1.5">
+              <p id="court-selector-label" className="text-xs font-medium text-neutral-500">
+                {t('courts')} ({activeCourts.length})
+              </p>
+              <div
+                role="radiogroup"
+                aria-labelledby="court-selector-label"
+                className="flex flex-wrap gap-1.5"
               >
-                <TabsList aria-label={t('courts')}>
-                  {activeCourts.map((c) => (
-                    <TabsTrigger key={c.id} value={c.id}>
-                      {c.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            )}
-            {slotsQuery.isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : slotsQuery.isError ? (
-              <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
-            ) : (
-              <SlotGrid
-                courts={courtSlots}
-                courtNames={courtNames}
-                selected={selected}
-                onSelectedChange={setSelected}
-                onLimitReached={(max) => toast.warning(tSlot('maxSlotsReached', { max }))}
-              />
-            )}
-            <div className="border-t border-border pt-4">
-              <BookingBar
-                count={selected.length}
-                total={total}
-                range={selectedRangeText}
-                isAuthenticated={isAuthenticated}
-                loginHref={loginHref}
-                onContinue={onOpenConfirm}
-                pending={hold.isPending}
-              />
-            </div>
-          </Card>
-
-          {typeof venue.lat === 'number' &&
-            typeof venue.lng === 'number' &&
-            Number.isFinite(venue.lat) &&
-            Number.isFinite(venue.lng) &&
-            (venue.lat !== 0 || venue.lng !== 0) && (
-              <section aria-labelledby="venue-location-heading" className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 id="venue-location-heading" className="text-xl font-semibold text-neutral-900">
-                      {t('locationTitle')}
-                    </h2>
-                    <p className="mt-1 text-sm text-neutral-600">{t('locationAddress')}</p>
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${venue.lat},${venue.lng}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                {activeCourts.map((c) => {
+                  const isActive = (courtId ?? activeCourts[0]?.id) === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      onClick={() => {
+                        setCourtId(c.id);
+                        resetSelection();
+                      }}
+                      className={cn(
+                        'min-h-9 rounded-btn border px-3 py-1.5 text-left text-xs leading-snug transition-colors sm:text-sm',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-1',
+                        isActive
+                          ? 'border-primary-700 bg-primary-700 font-medium text-white shadow-xs'
+                          : 'border-border bg-bg-subtle/60 text-neutral-700 hover:border-primary-300 hover:bg-primary-50/70 hover:text-primary-800',
+                      )}
                     >
-                      <Navigation aria-hidden="true" />
-                      {t('getDirections')}
-                    </a>
-                  </Button>
-                </div>
-                <VenueLocationMapWrapper
-                  center={[venue.lat, venue.lng]}
-                  marker={[venue.lat, venue.lng]}
-                  className="h-72 overflow-hidden rounded-card border border-neutral-200"
-                />
-              </section>
-            )}
-
-          {venue.amenities.length > 0 && (
-            <section aria-labelledby="amenities-h" className="space-y-3">
-              <h2 id="amenities-h" className="text-xl font-semibold text-text-primary">
-                {t('amenities')}
-              </h2>
-              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {venue.amenities.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center gap-2 rounded-btn border border-border bg-bg-card px-3 py-2 text-sm text-text-primary"
-                  >
-                    <ShieldCheck className="size-4 shrink-0 text-primary-600" aria-hidden="true" />
-                    {a.name}
-                  </li>
-                ))}
-              </ul>
-            </section>
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
-          <VenueOpeningHours openingHours={venue.openingHours ?? []} />
-
-          {venue.cancellationPolicy && (
-            <section aria-labelledby="policy-h" className="space-y-3">
-              <h2 id="policy-h" className="text-xl font-semibold text-text-primary">
-                {t('policy')}
-              </h2>
-              <Card className="space-y-1.5 p-4 text-sm text-neutral-700">
-                <p>{t('policyDeposit', { percent: venue.cancellationPolicy.depositPercent })}</p>
-                <p>
-                  {t('policyRefund', {
-                    hours: venue.cancellationPolicy.cancelBeforeHours,
-                    percent: venue.cancellationPolicy.refundPercent,
-                  })}
-                </p>
-              </Card>
-            </section>
+          {slotsQuery.isLoading ? (
+            <Skeleton className="h-28 w-full" />
+          ) : slotsQuery.isError ? (
+            <ErrorState error={slotsQuery.error} onRetry={() => slotsQuery.refetch()} />
+          ) : (
+            <SlotGrid
+              courts={courtSlots}
+              courtNames={courtNames}
+              selected={selected}
+              onSelectedChange={setSelected}
+              onLimitReached={(max) => toast.warning(tSlot('maxSlotsReached', { max }))}
+            />
           )}
 
-          <ReviewsSection
-            summary={summaryQuery.data}
-            list={reviewsQuery.data?.data}
-            meta={reviewsQuery.data?.meta}
-            loading={reviewsQuery.isLoading}
-            onPageChange={setReviewPage}
-          />
-        </div>
+          <div className="border-t border-border pt-3">
+            <BookingBar
+              count={selected.length}
+              total={total}
+              range={selectedRangeText}
+              isAuthenticated={isAuthenticated}
+              loginHref={loginHref}
+              onContinue={onOpenConfirm}
+              pending={hold.isPending}
+            />
+          </div>
+        </Card>
+
+        {/* ===== Đánh giá từ khách: để cuối cùng ===== */}
+        <ReviewsSection
+          summary={summaryQuery.data}
+          list={reviewsQuery.data?.data}
+          meta={reviewsQuery.data?.meta}
+          loading={reviewsQuery.isLoading}
+          onPageChange={setReviewPage}
+        />
       </div>
 
       <BookingConfirmDialog
@@ -645,16 +738,17 @@ function ReviewsSection({ summary, list, meta, loading, onPageChange }: ReviewsS
 
 function DetailSkeleton() {
   return (
-    <main className="container py-6">
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-4">
-          <Skeleton className="aspect-[16/9] w-full" />
-          <Skeleton className="h-9 w-2/3" />
+    <main className="container space-y-6 py-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Skeleton className="order-1 aspect-video w-full lg:order-1" />
+        <Skeleton className="order-3 h-64 w-full lg:order-2 lg:h-auto" />
+        <div className="order-2 space-y-2 lg:order-3 lg:col-span-2">
+          <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-5 w-1/2" />
-          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-4 w-1/3" />
         </div>
-        <Skeleton className="h-96 w-full" />
       </div>
+      <Skeleton className="h-44 w-full" />
     </main>
   );
 }

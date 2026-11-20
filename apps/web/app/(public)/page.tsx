@@ -155,7 +155,7 @@ function formatVenueLocation(venue: VenueListItem): string {
 function AnimatedCounter({
   end,
   suffix = '+',
-  duration = 1500,
+  duration = 900,
 }: {
   end: number;
   suffix?: string;
@@ -169,6 +169,28 @@ function AnimatedCounter({
     const el = elementRef.current;
     if (!el) return;
 
+    const startAnimation = () => {
+      if (hasAnimated.current) return;
+      hasAnimated.current = true;
+      const startTime = performance.now();
+
+      const updateCount = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutCubic: 1 - (1 - t)^3
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        setCount(Math.floor(easeOut * end));
+
+        if (progress < 1) {
+          requestAnimationFrame(updateCount);
+        } else {
+          setCount(end);
+        }
+      };
+
+      requestAnimationFrame(updateCount);
+    };
+
     if (typeof IntersectionObserver === 'undefined') {
       setCount(end);
       return;
@@ -177,33 +199,21 @@ function AnimatedCounter({
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (entry?.isIntersecting && !hasAnimated.current) {
-          hasAnimated.current = true;
-          const startTime = performance.now();
-
-          const updateCount = (currentTime: number) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            // easeOutCubic: 1 - (1 - t)^3
-            const easeOut = 1 - Math.pow(1 - progress, 3);
-            const currentCount = Math.floor(easeOut * end);
-            setCount(currentCount);
-
-            if (progress < 1) {
-              requestAnimationFrame(updateCount);
-            } else {
-              setCount(end);
-            }
-          };
-
-          requestAnimationFrame(updateCount);
+        if (entry?.isIntersecting) {
+          startAnimation();
         }
       },
-      { threshold: 0.15 },
+      { threshold: 0.1 },
     );
 
     observer.observe(el);
-    return () => observer.disconnect();
+    // Fallback cho trường hợp chưa cuộn xuống hoặc trình duyệt chụp toàn trang không kích hoạt observer.
+    const fallbackTimer = window.setTimeout(startAnimation, 300);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallbackTimer);
+    };
   }, [end, duration]);
 
   return (
@@ -223,6 +233,60 @@ export default function HomePage() {
   const router = useAppRouter();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [realVenues, setRealVenues] = React.useState<VenueListItem[]>([]);
+  const marqueeRef = React.useRef<HTMLDivElement>(null);
+  const marqueePausedRef = React.useRef(false);
+  const marqueeDragRef = React.useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    startScrollLeft: 0,
+  });
+
+  React.useEffect(() => {
+    const el = marqueeRef.current;
+    if (!el) return;
+
+    let rafId = 0;
+    let lastTime = performance.now();
+    let carry = 0;
+
+    const step = (now: number) => {
+      const dt = Math.min(now - lastTime, 50);
+      lastTime = now;
+
+      if (!marqueePausedRef.current && !marqueeDragRef.current.active) {
+        // Tích lũy phần thập phân để tránh trình duyệt làm tròn xuống 0 trên màn 60/120Hz.
+        carry += dt * 0.085;
+        const delta = Math.floor(carry);
+        if (delta >= 1) {
+          carry -= delta;
+          el.scrollLeft += delta;
+          const halfWidth = el.scrollWidth / 2;
+          if (halfWidth > 0 && el.scrollLeft >= halfWidth) {
+            el.scrollLeft -= halfWidth;
+          }
+        }
+      } else {
+        carry = 0;
+      }
+      rafId = requestAnimationFrame(step);
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [realVenues.length]);
+
+  const handleMarqueeScrollLoop = () => {
+    const el = marqueeRef.current;
+    if (!el) return;
+    const halfWidth = el.scrollWidth / 2;
+    if (halfWidth <= 0) return;
+    if (el.scrollLeft >= halfWidth) {
+      el.scrollLeft -= halfWidth;
+    } else if (el.scrollLeft <= 1) {
+      el.scrollLeft += halfWidth;
+    }
+  };
 
   React.useEffect(() => {
     let cancelled = false;
@@ -285,8 +349,8 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col">
-      {/* ── 1. Hero Section: Chiếm trọn khung nhìn đầu tiên (Above The Fold) kèm Background Tech-Sports & Ambient Glow ──────── */}
-      <section className="relative flex min-h-[calc(100vh-4rem)] flex-col justify-between overflow-hidden border-b border-border bg-gradient-to-b from-primary-100/50 via-primary-50/20 to-bg py-10 lg:py-14 dark:from-primary-950/40 dark:via-bg dark:to-bg">
+      {/* ── 1. Hero Section: Đưa toàn bộ khối nội dung lên sát trên gọn đẹp trên cả Mobile & Laptop ──────── */}
+      <section className="relative flex flex-col overflow-hidden border-b border-border bg-gradient-to-b from-primary-100/50 via-primary-50/20 to-bg pb-6 pt-5 sm:pb-8 sm:pt-7 lg:pb-8 lg:pt-8 dark:from-primary-950/40 dark:via-bg dark:to-bg">
         {/* Lớp nền lưới sân thể thao chìm (Court Grid Pattern) */}
         <div
           className="pointer-events-none absolute inset-0 z-0 opacity-[0.06] dark:opacity-[0.04]"
@@ -313,13 +377,13 @@ export default function HomePage() {
           aria-hidden="true"
         />
 
-        <div className="container relative z-10 my-auto">
-          <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16 2xl:gap-20">
+        <div className="container relative z-10">
+          <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-start gap-8 lg:grid-cols-12 lg:items-center lg:gap-10 xl:gap-14">
             {/* Cột trái: 7 phần – Tiêu đề, mô tả, tìm kiếm và môn thể thao */}
             <div className="flex min-w-0 flex-col items-start text-left lg:col-span-7">
               {/* Badge tin cậy */}
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-100/70 px-4 py-1.5 text-xs font-semibold text-primary-800 shadow-xs sm:text-sm dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
-                <ShieldCheck className="size-4 shrink-0 text-primary-700 dark:text-primary-400" aria-hidden="true" />
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-100/70 px-3 py-1 text-xs font-semibold text-primary-800 shadow-xs sm:mb-3.5 sm:gap-2 sm:px-3.5 sm:py-1 sm:text-sm dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
+                <ShieldCheck className="size-3.5 shrink-0 text-primary-700 sm:size-4 dark:text-primary-400" aria-hidden="true" />
                 <span>{tHome('heroBadge')}</span>
               </div>
 
@@ -327,18 +391,18 @@ export default function HomePage() {
                 {tHome('heroTitle')}
               </h1>
 
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg lg:text-xl xl:max-w-3xl 2xl:text-[1.3rem] lg:leading-relaxed">
+              <p className="mt-3 max-w-2xl text-base leading-relaxed text-text-secondary sm:mt-4 sm:text-lg lg:text-xl xl:max-w-3xl 2xl:text-[1.3rem] lg:leading-relaxed">
                 {tHome('heroSubtitle')}
               </p>
 
               {/* Ô tìm kiếm nhanh */}
               <form
                 onSubmit={handleSearch}
-                className="mt-8 flex w-full max-w-2xl flex-col gap-2.5 rounded-2xl border border-border/90 bg-bg-card p-2.5 shadow-md shadow-primary-950/5 transition-all focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-100/80 sm:flex-row sm:items-center sm:gap-2 sm:p-2.5 xl:max-w-3xl"
+                className="mt-5 flex w-full max-w-2xl flex-col gap-2 rounded-2xl border border-border/90 bg-bg-card p-2 shadow-md shadow-primary-950/5 transition-all focus-within:border-primary-500 focus-within:ring-4 focus-within:ring-primary-100/80 sm:mt-6 sm:flex-row sm:items-center sm:p-2 xl:max-w-3xl"
               >
                 <div className="relative flex-1">
                   <Search
-                    className="absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-text-disabled"
+                    className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-disabled sm:left-3.5 sm:size-5"
                     aria-hidden="true"
                   />
                   {/* Nhãn ẩn cho trình đọc màn hình — placeholder không đủ làm tên trường. */}
@@ -351,48 +415,50 @@ export default function HomePage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={tHome('searchPlaceholder')}
-                    className="h-12 border-0 pl-11 pr-3 text-sm shadow-none focus-visible:ring-0 sm:text-base xl:h-14"
+                    className="h-11 border-0 pl-9 pr-2 text-sm shadow-none focus-visible:ring-0 sm:h-12 sm:pl-11 sm:pr-3 sm:text-base"
                   />
                 </div>
-                <Button type="submit" variant="primary" size="lg" className="h-12 shrink-0 px-7 text-sm font-semibold shadow-xs sm:text-base xl:h-14 xl:px-8">
+                <Button type="submit" variant="primary" size="lg" className="h-11 shrink-0 px-5 text-sm font-semibold shadow-xs sm:h-12 sm:px-6 sm:text-base">
                   <Search className="size-4" aria-hidden="true" />
                   <span>{tHome('searchButton')}</span>
                 </Button>
               </form>
 
-              {/* Danh sách chip môn thể thao căn trái */}
-              <div className="mt-7 flex w-full max-w-full flex-nowrap items-center justify-start gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0 2xl:gap-2.5">
-                <span className="shrink-0 whitespace-nowrap text-xs font-medium text-text-secondary 2xl:text-sm">
+              {/* Danh sách chip môn thể thao căn trái – hiển thị đầy đủ không phải kéo */}
+              <div className="mt-5 flex w-full max-w-full flex-col items-start gap-2 sm:mt-6">
+                <span className="text-xs font-medium text-text-secondary sm:text-sm">
                   {tHome('popularSports')}:
                 </span>
-                {POPULAR_SPORTS.map((sport) => {
-                  const Icon = sport.icon;
-                  return (
-                    <Link
-                      key={sport.slug}
-                      href={`/venues?sport=${sport.slug}`}
-                      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-bg-card px-3 py-1.5 text-xs font-medium text-text-primary shadow-2xs transition-colors duration-150 hover:border-primary-400 hover:bg-bg-subtle hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-1 2xl:gap-2 2xl:px-3.5 2xl:text-sm dark:hover:text-primary-300"
-                    >
-                      <Icon
-                        className="size-4 shrink-0 text-primary-700 dark:text-primary-400"
-                        aria-hidden="true"
-                        strokeWidth={1.75}
-                      />
-                      <span>{sport.name}</span>
-                    </Link>
-                  );
-                })}
+                <div className="flex w-full flex-wrap items-center justify-start gap-1.5 sm:gap-2">
+                  {POPULAR_SPORTS.map((sport) => {
+                    const Icon = sport.icon;
+                    return (
+                      <Link
+                        key={sport.slug}
+                        href={`/venues?sport=${sport.slug}`}
+                        className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-bg-card px-2.5 py-1 text-xs font-medium text-text-primary shadow-2xs transition-colors duration-150 hover:border-primary-400 hover:bg-bg-subtle hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-1 sm:px-3 sm:py-1.5 dark:hover:text-primary-300"
+                      >
+                        <Icon
+                          className="size-3.5 shrink-0 text-primary-700 sm:size-4 dark:text-primary-400"
+                          aria-hidden="true"
+                          strokeWidth={1.75}
+                        />
+                        <span>{sport.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Cột phải: 5 phần – Live Visual Preview Card mô phỏng cơ sở thể thao với hiệu ứng Glassmorphism */}
+            {/* Cột phải: 5 phần – Live Visual Preview Card */}
             <aside
               aria-label={tHome('heroPreviewTitle')}
               className="hidden lg:col-span-5 lg:block"
             >
-              <div className="relative w-full max-w-[560px] rounded-2xl border border-primary-200/80 bg-bg-card/95 p-7 shadow-2xl shadow-primary-950/10 backdrop-blur-md lg:ml-auto lg:p-8 xl:p-9 dark:border-primary-900/50">
-                <div className="flex items-center justify-between border-b border-border/70 pb-4">
-                  <div className="flex items-center gap-2.5">
+              <div className="relative w-full max-w-[560px] rounded-2xl border border-primary-200/80 bg-bg-card/95 p-5 shadow-2xl shadow-primary-950/10 backdrop-blur-md lg:ml-auto lg:p-6 dark:border-primary-900/50">
+                <div className="flex items-center justify-between border-b border-border/70 pb-3.5">
+                  <div className="flex items-center gap-2">
                     <span className="relative flex size-2.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
@@ -406,7 +472,7 @@ export default function HomePage() {
                   </span>
                 </div>
 
-                <div className="mt-5 space-y-3.5">
+                <div className="mt-4 space-y-3">
                   {heroPreviewVenues.length > 0 ? (
                     heroPreviewVenues.map((venue) => {
                       const sportsLabel = venue.sports
@@ -420,7 +486,7 @@ export default function HomePage() {
                         <Link
                           key={venue.id}
                           href={`/venues/${venue.slug}`}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-subtle p-3.5 transition-colors hover:border-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 sm:p-4"
+                          className="flex items-center justify-between gap-2.5 rounded-xl border border-border bg-bg-subtle p-3 transition-colors hover:border-primary-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
                         >
                           <div className="flex min-w-0 flex-col text-left">
                             <span className="truncate text-sm font-bold text-text-primary">
@@ -493,10 +559,10 @@ export default function HomePage() {
         </div>
 
         {/* Chỉ báo cuộn trang trực quan (Scroll Indicator) */}
-        <div className="container relative z-10 flex justify-center pb-4 pt-2">
-          <div className="inline-flex items-center gap-2.5 text-text-secondary/75 transition-colors hover:text-text-primary">
-            <span className="flex size-8 items-center justify-center rounded-full border border-border/80 bg-bg-card text-primary-600 shadow-xs animate-bounce dark:text-primary-400">
-              <ChevronDown className="size-4.5" aria-hidden="true" />
+        <div className="container relative z-10 mt-5 flex justify-center pb-0 pt-1 lg:mt-6">
+          <div className="inline-flex items-center gap-2 text-text-secondary/75 transition-colors hover:text-text-primary sm:gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-full border border-border/80 bg-bg-card text-primary-600 shadow-xs animate-bounce sm:size-8 dark:text-primary-400">
+              <ChevronDown className="size-4" aria-hidden="true" />
             </span>
             <span className="text-xs font-medium tracking-wide sm:text-sm">
               {tHome('scrollDown')}
@@ -506,9 +572,9 @@ export default function HomePage() {
       </section>
 
       {/* ── 2. Lý do chọn nền tảng: Header căn giữa, 3 Card cân đối ──────── */}
-      <section className="border-b border-border bg-bg-subtle py-14 md:py-20">
+      <section className="border-b border-border bg-bg-subtle py-10 md:py-14">
         <div className="container">
-          <div className="mx-auto mb-10 max-w-2xl text-center">
+          <div className="mx-auto mb-8 max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl xl:text-4xl">
               {tHome('whyTitle')}
             </h2>
@@ -580,21 +646,66 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Băng chuyền vô tận với hiệu ứng làm mờ 2 mép siêu mượt (mask-image + gradient fade) */}
-        <div className="relative w-full overflow-hidden bsc-marquee-mask">
-          {/* Lớp gradient mờ nhẹ ở 2 bên mép tạo chiều sâu không gian */}
+        {/* Băng chuyền chạy chậm tự động, hỗ trợ vuốt tay / kéo chuột qua lại để chọn sân */}
+        <div className="relative w-full md:bsc-marquee-mask">
+          {/* Lớp gradient mờ nhẹ ở 2 bên mép */}
           <div
-            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 sm:w-28 lg:w-40 bg-gradient-to-r from-bg via-bg/40 to-transparent dark:from-bg dark:via-bg/40"
+            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-bg/90 to-transparent sm:w-16 lg:w-28"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 sm:w-28 lg:w-40 bg-gradient-to-l from-bg via-bg/40 to-transparent dark:from-bg dark:via-bg/40"
+            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-bg/90 to-transparent sm:w-16 lg:w-28"
             aria-hidden="true"
           />
 
           <div
-            className="animate-bsc-marquee gap-5 py-2 xl:gap-6"
-            style={{ animationDuration: `${Math.max(30, marqueeHalf.length * 5)}s` }}
+            ref={marqueeRef}
+            onScroll={handleMarqueeScrollLoop}
+            onMouseEnter={() => {
+              marqueePausedRef.current = true;
+            }}
+            onMouseLeave={() => {
+              marqueePausedRef.current = false;
+              marqueeDragRef.current.active = false;
+            }}
+            onTouchStart={() => {
+              marqueePausedRef.current = true;
+            }}
+            onTouchEnd={() => {
+              window.setTimeout(() => {
+                marqueePausedRef.current = false;
+              }, 1200);
+            }}
+            onPointerDown={(e) => {
+              if (e.pointerType !== 'mouse') return;
+              const el = marqueeRef.current;
+              if (!el) return;
+              marqueeDragRef.current = {
+                active: true,
+                moved: false,
+                startX: e.clientX,
+                startScrollLeft: el.scrollLeft,
+              };
+            }}
+            onPointerMove={(e) => {
+              if (!marqueeDragRef.current.active || e.pointerType !== 'mouse') return;
+              const el = marqueeRef.current;
+              if (!el) return;
+              const dx = e.clientX - marqueeDragRef.current.startX;
+              if (Math.abs(dx) > 5) marqueeDragRef.current.moved = true;
+              el.scrollLeft = marqueeDragRef.current.startScrollLeft - dx;
+            }}
+            onPointerUp={() => {
+              marqueeDragRef.current.active = false;
+            }}
+            onClickCapture={(e) => {
+              if (marqueeDragRef.current.moved) {
+                e.preventDefault();
+                e.stopPropagation();
+                marqueeDragRef.current.moved = false;
+              }
+            }}
+            className="flex cursor-grab gap-3 overflow-x-auto px-4 py-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-8"
           >
             {[...marqueeHalf, ...marqueeHalf].map((court, idx) => {
               const cardBody = (
@@ -604,36 +715,37 @@ export default function HomePage() {
                       <Image
                         src={court.imageUrl}
                         alt={court.name}
-                        width={600}
-                        height={375}
+                        width={480}
+                        height={300}
                         unoptimized
+                        draggable={false}
                         className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex size-full items-center justify-center bg-bg-subtle">
-                        <ImageOff className="size-8 text-text-disabled" aria-hidden="true" />
+                        <ImageOff className="size-7 text-text-disabled" aria-hidden="true" />
                       </div>
                     )}
-                    {/* Lớp phủ gradient mờ nhẹ trên ảnh giúp text/badge nổi bật, không bị thô */}
+                    {/* Lớp phủ gradient mờ nhẹ trên ảnh giúp badge nổi bật */}
                     <div
-                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-black/25 opacity-80 transition-opacity duration-300 group-hover:opacity-90"
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20"
                       aria-hidden="true"
                     />
-                    <span className="absolute left-2.5 top-2.5 rounded-full border border-white/10 bg-black/50 px-2.5 py-0.5 text-[11px] font-medium text-white shadow-xs backdrop-blur-md">
+                    <span className="absolute left-2 top-2 max-w-[75%] truncate rounded-full border border-white/20 bg-neutral-900/75 px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
                       {court.sport}
                     </span>
                     {court.rating !== null ? (
-                      <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full border border-border bg-bg-card/95 px-2.5 py-0.5 text-[11px] font-bold text-text-primary shadow-md backdrop-blur-md">
+                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-black/10 bg-white/95 px-2 py-0.5 text-[11px] font-bold text-neutral-900 shadow-sm">
                         <Star className="size-3 fill-amber-400 text-amber-400" aria-hidden="true" />
                         <span>{court.rating.toFixed(1)}</span>
                       </div>
                     ) : court.fromPrice !== null ? (
-                      <div className="absolute bottom-2.5 right-2.5 rounded-full border border-border bg-bg-card/95 px-2.5 py-0.5 text-[11px] font-bold text-primary-700 shadow-md backdrop-blur-md dark:text-primary-400">
+                      <div className="absolute bottom-2 right-2 rounded-full border border-black/10 bg-white/95 px-2 py-0.5 text-[11px] font-bold text-primary-700 shadow-sm">
                         {formatCurrency(court.fromPrice)}
                       </div>
                     ) : null}
                   </div>
-                  <div className="flex flex-col p-3.5 text-left">
+                  <div className="flex flex-col p-2.5 text-left sm:p-3">
                     <h3 className="truncate text-sm font-semibold text-text-primary transition-colors group-hover:text-primary-700 dark:group-hover:text-primary-400">
                       {court.name}
                     </h3>
@@ -646,12 +758,13 @@ export default function HomePage() {
               );
 
               const cardClass =
-                'group flex w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border/80 bg-bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary-400 hover:shadow-lg hover:shadow-primary-950/5 sm:w-[300px] xl:w-[340px]';
+                'group flex w-[196px] shrink-0 select-none flex-col overflow-hidden rounded-xl border border-border/80 bg-bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-400 hover:shadow-md sm:w-[228px] lg:w-[248px]';
 
               return court.slug ? (
                 <Link
                   key={`${court.id}-${idx}`}
                   href={`/venues/${court.slug}`}
+                  draggable={false}
                   className={cardClass}
                 >
                   {cardBody}
@@ -666,31 +779,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 4. Số liệu thống kê: Căn giữa cân xứng 3 cột + tabular-nums + divider ─────────── */}
-      <section className="border-b border-border bg-bg-subtle py-12 md:py-16">
+      {/* ── 4. Số liệu thống kê: 3 cột nằm ngang trên mọi màn hình + tabular-nums + divider ─────────── */}
+      <section className="border-b border-border bg-bg-subtle py-8 sm:py-12 md:py-16">
         <div className="container">
-          <div className="mx-auto grid max-w-6xl grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            <div className="flex flex-col items-center py-6 text-center sm:px-8 sm:py-2">
-              <div className="tabular-nums text-4xl font-extrabold tracking-tight text-primary-700 dark:text-primary-400 sm:text-5xl">
+          <div className="mx-auto grid max-w-6xl grid-cols-3 divide-x divide-border">
+            <div className="flex flex-col items-center px-2 py-2 text-center sm:px-8">
+              <div className="tabular-nums text-xl font-extrabold tracking-tight text-primary-700 dark:text-primary-400 sm:text-4xl lg:text-5xl">
                 <AnimatedCounter end={500} suffix="+" />
               </div>
-              <span className="mt-2 text-sm font-medium text-text-secondary sm:text-base">
+              <span className="mt-1 text-xs font-medium text-text-secondary sm:mt-2 sm:text-base">
                 {tHome('statsVenues')}
               </span>
             </div>
-            <div className="flex flex-col items-center py-6 text-center sm:px-8 sm:py-2">
-              <div className="tabular-nums text-4xl font-extrabold tracking-tight text-primary-700 dark:text-primary-400 sm:text-5xl">
+            <div className="flex flex-col items-center px-2 py-2 text-center sm:px-8">
+              <div className="tabular-nums text-xl font-extrabold tracking-tight text-primary-700 dark:text-primary-400 sm:text-4xl lg:text-5xl">
                 <AnimatedCounter end={25000} suffix="+" />
               </div>
-              <span className="mt-2 text-sm font-medium text-text-secondary sm:text-base">
+              <span className="mt-1 text-xs font-medium text-text-secondary sm:mt-2 sm:text-base">
                 {tHome('statsBookings')}
               </span>
             </div>
-            <div className="flex flex-col items-center py-6 text-center sm:px-8 sm:py-2">
-              <div className="tabular-nums text-4xl font-extrabold tracking-tight text-primary-700 dark:text-primary-400 sm:text-5xl">
+            <div className="flex flex-col items-center px-2 py-2 text-center sm:px-8">
+              <div className="tabular-nums text-xl font-extrabold tracking-tight text-primary-700 dark:text-primary-400 sm:text-4xl lg:text-5xl">
                 <AnimatedCounter end={15000} suffix="+" />
               </div>
-              <span className="mt-2 text-sm font-medium text-text-secondary sm:text-base">
+              <span className="mt-1 text-xs font-medium text-text-secondary sm:mt-2 sm:text-base">
                 {tHome('statsCustomers')}
               </span>
             </div>
@@ -911,10 +1024,10 @@ export default function HomePage() {
         />
 
         <div className="container relative z-10">
-          <div className="mx-auto flex max-w-[1440px] flex-col gap-8 text-left md:flex-row md:items-center md:justify-between md:gap-12">
-            <div className="max-w-3xl">
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-6 text-left md:flex-row md:items-center md:justify-between md:gap-8">
+            <div className="min-w-0 flex-1">
               {/* Badge đối tác chữ xanh */}
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-100/70 px-4 py-1.5 text-xs font-semibold text-primary-800 shadow-2xs sm:text-sm dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-100/70 px-3.5 py-1 text-xs font-semibold text-primary-800 shadow-2xs sm:mb-4 sm:px-4 sm:py-1.5 sm:text-sm dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
                 <Building2 className="size-4 shrink-0 text-primary-700 dark:text-primary-400" aria-hidden="true" />
                 <span>{tHome('ctaBadge')}</span>
               </div>
@@ -927,42 +1040,42 @@ export default function HomePage() {
               </p>
 
               {/* 3 đặc quyền chủ sân: Icon xanh */}
-              <div className="mt-6 flex flex-wrap items-center gap-y-2.5 gap-x-6 text-xs font-medium text-text-secondary sm:text-sm">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4.5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-text-secondary sm:text-sm">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
                   <span>{tHome('ctaHighlight1')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4.5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
                   <span>{tHome('ctaHighlight2')}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Users className="size-4.5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
+                <div className="flex items-center gap-1.5">
+                  <Users className="size-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
                   <span>{tHome('ctaHighlight3')}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-3.5 sm:flex-row">
+            <div className="flex shrink-0 flex-wrap gap-2.5 md:w-52 md:flex-col lg:w-56">
               <Button
                 variant="primary"
-                size="lg"
+                size="md"
                 asChild
-                className="group h-12 px-7 text-sm font-semibold shadow-sm sm:text-base"
+                className="group h-10 px-4 text-xs font-semibold shadow-sm sm:text-sm md:w-full"
               >
                 <Link href="/owner/apply">
                   <span>{tHome('ctaRegisterOwner')}</span>
                   <ArrowRight
-                    className="size-4.5 transition-transform duration-200 group-hover:translate-x-1"
+                    className="size-4 transition-transform duration-200 group-hover:translate-x-1"
                     aria-hidden="true"
                   />
                 </Link>
               </Button>
               <Button
                 variant="outline"
-                size="lg"
+                size="md"
                 asChild
-                className="h-12 border-primary-300 bg-transparent px-7 text-sm font-semibold text-primary-800 hover:bg-primary-50 hover:text-primary-900 sm:text-base dark:border-primary-700/60 dark:text-primary-200 dark:hover:bg-primary-950/40"
+                className="h-10 border-primary-300 bg-transparent px-4 text-xs font-semibold text-primary-800 hover:bg-primary-50 hover:text-primary-900 sm:text-sm md:w-full dark:border-primary-700/60 dark:text-primary-200 dark:hover:bg-primary-950/40"
               >
                 <Link href="/owner/timeline">{tHome('ctaExploreOwner')}</Link>
               </Button>

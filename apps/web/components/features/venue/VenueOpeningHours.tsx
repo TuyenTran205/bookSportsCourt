@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils/cn';
 
 export interface VenueOpeningHoursProps {
   openingHours?: OpeningHour[] | null;
+  hideHeader?: boolean;
+  compact?: boolean;
   className?: string;
 }
 
@@ -20,7 +22,12 @@ const WEEKDAY_NAMES: Record<number, string> = {
   0: 'Chủ Nhật',
 };
 
-export function VenueOpeningHours({ openingHours, className }: VenueOpeningHoursProps) {
+export function VenueOpeningHours({
+  openingHours,
+  hideHeader = false,
+  compact = false,
+  className,
+}: VenueOpeningHoursProps) {
   const currentWeekday = new Date().getDay();
 
   // Gom các bản ghi theo weekday (chỉ lấy courtId === null hoặc bản ghi đầu tiên của thứ đó)
@@ -40,15 +47,21 @@ export function VenueOpeningHours({ openingHours, className }: VenueOpeningHours
   const hasData = hoursByWeekday.size > 0;
 
   return (
-    <section aria-labelledby="opening-hours-heading" className={cn('space-y-3', className)}>
-      <div className="flex items-center gap-2">
-        <Clock className="size-5 shrink-0 text-primary-700 dark:text-primary-400" aria-hidden="true" />
-        <h2 id="opening-hours-heading" className="text-xl font-semibold text-text-primary">
-          Giờ hoạt động
-        </h2>
-      </div>
+    <section
+      aria-labelledby={hideHeader ? undefined : 'opening-hours-heading'}
+      aria-label={hideHeader ? 'Giờ hoạt động' : undefined}
+      className={cn(!compact && 'space-y-3', className)}
+    >
+      {!hideHeader && (
+        <div className="flex items-center gap-2">
+          <Clock className="size-5 shrink-0 text-primary-700 dark:text-primary-400" aria-hidden="true" />
+          <h2 id="opening-hours-heading" className="text-xl font-semibold text-text-primary">
+            Giờ hoạt động
+          </h2>
+        </div>
+      )}
 
-      <div className="rounded-card border border-border bg-bg-card p-4 shadow-sm">
+      <div className={cn(!compact && 'rounded-card border border-border bg-bg-card p-4 shadow-sm')}>
         {!hasData ? (
           <div className="flex items-center gap-2 py-2 text-sm text-text-secondary">
             <Clock className="size-4 shrink-0 text-text-disabled" aria-hidden="true" />
@@ -66,7 +79,8 @@ export function VenueOpeningHours({ openingHours, className }: VenueOpeningHours
                   key={weekday}
                   data-testid={`opening-hour-row-${weekday}`}
                   className={cn(
-                    'flex items-center justify-between py-2.5 px-3 transition-colors',
+                    'flex items-center justify-between transition-colors',
+                    compact ? 'px-2.5 py-1.5' : 'px-3 py-2.5',
                     isToday &&
                       'rounded-md border border-primary-300 bg-primary-50/50 font-semibold text-primary-900 dark:border-primary-800 dark:bg-primary-950/40 dark:text-primary-200 shadow-xs',
                   )}

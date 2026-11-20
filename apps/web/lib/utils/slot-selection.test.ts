@@ -8,6 +8,7 @@ import {
   deriveTimeRows,
   isSelectable,
   mergeSelection,
+  removeSelection,
   toggleSelection,
   totalPrice,
 } from './slot-selection';
@@ -150,6 +151,24 @@ describe('toggleSelection', () => {
     const result = toggleSelection(full, full[0]!);
     expect(result.keys).toHaveLength(MAX_SLOTS_PER_BOOKING - 1);
     expect(result.truncated).toBe(false);
+  });
+});
+
+describe('removeSelection (kéo giữ để bỏ chọn)', () => {
+  it('bỏ chọn các block nằm trong dải kéo', () => {
+    const selected = [T(18), T(18, 30), T(19), T(19, 30)];
+    const toRemove = [T(18, 30), T(19)];
+    expect(removeSelection(selected, toRemove)).toEqual([T(18), T(19, 30)]);
+  });
+
+  it('bỏ chọn toàn bộ nếu dải kéo bao trùm toàn bộ selected', () => {
+    const selected = [T(18), T(18, 30)];
+    expect(removeSelection(selected, [T(18), T(18, 30)])).toEqual([]);
+  });
+
+  it('giữ nguyên khi dải kéo không chứa block nào trong selected', () => {
+    const selected = [T(18), T(18, 30)];
+    expect(removeSelection(selected, [T(20), T(20, 30)])).toEqual([T(18), T(18, 30)]);
   });
 });
 

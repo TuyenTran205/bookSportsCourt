@@ -86,6 +86,17 @@ export function mergeSelection(
   return { keys: [...next], truncated };
 }
 
+/**
+ * Bỏ chọn dải block đang kéo khỏi tập đã chọn (drag-to-deselect).
+ */
+export function removeSelection(
+  selected: readonly string[],
+  incoming: readonly string[],
+): string[] {
+  const toRemove = new Set(incoming);
+  return selected.filter((key) => !toRemove.has(key));
+}
+
 /** Bật/tắt một block (dùng cho click và bàn phím). */
 export function toggleSelection(
   selected: readonly string[],

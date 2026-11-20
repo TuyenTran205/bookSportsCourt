@@ -50,7 +50,7 @@ export function AdminAnalyticsScreen() {
 
       {analyticsQuery.isPending ? (
         <div className="mt-6 flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Skeleton className="h-80 w-full rounded-card" />
             <Skeleton className="h-80 w-full rounded-card" />
           </div>
@@ -66,7 +66,7 @@ export function AdminAnalyticsScreen() {
       ) : (
         <div className="mt-6 flex flex-col gap-6">
           {/* 2 Biểu đồ */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             {/* Biểu đồ tròn: Cơ cấu theo môn thể thao */}
             <Card className="p-5">
               <h3 className="mb-1 text-base font-semibold text-neutral-900">
@@ -77,34 +77,41 @@ export function AdminAnalyticsScreen() {
               </p>
 
               <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={data?.bySport ?? []}
-                      dataKey="bookings"
-                      nameKey="sport"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }: { name?: string; percent?: number }) =>
-                        `${name ?? ''}: ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
-                      labelLine={false}
-                    >
-                      {((data?.bySport ?? [])).map((_, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={SPORT_COLORS[index % SPORT_COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      {...RECHARTS_TOOLTIP_PROPS}
-                      formatter={(val: number) => [`${val} lượt`, 'Số lượt đặt']}
-                    />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                {(data?.bySport ?? []).length === 0 ? (
+                  <div className="flex size-full flex-col items-center justify-center text-xs text-neutral-400">
+                    <p className="font-medium text-neutral-500">Chưa có dữ liệu cơ cấu môn thể thao</p>
+                    <p className="mt-1 text-[11px] text-neutral-400">Dữ liệu sẽ xuất hiện khi có đơn đặt sân phát sinh</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data?.bySport ?? []}
+                        dataKey="bookings"
+                        nameKey="sport"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ name, percent }: { name?: string; percent?: number }) =>
+                          `${name ?? ''}: ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
+                        labelLine={false}
+                      >
+                        {((data?.bySport ?? [])).map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={SPORT_COLORS[index % SPORT_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        {...RECHARTS_TOOLTIP_PROPS}
+                        formatter={(val: number) => [`${val} lượt`, 'Số lượt đặt']}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </Card>
 
@@ -126,7 +133,7 @@ export function AdminAnalyticsScreen() {
                         name: STATUS_LABELS[s.status] ?? s.status,
                       }))
                     }
-                    margin={{ top: 10, right: 10, left: 0, bottom: 25 }}
+                    margin={{ top: 10, right: 24, left: 10, bottom: 35 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
                     <XAxis
@@ -138,6 +145,7 @@ export function AdminAnalyticsScreen() {
                       textAnchor="end"
                     />
                     <YAxis
+                      width={30}
                       stroke="#94a3b8"
                       fontSize={11}
                       tickLine={false}

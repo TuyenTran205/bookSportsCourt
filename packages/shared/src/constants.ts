@@ -146,6 +146,7 @@ export const NOTIFICATION_TYPES = [
   'owner_application_rejected',
   'venue_approved',
   'venue_rejected',
+  'abuse_alert',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
