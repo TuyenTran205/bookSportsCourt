@@ -171,6 +171,7 @@ jobs:
             JWT_ACCESS_SECRET: test-access-secret-at-least-32-chars
             JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars
             NODE_ENV: test
+            PORT: 3001
             NEXT_PUBLIC_API_URL: http://localhost:3001
             NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
             NEXT_PUBLIC_API_MOCKING: enabled
@@ -196,6 +197,11 @@ jobs:
               run: |
                   pnpm --filter @bsc/api db:migrate
                   pnpm --filter @bsc/api db:seed
+
+            - name: Start API server
+              run: |
+                  pnpm --filter @bsc/api dev &
+                  npx wait-on http://127.0.0.1:3001/api/v1/health/ping -t 60000
 
             - name: Run E2E tests
               run: pnpm test:e2e

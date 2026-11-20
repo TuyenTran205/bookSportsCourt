@@ -44,11 +44,12 @@ function writeCollapsed(value: boolean) {
 
 interface NavListProps {
   area: DashboardArea;
+  areaTitle: string;
   collapsed: boolean;
   onNavigate?: () => void;
 }
 
-function NavList({ area, collapsed, onNavigate }: NavListProps) {
+function NavList({ area, areaTitle, collapsed, onNavigate }: NavListProps) {
   const pathname = usePathname();
   const t = useTranslations(area);
   const router = useRouter();
@@ -79,7 +80,7 @@ function NavList({ area, collapsed, onNavigate }: NavListProps) {
   React.useEffect(() => cancelPrefetch, [cancelPrefetch]);
 
   return (
-    <nav aria-label={area} className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-thin">
+    <nav aria-label={areaTitle} className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-thin">
       {DASHBOARD_NAV[area].map(({ href, labelKey, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
         const pending = phase === 'pending' && target === href;
@@ -199,7 +200,7 @@ export function DashboardShell({
             {areaTitle}
           </span>
         </div>
-        <NavList area={area} collapsed={collapsed} />
+        <NavList area={area} areaTitle={areaTitle} collapsed={collapsed} />
         <div className="border-t border-border p-3">
           <button
             type="button"
@@ -251,7 +252,7 @@ export function DashboardShell({
                 <X className="size-5" aria-hidden="true" />
               </button>
             </div>
-            <NavList area={area} collapsed={false} onNavigate={() => setDrawerOpen(false)} />
+            <NavList area={area} areaTitle={areaTitle} collapsed={false} onNavigate={() => setDrawerOpen(false)} />
           </aside>
         </div>
       )}
