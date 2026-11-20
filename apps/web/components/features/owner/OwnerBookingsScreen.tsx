@@ -286,111 +286,192 @@ export function OwnerBookingsScreen() {
           }
         />
       ) : (
-        <Card className="overflow-hidden rounded-lg border border-border bg-bg-card shadow-none">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-500">
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('colBookingCode')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('colCustomer')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('colCourtVenue')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('bookingColTimeRange')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('colSource')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('colStatus')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('bookingPaymentStatus')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3">
-                    {t('bookingCreatedAt')}
-                  </th>
-                  <th scope="col" className="whitespace-nowrap px-4 py-3 text-right">
-                    {t('colActions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {bookings.map((booking) => {
-                  const name = booking.customerName || booking.guestName || t('walkInCustomer');
-                  const eligibleNoShow = canMarkNoShow(booking);
-                  return (
-                    <tr key={booking.id} className="transition-colors hover:bg-neutral-50">
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-neutral-600">
-                        {booking.id.slice(0, 8)}…
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-neutral-900">{name}</div>
-                        {(booking.customerPhone || booking.guestPhone) && (
-                          <div className="mt-0.5 text-xs text-neutral-500">
-                            {maskPhone(booking.customerPhone || booking.guestPhone)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-neutral-800">
-                        {booking.courtName}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 tabular-nums text-neutral-600">
-                        {formatDateTimeRangeInVietnam(booking.during.start, booking.during.end)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-neutral-700">
+        <div className="space-y-4">
+          {/* Mobile & Tablet Card List (lg:hidden) */}
+          <div className="space-y-3 lg:hidden">
+            {bookings.map((booking) => {
+              const name = booking.customerName || booking.guestName || t('walkInCustomer');
+              const eligibleNoShow = canMarkNoShow(booking);
+              return (
+                <Card key={booking.id} className="p-3.5 space-y-3 border border-border bg-bg-card shadow-none">
+                  {/* Row 1: Code & Statuses */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-xs font-semibold text-neutral-800">
+                      #{booking.id.slice(0, 8)}
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <StatusBadge kind="booking" status={booking.status} size="sm" />
+                      {booking.paymentStatus ? (
+                        <StatusBadge kind="payment" status={booking.paymentStatus} size="sm" />
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Row 2: Customer & Court Info */}
+                  <div className="space-y-1 text-sm border-t border-neutral-100 pt-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium text-neutral-900">{name}</span>
+                      {(booking.customerPhone || booking.guestPhone) && (
+                        <span className="text-xs text-neutral-500">
+                          {maskPhone(booking.customerPhone || booking.guestPhone)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-neutral-600">
+                      <span className="font-medium text-neutral-800">{booking.courtName}</span>
+                      <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-600">
                         {booking.source === 'manual' ? t('sourceManual') : t('sourceOnline')}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <StatusBadge kind="booking" status={booking.status} size="sm" />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {booking.paymentStatus ? (
-                          <StatusBadge kind="payment" status={booking.paymentStatus} size="sm" />
-                        ) : (
-                          <span className="text-neutral-500">{t('noPayment')}</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 tabular-nums text-neutral-600">
-                        {formatDateTimeInVietnam(booking.createdAt)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {eligibleNoShow && (
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Row 3: Time Range & Total Price */}
+                  <div className="flex items-center justify-between text-xs border-t border-neutral-100 pt-2">
+                    <span className="tabular-nums text-neutral-600">
+                      {formatDateTimeRangeInVietnam(booking.during.start, booking.during.end)}
+                    </span>
+                    <span className="text-sm font-bold tabular-nums text-neutral-900">
+                      {formatCurrency(booking.totalPrice)}
+                    </span>
+                  </div>
+
+                  {/* Row 4: Actions */}
+                  <div className="flex items-center justify-end gap-2 border-t border-neutral-100 pt-2.5">
+                    {eligibleNoShow && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 border-danger/30 text-danger hover:bg-danger-50 hover:text-danger text-xs"
+                        onClick={() => setBookingToNoShow(booking)}
+                      >
+                        <UserX className="size-3.5" aria-hidden="true" />
+                        <span>No-show</span>
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 flex-1 sm:flex-initial text-xs"
+                      onClick={() => setSelectedBooking(booking)}
+                    >
+                      <Eye className="size-3.5" aria-hidden="true" />
+                      {t('bookingDetailsAction')}
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table (hidden lg:block) */}
+          <Card className="hidden lg:block overflow-hidden rounded-lg border border-border bg-bg-card shadow-none">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-500">
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('colBookingCode')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('colCustomer')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('colCourtVenue')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('bookingColTimeRange')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('colSource')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('colStatus')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('bookingPaymentStatus')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3">
+                      {t('bookingCreatedAt')}
+                    </th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-3 text-right">
+                      {t('colActions')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {bookings.map((booking) => {
+                    const name = booking.customerName || booking.guestName || t('walkInCustomer');
+                    const eligibleNoShow = canMarkNoShow(booking);
+                    return (
+                      <tr key={booking.id} className="transition-colors hover:bg-neutral-50">
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-neutral-600">
+                          {booking.id.slice(0, 8)}…
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-neutral-900">{name}</div>
+                          {(booking.customerPhone || booking.guestPhone) && (
+                            <div className="mt-0.5 text-xs text-neutral-500">
+                              {maskPhone(booking.customerPhone || booking.guestPhone)}
+                            </div>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 font-medium text-neutral-800">
+                          {booking.courtName}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 tabular-nums text-neutral-600">
+                          {formatDateTimeRangeInVietnam(booking.during.start, booking.during.end)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-neutral-700">
+                          {booking.source === 'manual' ? t('sourceManual') : t('sourceOnline')}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <StatusBadge kind="booking" status={booking.status} size="sm" />
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3">
+                          {booking.paymentStatus ? (
+                            <StatusBadge kind="payment" status={booking.paymentStatus} size="sm" />
+                          ) : (
+                            <span className="text-neutral-500">{t('noPayment')}</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 tabular-nums text-neutral-600">
+                          {formatDateTimeInVietnam(booking.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {eligibleNoShow && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="min-h-11 border-danger/30 text-danger hover:bg-danger-50 hover:text-danger"
+                                onClick={() => setBookingToNoShow(booking)}
+                              >
+                                <UserX className="size-4" aria-hidden="true" />
+                                <span>No-show</span>
+                              </Button>
+                            )}
                             <Button
                               type="button"
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              className="min-h-11 border-danger/30 text-danger hover:bg-danger-50 hover:text-danger"
-                              onClick={() => setBookingToNoShow(booking)}
+                              className="min-h-11"
+                              onClick={() => setSelectedBooking(booking)}
                             >
-                              <UserX className="size-4" aria-hidden="true" />
-                              <span>No-show</span>
+                              <Eye aria-hidden="true" />
+                              {t('bookingDetailsAction')}
                             </Button>
-                          )}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="min-h-11"
-                            onClick={() => setSelectedBooking(booking)}
-                          >
-                            <Eye aria-hidden="true" />
-                            {t('bookingDetailsAction')}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
           <footer className="border-t border-border px-4 py-3">
             <Pagination
@@ -404,7 +485,7 @@ export function OwnerBookingsScreen() {
               disabled={bookingsQuery.isFetching}
             />
           </footer>
-        </Card>
+        </div>
       )}
 
       {/* Dialog chi tiết đơn */}

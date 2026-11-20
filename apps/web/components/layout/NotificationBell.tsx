@@ -2,9 +2,11 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import type { Notification } from '@bsc/shared';
 import { EmptyState } from '@/components/common/EmptyState';
 import {
   DropdownMenu,
@@ -12,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/lib/hooks/useAuth';
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -20,10 +23,13 @@ import {
 } from '@/lib/hooks/useNotifications';
 import { cn } from '@/lib/utils/cn';
 import { timeAgo } from '@/lib/utils/format';
+import { getNotificationTargetUrl } from '@/lib/utils/notification-navigation';
 
 /** Chuông thông báo ở topbar dashboard: badge chưa đọc + dropdown 8 thông báo gần nhất. */
 export function NotificationBell() {
   const t = useTranslations('notifications');
+  const router = useRouter();
+  const { user } = useAuth();
   const [open, setOpen] = React.useState(false);
 
   const unread = useUnreadCount();
@@ -32,6 +38,17 @@ export function NotificationBell() {
   const markAll = useMarkAllNotificationsRead();
 
   const count = unread.data ?? 0;
+
+  const handleItemClick = (item: Notification) => {
+    if (!item.readAt) {
+      markRead.mutate(item.id);
+    }
+    setOpen(false);
+    const targetUrl = getNotificationTargetUrl(item, user?.role);
+    if (targetUrl) {
+      router.push(targetUrl);
+    }
+  };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -89,9 +106,9 @@ export function NotificationBell() {
                 <li key={item.id}>
                   <button
                     type="button"
-                    onClick={() => !item.readAt && markRead.mutate(item.id)}
+                    onClick={() => handleItemClick(item)}
                     className={cn(
-                      'flex w-full gap-3 border-b border-neutral-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-neutral-50',
+                      'flex w-full gap-3 border-b border-neutral-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-neutral-50 cursor-pointer',
                       !item.readAt && 'bg-primary-50/50',
                     )}
                   >

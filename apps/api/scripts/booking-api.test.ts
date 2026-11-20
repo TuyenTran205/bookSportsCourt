@@ -145,15 +145,22 @@ test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 ro
         ),
       );
 
-      // Tạo sẵn 20 tài khoản customer độc lập để kiểm thử race condition 20 luồng đồng thời
+      // Tạo sẵn 100 tài khoản customer độc lập (20 người x 5 vòng) để kiểm thử race condition đồng thời không bị trùng lặp rate limit giữa các vòng
       const raceCustomerTokens: string[] = [];
-      for (let i = 0; i < 20; i++) {
+      const userRows: string[] = [];
+      for (let i = 0; i < 100; i++) {
         const raceUserId = `019a0000-0099-7000-8000-${String(i + 1).padStart(12, "0")}`;
-        await pool.query(
-          `INSERT INTO users (id, email, password_hash, full_name, role, status, email_verified_at)
-           VALUES ($1, $2, '$argon2id$race-test', $3, 'customer', 'active', now())`,
-          [raceUserId, `racer-${i + 1}@booking.example.test`, `Racer ${i + 1}`],
+        userRows.push(
+          `('${raceUserId}', 'racer-${i + 1}@booking.example.test', '$argon2id$race-test', 'Racer ${i + 1}', 'customer', 'active', now())`,
         );
+      }
+      await pool.query(
+        `INSERT INTO users (id, email, password_hash, full_name, role, status, email_verified_at)
+         VALUES ${userRows.join(", ")}
+         ON CONFLICT (id) DO NOTHING`,
+      );
+      for (let i = 0; i < 100; i++) {
+        const raceUserId = `019a0000-0099-7000-8000-${String(i + 1).padStart(12, "0")}`;
         raceCustomerTokens.push(await jwtService.sign(raceUserId, "access", false));
       }
 
@@ -329,8 +336,13 @@ test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 ro
             const dateStr = `2035-07-0${round}`;
             const startAt = `${dateStr}T18:00:00+07:00`;
 
+            const roundTokens = raceCustomerTokens.slice(
+              (round - 1) * 20,
+              round * 20,
+            );
+
             const responses = await Promise.all(
-              raceCustomerTokens.map((token, idx) =>
+              roundTokens.map((token, idx) =>
                 api("/bookings/hold", {
                   method: "POST",
                   token,
@@ -368,7 +380,7 @@ test("Bookings & Time Slot Grid Engine: 7 REST APIs, 20-way race condition (5 ro
             };
             await api(`/bookings/holds/${winnerJson.data.booking.id}`, {
               method: "DELETE",
-              token: raceCustomerTokens[winnerIdx],
+              token: roundTokens[winnerIdx],
             });
           }
         },

@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { listVenues, type VenueSort } from '@/lib/api/endpoints/venues';
+import { listSports, listVenues, type VenueSort } from '@/lib/api/endpoints/venues';
 import { cn } from '@/lib/utils/cn';
 
 type ViewMode = 'grid' | 'map' | 'split';
@@ -75,6 +75,28 @@ export default function VenuesPage() {
     () => parseFiltersFromSearchParams(new URLSearchParams(searchParams.toString())),
     [searchParams],
   );
+  const sportSlug = searchParams.get('sport')?.trim() || undefined;
+
+  const sportsQuery = useQuery({
+    queryKey: ['catalogs', 'sports'],
+    queryFn: listSports,
+    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(sportSlug && (!filterValues.sportIds || filterValues.sportIds.length === 0)),
+  });
+
+  const resolvedSportIds = React.useMemo(() => {
+    if (filterValues.sportIds && filterValues.sportIds.length > 0) return filterValues.sportIds;
+    if (!sportSlug || !sportsQuery.data) return undefined;
+    const match =
+      sportsQuery.data.find((s) => s.slug === sportSlug) ??
+      sportsQuery.data.find((s) => s.slug.startsWith(sportSlug));
+    return match ? [match.id] : undefined;
+  }, [filterValues.sportIds, sportSlug, sportsQuery.data]);
+
+  const effectiveFilterValues = React.useMemo(
+    () => (resolvedSportIds ? { ...filterValues, sportIds: resolvedSportIds } : filterValues),
+    [filterValues, resolvedSportIds],
+  );
 
   // State local cho từ khoá tìm kiếm (phục vụ debounce)
   const [searchInput, setSearchInput] = React.useState(filterValues.q ?? '');
@@ -84,15 +106,15 @@ export default function VenuesPage() {
 
   const activeFilterCount = React.useMemo(() => {
     let count = 0;
-    if (filterValues.provinceId || filterValues.provinceCode) count++;
-    if (filterValues.wardId || filterValues.wardCode || filterValues.districtId) count++;
-    if (filterValues.sportIds && filterValues.sportIds.length > 0) count += filterValues.sportIds.length;
-    if (filterValues.amenityIds && filterValues.amenityIds.length > 0) count += filterValues.amenityIds.length;
-    if (filterValues.maxPrice) count++;
-    if (filterValues.minRating) count++;
-    if (filterValues.sort && filterValues.sort !== 'rating_desc') count++;
+    if (effectiveFilterValues.provinceId || effectiveFilterValues.provinceCode) count++;
+    if (effectiveFilterValues.wardId || effectiveFilterValues.wardCode || effectiveFilterValues.districtId) count++;
+    if (effectiveFilterValues.sportIds && effectiveFilterValues.sportIds.length > 0) count += effectiveFilterValues.sportIds.length;
+    if (effectiveFilterValues.amenityIds && effectiveFilterValues.amenityIds.length > 0) count += effectiveFilterValues.amenityIds.length;
+    if (effectiveFilterValues.maxPrice) count++;
+    if (effectiveFilterValues.minRating) count++;
+    if (effectiveFilterValues.sort && effectiveFilterValues.sort !== 'rating_desc') count++;
     return count;
-  }, [filterValues]);
+  }, [effectiveFilterValues]);
 
   // Cập nhật searchInput khi URL đổi từ bên ngoài (e.g. back/forward)
   React.useEffect(() => {
@@ -145,37 +167,39 @@ export default function VenuesPage() {
   }, [searchInput, filterValues, applyFilterChange]);
 
   // Query danh sách sân theo toàn bộ tham số lọc
+  const waitingForSportSlug = Boolean(sportSlug && !filterValues.sportIds?.length && sportsQuery.isLoading);
   const venuesQuery = useQuery({
     queryKey: [
       'venues',
       'list',
-      filterValues.q,
-      filterValues.provinceId,
-      filterValues.provinceCode,
-      filterValues.wardId,
-      filterValues.wardCode,
-      filterValues.districtId,
-      filterValues.sportIds,
-      filterValues.amenityIds,
-      filterValues.maxPrice,
-      filterValues.minRating,
-      filterValues.sort,
-      filterValues.page,
+      effectiveFilterValues.q,
+      effectiveFilterValues.provinceId,
+      effectiveFilterValues.provinceCode,
+      effectiveFilterValues.wardId,
+      effectiveFilterValues.wardCode,
+      effectiveFilterValues.districtId,
+      effectiveFilterValues.sportIds,
+      effectiveFilterValues.amenityIds,
+      effectiveFilterValues.maxPrice,
+      effectiveFilterValues.minRating,
+      effectiveFilterValues.sort,
+      effectiveFilterValues.page,
     ],
+    enabled: !waitingForSportSlug,
     queryFn: () =>
       listVenues({
-        q: filterValues.q,
-        provinceId: filterValues.provinceId,
-        provinceCode: filterValues.provinceCode,
-        wardId: filterValues.wardId,
-        wardCode: filterValues.wardCode,
-        districtId: filterValues.districtId,
-        sportIds: filterValues.sportIds,
-        amenityIds: filterValues.amenityIds,
-        maxPrice: filterValues.maxPrice,
-        minRating: filterValues.minRating,
-        sort: filterValues.sort,
-        page: filterValues.page ?? 1,
+        q: effectiveFilterValues.q,
+        provinceId: effectiveFilterValues.provinceId,
+        provinceCode: effectiveFilterValues.provinceCode,
+        wardId: effectiveFilterValues.wardId,
+        wardCode: effectiveFilterValues.wardCode,
+        districtId: effectiveFilterValues.districtId,
+        sportIds: effectiveFilterValues.sportIds,
+        amenityIds: effectiveFilterValues.amenityIds,
+        maxPrice: effectiveFilterValues.maxPrice,
+        minRating: effectiveFilterValues.minRating,
+        sort: effectiveFilterValues.sort,
+        page: effectiveFilterValues.page ?? 1,
         limit: PAGE_SIZE,
       }),
     staleTime: 60 * 1000,
@@ -325,7 +349,7 @@ export default function VenuesPage() {
         >
           <VenueFilters
             layout="sidebar"
-            values={filterValues}
+            values={effectiveFilterValues}
             onChange={applyFilterChange}
             onReset={handleResetFilters}
             totalResults={totalCount}

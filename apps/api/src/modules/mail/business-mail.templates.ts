@@ -50,6 +50,7 @@ export function renderBookingMail(
     timeZone: "Asia/Ho_Chi_Minh",
     dateStyle: "short",
     timeStyle: "short",
+    hour12: false,
     hourCycle: "h23",
   });
   const money = new Intl.NumberFormat("vi-VN", {

@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { listOwnerVenues } from '@/lib/api/endpoints/owner';
 import { useOccupancyStats } from '@/lib/hooks/useOccupancyStats';
 import { useRevenueStats } from '@/lib/hooks/useRevenueStats';
-import { formatCurrency, formatNumber, formatPercent, formatShortDate } from '@/lib/utils/format';
+import { formatCompactMoney, formatCurrency, formatNumber, formatPercent, formatShortDate } from '@/lib/utils/format';
 import { RECHARTS_TOOLTIP_PROPS } from '@/lib/utils/chart';
 
 const ResponsiveContainer = Recharts.ResponsiveContainer as unknown as React.ComponentType<Record<string, unknown>>;
@@ -89,14 +89,14 @@ export function OwnerRevenueScreen() {
           <p className="mt-1 text-sm text-neutral-600">{t('revenueDesc')}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:items-end">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:flex xl:items-end">
           <label className="space-y-1">
             <span className="text-xs font-medium text-neutral-600">{t('reportPeriod')}</span>
             <NativeSelect
               value={periodDays}
               onChange={(event) => setPeriodDays(Number(event.target.value) as PeriodDays)}
               aria-label={t('reportPeriod')}
-              className="min-w-40"
+              className="w-full xl:min-w-36 text-xs sm:text-sm"
             >
               {PERIODS.map((days) => (
                 <option key={days} value={days}>{t(`range${days}Days`)}</option>
@@ -110,6 +110,7 @@ export function OwnerRevenueScreen() {
               value={groupBy}
               onChange={(event) => setGroupBy(event.target.value as GroupBy)}
               aria-label={t('reportGroupBy')}
+              className="w-full sm:min-w-[120px] text-xs sm:text-sm"
             >
               <option value="day">{t('groupByDay')}</option>
               <option value="week">{t('groupByWeek')}</option>
@@ -127,7 +128,7 @@ export function OwnerRevenueScreen() {
               }}
               aria-label={t('reportVenue')}
               disabled={venuesQuery.isLoading || venuesQuery.isError}
-              className="sm:min-w-48"
+              className="w-full sm:min-w-44 text-xs sm:text-sm truncate"
             >
               <option value="">{t('allVenues')}</option>
               {venues.map((venue) => (
@@ -143,7 +144,7 @@ export function OwnerRevenueScreen() {
               onChange={(event) => setCourtId(event.target.value)}
               aria-label={t('reportCourt')}
               disabled={!selectedVenue || (selectedVenue.courts ?? []).length === 0}
-              className="sm:min-w-40"
+              className="w-full sm:min-w-36 text-xs sm:text-sm truncate"
             >
               <option value="">{t('allCourts')}</option>
               {(selectedVenue?.courts ?? []).map((court) => (
@@ -162,7 +163,7 @@ export function OwnerRevenueScreen() {
         <ErrorState error={reportError} onRetry={retryReports} />
       ) : (
         <>
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-label={t('reportSummary')}>
+          <section className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-3" aria-label={t('reportSummary')}>
             <StatCard
               label={t('totalRevenue')}
               value={formatCurrency(revenue?.summary.totalRevenue ?? 0)}
@@ -175,12 +176,14 @@ export function OwnerRevenueScreen() {
               icon={CalendarDays}
               loading={isReportLoading}
             />
-            <StatCard
-              label={t('occupancyRate')}
-              value={formatPercent(occupancy?.summary.occupancyRate ?? 0)}
-              icon={TrendingUp}
-              loading={isReportLoading}
-            />
+            <div className="col-span-2 sm:col-span-1">
+              <StatCard
+                label={t('occupancyRate')}
+                value={formatPercent(occupancy?.summary.occupancyRate ?? 0)}
+                icon={TrendingUp}
+                loading={isReportLoading}
+              />
+            </div>
           </section>
 
           <ReportChartCard
@@ -194,7 +197,7 @@ export function OwnerRevenueScreen() {
             icon={ChartNoAxesCombined}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueChartData} margin={{ top: 10, right: 12, left: 8, bottom: 4 }}>
+              <LineChart data={revenueChartData} margin={{ top: 10, right: 28, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
                 <XAxis
                   dataKey="date"
@@ -209,8 +212,8 @@ export function OwnerRevenueScreen() {
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
-                  tickFormatter={(value: number) => formatCurrency(value)}
-                  width={84}
+                  tickFormatter={formatCompactMoney}
+                  width={48}
                 />
                 <Tooltip
                   {...RECHARTS_TOOLTIP_PROPS}
@@ -240,7 +243,7 @@ export function OwnerRevenueScreen() {
             icon={CalendarDays}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={bookingChartData} margin={{ top: 10, right: 12, left: 8, bottom: 4 }}>
+              <BarChart data={bookingChartData} margin={{ top: 10, right: 20, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
                 <XAxis
                   dataKey="date"
@@ -256,7 +259,7 @@ export function OwnerRevenueScreen() {
                   axisLine={false}
                   fontSize={11}
                   allowDecimals={false}
-                  width={36}
+                  width={32}
                 />
                 <Tooltip
                   {...RECHARTS_TOOLTIP_PROPS}
@@ -278,7 +281,7 @@ export function OwnerRevenueScreen() {
             icon={TrendingUp}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={occupancyChartData} margin={{ top: 10, right: 12, left: 8, bottom: 4 }}>
+              <LineChart data={occupancyChartData} margin={{ top: 10, right: 20, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
                 <XAxis
                   dataKey="date"
@@ -295,7 +298,7 @@ export function OwnerRevenueScreen() {
                   fontSize={11}
                   domain={[0, 100]}
                   tickFormatter={(value: number) => `${value}%`}
-                  width={40}
+                  width={36}
                 />
                 <Tooltip
                   {...RECHARTS_TOOLTIP_PROPS}

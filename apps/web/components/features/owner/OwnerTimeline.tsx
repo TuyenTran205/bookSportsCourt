@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Clock3,
   LockKeyhole,
+  Minus,
+  Plus,
   UnlockKeyhole,
   UserRound,
 } from 'lucide-react';
@@ -19,6 +21,7 @@ import type { Blackout, OwnerTimelineBooking, Slot } from '@bsc/shared';
 import { ErrorState } from '@/components/common/ErrorState';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
+import { TimeSelect } from '@/components/ui/time-select';
 import {
   Dialog,
   DialogContent,
@@ -49,8 +52,10 @@ type ManualDraft = { courtId: string; date: string; startTime: string; endTime: 
 type BlackoutDraft = ManualDraft & { reason: string };
 
 const SLOT_MINUTES = 30;
-const SLOT_WIDTH = 68;
-const LABEL_WIDTH = 132;
+const DEFAULT_SLOT_WIDTH = 68;
+const DEFAULT_LABEL_WIDTH = 148;
+const MOBILE_SLOT_WIDTH = 44;
+const MOBILE_LABEL_WIDTH = 138;
 const VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 const EMPTY_BOOKINGS: OwnerTimelineBooking[] = [];
 const EMPTY_BLACKOUTS: Blackout[] = [];
@@ -186,6 +191,22 @@ export function OwnerTimeline() {
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
   const pointerClientXRef = React.useRef<number | null>(null);
 
+  const [slotWidth, setSlotWidth] = React.useState<number>(DEFAULT_SLOT_WIDTH);
+  const [labelWidth, setLabelWidth] = React.useState<number>(DEFAULT_LABEL_WIDTH);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const updateMobile = () => {
+      const mob = window.innerWidth < 640;
+      setIsMobile(mob);
+      setSlotWidth((prev) => (prev === DEFAULT_SLOT_WIDTH || prev === MOBILE_SLOT_WIDTH ? (mob ? MOBILE_SLOT_WIDTH : DEFAULT_SLOT_WIDTH) : prev));
+      setLabelWidth(mob ? MOBILE_LABEL_WIDTH : DEFAULT_LABEL_WIDTH);
+    };
+    updateMobile();
+    window.addEventListener('resize', updateMobile);
+    return () => window.removeEventListener('resize', updateMobile);
+  }, []);
+
   const venuesQuery = useQuery({
     queryKey: ['owner', 'venues'],
     queryFn: listOwnerVenues,
@@ -232,7 +253,9 @@ export function OwnerTimeline() {
     ? Math.max(...visibleHours.map((range) => range.end))
     : 0;
   const slots = makeTimelineSlots(earliestMinute, latestMinute, selectedDate);
-  const columns = `minmax(${LABEL_WIDTH}px, ${LABEL_WIDTH}px) repeat(${slots.length}, ${SLOT_WIDTH}px)`;
+  const isCompactView = isMobile && slotWidth < 28;
+  const activeLabelWidth = isCompactView ? 52 : labelWidth;
+  const columns = `minmax(${activeLabelWidth}px, ${activeLabelWidth}px) repeat(${slots.length}, ${slotWidth}px)`;
 
   const slotState = React.useCallback((courtId: string, slot: TimelineSlot): SlotState => {
     const start = new Date(slot.start).getTime();
@@ -307,11 +330,11 @@ export function OwnerTimeline() {
       const container = scrollContainerRef.current;
       if (!container || slots.length === 0) return null;
       const rect = container.getBoundingClientRect();
-      const clampedClientX = Math.max(rect.left + LABEL_WIDTH, Math.min(rect.right - 2, clientX));
-      const offsetInStrip = clampedClientX - rect.left + container.scrollLeft - LABEL_WIDTH;
-      return Math.floor(offsetInStrip / SLOT_WIDTH);
+      const clampedClientX = Math.max(rect.left + activeLabelWidth, Math.min(rect.right - 2, clientX));
+      const offsetInStrip = clampedClientX - rect.left + container.scrollLeft - activeLabelWidth;
+      return Math.floor(offsetInStrip / slotWidth);
     },
-    [slots.length],
+    [activeLabelWidth, slotWidth, slots.length],
   );
 
   const isPointerSelecting = pointerRange !== null;
@@ -335,7 +358,7 @@ export function OwnerTimeline() {
       if (container && clientX !== null && pointerRangeRef.current) {
         const rect = container.getBoundingClientRect();
         const rightDistance = rect.right - clientX;
-        const leftDistance = clientX - (rect.left + LABEL_WIDTH);
+        const leftDistance = clientX - (rect.left + activeLabelWidth);
         let delta = 0;
         if (
           rightDistance < EDGE_ZONE &&
@@ -366,7 +389,7 @@ export function OwnerTimeline() {
       window.removeEventListener('pointermove', handlePointerMove);
       window.cancelAnimationFrame(rafId);
     };
-  }, [extendPointerSelection, isPointerSelecting, slotIndexFromClientX]);
+  }, [activeLabelWidth, extendPointerSelection, isPointerSelecting, slotIndexFromClientX]);
 
   React.useEffect(() => {
     const finishPointerSelection = () => {
@@ -524,79 +547,162 @@ export function OwnerTimeline() {
         <p className="mt-1 text-sm text-neutral-600">{t('timelineHint')}</p>
       </header>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="timeline-venue" className="text-sm font-medium text-neutral-700">
-            {t('selectVenue')}
-          </label>
-          <select
-            id="timeline-venue"
-            value={selectedVenueId}
-            onChange={(event) => {
-              setSelectedVenueId(event.target.value);
-              clearSelection();
-              setPointerSelection(null);
-            }}
-            className="h-10 min-w-48 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
-          >
-            {venuesQuery.data.map((item) => (
-              <option key={item.id} value={item.id}>{item.name}</option>
-            ))}
-          </select>
-
-          <div className="ml-0 flex items-center gap-1 sm:ml-2">
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              aria-label={t('prevDay')}
-              onClick={() => selectDate(shiftDate(selectedDate, -1))}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex items-center gap-2">
+            <label htmlFor="timeline-venue" className="shrink-0 text-sm font-medium text-neutral-700 sr-only sm:not-sr-only">
+              {t('selectVenue')}
+            </label>
+            <select
+              id="timeline-venue"
+              value={selectedVenueId}
+              onChange={(event) => {
+                setSelectedVenueId(event.target.value);
+                clearSelection();
+                setPointerSelection(null);
+              }}
+              className="h-10 w-full sm:w-auto min-w-44 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
             >
-              <ChevronLeft aria-hidden="true" />
-            </Button>
-            <div className="relative flex h-10 w-40 items-center gap-2 rounded-input border border-border bg-bg-card px-3 text-sm text-text-primary focus-within:border-primary-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-600/20">
-              <CalendarDays className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
-              <label className="sr-only" htmlFor="timeline-date">{t('selectDate')}</label>
-              <span aria-hidden="true" className="pointer-events-none tabular-nums">{formatDateInputLabel(selectedDate)}</span>
-              <Input
-                id="timeline-date"
-                aria-label={t('selectDate')}
-                type="date"
-                value={selectedDate}
-                onChange={(event) => {
-                  if (event.target.value) selectDate(event.target.value);
-                }}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
-            </div>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              aria-label={t('nextDay')}
-              onClick={() => selectDate(shiftDate(selectedDate, 1))}
-            >
-              <ChevronRight aria-hidden="true" />
-            </Button>
+              {venuesQuery.data.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
           </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => selectDate(vietnamToday())}
-            disabled={selectedDate === vietnamToday()}
-          >
-            {t('today')}
-          </Button>
-        </div>
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            <div className="flex items-center gap-1.5 flex-1 min-w-[190px]">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label={t('prevDay')}
+                onClick={() => selectDate(shiftDate(selectedDate, -1))}
+              >
+                <ChevronLeft aria-hidden="true" />
+              </Button>
+              <div className="relative flex h-10 flex-1 sm:w-40 items-center justify-center gap-2 rounded-input border border-border bg-bg-card px-2.5 sm:px-3 text-sm text-text-primary focus-within:border-primary-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-primary-600/20">
+                <CalendarDays className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
+                <label className="sr-only" htmlFor="timeline-date">{t('selectDate')}</label>
+                <span aria-hidden="true" className="pointer-events-none tabular-nums text-xs sm:text-sm font-medium">{formatDateInputLabel(selectedDate)}</span>
+                <Input
+                  id="timeline-date"
+                  aria-label={t('selectDate')}
+                  type="date"
+                  value={selectedDate}
+                  onChange={(event) => {
+                    if (event.target.value) selectDate(event.target.value);
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label={t('nextDay')}
+                onClick={() => selectDate(shiftDate(selectedDate, 1))}
+              >
+                <ChevronRight aria-hidden="true" />
+              </Button>
+            </div>
 
-        <Button type="button" variant="outline" onClick={openBlackoutDialog} disabled={!courts.length}>
-          <LockKeyhole aria-hidden="true" />
-          {t('blackout')}
-        </Button>
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10 px-2.5 sm:px-3 text-xs sm:text-sm"
+                onClick={() => selectDate(vietnamToday())}
+                disabled={selectedDate === vietnamToday()}
+              >
+                {t('today')}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10 px-2.5 sm:px-3 text-xs sm:text-sm"
+                onClick={openBlackoutDialog}
+                disabled={!courts.length}
+              >
+                <LockKeyhole className="size-3.5" aria-hidden="true" />
+                <span>{t('blackout')}</span>
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <p className="text-sm font-medium text-neutral-700">{hoursLabel}</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-medium text-neutral-700">{hoursLabel}</p>
+        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto rounded-md border border-neutral-200 bg-neutral-50 p-1 text-xs">
+          <span className="text-[11px] font-medium text-neutral-500 hidden xs:inline">Thu phóng:</span>
+          
+          <button
+            type="button"
+            onClick={() => {
+              const container = scrollContainerRef.current;
+              if (!container || slots.length === 0) return;
+              const isMob = window.innerWidth < 640;
+              const targetLabelW = isMob ? 52 : 80;
+              const available = container.clientWidth - targetLabelW - 4;
+              const fitted = Math.max(8, Math.min(DEFAULT_SLOT_WIDTH, Math.floor(available / slots.length)));
+              setSlotWidth(fitted);
+            }}
+            className="rounded px-2 py-0.5 font-medium text-[11px] bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors shadow-2xs"
+            title="Thu nhỏ để nhìn thấy toàn bộ các block trên màn hình"
+          >
+            Vừa màn
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSlotWidth(isMobile ? MOBILE_SLOT_WIDTH : DEFAULT_SLOT_WIDTH)}
+            className="rounded px-2 py-0.5 font-medium text-[11px] bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors shadow-2xs"
+            title="Kích thước mặc định"
+          >
+            Chuẩn
+          </button>
+
+          <div className="flex items-center gap-0.5 ml-0.5">
+            <button
+              type="button"
+              onClick={() => setSlotWidth((w) => Math.max(8, w - 6))}
+              disabled={slotWidth <= 8}
+              className="rounded p-1 text-neutral-600 hover:bg-neutral-200/70 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Thu nhỏ block"
+              title="Thu nhỏ block"
+            >
+              <Minus className="size-3" aria-hidden="true" />
+            </button>
+            <input
+              type="range"
+              min={8}
+              max={96}
+              step={2}
+              value={slotWidth}
+              onChange={(e) => setSlotWidth(Number(e.target.value))}
+              className="h-1.5 w-16 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-primary-600 sm:w-28"
+              aria-label="Thanh thu phóng kích thước block"
+            />
+            <button
+              type="button"
+              onClick={() => setSlotWidth((w) => Math.min(96, w + 6))}
+              disabled={slotWidth >= 96}
+              className="rounded p-1 text-neutral-600 hover:bg-neutral-200/70 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Phóng to block"
+              title="Phóng to block"
+            >
+              <Plus className="size-3" aria-hidden="true" />
+            </button>
+          </div>
+
+          <span className="font-mono text-[10px] tabular-nums text-neutral-500 min-w-8 text-right">
+            {Math.round((slotWidth / (isMobile ? MOBILE_SLOT_WIDTH : DEFAULT_SLOT_WIDTH)) * 100)}%
+          </span>
+        </div>
+      </div>
 
       {timelineQuery.isLoading ? (
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]" aria-label={t('timelineLoading')}>
@@ -628,28 +734,51 @@ export function OwnerTimeline() {
               <div ref={scrollContainerRef} className="overflow-x-auto select-none">
                 <div className="min-w-max">
                   <div className="grid border-b border-border bg-bg-subtle text-xs text-text-secondary" style={{ gridTemplateColumns: columns }}>
-                    <div className="sticky left-0 z-10 flex min-h-11 items-center border-r border-border bg-bg-subtle px-3 font-medium text-text-primary">
-                      {t('colCourt')}
+                    <div className="sticky left-0 z-10 flex min-h-10 sm:min-h-11 items-center border-r border-border bg-bg-subtle px-1.5 sm:px-3 text-[11px] sm:text-xs font-medium text-text-primary justify-center sm:justify-start">
+                      {isCompactView ? 'Sân' : t('colCourt')}
                     </div>
-                    {slots.map((slot, index) => slot.time.endsWith(':00') ? (
-                      <div
-                        key={slot.start}
-                        className="flex h-11 items-center justify-center border-r border-border/60 tabular-nums"
-                        style={{ gridColumn: `${index + 2} / span ${index < slots.length - 1 ? 2 : 1}` }}
-                      >
-                        {slot.time}
-                      </div>
-                    ) : null)}
+                    {slots.map((slot, index) => {
+                      let hourStep = 1;
+                      if (slotWidth < 12) hourStep = 4;
+                      else if (slotWidth < 20) hourStep = 3;
+                      else if (slotWidth < 34) hourStep = 2;
+
+                      const hourNum = parseInt(slot.time.split(':')[0] ?? '0', 10);
+                      const shouldShow = slot.time.endsWith(':00') && (hourNum % hourStep === 0);
+                      if (!shouldShow) return null;
+
+                      const spanCount = Math.min(hourStep * 2, slots.length - index);
+                      return (
+                        <div
+                          key={slot.start}
+                          className="flex h-10 sm:h-11 items-center justify-center border-r border-border/60 text-[10px] sm:text-xs tabular-nums text-neutral-600 font-medium"
+                          style={{ gridColumn: `${index + 2} / span ${spanCount}` }}
+                        >
+                          {slotWidth < 15 ? slot.time.slice(0, 2) : slot.time}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {courts.map((court) => (
                     <div
                       key={court.id}
-                      className="grid min-h-14 border-b border-border last:border-b-0"
+                      className="grid min-h-[50px] sm:min-h-14 border-b border-border last:border-b-0"
                       style={{ gridTemplateColumns: columns }}
                     >
-                      <div className="sticky left-0 z-10 flex items-center border-r border-border bg-bg-card px-3 py-2 text-xs font-medium text-text-primary">
-                        {court.name}
+                      <div
+                        className="sticky left-0 z-10 flex items-center border-r border-border bg-bg-card px-1.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium text-text-primary overflow-hidden justify-center sm:justify-start"
+                        title={court.name}
+                      >
+                        {isCompactView ? (
+                          <span className="font-semibold text-[10px] text-center w-full truncate leading-tight">
+                            {court.name.replace(/^Sân bóng rổ /i, 'S').replace(/^Sân cầu lông /i, 'S').replace(/^Sân /i, 'S')}
+                          </span>
+                        ) : (
+                          <span className="line-clamp-2 leading-tight break-words">
+                            {court.name}
+                          </span>
+                        )}
                       </div>
                       {slots.map((slot, index) => {
                         const state = slotState(court.id, slot);
@@ -726,13 +855,18 @@ export function OwnerTimeline() {
                                 openManualBooking(court.id, [slot]);
                               }
                             }}
-                            className={`relative flex min-h-14 min-w-0 items-center justify-center border-r border-neutral-200 px-1 text-center text-[10px] leading-tight transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-700 disabled:cursor-not-allowed ${classes[state]} ${isSelected ? 'ring-2 ring-inset ring-primary-700' : ''}`}
+                            data-slot-cell="true"
+                            className={`relative flex min-h-[50px] sm:min-h-14 min-w-0 items-center justify-center border-r border-neutral-200 px-0.5 sm:px-1 text-center text-[9px] sm:text-[10px] leading-tight transition-colors focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-700 disabled:cursor-not-allowed ${classes[state]} ${isSelected ? 'ring-2 ring-inset ring-primary-700' : ''}`}
                             style={{ gridColumn: index + 2, touchAction: 'none' }}
                           >
-                            {state === 'booked' && booking && booking.during.start === slot.start
-                              ? formatCurrency(booking.totalPrice)
-                              : state === 'blocked'
-                                ? <LockKeyhole className="size-3.5" aria-hidden="true" />
+                            {state === 'booked' && booking && booking.during.start === slot.start && slotWidth >= 26
+                              ? (
+                                <span className="truncate max-w-full px-0.5 font-semibold">
+                                  {isMobile ? `${Math.round(booking.totalPrice / 1000)}k` : formatCurrency(booking.totalPrice)}
+                                </span>
+                              )
+                              : state === 'blocked' && slotWidth >= 18
+                                ? <LockKeyhole className="size-3 sm:size-3.5" aria-hidden="true" />
                                 : null}
                           </button>
                         );
@@ -867,13 +1001,30 @@ export function OwnerTimeline() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label htmlFor="manual-start" className="text-sm font-medium text-neutral-800">{t('blackoutStartTime')}</label>
-                <Input id="manual-start" type="time" step={1800} value={manualDraft.startTime} onChange={(event) => setManualDraft((current) => ({ ...current, startTime: event.target.value }))} required />
+                <Input
+                  id="manual-start"
+                  type="text"
+                  value={manualDraft.startTime}
+                  disabled
+                  readOnly
+                  className="bg-neutral-100 text-neutral-700 cursor-not-allowed font-mono tabular-nums font-semibold select-none shadow-none"
+                />
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="manual-end" className="text-sm font-medium text-neutral-800">{t('blackoutEndTime')}</label>
-                <Input id="manual-end" type="time" step={1800} value={manualDraft.endTime} onChange={(event) => setManualDraft((current) => ({ ...current, endTime: event.target.value }))} required />
+                <Input
+                  id="manual-end"
+                  type="text"
+                  value={manualDraft.endTime}
+                  disabled
+                  readOnly
+                  className="bg-neutral-100 text-neutral-700 cursor-not-allowed font-mono tabular-nums font-semibold select-none shadow-none"
+                />
               </div>
             </div>
+            <p className="text-xs text-neutral-500">
+              * Khung giờ được cố định tự động theo các block bạn đã kéo chọn trên lịch.
+            </p>
             <div className="space-y-1.5">
               <label htmlFor="manual-note" className="text-sm font-medium text-neutral-800">{t('manualNote')}</label>
               <Textarea id="manual-note" value={bookingNote} onChange={(event) => setBookingNote(event.target.value)} maxLength={500} rows={3} />
@@ -924,11 +1075,21 @@ export function OwnerTimeline() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label htmlFor="blackout-start" className="text-sm font-medium text-neutral-800">{t('blackoutStartTime')}</label>
-                <Input id="blackout-start" type="time" step={1800} value={blackoutDraft.startTime} onChange={(event) => setBlackoutDraft((current) => ({ ...current, startTime: event.target.value }))} required />
+                <TimeSelect
+                  id="blackout-start"
+                  value={blackoutDraft.startTime}
+                  onChange={(e) => setBlackoutDraft((current) => ({ ...current, startTime: e.target.value }))}
+                  required
+                />
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="blackout-end" className="text-sm font-medium text-neutral-800">{t('blackoutEndTime')}</label>
-                <Input id="blackout-end" type="time" step={1800} value={blackoutDraft.endTime} onChange={(event) => setBlackoutDraft((current) => ({ ...current, endTime: event.target.value }))} required />
+                <TimeSelect
+                  id="blackout-end"
+                  value={blackoutDraft.endTime}
+                  onChange={(e) => setBlackoutDraft((current) => ({ ...current, endTime: e.target.value }))}
+                  required
+                />
               </div>
             </div>
             <div className="space-y-1.5">

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/common/ErrorState';
 import { EmptyState } from '@/components/common/EmptyState';
-import { formatCurrency, formatShortDate } from '@/lib/utils/format';
+import { formatCompactMoney, formatCurrency, formatShortDate } from '@/lib/utils/format';
 import { RECHARTS_TOOLTIP_PROPS } from '@/lib/utils/chart';
 import type { RevenuePoint } from '@bsc/shared';
 
@@ -72,7 +72,7 @@ export function RevenueChart() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 25 }}
+              margin={{ top: 10, right: 28, left: 4, bottom: 25 }}
             >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-neutral-100)" />
               <XAxis
@@ -87,7 +87,8 @@ export function RevenueChart() {
                 fontSize={11}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value: number) => formatCurrency(value)}
+                tickFormatter={formatCompactMoney}
+                width={48}
               />
               <Tooltip
                 {...RECHARTS_TOOLTIP_PROPS}

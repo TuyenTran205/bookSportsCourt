@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
+import { Minus, Plus } from 'lucide-react';
 
 import type { CourtSlots, Slot, SlotStatus } from '@bsc/shared';
 
@@ -13,6 +14,7 @@ import {
   deriveTimeRows,
   isSelectable,
   mergeSelection,
+  removeSelection,
   toggleSelection,
 } from '@/lib/utils/slot-selection';
 
@@ -21,7 +23,9 @@ import {
  *
  * - Mobile: cuộn dọc, giờ nằm ở cột trái.
  * - Desktop: cuộn ngang khi nhiều sân.
- * - Chọn nhiều block: kéo để chọn các block LIÊN TIẾP.
+ * - Chọn nhiều block: kéo giữ từ ô chưa chọn để chọn các block LIÊN TIẾP.
+ * - Bỏ chọn nhiều block: kéo giữ từ ô ĐÃ CHỌN để bỏ chọn (drag-to-deselect) các block đó.
+ * - Tự động cuộn (Auto-scroll) khi kéo đến sát mép màn hình/container để chọn tiếp đến hết.
  * - Bấm một block chưa chọn → chọn; bấm lại block đã chọn → bỏ chọn.
  * - Mỗi block `available` hiển thị giá.
  * - Cập nhật realtime: cha truyền `courts` mới, component tự vẽ lại và loại
@@ -67,6 +71,7 @@ export function SlotGrid({
 }: SlotGridProps) {
   const t = useTranslations('slot');
 
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
   const timeRows = React.useMemo(() => deriveTimeRows(courts), [courts]);
   const selectedSet = React.useMemo(() => new Set(selected), [selected]);
 
@@ -76,113 +81,200 @@ export function SlotGrid({
    */
   const [anchor, setAnchor] = React.useState<{ courtId: string; index: number } | null>(null);
   const [hovered, setHovered] = React.useState<{ courtId: string; index: number } | null>(null);
+  const [dragMode, setDragMode] = React.useState<'select' | 'deselect'>('select');
+  const [zoomLevel, setZoomLevel] = React.useState<number>(100);
+
+  const handleFitToScreen = React.useCallback(() => {
+    const container = containerRef.current;
+    if (!container || courts.length === 0) return;
+    const totalSlots = courts[0]?.slots.length ?? 0;
+    if (totalSlots === 0) return;
+    const available = container.clientWidth - 16;
+    const fitted = Math.max(25, Math.min(100, Math.floor((available / (totalSlots * 76)) * 100)));
+    setZoomLevel(fitted);
+  }, [courts]);
+
   const draggingRef = React.useRef(false);
-  const dragModeRef = React.useRef<'add' | 'remove'>('add');
-  const pointerClientXRef = React.useRef<number | null>(null);
-  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const dragModeRef = React.useRef<'select' | 'deselect'>('select');
   const anchorRef = React.useRef<{ courtId: string; index: number } | null>(null);
   const hoveredRef = React.useRef<{ courtId: string; index: number } | null>(null);
+  const pointerPosRef = React.useRef<{ x: number; y: number } | null>(null);
+  const hasDraggedRef = React.useRef(false);
+  const animFrameRef = React.useRef<number | null>(null);
 
-  const updateHoveredFromPointer = React.useCallback(
-    (clientX: number) => {
-      const currentAnchor = anchorRef.current;
-      const container = scrollContainerRef.current;
-      if (!currentAnchor || !container) return;
+  const commit = React.useCallback(
+    (keys: string[]) => {
+      if (keys.length === 0) return;
+      const { keys: next, truncated } = mergeSelection(selected, keys, MAX_SLOTS_PER_BOOKING);
+      if (truncated) onLimitReached?.(MAX_SLOTS_PER_BOOKING);
+      if (next.length !== selected.length) onSelectedChange(next);
+    },
+    [selected, onSelectedChange, onLimitReached],
+  );
 
-      const cells = Array.from(
-        container.querySelectorAll<HTMLButtonElement>('[data-slot-court][data-slot-index]'),
-      ).filter((cell) => cell.dataset.slotCourt === currentAnchor.courtId);
-      if (cells.length === 0) return;
+  /** Cập nhật hovered từ tọa độ con trỏ (hỗ trợ lấy ô ngay cả khi con trỏ vượt ra ngoài mép khung cuộn) */
+  const updateHoveredFromPoint = React.useCallback(
+    (clientX: number, clientY: number, curAnchor: { courtId: string; index: number }) => {
+      const container = containerRef.current;
+      if (!container) return;
 
-      let bestIndex = 0;
-      let bestDistance = Number.POSITIVE_INFINITY;
-      for (const cell of cells) {
-        const rect = cell.getBoundingClientRect();
-        const distance = clientX < rect.left
-          ? rect.left - clientX
-          : clientX > rect.right
-            ? clientX - rect.right
-            : 0;
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = Number(cell.dataset.slotIndex);
+      const rect = container.getBoundingClientRect();
+      // Kẹp tọa độ mẫu trong phạm vi khung cuộn để document.elementFromPoint luôn tìm thấy ô biên
+      const sampleX = Math.max(rect.left + 8, Math.min(rect.right - 8, clientX));
+      const sampleY = Math.max(rect.top + 8, Math.min(rect.bottom - 8, clientY));
+
+      const el = document.elementFromPoint(sampleX, sampleY);
+      const cell = el?.closest<HTMLElement>('[data-slot-cell]');
+      if (!cell) return;
+
+      const cId = cell.dataset.slotCourtId;
+      const idxStr = cell.dataset.slotIndex;
+      if (cId === curAnchor.courtId && idxStr !== undefined) {
+        const idx = Number(idxStr);
+        if (!Number.isNaN(idx)) {
+          setHovered((prev) => {
+            if (prev?.courtId === cId && prev?.index === idx) return prev;
+            hoveredRef.current = { courtId: cId, index: idx };
+            return { courtId: cId, index: idx };
+          });
         }
       }
-      const nextHovered = { courtId: currentAnchor.courtId, index: bestIndex };
-      hoveredRef.current = nextHovered;
-      setHovered(nextHovered);
     },
     [],
   );
 
-  // Kéo ra ngoài lưới rồi nhả chuột vẫn phải kết thúc thao tác.
+  /** Vòng lặp tự động cuộn (Auto-scroll) khi con trỏ kéo vào vùng biên (edge zone) */
+  const autoScroll = React.useCallback(() => {
+    if (!draggingRef.current || !containerRef.current || !pointerPosRef.current || !anchorRef.current) {
+      animFrameRef.current = null;
+      return;
+    }
+
+    const { x, y } = pointerPosRef.current;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const EDGE_ZONE = 64; // Khoảng cách từ biên bắt đầu kích hoạt cuộn tự động (px)
+
+    let scrollSpeedX = 0;
+    if (x > rect.right - EDGE_ZONE) {
+      // Con trỏ ở sát hoặc tràn ra ngoài mép phải -> cuộn sang phải
+      const overflow = x - (rect.right - EDGE_ZONE);
+      const intensity = Math.min(1.5, Math.max(0.1, overflow / EDGE_ZONE));
+      scrollSpeedX = Math.round(intensity * 18) + 4;
+    } else if (x < rect.left + EDGE_ZONE) {
+      // Con trỏ ở sát hoặc tràn ra ngoài mép trái -> cuộn sang trái
+      const overflow = (rect.left + EDGE_ZONE) - x;
+      const intensity = Math.min(1.5, Math.max(0.1, overflow / EDGE_ZONE));
+      scrollSpeedX = -(Math.round(intensity * 18) + 4);
+    }
+
+    let scrollSpeedY = 0;
+    if (typeof window !== 'undefined') {
+      if (y > window.innerHeight - EDGE_ZONE) {
+        const overflow = y - (window.innerHeight - EDGE_ZONE);
+        const intensity = Math.min(1.5, Math.max(0.1, overflow / EDGE_ZONE));
+        scrollSpeedY = Math.round(intensity * 16) + 3;
+      } else if (y < EDGE_ZONE) {
+        const overflow = EDGE_ZONE - y;
+        const intensity = Math.min(1.5, Math.max(0.1, overflow / EDGE_ZONE));
+        scrollSpeedY = -(Math.round(intensity * 16) + 3);
+      }
+    }
+
+    let moved = false;
+    if (scrollSpeedX !== 0) {
+      const prevLeft = container.scrollLeft;
+      container.scrollLeft += scrollSpeedX;
+      if (container.scrollLeft !== prevLeft) {
+        moved = true;
+      }
+    }
+
+    if (scrollSpeedY !== 0 && typeof window !== 'undefined') {
+      window.scrollBy(0, scrollSpeedY);
+      moved = true;
+    }
+
+    if (moved) {
+      updateHoveredFromPoint(x, y, anchorRef.current);
+    }
+
+    // Tiếp tục lặp nếu vẫn còn ở vùng biên
+    if (scrollSpeedX !== 0 || scrollSpeedY !== 0) {
+      animFrameRef.current = requestAnimationFrame(autoScroll);
+    } else {
+      animFrameRef.current = null;
+    }
+  }, [updateHoveredFromPoint]);
+
+  // Lắng nghe pointermove & pointerup toàn màn hình
   React.useEffect(() => {
-    const stop = () => {
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!draggingRef.current || !anchorRef.current) return;
+      pointerPosRef.current = { x: e.clientX, y: e.clientY };
+      hasDraggedRef.current = true;
+
+      updateHoveredFromPoint(e.clientX, e.clientY, anchorRef.current);
+
+      if (!animFrameRef.current) {
+        animFrameRef.current = requestAnimationFrame(autoScroll);
+      }
+    };
+
+    const handlePointerUp = () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+
+      if (draggingRef.current && anchorRef.current) {
+        const curAnchor = anchorRef.current;
+        const curHovered = hoveredRef.current ?? curAnchor;
+        const curDragMode = dragModeRef.current;
+        const court = courts.find((c) => c.courtId === curAnchor.courtId);
+        if (court) {
+          const selectable = court.slots.map((s) => isSelectable(s.status));
+          const indexes = computeDragRange(curAnchor.index, curHovered.index, selectable);
+          const keys = indexes.map((n) => court.slots[n]!.start);
+
+          if (curDragMode === 'deselect') {
+            // Kéo từ ô đã chọn: Bỏ chọn tất cả các block nằm trong dải kéo
+            const next = removeSelection(selected, keys);
+            if (next.length !== selected.length) {
+              onSelectedChange(next);
+            }
+          } else {
+            // Kéo từ ô chưa chọn: Thêm các block vào lựa chọn
+            commit(keys);
+          }
+        }
+      }
+
       draggingRef.current = false;
       anchorRef.current = null;
       hoveredRef.current = null;
-      pointerClientXRef.current = null;
+      pointerPosRef.current = null;
+      hasDraggedRef.current = false;
       setAnchor(null);
       setHovered(null);
+      setDragMode('select');
+      dragModeRef.current = 'select';
     };
-    window.addEventListener('pointercancel', stop);
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
     return () => {
-      window.removeEventListener('pointercancel', stop);
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (!anchor) return;
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!draggingRef.current) return;
-      pointerClientXRef.current = event.clientX;
-      updateHoveredFromPointer(event.clientX);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-
-    let rafId = 0;
-    const EDGE_ZONE = 56;
-    const tickAutoScroll = () => {
-      const container = scrollContainerRef.current;
-      const clientX = pointerClientXRef.current;
-      if (container && clientX !== null && draggingRef.current) {
-        const rect = container.getBoundingClientRect();
-        const rightDistance = rect.right - clientX;
-        const leftDistance = clientX - rect.left;
-        let delta = 0;
-
-        if (
-          rightDistance >= 0 &&
-          rightDistance < EDGE_ZONE &&
-          container.scrollLeft + container.clientWidth < container.scrollWidth - 1
-        ) {
-          const intensity = Math.min(2.5, Math.max(0.2, (EDGE_ZONE - rightDistance) / EDGE_ZONE));
-          delta = Math.ceil(intensity * 14);
-        } else if (
-          leftDistance >= 0 &&
-          leftDistance < EDGE_ZONE &&
-          container.scrollLeft > 0
-        ) {
-          const intensity = Math.min(2.5, Math.max(0.2, (EDGE_ZONE - leftDistance) / EDGE_ZONE));
-          delta = -Math.ceil(intensity * 14);
-        }
-
-        if (delta !== 0) {
-          container.scrollLeft += delta;
-          updateHoveredFromPointer(clientX);
-        }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
       }
-      if (draggingRef.current) rafId = window.requestAnimationFrame(tickAutoScroll);
-    };
-    rafId = window.requestAnimationFrame(tickAutoScroll);
-
-    return () => {
       window.removeEventListener('pointermove', handlePointerMove);
-      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [anchor, updateHoveredFromPointer]);
+  }, [autoScroll, courts, selected, commit, onSelectedChange, updateHoveredFromPoint]);
 
   /**
    * Realtime: block đang chọn bị người khác đặt mất thì tự bỏ khỏi lựa chọn,
@@ -200,7 +292,7 @@ export function SlotGrid({
     if (kept.length !== selected.length) onSelectedChange(kept);
   }, [courts, selected, onSelectedChange]);
 
-  /** Dải block đang được kéo (chỉ để tô sáng trước khi nhả). */
+  /** Dải block đang được kéo (để tô sáng hoặc báo trước khi nhả). */
   const previewKeys = React.useMemo(() => {
     if (!anchor || !hovered || anchor.courtId !== hovered.courtId) return new Set<string>();
     const court = courts.find((c) => c.courtId === anchor.courtId);
@@ -210,48 +302,6 @@ export function SlotGrid({
     const indexes = computeDragRange(anchor.index, hovered.index, selectable);
     return new Set(indexes.map((i) => court.slots[i]!.start));
   }, [anchor, hovered, courts]);
-
-  const commit = React.useCallback(
-    (keys: string[], mode: 'add' | 'remove' = 'add') => {
-      if (keys.length === 0) return;
-      if (mode === 'remove') {
-        const removed = new Set(keys);
-        const next = selected.filter((key) => !removed.has(key));
-        if (next.length !== selected.length) onSelectedChange(next);
-        return;
-      }
-      const { keys: next, truncated } = mergeSelection(selected, keys, MAX_SLOTS_PER_BOOKING);
-      if (truncated) onLimitReached?.(MAX_SLOTS_PER_BOOKING);
-      if (next.length !== selected.length) onSelectedChange(next);
-    },
-    [selected, onSelectedChange, onLimitReached],
-  );
-
-  React.useEffect(() => {
-    const finishDrag = () => {
-      if (!draggingRef.current) return;
-      const currentAnchor = anchorRef.current;
-      const currentHovered = hoveredRef.current;
-      if (currentAnchor && currentHovered && currentAnchor.courtId === currentHovered.courtId) {
-        const court = courts.find((c) => c.courtId === currentAnchor.courtId);
-        if (court) {
-          const selectable = court.slots.map((s) => isSelectable(s.status));
-          const indexes = computeDragRange(currentAnchor.index, currentHovered.index, selectable);
-          const keys = indexes.map((i) => court.slots[i]!.start);
-          commit(keys, dragModeRef.current);
-        }
-      }
-      draggingRef.current = false;
-      anchorRef.current = null;
-      hoveredRef.current = null;
-      pointerClientXRef.current = null;
-      setAnchor(null);
-      setHovered(null);
-    };
-
-    window.addEventListener('pointerup', finishDrag);
-    return () => window.removeEventListener('pointerup', finishDrag);
-  }, [courts, commit]);
 
   /** Bàn phím: Enter/Space bật tắt một block — đường vào không cần chuột. */
   const handleKeyDown = (event: React.KeyboardEvent, slot: Slot) => {
@@ -263,34 +313,48 @@ export function SlotGrid({
     else onSelectedChange(keys);
   };
 
-  const renderSlotCell = (court: CourtSlots, slot: Slot, index: number) => (
-    <SlotCell
-      courtId={court.courtId}
-      slot={slot}
-      index={index}
-      isSelected={selectedSet.has(slot.start)}
-      isPreview={previewKeys.has(slot.start)}
-      isPreviewRemoving={dragModeRef.current === 'remove'}
-      onPointerDown={(i) => {
-        if (!isSelectable(slot.status)) return;
-        draggingRef.current = true;
-        dragModeRef.current = selectedSet.has(slot.start) ? 'remove' : 'add';
-        const nextAnchor = { courtId: court.courtId, index: i };
-        anchorRef.current = nextAnchor;
-        hoveredRef.current = nextAnchor;
-        setAnchor(nextAnchor);
-        setHovered(nextAnchor);
-      }}
-      onPointerEnter={(i) => {
-        if (!draggingRef.current) return;
-        const nextHovered = { courtId: court.courtId, index: i };
-        hoveredRef.current = nextHovered;
-        setHovered(nextHovered);
-      }}
-      onKeyDown={handleKeyDown}
-      label={t(slot.status === 'held' && slot.mine ? 'myHold' : slot.status)}
-    />
-  );
+  const renderSlotCell = (court: CourtSlots, slot: Slot, index: number) => {
+    const isSelected = selectedSet.has(slot.start);
+    const isSelectPreview = dragMode === 'select' && previewKeys.has(slot.start);
+    const isDeselectPreview = dragMode === 'deselect' && previewKeys.has(slot.start) && isSelected;
+
+    return (
+      <SlotCell
+        courtId={court.courtId}
+        slot={slot}
+        index={index}
+        isSelected={isSelected}
+        isSelectPreview={isSelectPreview}
+        isDeselectPreview={isDeselectPreview}
+        zoomLevel={zoomLevel}
+        onPointerDown={(i) => {
+          if (!isSelectable(slot.status)) return;
+          const isAlreadySelected = selectedSet.has(slot.start);
+          const mode = isAlreadySelected ? 'deselect' : 'select';
+          dragModeRef.current = mode;
+          setDragMode(mode);
+
+          draggingRef.current = true;
+          hasDraggedRef.current = false;
+          const nextAnchor = { courtId: court.courtId, index: i };
+          anchorRef.current = nextAnchor;
+          hoveredRef.current = nextAnchor;
+          setAnchor(nextAnchor);
+          setHovered(nextAnchor);
+        }}
+        onPointerEnter={(i) => {
+          if (!draggingRef.current || !anchorRef.current) return;
+          if (anchorRef.current.courtId !== court.courtId) return;
+          hasDraggedRef.current = true;
+          const nextHovered = { courtId: court.courtId, index: i };
+          hoveredRef.current = nextHovered;
+          setHovered(nextHovered);
+        }}
+        onKeyDown={handleKeyDown}
+        label={t(slot.status === 'held' && slot.mine ? 'myHold' : slot.status)}
+      />
+    );
+  };
 
   if (timeRows.length === 0) {
     return (
@@ -302,77 +366,147 @@ export function SlotGrid({
   }
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
-      {/* Chú thích màu — không chỉ dựa vào màu để truyền đạt trạng thái. */}
-      <SlotLegend />
+    <div className={cn('flex flex-col gap-2.5', className)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {/* Chú thích màu — không chỉ dựa vào màu để truyền đạt trạng thái. */}
+        <SlotLegend />
+
+        {/* Thanh thu phóng kích thước các block */}
+        <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto rounded-md border border-neutral-200 bg-neutral-50 p-1 text-xs">
+          <span className="text-[11px] font-medium text-neutral-500 hidden xs:inline">Thu phóng:</span>
+
+          <button
+            type="button"
+            onClick={handleFitToScreen}
+            className="rounded px-2 py-0.5 font-medium text-[11px] bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors shadow-2xs"
+            title="Thu nhỏ để nhìn thấy toàn bộ các block trên màn hình"
+          >
+            Vừa màn
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setZoomLevel(100)}
+            className="rounded px-2 py-0.5 font-medium text-[11px] bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors shadow-2xs"
+            title="Đặt lại 100%"
+          >
+            Chuẩn
+          </button>
+
+          <div className="flex items-center gap-0.5 ml-0.5">
+            <button
+              type="button"
+              onClick={() => setZoomLevel((z) => Math.max(25, z - 10))}
+              disabled={zoomLevel <= 25}
+              className="rounded p-1 text-neutral-600 hover:bg-neutral-200/70 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Thu nhỏ block"
+              title="Thu nhỏ block"
+            >
+              <Minus className="size-3" aria-hidden="true" />
+            </button>
+            <input
+              type="range"
+              min={25}
+              max={140}
+              step={5}
+              value={zoomLevel}
+              onChange={(e) => setZoomLevel(Number(e.target.value))}
+              className="h-1.5 w-16 cursor-pointer appearance-none rounded-lg bg-neutral-200 accent-primary-600 sm:w-24"
+              aria-label="Thanh thu phóng kích thước block"
+            />
+            <button
+              type="button"
+              onClick={() => setZoomLevel((z) => Math.min(140, z + 10))}
+              disabled={zoomLevel >= 140}
+              className="rounded p-1 text-neutral-600 hover:bg-neutral-200/70 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Phóng to block"
+              title="Phóng to block"
+            >
+              <Plus className="size-3" aria-hidden="true" />
+            </button>
+          </div>
+
+          <span className="font-mono text-[10px] tabular-nums text-neutral-500 min-w-8 text-right">
+            {zoomLevel}%
+          </span>
+        </div>
+      </div>
 
       {courts.length === 1 ? (
         <div
-          ref={scrollContainerRef}
-          className="-mx-4 flex gap-2 overflow-x-auto overscroll-x-contain px-4 pb-2 sm:mx-0 sm:px-0"
+          ref={containerRef}
+          className="-mx-3 flex gap-1.5 overflow-x-auto overscroll-x-contain px-3 pb-2 scrollbar-thin sm:mx-0 sm:px-0"
           role="group"
           aria-label={t('selectHint')}
         >
-          {courts[0]!.slots.map((slot, index) => (
-            <div key={slot.start} className="w-24 shrink-0 sm:w-28">
-              <p className="mb-1 text-center text-xs tabular-nums text-text-secondary">
-                {formatTime(slot.start)}
-              </p>
-              {renderSlotCell(courts[0]!, slot, index)}
-            </div>
-          ))}
+          {courts[0]!.slots.map((slot, index) => {
+            const slotWidth = Math.max(16, Math.round((72 * zoomLevel) / 100));
+            const step = zoomLevel < 40 ? 4 : zoomLevel < 65 ? 2 : 1;
+            const showTime = index % step === 0;
+            return (
+              <div key={slot.start} className="shrink-0" style={{ width: `${slotWidth}px` }}>
+                <p className={cn("mb-1 text-center text-[10px] sm:text-[11px] tabular-nums text-text-secondary truncate", !showTime && "invisible")}>
+                  {formatTime(slot.start)}
+                </p>
+                {renderSlotCell(courts[0]!, slot, index)}
+              </div>
+            );
+          })}
         </div>
       ) : (
-      <div
-        ref={scrollContainerRef}
-        className="-mx-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:px-0"
-      >
-        <table className="w-full min-w-[520px] border-separate border-spacing-1">
-          <caption className="sr-only">{t('selectHint')}</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="w-16 text-left text-xs font-medium text-neutral-500">
-                {/* Góc: nhãn cho cột giờ */}
-                <span className="sr-only">{t('legend')}</span>
-              </th>
-              {courts.map((court, i) => (
-                <th
-                  key={court.courtId}
-                  scope="col"
-                  className="pb-1 text-center text-sm font-medium text-neutral-700"
-                >
-                  {courtNames?.[court.courtId] ?? `${t('court')} ${i + 1}`}
+        <div
+          ref={containerRef}
+          className="-mx-4 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:px-0"
+        >
+          <table
+            className="w-full border-separate border-spacing-1"
+            style={{ minWidth: `${Math.max(340, Math.round((520 * zoomLevel) / 100))}px` }}
+          >
+            <caption className="sr-only">{t('selectHint')}</caption>
+            <thead>
+              <tr>
+                <th scope="col" className="w-16 text-left text-xs font-medium text-neutral-500">
+                  {/* Góc: nhãn cho cột giờ */}
+                  <span className="sr-only">{t('legend')}</span>
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {timeRows.map((time) => (
-              <tr key={time}>
-                <th
-                  scope="row"
-                  className="pr-2 text-right align-middle text-xs font-normal tabular-nums text-neutral-500"
-                >
-                  {formatTime(time)}
-                </th>
-                {courts.map((court) => {
-                  const slot = court.slots.find((s) => s.start === time);
-                  if (!slot) {
-                    // Sân không mở cửa ở khung này — ô trống, không phải nút.
-                    return <td key={court.courtId} className="p-0" aria-hidden="true" />;
-                  }
-                  const index = court.slots.indexOf(slot);
-                  return (
-                    <td key={court.courtId} className="p-0">
-                      {renderSlotCell(court, slot, index)}
-                    </td>
-                  );
-                })}
+                {courts.map((court, i) => (
+                  <th
+                    key={court.courtId}
+                    scope="col"
+                    className="pb-1 text-center text-sm font-medium text-neutral-700"
+                  >
+                    {courtNames?.[court.courtId] ?? `${t('court')} ${i + 1}`}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {timeRows.map((time) => (
+                <tr key={time}>
+                  <th
+                    scope="row"
+                    className="pr-2 text-right align-middle text-xs font-normal tabular-nums text-neutral-500"
+                  >
+                    {formatTime(time)}
+                  </th>
+                  {courts.map((court) => {
+                    const slot = court.slots.find((s) => s.start === time);
+                    if (!slot) {
+                      // Sân không mở cửa ở khung này — ô trống, không phải nút.
+                      return <td key={court.courtId} className="p-0" aria-hidden="true" />;
+                    }
+                    const index = court.slots.indexOf(slot);
+                    return (
+                      <td key={court.courtId} className="p-0">
+                        {renderSlotCell(court, slot, index)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -383,9 +517,10 @@ interface SlotCellProps {
   slot: Slot;
   index: number;
   isSelected: boolean;
-  isPreview: boolean;
-  isPreviewRemoving: boolean;
+  isSelectPreview: boolean;
+  isDeselectPreview: boolean;
   label: string;
+  zoomLevel?: number;
   onPointerDown: (index: number) => void;
   onPointerEnter: (index: number) => void;
   onKeyDown: (event: React.KeyboardEvent, slot: Slot) => void;
@@ -396,47 +531,61 @@ function SlotCell({
   slot,
   index,
   isSelected,
-  isPreview,
-  isPreviewRemoving,
+  isSelectPreview,
+  isDeselectPreview,
   label,
+  zoomLevel = 100,
   onPointerDown,
   onPointerEnter,
   onKeyDown,
 }: SlotCellProps) {
   const selectable = isSelectable(slot.status);
+  const isEffectiveSelected = (isSelected && !isDeselectPreview) || isSelectPreview;
+  const cellHeight = Math.max(26, Math.round((44 * zoomLevel) / 100));
 
   return (
     <button
       type="button"
-      data-slot-court={courtId}
+      data-slot-cell=""
+      data-slot-court-id={courtId}
       data-slot-index={index}
+      style={{ height: `${cellHeight}px` }}
       // `aria-pressed` để trình đọc màn hình biết block đã được chọn hay chưa.
-      aria-pressed={isSelected}
+      aria-pressed={isEffectiveSelected}
       aria-label={`${formatTime(slot.start)} ${label}${
         selectable ? ` ${formatCurrency(slot.price)}` : ''
       }`}
       disabled={!selectable}
       onPointerDown={(e) => {
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
         e.preventDefault();
         onPointerDown(index);
       }}
       onPointerEnter={() => onPointerEnter(index)}
       onKeyDown={(e) => onKeyDown(e, slot)}
       className={cn(
-        'flex h-11 w-full touch-none select-none flex-col items-center justify-center rounded-btn',
-        'text-xs leading-tight transition-[filter,box-shadow] duration-150',
+        'flex h-11 w-full touch-none select-none flex-col items-center justify-center rounded-btn px-1 sm:h-9',
+        'text-[11px] leading-tight transition-[filter,box-shadow,opacity] duration-150',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1',
         SLOT_CLASSES[slot.status],
-        isPreview
-          ? isPreviewRemoving
-            ? 'ring-2 ring-neutral-500 ring-offset-1 opacity-60'
-            : SELECTED_CLASSES
-          : isSelected && SELECTED_CLASSES,
+        isEffectiveSelected && SELECTED_CLASSES,
+        isDeselectPreview &&
+          'ring-2 ring-danger-400 ring-offset-1 ring-offset-bg-card opacity-60 font-normal',
       )}
     >
-      <span className="font-medium">{formatCurrency(slot.price)}</span>
+      <span
+        className={cn(
+          'whitespace-nowrap font-medium tabular-nums',
+          zoomLevel < 45 ? 'hidden' : zoomLevel < 70 ? 'text-[9px]' : '',
+          isDeselectPreview && 'line-through text-danger-600',
+        )}
+      >
+        {zoomLevel < 70 ? `${Math.round(slot.price / 1000)}k` : formatCurrency(slot.price)}
+      </span>
       {/* Nhãn trạng thái bằng chữ cho ô không trống — màu một mình là chưa đủ. */}
-      {slot.status !== 'available' && <span className="text-[10px] opacity-80">{label}</span>}
+      {slot.status !== 'available' && zoomLevel >= 55 && (
+        <span className="text-[9px] leading-none opacity-80">{label}</span>
+      )}
     </button>
   );
 }
@@ -453,12 +602,12 @@ function SlotLegend() {
   ];
 
   return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-4">
       {items.map(({ status, label }) => (
-        <li key={status} className="flex items-center gap-1.5 text-xs text-text-secondary">
+        <li key={status} className="flex items-center gap-1 text-[11px] text-text-secondary sm:gap-1.5 sm:text-xs">
           <span
             aria-hidden="true"
-            className={cn('size-3 rounded-sm border border-black/5', SLOT_CLASSES[status])}
+            className={cn('size-2.5 rounded-sm border border-black/5 sm:size-3', SLOT_CLASSES[status])}
           />
           {label}
         </li>
