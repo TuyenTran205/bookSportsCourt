@@ -23,10 +23,10 @@ export function Footer() {
 
   return (
     <footer className="border-t border-border bg-bg-subtle text-text-secondary">
-      <div className="container py-12 md:py-16">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-5">
+      <div className="container py-10 md:py-14">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-3 lg:grid-cols-5">
           {/* Cột 1 & 2: Thương hiệu & giới thiệu */}
-          <div className="flex flex-col gap-4 lg:col-span-2">
+          <div className="col-span-2 flex flex-col gap-4 md:col-span-3 lg:col-span-2">
             <Link
               href="/"
               className="flex items-center gap-2.5 text-lg font-bold text-text-primary transition-opacity hover:opacity-90"
@@ -148,11 +148,11 @@ export function Footer() {
           </div>
 
           {/* Cột 5: Quy định & Chính sách */}
-          <div className="flex flex-col gap-3">
+          <div className="col-span-2 flex flex-col gap-3 md:col-span-1">
             <h3 className="text-sm font-semibold tracking-wide text-text-primary">
               {t('policyHeading')}
             </h3>
-            <ul className="flex flex-col gap-2 text-sm text-text-secondary">
+            <ul className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-text-secondary md:flex md:flex-col md:gap-2">
               <li>
                 <Link
                   href="/info/terms"

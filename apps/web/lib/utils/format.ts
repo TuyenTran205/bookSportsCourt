@@ -28,6 +28,22 @@ export function formatCurrency(value: number): string {
   return vnd.format(value);
 }
 
+/** 1500000 -> "1.5tr", 300000 -> "300k", 0 -> "0" */
+export function formatCompactMoney(val: number): string {
+  const abs = Math.abs(val);
+  const sign = val < 0 ? '-' : '';
+  if (abs >= 1_000_000_000) {
+    const formatted = (abs / 1_000_000_000).toFixed(1).replace(/\.0$/, '');
+    return `${sign}${formatted}tỷ`;
+  }
+  if (abs >= 1_000_000) {
+    const formatted = (abs / 1_000_000).toFixed(1).replace(/\.0$/, '');
+    return `${sign}${formatted}tr`;
+  }
+  if (abs >= 1_000) return `${sign}${Math.round(abs / 1_000)}k`;
+  return String(val);
+}
+
 /** 1234 → "1.234" */
 export function formatNumber(value: number): string {
   return decimal.format(value);
@@ -63,6 +79,7 @@ export function formatDateTimeInVietnam(value: string | Date): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
     hourCycle: 'h23',
   }).format(d);
 }
@@ -80,6 +97,7 @@ export function formatDateTimeRangeInVietnam(start: string, end: string): string
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
     hourCycle: 'h23',
   };
   const fullFormatter = new Intl.DateTimeFormat('vi-VN', options);
@@ -87,6 +105,7 @@ export function formatDateTimeRangeInVietnam(start: string, end: string): string
     timeZone: 'Asia/Ho_Chi_Minh',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
     hourCycle: 'h23',
   });
   const dateFormatter = new Intl.DateTimeFormat('en-CA', {

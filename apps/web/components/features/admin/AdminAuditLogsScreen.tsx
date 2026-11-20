@@ -156,16 +156,73 @@ export function AdminAuditLogsScreen() {
                 />
             ) : (
                 <div className="flex flex-col gap-4">
-                    <Card className="overflow-hidden p-0">
+                    {/* Mobile Cards (< 640px) */}
+                    <div className="space-y-3 sm:hidden">
+                        {logs.map((log) => {
+                            const { label, tone } = formatAuditAction(log.action);
+                            return (
+                                <Card key={log.id} className="p-4 space-y-2.5 border border-border">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tone}`}>
+                                            Thao tác: {label}
+                                        </span>
+                                        <span className="text-xs text-text-secondary font-mono">
+                                            {formatDate(log.createdAt)} {formatTime(log.createdAt)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-xs text-text-primary border-t border-border/50 pt-2">
+                                        <div className="flex items-center gap-1.5 font-medium">
+                                            <ShieldAlert className="size-3.5 text-primary-600 dark:text-primary-400" />
+                                            {log.actorName ?? "Hệ thống"}
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-medium text-text-primary">{formatEntityType(log.entityType)}</span>
+                                            <span className="text-[11px] text-text-secondary font-mono block max-w-[150px] truncate" title={log.entityId}>
+                                                #{log.entityId}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {log.metadata && (
+                                        <div className="rounded bg-bg-subtle/70 p-2 text-xs text-text-secondary space-y-0.5 border border-border/40">
+                                            {log.metadata.reviewNote ? (
+                                                <p>
+                                                    <strong className="text-text-primary">Lý do:</strong> {String(log.metadata.reviewNote)}
+                                                </p>
+                                            ) : null}
+                                            {log.metadata.reason ? (
+                                                <p>
+                                                    <strong className="text-text-primary">Lý do:</strong> {String(log.metadata.reason)}
+                                                </p>
+                                            ) : null}
+                                            {log.metadata.label && !log.metadata.reviewNote && !log.metadata.reason ? (
+                                                <p>{String(log.metadata.label)}</p>
+                                            ) : null}
+                                            {log.metadata.applicant ? (
+                                                <p className="text-text-secondary">Người nộp: {String(log.metadata.applicant)}</p>
+                                            ) : null}
+                                            {log.metadata.venueName ? (
+                                                <p className="text-text-secondary">Cơ sở: {String(log.metadata.venueName)}</p>
+                                            ) : null}
+                                        </div>
+                                    )}
+                                </Card>
+                            );
+                        })}
+                    </div>
+
+                    {/* Desktop Table (>= 640px) */}
+                    <Card className="hidden sm:block overflow-hidden p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead>
                                     <tr className="border-b border-border bg-bg-subtle text-xs font-semibold uppercase text-text-secondary">
-                                        <th className="py-3 px-4">Thời gian</th>
-                                        <th className="py-3 px-4">Người thực hiện</th>
-                                        <th className="py-3 px-4">Hành động</th>
-                                        <th className="py-3 px-4">Đối tượng</th>
-                                        <th className="py-3 px-4">Chi tiết thao tác</th>
+                                        <th className="py-2.5 px-3">Thời gian</th>
+                                        <th className="py-2.5 px-3">Người thực hiện</th>
+                                        <th className="py-2.5 px-3">Hành động</th>
+                                        <th className="py-2.5 px-3">Đối tượng</th>
+                                        <th className="py-2.5 px-3">Chi tiết thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
@@ -173,7 +230,7 @@ export function AdminAuditLogsScreen() {
                                         const { label, tone } = formatAuditAction(log.action);
                                         return (
                                             <tr key={log.id} className="hover:bg-bg-subtle/50">
-                                                <td className="py-3 px-4 text-xs text-text-secondary whitespace-nowrap">
+                                                <td className="py-2.5 px-3 text-xs text-text-secondary whitespace-nowrap">
                                                     <p className="font-medium text-text-primary">
                                                         {formatDate(log.createdAt)}
                                                     </p>
@@ -181,31 +238,31 @@ export function AdminAuditLogsScreen() {
                                                         {formatTime(log.createdAt)}
                                                     </p>
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2.5 px-3 whitespace-nowrap">
                                                     <div className="flex items-center gap-1.5 font-medium text-text-primary">
                                                         <ShieldAlert className="size-3.5 text-primary-600 dark:text-primary-400" />
                                                         {log.actorName ?? "Hệ thống"}
                                                     </div>
                                                 </td>
-                                                <td className="py-3 px-4">
+                                                <td className="py-2.5 px-3 whitespace-nowrap">
                                                     <span
                                                         className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}
                                                     >
                                                         {label}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 px-4">
-                                                    <p className="font-medium text-text-primary">
+                                                <td className="py-2.5 px-3">
+                                                    <p className="font-medium text-text-primary text-xs">
                                                         {formatEntityType(log.entityType)}
                                                     </p>
                                                     <p
-                                                        className="text-xs text-text-secondary font-mono truncate max-w-[200px]"
+                                                        className="text-xs text-text-secondary font-mono truncate max-w-[150px] md:max-w-[200px]"
                                                         title={log.entityId}
                                                     >
                                                         {log.entityId}
                                                     </p>
                                                 </td>
-                                                <td className="py-3 px-4 text-xs text-text-secondary">
+                                                <td className="py-2.5 px-3 text-xs text-text-secondary">
                                                     {log.metadata ? (
                                                         <div className="space-y-0.5">
                                                             {log.metadata.reviewNote ? (

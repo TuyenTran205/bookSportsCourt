@@ -118,13 +118,13 @@ describe('AdminReviewsScreen Component (TC-REV)', () => {
     render(<AdminReviewsScreen />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('Nguyễn Văn Khách')).toBeDefined();
-      expect(screen.getByText('Lê Thảo Vy')).toBeDefined();
+      expect(screen.getAllByText('Nguyễn Văn Khách').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Lê Thảo Vy').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Sân Cầu Lông Thăng Long').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Sân Bóng Đá Phú Thọ').length).toBeGreaterThan(0);
-      expect(screen.getByText(/Sân rất đẹp và sạch sẽ/)).toBeDefined();
-      expect(screen.getByText('badgePublic')).toBeDefined();
-      expect(screen.getByText('badgeHidden')).toBeDefined();
+      expect(screen.getAllByText(/Sân rất đẹp và sạch sẽ/).length).toBeGreaterThan(0);
+      expect(screen.getAllByText('badgePublic').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('badgeHidden').length).toBeGreaterThan(0);
     });
   });
 
@@ -150,7 +150,7 @@ describe('AdminReviewsScreen Component (TC-REV)', () => {
     render(<AdminReviewsScreen />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('Nguyễn Văn Khách')).toBeDefined();
+      expect(screen.getAllByText('Nguyễn Văn Khách').length).toBeGreaterThan(0);
     });
 
     const hideButtons = screen.getAllByRole('button', { name: /hideReview/i });
@@ -170,7 +170,7 @@ describe('AdminReviewsScreen Component (TC-REV)', () => {
     render(<AdminReviewsScreen />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText('Nguyễn Văn Khách')).toBeDefined();
+      expect(screen.getAllByText('Nguyễn Văn Khách').length).toBeGreaterThan(0);
     });
 
     const hideButtons = screen.getAllByRole('button', { name: /hideReview/i });
@@ -193,7 +193,7 @@ describe('AdminReviewsScreen Component (TC-REV)', () => {
     render(<AdminReviewsScreen />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText(/Khách hàng chưa đến sân/)).toBeDefined();
+      expect(screen.getAllByText(/Khách hàng chưa đến sân/).length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Bị chủ sân báo cáo/i }));

@@ -142,17 +142,101 @@ export function AdminOwnerApplicationsScreen() {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <Card className="overflow-hidden p-0">
+          {/* Mobile Cards (< 640px) */}
+          <div className="space-y-3 sm:hidden">
+            {applications.map((app) => {
+              const submitterName = app.applicantName || app.user?.fullName || app.businessName;
+              return (
+                <Card key={app.id} className="p-4 space-y-3 border border-border">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-text-primary truncate">{submitterName}</p>
+                      <p className="text-xs text-text-secondary truncate mt-0.5">
+                        {app.user?.email
+                          ? `${app.user.email} · ${app.user.phone ?? app.phone ?? 'Chưa có SĐT'}`
+                          : (app.phone ?? 'Chưa có SĐT')}
+                      </p>
+                    </div>
+                    <StatusBadge kind="application" status={app.status} />
+                  </div>
+
+                  <div className="rounded-lg bg-bg-subtle/70 p-2.5 text-xs space-y-1.5 border border-border/50">
+                    <div>
+                      <p className="font-semibold text-text-primary">{app.businessName}</p>
+                      {app.address && (
+                        <p className="text-text-secondary line-clamp-1 mt-0.5">{app.address}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-text-secondary pt-1 border-t border-border/40">
+                      <span>MST: <strong className="font-mono text-text-primary">{app.taxCode || '—'}</strong></span>
+                      <span>{formatDateTime(app.createdAt)}</span>
+                    </div>
+                    {app.accountNo && (
+                      <div className="text-[11px] text-text-secondary">
+                        <span className="font-medium text-text-primary">{app.bankName || app.bankBin}</span>: {app.accountNo}
+                        {app.accountName && <span className="ml-1 text-text-disabled">({app.accountName})</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  {app.status === 'rejected' && (app.rejectReason || app.reviewNote) && (
+                    <p className="text-xs text-danger line-clamp-2">
+                      Lý do: {app.rejectReason || app.reviewNote}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1 border-t border-border/50">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2.5 text-xs"
+                      onClick={() => setDetailApp(app)}
+                      aria-label={`Xem chi tiết hồ sơ ${app.businessName}`}
+                    >
+                      <Eye className="mr-1 size-3.5" aria-hidden="true" />
+                      Chi tiết
+                    </Button>
+                    {app.status === 'pending' && (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={reviewMutation.isPending}
+                          onClick={() => handleApprove(app)}
+                          className="h-8 bg-primary-600 px-2.5 text-xs text-white hover:bg-primary-700"
+                        >
+                          <Check className="mr-1 size-3.5" />
+                          Duyệt
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={reviewMutation.isPending}
+                          onClick={() => setRejectingApp(app)}
+                          className="h-8 px-2.5 text-xs text-danger hover:bg-danger/10 hover:text-danger"
+                        >
+                          <X className="mr-1 size-3.5" />
+                          Từ chối
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table (>= 640px) */}
+          <Card className="hidden sm:block overflow-hidden p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-bg-subtle text-xs font-semibold uppercase text-text-secondary">
-                    <th className="py-3 px-4">Người nộp</th>
-                    <th className="py-3 px-4">Cơ sở kinh doanh</th>
-                    <th className="py-3 px-4">Mã số thuế</th>
-                    <th className="py-3 px-4">Ngày nộp</th>
-                    <th className="py-3 px-4 text-center">Trạng thái</th>
-                    <th className="py-3 px-4 text-right">Hành động</th>
+                    <th className="py-2.5 px-3">Người nộp</th>
+                    <th className="py-2.5 px-3">Cơ sở kinh doanh</th>
+                    <th className="py-2.5 px-3">Mã số thuế</th>
+                    <th className="py-2.5 px-3">Ngày nộp</th>
+                    <th className="py-2.5 px-3 text-center">Trạng thái</th>
+                    <th className="py-2.5 px-3 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -160,7 +244,7 @@ export function AdminOwnerApplicationsScreen() {
                     const submitterName = app.applicantName || app.user?.fullName || app.businessName;
                     return (
                     <tr key={app.id} className="hover:bg-bg-subtle/60">
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3">
                         <p className="font-semibold text-text-primary">
                           {submitterName}
                         </p>
@@ -170,7 +254,7 @@ export function AdminOwnerApplicationsScreen() {
                             : (app.phone ?? 'Chưa có SĐT')}
                         </p>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3">
                         <p className="font-medium text-text-primary">{app.businessName}</p>
                         {app.address && (
                           <p className="line-clamp-2 text-xs text-text-secondary" title={app.address}>
@@ -195,7 +279,7 @@ export function AdminOwnerApplicationsScreen() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-xs">
+                      <td className="py-2.5 px-3 text-xs">
                         <div className="font-mono text-text-secondary">
                           {app.taxCode ? `MST: ${app.taxCode}` : <span className="text-text-disabled">Không có MST</span>}
                         </div>
@@ -206,10 +290,10 @@ export function AdminOwnerApplicationsScreen() {
                           </div>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-xs text-text-secondary">
+                      <td className="py-2.5 px-3 text-xs text-text-secondary whitespace-nowrap">
                         {formatDateTime(app.createdAt)}
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <StatusBadge kind="application" status={app.status} />
                         {app.status === 'rejected' && (app.rejectReason || app.reviewNote) && (
                           <p className="mt-1 line-clamp-1 text-[11px] text-danger" title={app.rejectReason ?? app.reviewNote ?? undefined}>
@@ -217,8 +301,8 @@ export function AdminOwnerApplicationsScreen() {
                           </p>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="outline"

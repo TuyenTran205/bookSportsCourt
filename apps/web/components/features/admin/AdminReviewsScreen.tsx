@@ -328,186 +328,310 @@ export function AdminReviewsScreen() {
           }
         />
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm" data-testid="admin-reviews-table">
-              <thead className="border-b border-border bg-bg-subtle text-xs font-semibold text-text-secondary">
-                <tr>
-                  <th scope="col" className="px-4 py-3">{t('colCustomer')}</th>
-                  <th scope="col" className="px-4 py-3">{t('colVenue')}</th>
-                  <th scope="col" className="px-4 py-3 min-w-[260px]">{t('colContent')}</th>
-                  <th scope="col" className="px-4 py-3">{t('colStatus')}</th>
-                  <th scope="col" className="px-4 py-3 text-right">{t('colActions')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {reviews.map((row) => (
-                  <tr key={row.id} className="transition-colors hover:bg-bg-subtle/50">
-                    {/* Cột 1: Khách hàng */}
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-text-secondary">
-                          <User className="size-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium text-text-primary">{row.customerName}</div>
-                          <div className="text-xs text-text-secondary">{formatDate(row.createdAt)}</div>
-                        </div>
-                      </div>
-                    </td>
+        <div className="flex flex-col gap-4">
+          {/* Mobile Card List (< 640px) */}
+          <div className="space-y-3 sm:hidden">
+            {reviews.map((row) => (
+              <Card key={row.id} className="p-4 space-y-3 border border-border">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-text-secondary">
+                      <User className="size-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-text-primary text-xs truncate">{row.customerName}</p>
+                      <p className="text-[11px] text-text-secondary">{formatDate(row.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {row.isVisible ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary-200 bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
+                        {t('badgePublic')}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-bg-subtle px-2 py-0.5 text-[11px] font-medium text-text-secondary">
+                        {t('badgeHidden')}
+                      </span>
+                    )}
+                    {getReportBadge(row.reportStatus)}
+                  </div>
+                </div>
 
-                    {/* Cột 2: Cơ sở */}
-                    <td className="px-4 py-3 align-top font-medium text-text-primary">
-                      {row.venueName}
-                    </td>
-
-                    {/* Cột 3: Điểm số & Bình luận */}
-                    <td className="px-4 py-3 align-top">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={cn(
-                                'size-3.5',
-                                i < row.rating
-                                  ? 'fill-amber-400 text-amber-400'
-                                  : 'text-text-disabled',
-                              )}
-                            />
-                          ))}
-                          <span className="ml-1 text-xs font-semibold text-text-secondary">
-                            {row.rating}/5
-                          </span>
-                        </div>
-                        <p className="text-text-primary leading-relaxed text-sm">
-                          {row.comment || <span className="italic text-text-disabled">{t('reviewNoComment')}</span>}
+                <div>
+                  <p className="text-xs font-semibold text-text-primary mb-1">{row.venueName}</p>
+                  <div className="flex items-center gap-1 mb-1.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={cn(
+                          'size-3.5',
+                          i < row.rating
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-text-disabled',
+                        )}
+                      />
+                    ))}
+                    <span className="ml-1 text-xs font-semibold text-text-secondary">
+                      {row.rating}/5
+                    </span>
+                  </div>
+                  <p className="text-text-primary text-xs leading-relaxed">
+                    {row.comment || <span className="italic text-text-disabled">{t('reviewNoComment')}</span>}
+                  </p>
+                  {row.ownerReply && (
+                    <div className="mt-2 rounded-md border border-border bg-bg-subtle p-2 text-xs text-text-secondary">
+                      <span className="font-semibold text-text-primary">{t('ownerReply')} </span>
+                      {row.ownerReply}
+                    </div>
+                  )}
+                  {row.reportStatus && row.reportStatus !== 'none' && (
+                    <div className="mt-2 space-y-1 rounded-md border border-amber-300 bg-amber-50/70 p-2 text-xs dark:border-amber-800/60 dark:bg-amber-950/30">
+                      {row.reportReason && (
+                        <p className="text-text-primary">
+                          <span className="font-semibold">Lý do báo cáo: </span>
+                          {row.reportReason}
                         </p>
-                        {row.ownerReply && (
-                          <div className="rounded-md border border-border bg-bg-subtle p-2 text-xs text-text-secondary">
-                            <span className="font-semibold text-text-primary">{t('ownerReply')} </span>
-                            {row.ownerReply}
-                          </div>
-                        )}
-                        {row.reportStatus && row.reportStatus !== 'none' && (
-                          <div className="mt-2 space-y-1.5 rounded-md border border-amber-300 bg-amber-50/70 p-2.5 text-xs dark:border-amber-800/60 dark:bg-amber-950/30">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              {getReportBadge(row.reportStatus)}
-                              {row.reportedAt && (
-                                <span className="text-[11px] text-text-secondary">
-                                  {formatDate(row.reportedAt)}
-                                </span>
-                              )}
-                            </div>
-                            {row.reportReason && (
-                              <p className="text-text-primary">
-                                <span className="font-semibold">Lý do báo cáo: </span>
-                                {row.reportReason}
-                              </p>
-                            )}
-                            {row.reportImageUrl && (
-                              <a
-                                href={row.reportImageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={row.reportImageUrl}
-                                  alt="Ảnh minh chứng báo cáo"
-                                  className="mt-1 max-h-24 rounded border border-border object-cover"
-                                />
-                              </a>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                      )}
+                      {row.reportImageUrl && (
+                        <a href={row.reportImageUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-[11px] text-primary-600 underline">
+                          Xem ảnh minh chứng
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                    {/* Cột 4: Trạng thái */}
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex flex-col items-start gap-1.5">
-                        {row.isVisible ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
-                            <span className="size-1.5 rounded-full bg-primary-600" />
-                            {t('badgePublic')}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-subtle px-2.5 py-0.5 text-xs font-medium text-text-secondary">
-                            <span className="size-1.5 rounded-full bg-text-disabled" />
-                            {t('badgeHidden')}
-                          </span>
-                        )}
-                        {getReportBadge(row.reportStatus)}
-                      </div>
-                    </td>
-
-                    {/* Cột 5: Thao tác */}
-                    <td className="px-4 py-3 align-top text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        {row.reportStatus === 'pending' && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setReportActionTarget({ review: row, action: 'approve' })}
-                              className="border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/50"
-                            >
-                              <Check className="mr-1 size-3.5" aria-hidden="true" />
-                              Duyệt &amp; Ẩn
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setReportActionTarget({ review: row, action: 'reject' })}
-                              className="hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                            >
-                              <X className="mr-1 size-3.5" aria-hidden="true" />
-                              Bác bỏ
-                            </Button>
-                          </>
-                        )}
-                        {row.isVisible ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenConfirm(row)}
-                            className="hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                            aria-label={t('hideReview')}
-                          >
-                            <EyeOff className="mr-1 size-4 text-text-secondary group-hover:text-red-700" />
-                            <span>{t('hideReview')}</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenConfirm(row)}
-                            className="hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:hover:border-primary-800 dark:hover:bg-primary-950/40 dark:hover:text-primary-300"
-                            aria-label={t('showReview')}
-                          >
-                            <Eye className="mr-1 size-4 text-text-secondary group-hover:text-primary-700" />
-                            <span>{t('showReview')}</span>
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-border pt-2">
+                  {row.reportStatus === 'pending' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReportActionTarget({ review: row, action: 'approve' })}
+                        className="h-8 px-2.5 text-xs border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
+                      >
+                        <Check className="mr-1 size-3.5" />
+                        Duyệt vi phạm
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReportActionTarget({ review: row, action: 'reject' })}
+                        className="h-8 px-2.5 text-xs hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <X className="mr-1 size-3.5" />
+                        Bác bỏ vi phạm
+                      </Button>
+                    </>
+                  )}
+                  {row.isVisible ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenConfirm(row)}
+                      className="h-8 px-2.5 text-xs hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+                    >
+                      <EyeOff className="mr-1 size-3.5" />
+                      <span>Ẩn</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleOpenConfirm(row)}
+                      className="h-8 px-2.5 text-xs hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
+                    >
+                      <Eye className="mr-1 size-3.5" />
+                      <span>Hiện</span>
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            ))}
           </div>
 
-          {meta && (
-            <div className="border-t border-border p-4">
-              <Pagination
-                meta={meta}
-                onPageChange={(p) => setPage(p)}
-              />
+          {/* Desktop Table (>= 640px) */}
+          <Card className="hidden sm:block overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm" data-testid="admin-reviews-table">
+                <thead className="border-b border-border bg-bg-subtle text-xs font-semibold text-text-secondary">
+                  <tr>
+                    <th scope="col" className="px-4 py-3">{t('colCustomer')}</th>
+                    <th scope="col" className="px-4 py-3">{t('colVenue')}</th>
+                    <th scope="col" className="px-4 py-3 min-w-[260px]">{t('colContent')}</th>
+                    <th scope="col" className="px-4 py-3">{t('colStatus')}</th>
+                    <th scope="col" className="px-4 py-3 text-right">{t('colActions')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {reviews.map((row) => (
+                    <tr key={row.id} className="transition-colors hover:bg-bg-subtle/50">
+                      {/* Cột 1: Khách hàng */}
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-text-secondary">
+                            <User className="size-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-text-primary">{row.customerName}</div>
+                            <div className="text-xs text-text-secondary">{formatDate(row.createdAt)}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Cột 2: Cơ sở */}
+                      <td className="px-4 py-3 align-top font-medium text-text-primary">
+                        {row.venueName}
+                      </td>
+
+                      {/* Cột 3: Điểm số & Bình luận */}
+                      <td className="px-4 py-3 align-top">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={cn(
+                                  'size-3.5',
+                                  i < row.rating
+                                    ? 'fill-amber-400 text-amber-400'
+                                    : 'text-text-disabled',
+                                )}
+                              />
+                            ))}
+                            <span className="ml-1 text-xs font-semibold text-text-secondary">
+                              {row.rating}/5
+                            </span>
+                          </div>
+                          <p className="text-text-primary leading-relaxed text-sm">
+                            {row.comment || <span className="italic text-text-disabled">{t('reviewNoComment')}</span>}
+                          </p>
+                          {row.ownerReply && (
+                            <div className="rounded-md border border-border bg-bg-subtle p-2 text-xs text-text-secondary">
+                              <span className="font-semibold text-text-primary">{t('ownerReply')} </span>
+                              {row.ownerReply}
+                            </div>
+                          )}
+                          {row.reportStatus && row.reportStatus !== 'none' && (
+                            <div className="mt-2 space-y-1.5 rounded-md border border-amber-300 bg-amber-50/70 p-2.5 text-xs dark:border-amber-800/60 dark:bg-amber-950/30">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                {getReportBadge(row.reportStatus)}
+                                {row.reportedAt && (
+                                  <span className="text-[11px] text-text-secondary">
+                                    {formatDate(row.reportedAt)}
+                                  </span>
+                                )}
+                              </div>
+                              {row.reportReason && (
+                                <p className="text-text-primary">
+                                  <span className="font-semibold">Lý do báo cáo: </span>
+                                  {row.reportReason}
+                                </p>
+                              )}
+                              {row.reportImageUrl && (
+                                <a
+                                  href={row.reportImageUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-block"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={row.reportImageUrl}
+                                    alt="Ảnh minh chứng báo cáo"
+                                    className="mt-1 max-h-24 rounded border border-border object-cover"
+                                  />
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Cột 4: Trạng thái */}
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col items-start gap-1.5">
+                          {row.isVisible ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-800 dark:border-primary-900/50 dark:bg-primary-950/40 dark:text-primary-300">
+                              <span className="size-1.5 rounded-full bg-primary-600" />
+                              {t('badgePublic')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-subtle px-2.5 py-0.5 text-xs font-medium text-text-secondary">
+                              <span className="size-1.5 rounded-full bg-text-disabled" />
+                              {t('badgeHidden')}
+                            </span>
+                          )}
+                          {getReportBadge(row.reportStatus)}
+                        </div>
+                      </td>
+
+                      {/* Cột 5: Thao tác */}
+                      <td className="px-4 py-3 align-top text-right">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          {row.reportStatus === 'pending' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setReportActionTarget({ review: row, action: 'approve' })}
+                                className="border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/50"
+                              >
+                                <Check className="mr-1 size-3.5" aria-hidden="true" />
+                                Duyệt &amp; Ẩn
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setReportActionTarget({ review: row, action: 'reject' })}
+                                className="hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                              >
+                                <X className="mr-1 size-3.5" aria-hidden="true" />
+                                Bác bỏ
+                              </Button>
+                            </>
+                          )}
+                          {row.isVisible ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenConfirm(row)}
+                              className="hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                              aria-label={t('hideReview')}
+                            >
+                              <EyeOff className="mr-1 size-4 text-text-secondary group-hover:text-red-700" />
+                              <span>{t('hideReview')}</span>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenConfirm(row)}
+                              className="hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 dark:hover:border-primary-800 dark:hover:bg-primary-950/40 dark:hover:text-primary-300"
+                              aria-label={t('showReview')}
+                            >
+                              <Eye className="mr-1 size-4 text-text-secondary group-hover:text-primary-700" />
+                              <span>{t('showReview')}</span>
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </Card>
+
+            {meta && (
+              <div className="border-t border-border p-4">
+                <Pagination
+                  meta={meta}
+                  onPageChange={(p) => setPage(p)}
+                />
+              </div>
+            )}
+          </Card>
+        </div>
       )}
 
       {/* Dialog xác nhận ẩn/hiện */}

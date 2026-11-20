@@ -55,11 +55,11 @@ export function SportsCatalogTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-text-secondary">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <p className="text-xs sm:text-sm text-text-secondary">
           Danh sách các bộ môn thể thao được hỗ trợ trên nền tảng ({sports.length} môn).
         </p>
-        <Button onClick={() => setDialogOpen(true)} size="sm">
+        <Button onClick={() => setDialogOpen(true)} size="sm" className="self-start sm:self-auto">
           <Plus className="mr-1.5 size-4" />
           Thêm môn thể thao
         </Button>

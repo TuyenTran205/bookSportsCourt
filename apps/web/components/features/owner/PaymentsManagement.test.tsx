@@ -81,8 +81,8 @@ describe('PaymentsManagement', () => {
     renderWithQuery(<PaymentsManagement />);
 
     expect(useOwnerPaymentsMock).toHaveBeenCalledWith('all', 1, 10, true);
-    expect(screen.getByText('Nguyễn Văn A')).toBeTruthy();
-    expect(screen.getByText('Sân Cầu Lông Cầu Giấy')).toBeTruthy();
+    expect(screen.getAllByText('Nguyễn Văn A').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Sân Cầu Lông Cầu Giấy').length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'completed' } });
     expect(useOwnerPaymentsMock).toHaveBeenLastCalledWith('completed', 1, 10, true);

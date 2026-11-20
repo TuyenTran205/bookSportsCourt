@@ -30,9 +30,11 @@ const mockNotifications: Notification[] = [
   },
 ];
 
+const mockPush = vi.fn();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: mockPush,
   }),
 }));
 
@@ -157,6 +159,21 @@ describe('NotificationsScreen Component (TC-NOTIF)', () => {
     await waitFor(() => {
       expect(screen.getByText('emptyTitle')).toBeDefined();
       expect(screen.getByText('emptyDesc')).toBeDefined();
+    });
+  });
+
+  it('TC-NOTIF-05: bấm vào thông báo chuyển hướng đến đúng trang chi tiết đơn đặt sân', async () => {
+    render(<NotificationsScreen />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Đơn đặt sân đã được xác nhận')).toBeDefined();
+    });
+
+    const notifItem = screen.getByText('Đơn đặt sân đã được xác nhận');
+    fireEvent.click(notifItem);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/bookings/b-1');
     });
   });
 });
