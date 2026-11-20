@@ -113,10 +113,8 @@ jobs:
             - name: Test shared schemas
               run: pnpm --filter @bsc/shared test
 
-            - name: Test (workspace)
-              # `--` bắt buộc: nếu thiếu, pnpm hiểu `--passWithNoTests` là cờ của chính pnpm
-              # và không chuyển tiếp xuống script test → Jest/Vitest báo lỗi khi chưa có test.
-              run: pnpm test -- --passWithNoTests
+            - name: Test FE (web)
+              run: pnpm --filter @bsc/web test
 
     build:
         name: build
