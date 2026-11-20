@@ -170,6 +170,7 @@ jobs:
             DATABASE_URL: postgresql://bsc_user:bsc_password@localhost:5432/booksports_e2e
             JWT_ACCESS_SECRET: test-access-secret-at-least-32-chars
             JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars
+            ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
             NODE_ENV: test
             PORT: 3001
             NEXT_PUBLIC_API_URL: http://localhost:3001
@@ -197,11 +198,6 @@ jobs:
               run: |
                   pnpm --filter @bsc/api db:migrate
                   pnpm --filter @bsc/api db:seed
-
-            - name: Start API server
-              run: |
-                  pnpm --filter @bsc/api dev &
-                  npx wait-on http://127.0.0.1:3001/api/v1/health/ping -t 60000
 
             - name: Run E2E tests
               run: pnpm test:e2e
