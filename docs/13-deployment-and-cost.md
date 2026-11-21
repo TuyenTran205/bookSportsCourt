@@ -31,8 +31,12 @@
 | Env | FE | BE | DB | Mục đích |
 |-----|----|----|-----|---------|
 | **local** | localhost:3000 | localhost:3001 | Docker PostgreSQL | Phát triển hằng ngày |
-| **staging** | Vercel Preview | Railway | Neon (branch riêng) | Test trước merge |
-| **demo** | Vercel Production | Railway | Neon (production branch) | Buổi demo/nộp bài |
+| **staging** | Vercel Preview | Railway / Render | Neon (branch riêng) | Test trước merge |
+| **demo** | Vercel Production | Render / Railway (`https://booksportscourt.onrender.com`) | Neon (production branch) | Buổi demo/nộp bài |
+
+> **Cấu hình môi trường trên Render / Railway:**
+> - Bắt buộc khai báo `ALLOWED_ORIGINS`: danh sách domain frontend được phép gọi API (ví dụ `https://booksportscourt.vercel.app,http://localhost:3000`), phân tách bằng dấu phẩy. Thiếu biến này Backend NestJS sẽ từ chối khởi động (`Invalid environment configuration: ALLOWED_ORIGINS: Required`).
+> - Chuỗi kết nối DB (`DATABASE_URL` từ Neon): Thường có tham số `?sslmode=require`. Driver `pg` có thể đưa ra cảnh báo bảo mật về sự tương thích libpq so với `verify-full`, nhưng service vẫn hoạt động bình thường ("Deploy succeeded"). Để chuẩn hoá có thể dùng `sslmode=verify-full`.
 
 ## Docker Compose cho dev local
 

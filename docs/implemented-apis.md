@@ -69,6 +69,7 @@ Email background BSC-045 đã có MailTransport dùng chung Auth, worker email o
 |---|---|---|
 | GET | /admin/bookings | Admin active; status/venueId/customerId/from/to/page/limit strict; ngày Việt Nam lọc start; 200 BookingAdmin[]+meta, lịch sử qua Venue/Court xoá mềm |
 | GET | /admin/stats | Admin active; from/to/groupBy day/week/month; 200 AdminStats, booking/population/thu/hoàn/series/data quality theo contract |
+| GET | /admin/analytics | Admin active; query from, to, groupBy (day/week); 200 AdminAnalytics ({ byStatus, bySport, byVenue }) tổng hợp chi tiết đóng góp doanh thu & lượt đặt theo cơ sở, môn thể thao |
 
 Hai response no-store, shared projection/nullability. Ngày inclusive≤366, mặc định tháng Việt Nam; snapshot count/series nhất quán. Gross theo payment.amount/paidAt, refund theo refundAmount/refundedAt, gồm cash, không dùng tổng giá booking; net âm hợp lệ. Population và legacy excludedPaymentCount toàn cục; không bịa dữ liệu thiếu. Guest401, sai role403, query400, unsafe integer503. Giải thích code và kiểm thử. Migration0009 thêm ba index, đã áp dụng vào DB local; không coi FE Dashboard/Phase2 integration đã nghiệm thu.
 
