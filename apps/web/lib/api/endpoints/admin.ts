@@ -137,11 +137,23 @@ function normalizeAdminStats(raw: AdminStats | Record<string, unknown>): AdminSt
 
 export async function getAdminAnalytics(): Promise<AdminAnalytics> {
     try {
-        return await apiFetch<AdminAnalytics>("/admin/analytics");
+        const analytics = await apiFetch<AdminAnalytics>("/admin/analytics");
+        if (analytics && Array.isArray(analytics.byVenue) && analytics.byVenue.length > 0) {
+            return analytics;
+        }
     } catch {
-        const stats = await getAdminStats();
+        // Fallback sang tự tổng hợp khi backend chưa có /admin/analytics hoặc chưa có dữ liệu
+    }
+
+    try {
+        const [stats, bookingsRes, venuesRes] = await Promise.all([
+            getAdminStats().catch(() => null),
+            apiFetchWithMeta<Record<string, unknown>[]>("/admin/bookings", { query: { limit: 100 } }).catch(() => ({ data: [] })),
+            apiFetchWithMeta<Record<string, unknown>[]>("/admin/venues", { query: { limit: 50 } }).catch(() => ({ data: [] })),
+        ]);
+
         const counts: Partial<Record<BookingStatus, number>> =
-            stats.summary?.bookingCountsByStatus ?? {};
+            stats?.summary?.bookingCountsByStatus ?? {};
         const statuses: BookingStatus[] = [
             "held",
             "pending_payment",
@@ -155,7 +167,36 @@ export async function getAdminAnalytics(): Promise<AdminAnalytics> {
             status,
             count: counts[status] ?? 0,
         }));
-        return { byStatus, bySport: [], byVenue: [] };
+
+        const venueMap = new Map<string, { venueId: string; name: string; bookings: number; revenue: number }>();
+        for (const v of venuesRes.data ?? []) {
+            const vId = String(v.id ?? '');
+            if (vId) {
+                venueMap.set(vId, { venueId: vId, name: String(v.name ?? 'Cơ sở thể thao'), bookings: 0, revenue: 0 });
+            }
+        }
+
+        for (const b of bookingsRes.data ?? []) {
+            const vId = String(b.venueId ?? '');
+            if (!vId) continue;
+            const existing = venueMap.get(vId) ?? {
+                venueId: vId,
+                name: String(b.venueName || 'Cơ sở thể thao'),
+                bookings: 0,
+                revenue: 0,
+            };
+            existing.bookings += 1;
+            const st = String(b.status ?? '');
+            if (st === 'confirmed' || st === 'completed') {
+                existing.revenue += Number(b.totalPrice ?? 0);
+            }
+            venueMap.set(vId, existing);
+        }
+
+        const byVenue = Array.from(venueMap.values()).sort((a, b) => b.revenue - a.revenue);
+        return { byStatus, bySport: [], byVenue };
+    } catch {
+        return { byStatus: [], bySport: [], byVenue: [] };
     }
 }
 

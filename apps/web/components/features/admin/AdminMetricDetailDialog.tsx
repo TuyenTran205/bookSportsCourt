@@ -79,9 +79,11 @@ export function AdminMetricDetailDialog({
     staleTime: 60 * 1000,
   });
 
-  // Dữ liệu doanh thu theo cơ sở
+  // Dữ liệu doanh thu theo cơ sở: ưu tiên hiển thị các cơ sở có phát sinh doanh thu trước
   const venuesRevenue = React.useMemo(() => {
     const list = analytics?.byVenue ?? [];
+    const withRevenue = list.filter((v) => (v.revenue || 0) > 0).sort((a, b) => b.revenue - a.revenue);
+    if (withRevenue.length > 0) return withRevenue;
     return [...list].sort((a, b) => b.revenue - a.revenue);
   }, [analytics?.byVenue]);
 
