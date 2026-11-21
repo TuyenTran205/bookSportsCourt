@@ -191,4 +191,52 @@ export class AdminReportingRepository {
       (status in ('completed','refunded') and paid_at is null) or (status='refunded' and (refund_amount is null or refunded_at is null))`);
     return result.rows[0]!.n;
   }
+  async analytics(tx: AuthTransaction) {
+    const byStatusRows = await tx.execute<{ status: string; count: string }>(sql`
+      select status, count(*)::text as count
+      from bookings
+      group by status
+    `);
+    const bySportRows = await tx.execute<{ sport: string; bookings: string }>(sql`
+      select coalesce(s.name, 'Khác') as sport, count(b.id)::text as bookings
+      from bookings b
+      inner join courts c on c.id = b.court_id
+      left join sports s on s.id = c.sport_id
+      group by coalesce(s.name, 'Khác')
+      order by count(b.id) desc
+    `);
+    const byVenueRows = await tx.execute<{
+      venueId: string;
+      name: string;
+      bookings: string;
+      revenue: string;
+    }>(sql`
+      select v.id as "venueId",
+             v.name,
+             count(b.id)::text as bookings,
+             coalesce(sum(case when b.status in ('confirmed', 'completed') then b.total_price else 0 end), 0)::text as revenue
+      from venues v
+      left join courts c on c.venue_id = v.id and c.deleted_at is null
+      left join bookings b on b.court_id = c.id
+      where v.deleted_at is null
+      group by v.id, v.name
+      order by coalesce(sum(case when b.status in ('confirmed', 'completed') then b.total_price else 0 end), 0) desc, count(b.id) desc
+    `);
+    return {
+      byStatus: byStatusRows.rows.map((r) => ({
+        status: r.status,
+        count: Number(r.count) || 0,
+      })),
+      bySport: bySportRows.rows.map((r) => ({
+        sport: r.sport,
+        bookings: Number(r.bookings) || 0,
+      })),
+      byVenue: byVenueRows.rows.map((r) => ({
+        venueId: r.venueId,
+        name: r.name,
+        bookings: Number(r.bookings) || 0,
+        revenue: Number(r.revenue) || 0,
+      })),
+    };
+  }
 }

@@ -107,12 +107,12 @@ Cài đặt trong GitHub repository Settings → Branches, áp dụng cho **cả
 - [x] Require approvals: **1** (tối thiểu)
 - [x] Dismiss stale pull request approvals when new commits are pushed
 - [x] Require status checks to pass: `lint`, `typecheck`, `test`, `build`
-- [ ] **Từ Phase 5 trở đi:** thêm `e2e` vào danh sách check bắt buộc (job `e2e` trong `ci.yml` đã có sẵn; chỉ bật khi flow đặt sân đã chạy được đầu-cuối. Bật sớm sẽ chặn mọi PR vì chưa có gì để test.)
+- [x] **CI E2E (Playwright):** Job `e2e` chạy sau khi `build` thành công. Khởi tạo container PostgreSQL 16 (`booksports_e2e`), chạy migration & seed, quản lý webServer cho cả `@bsc/api` (port 3001) và `@bsc/web` (port 3000) với `ALLOWED_ORIGINS` chuẩn, thực thi kiểm thử luồng đặt sân đầu-cuối với Playwright Chromium.
 - [x] Require branches to be up to date before merging
 - [x] Do not allow bypassing the above settings
 - [x] Restrict force pushes: **Tất cả** (kể cả admin)
 
-> Tên check phải khớp **chính xác** tên job trong `.github/workflows/ci.yml` (`lint`, `typecheck`, `test`, `build` — chữ thường). Đổi tên job mà quên sửa mục này thì branch protection sẽ chặn mọi PR vì check không bao giờ xuất hiện.
+> Tên check phải khớp **chính xác** tên job trong `.github/workflows/ci.yml` (`lint`, `typecheck`, `test`, `build`, `e2e` — chữ thường). Đổi tên job mà quên sửa mục này thì branch protection sẽ chặn mọi PR vì check không bao giờ xuất hiện.
 
 **Nghiêm cấm:** Push trực tiếp vào `main` hoặc `develop`. Tự approve PR của mình.
 

@@ -72,10 +72,10 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | ADM-01 | Duyệt / Từ chối Owner đăng ký | P0 | Xem hồ sơ, approve/reject với ghi chú; Owner nhận email thông báo |
 | ADM-02 | Kiểm duyệt Venue | P0 | Xem thông tin, approve/reject; đình chỉ approved và đưa suspended về pending để duyệt lại theo docs/11. Venue chỉ hiển thị khi approved và chưa xoá; không tự huỷ booking cũ |
 | ADM-03 | Khoá / Mở khoá tài khoản | P0 | Khoá tài khoản Customer hoặc Owner; tài khoản bị khoá không thể đăng nhập |
-| ADM-04 | Quản lý danh mục môn thể thao | P0 | CRUD sport: tên, icon, slug (Tab 1 trên màn hình Danh mục Admin) |
+| ADM-04 | Quản lý danh mục môn thể thao | P0 | CRUD sport: tên, icon, slug (Tab 1 trên màn hình Danh mục Admin). Bộ chọn biểu tượng `IconPicker` có tìm kiếm, tự động làm mờ (`opacity-45`, `grayscale`), gắn nhãn "Đã có" và vô hiệu hoá các icon đã được dùng bởi môn khác để chống cấu hình trùng |
 | ADM-05 | Quản lý danh mục tiện ích (Amenity) | P0 | CRUD amenity: tên, icon (Tab 2 trên màn hình Danh mục Admin) |
 | ADM-06 | Master Data ĐVHC 2 cấp (Tỉnh/Xã) | P0 | Dữ liệu chuẩn quốc gia (34 Tỉnh, 3.321 Xã mốc 03/11/2026) phục vụ bộ lọc tìm sân cho Khách (CUS-04) và chọn địa chỉ sân (OWN-02); nạp từ seed/hệ thống, KHÔNG đưa vào tab CRUD thủ công ở Danh mục Admin |
 | ADM-07 | Xem toàn bộ booking hệ thống | P0 | Danh sách booking với filter đầy đủ; xem chi tiết |
-| ADM-08 | Xem thống kê toàn hệ thống | P0 | Tổng booking, doanh thu, số venue, số user theo kỳ |
+| ADM-08 | Xem thống kê toàn hệ thống | P0 | Thống kê tổng quan và chuyên sâu theo kỳ (7 ngày, 30 ngày, 90 ngày). 4 thẻ KPI (Doanh thu, Người dùng, Cơ sở, Lượt đặt) có nút "Xem chi tiết →" mở pop-up chi tiết: phân bổ doanh thu theo từng cơ sở, cơ cấu người dùng, danh sách cơ sở theo trạng thái & khu vực, và phân loại lượt đặt |
 | ADM-09 | Audit log | P0 | Ghi lại mọi hành động admin; không thể sửa/xoá |
 | ADM-10 | Kiểm duyệt đánh giá | P1 | Chỉ Admin active ẩn/hiển thị review; list gồm review ẩn, retry no-op; audit và rating/count visible nhất quán trong transaction |

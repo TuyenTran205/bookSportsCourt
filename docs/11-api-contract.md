@@ -493,10 +493,18 @@ GET    /api/v1/admin/owner-applications  Hồ sơ chủ sân (query: status, pag
 PATCH  /api/v1/admin/owner-applications/:id  Duyệt/từ chối hồ sơ (body: status, reviewNote)
 GET    /api/v1/admin/bookings            Toàn bộ booking (query: status, venueId, customerId, from, to, page, limit)
 GET    /api/v1/admin/stats               Thống kê tổng quan (query: from, to, groupBy=day|week|month)
+GET    /api/v1/admin/analytics           Phân tích chuyên sâu doanh thu và lượt đặt (query: from, to, groupBy=day|week)
 GET    /api/v1/admin/audit-logs          Audit log (query: actorId, action, entityType, from, to, page, limit)
 ```
 
-`GET /admin/stats` trả: tổng booking theo trạng thái, doanh thu, số venue theo trạng thái, số user theo vai trò, và chuỗi theo thời gian cho biểu đồ (ADM-08). Audit log chỉ có `GET`, không có endpoint sửa hoặc xoá (ADM-09).
+`GET /admin/stats` trả: tổng booking theo trạng thái, doanh thu, số venue theo trạng thái, số user theo vai trò, và chuỗi theo thời gian cho biểu đồ (ADM-08).
+
+`GET /admin/analytics` trả dữ liệu phân tích chi tiết (ADM-08) gồm:
+- `byStatus`: mảng phân bổ booking theo trạng thái (`status`, `count`, `revenue`).
+- `bySport`: mảng phân bổ doanh thu & lượt đặt theo môn thể thao (`sportId`, `name`, `bookings`, `revenue`).
+- `byVenue`: mảng đóng góp doanh thu và lượt đặt theo từng cơ sở (`venueId`, `name`, `bookings`, `revenue`), phục vụ popup xem chi tiết doanh thu và cơ sở trên Admin Dashboard.
+
+Audit log chỉ có `GET`, không có endpoint sửa hoặc xoá (ADM-09).
 
 ## Sự kiện WebSocket (Socket.IO)
 

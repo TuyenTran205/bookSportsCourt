@@ -89,8 +89,9 @@ Middleware chạy ở edge **trước** khi trang render, dùng để chặn s�
 | Route group | Điều kiện cho qua | Không đủ điều kiện thì |
 |-------------|-------------------|------------------------|
 | `(public)` | ai cũng vào | – |
-| `(customer)` | có session, `role = customer` (hoặc owner/admin cũng đặt sân được) | redirect `/login?next=<path>` |
-| `(owner)` | có session, `role = owner` hoặc `admin` | redirect `/login?next=<path>` |
+| `(customer)` | có session, `role = customer` (hoặc owner/admin cũng đặt sân được) | Chưa đăng nhập: redirect `/login?next=<path>` |
+| `(owner)` | có session, `role = owner` | Chưa đăng nhập: redirect `/login?next=<path>`.<br>Đăng nhập vai trò `admin`: redirect về `/admin/dashboard`.<br>Đăng nhập vai trò khác (`customer`): rewrite `404` (tránh vòng lặp login và không để lộ route nội bộ). |
+| `/owner/apply` | có session, `role = customer` | Chưa đăng nhập: redirect `/login?next=/owner/apply`.<br>Role `owner`: redirect `/owner/dashboard`.<br>Role `admin`: redirect `/admin/dashboard`. |
 | `(admin)` | có session, `role = admin` | 404 (không phải 403 — không tiết lộ route có tồn tại) |
 
 > `/auth/callback/google` **phải** nằm ngoài mọi route group được bảo vệ: trình duyệt quay về đây từ `accounts.google.com` khi chưa có cookie phiên, nên nếu middleware chặn thì luồng OAuth gãy ngay (cùng lý do với `SameSite=Lax` ở [06-security-and-permissions.md](06-security-and-permissions.md)).
