@@ -17,6 +17,7 @@ import * as Recharts from 'recharts';
 import { ErrorState } from '@/components/common/ErrorState';
 import { PageHeader } from '@/components/common/PageHeader';
 import { StatCard } from '@/components/common/StatCard';
+import { AdminMetricDetailDialog, type MetricModalType } from '@/components/features/admin/AdminMetricDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +64,7 @@ function formatCompactMoney(val: number): string {
 export function AdminDashboardScreen() {
   const t = useTranslations('admin');
   const [range, setRange] = React.useState<RangeKey>('30d');
+  const [activeModal, setActiveModal] = React.useState<MetricModalType>(null);
 
   const rangeParams = React.useMemo(() => {
     const days = RANGE_OPTIONS.find((opt) => opt.key === range)?.days ?? 30;
@@ -179,21 +181,65 @@ export function AdminDashboardScreen() {
               label={t('totalRevenue')}
               value={formatCurrency(stats?.totalRevenue ?? 0)}
               icon={DollarSign}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('revenue')}
+                  className="inline-flex w-full items-center justify-between text-xs font-medium text-primary-700 transition-colors hover:text-primary-800 dark:text-primary-400 hover:underline focus-visible:outline-none"
+                  aria-label="Xem chi tiết doanh thu theo cơ sở"
+                >
+                  <span>Xem chi tiết</span>
+                  <ArrowRight className="size-3" />
+                </button>
+              }
             />
             <StatCard
               label={t('totalUsers')}
               value={`${stats?.totalUsers ?? 0} người`}
               icon={Users}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('users')}
+                  className="inline-flex w-full items-center justify-between text-xs font-medium text-primary-700 transition-colors hover:text-primary-800 dark:text-primary-400 hover:underline focus-visible:outline-none"
+                  aria-label="Xem cơ cấu người dùng"
+                >
+                  <span>Xem chi tiết</span>
+                  <ArrowRight className="size-3" />
+                </button>
+              }
             />
             <StatCard
               label={t('totalVenues')}
               value={`${stats?.totalVenues ?? 0} cơ sở`}
               icon={Building2}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('venues')}
+                  className="inline-flex w-full items-center justify-between text-xs font-medium text-primary-700 transition-colors hover:text-primary-800 dark:text-primary-400 hover:underline focus-visible:outline-none"
+                  aria-label="Xem danh sách cơ sở thể thao"
+                >
+                  <span>Xem chi tiết</span>
+                  <ArrowRight className="size-3" />
+                </button>
+              }
             />
             <StatCard
               label={t('totalBookings')}
               value={`${stats?.totalBookings ?? 0} lượt`}
               icon={CalendarCheck}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('bookings')}
+                  className="inline-flex w-full items-center justify-between text-xs font-medium text-primary-700 transition-colors hover:text-primary-800 dark:text-primary-400 hover:underline focus-visible:outline-none"
+                  aria-label="Xem thống kê lượt đặt sân"
+                >
+                  <span>Xem chi tiết</span>
+                  <ArrowRight className="size-3" />
+                </button>
+              }
             />
           </div>
 
@@ -456,6 +502,13 @@ export function AdminDashboardScreen() {
           </div>
         </div>
       )}
+
+      {/* Pop-up chi tiết chỉ số khi bấm vào 4 thẻ KPI */}
+      <AdminMetricDetailDialog
+        type={activeModal}
+        onClose={() => setActiveModal(null)}
+        stats={stats}
+      />
     </div>
   );
 }
