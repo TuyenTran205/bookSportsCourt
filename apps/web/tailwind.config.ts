@@ -110,8 +110,8 @@ const config: Config = {
       },
       fontFamily: {
         // docs/07 mục 4: Be Vietnam Pro là font chính, Inter là fallback.
-        // Dùng biến CSS từ next/font/google để Next.js tự động đồng bộ size-adjust cho font fallback, chống nhảy font (CLS).
-        sans: ['var(--font-be-vietnam-pro)', 'var(--font-inter)', 'system-ui', 'sans-serif'],
+        // Ưu tiên biến CSS từ next/font, kèm chuỗi tên font chuẩn và fallback hệ thống.
+        sans: ['var(--font-be-vietnam-pro)', '"Be Vietnam Pro"', 'var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       transitionDuration: {
         hover: '150ms',

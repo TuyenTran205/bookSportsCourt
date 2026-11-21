@@ -18,13 +18,15 @@ const beVietnamPro = Be_Vietnam_Pro({
   subsets: ['latin', 'vietnamese'],
   weight: ['400', '500', '600', '700', '800'],
   variable: '--font-be-vietnam-pro',
-  display: 'optional',
+  display: 'swap',
+  preload: true,
 });
 
 const inter = Inter({
   subsets: ['latin', 'vietnamese'],
   variable: '--font-inter',
-  display: 'optional',
+  display: 'swap',
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -88,7 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="dns-prefetch" href="https://tile.opentopomap.org" />
         <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com" />
       </head>
-      <body className="flex min-h-screen flex-col font-sans">
+      <body className={`${beVietnamPro.className} flex min-h-screen flex-col font-sans`}>
         <NextIntlClientProvider messages={messages}>
           {/* MockProvider chờ MSW sẵn sàng rồi mới render app, tránh việc
               component gọi API trước khi service worker kịp chặn request. */}
