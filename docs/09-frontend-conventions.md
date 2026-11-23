@@ -1,18 +1,21 @@
-﻿# 09 – Quy ước Frontend
+# 09 – Quy ước Frontend
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Cấu trúc thư mục (Feature-based)
 
 ```
 apps/web/
-├── middleware.ts                 # Chặn route theo role TRƯỚC khi render (xem bên dưới)
+├── middleware.ts                 # Chặn route theo role TRƯỚC khi render (xem bên dưới; redirect 308 /dashboard → /owner/dashboard)
 ├── app/                          # Next.js App Router
 │   ├── (public)/                 # Route group: không cần auth
 │   │   ├── page.tsx              # Trang chủ
-│   │   ├── venues/               # Tìm sân
+│   │   ├── venues/               # Tìm sân & so sánh
 │   │   │   ├── page.tsx
+│   │   │   ├── compare/page.tsx  # So sánh cơ sở
 │   │   │   └── [slug]/page.tsx   # Chi tiết sân
+│   │   ├── owner/apply/page.tsx  # Đăng ký làm chủ sân (kiểm tra role trong middleware)
+│   │   ├── info/[slug]/page.tsx  # Trang thông tin tĩnh (điều khoản, hướng dẫn...)
 │   │   └── (auth)/               # Nhóm route xác thực
 │   │       ├── login/page.tsx
 │   │       ├── register/page.tsx
@@ -21,14 +24,36 @@ apps/web/
 │   │       └── verify-email/page.tsx
 │   ├── auth/callback/google/page.tsx   # Nhận redirect từ BE, KHÔNG phải route group (phải truy cập được khi chưa có session)
 │   ├── (customer)/               # Route group: cần auth customer
-│   │   ├── bookings/             # Lịch đặt sân
-│   │   ├── favorites/            # Sân yêu thích (CUS-11)
-│   │   └── profile/
-│   ├── (owner)/                  # Route group: cần auth owner
-│   │   └── dashboard/
-│   ├── (admin)/                  # Route group: cần auth admin
-│   │   └── dashboard/
-│   ├── layout.tsx                # Root layout: bọc <Providers>
+│   │   ├── bookings/
+│   │   │   ├── page.tsx          # Lịch sử đặt sân
+│   │   │   └── [id]/page.tsx     # Chi tiết booking
+│   │   ├── checkout/[holdId]/page.tsx  # Thanh toán QR & gửi ảnh xác nhận
+│   │   ├── favorites/page.tsx    # Sân yêu thích (CUS-12)
+│   │   ├── notifications/page.tsx# Trung tâm thông báo (CUS-14)
+│   │   └── profile/page.tsx
+│   ├── (owner)/                  # Route group: cần auth owner (prefix /owner/*)
+│   │   └── owner/
+│   │       ├── dashboard/page.tsx
+│   │       ├── venues/page.tsx
+│   │       ├── pricing/page.tsx
+│   │       ├── timeline/page.tsx
+│   │       ├── bookings/page.tsx
+│   │       ├── payments/page.tsx
+│   │       ├── revenue/page.tsx
+│   │       ├── reviews/page.tsx
+│   │       └── settings/page.tsx
+│   ├── (admin)/                  # Route group: cần auth admin (prefix /admin/*)
+│   │   └── admin/
+│   │       ├── dashboard/page.tsx
+│   │       ├── owner-applications/page.tsx
+│   │       ├── venues/page.tsx
+│   │       ├── users/page.tsx
+│   │       ├── bookings/page.tsx
+│   │       ├── reviews/page.tsx
+│   │       ├── catalogs/page.tsx
+│   │       ├── analytics/page.tsx
+│   │       └── audit-logs/page.tsx
+│   ├── layout.tsx                # Root layout: nạp font, anti-FOUC theme/splash, bọc <Providers>
 │   ├── providers.tsx             # QueryClientProvider + SocketProvider + Toaster ("use client")
 │   └── globals.css
 ├── components/
@@ -78,8 +103,10 @@ TanStack Query và Socket.IO đều cần một Provider phía client. Gom cả 
 ```typescript
 'use client';
 // Bọc: QueryClientProvider (TanStack Query v5) → SocketProvider → Toaster
-// SocketProvider CHỈ kết nối khi đã đăng nhập; khách chưa đăng nhập không mở socket
-// (xem quy tắc xác thực socket ở 05-booking-and-realtime.md#kênh-channelroom).
+// SocketProvider kết nối tới namespace /ws:
+// - Khi đã đăng nhập: gọi POST /api/v1/auth/ws-token lấy token ngắn hạn để nhận đủ room user:/owner:/venue:.
+// - Khi chưa đăng nhập: kết nối với { guest: true } để xem lưới slot realtime (GST-04),
+//   chỉ được phép join_venue / leave_venue (xem 05-booking-and-realtime.md#kênh-channelroom).
 ```
 
 ### `middleware.ts` – chặn route theo role
@@ -89,8 +116,9 @@ Middleware chạy ở edge **trước** khi trang render, dùng để chặn s�
 | Route group | Điều kiện cho qua | Không đủ điều kiện thì |
 |-------------|-------------------|------------------------|
 | `(public)` | ai cũng vào | – |
-| `(customer)` | có session, `role = customer` (hoặc owner/admin cũng đặt sân được) | redirect `/login?next=<path>` |
-| `(owner)` | có session, `role = owner` hoặc `admin` | redirect `/login?next=<path>` |
+| `(customer)` | có session, `role = customer` (hoặc owner/admin cũng đặt sân được) | Chưa đăng nhập: redirect `/login?next=<path>` |
+| `(owner)` | có session, `role = owner` | Chưa đăng nhập: redirect `/login?next=<path>`.<br>Đăng nhập vai trò `admin`: redirect về `/admin/dashboard`.<br>Đăng nhập vai trò khác (`customer`): rewrite `404` (tránh vòng lặp login và không để lộ route nội bộ). |
+| `/owner/apply` | có session, `role = customer` | Chưa đăng nhập: redirect `/login?next=/owner/apply`.<br>Role `owner`: redirect `/owner/dashboard`.<br>Role `admin`: redirect `/admin/dashboard`. |
 | `(admin)` | có session, `role = admin` | 404 (không phải 403 — không tiết lộ route có tồn tại) |
 
 > `/auth/callback/google` **phải** nằm ngoài mọi route group được bảo vệ: trình duyệt quay về đây từ `accounts.google.com` khi chưa có cookie phiên, nên nếu middleware chặn thì luồng OAuth gãy ngay (cùng lý do với `SameSite=Lax` ở [06-security-and-permissions.md](06-security-and-permissions.md)).

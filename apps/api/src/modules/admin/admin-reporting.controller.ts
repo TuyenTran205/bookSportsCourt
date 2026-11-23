@@ -83,4 +83,10 @@ export class AdminReportingController {
   stats(@CurrentUser() user: AuthenticatedUser, @Query() query: unknown) {
     return this.service.stats(user.id, query);
   }
+  @Get("analytics")
+  @Header("Cache-Control", "no-store")
+  @ApiResponse({ status: 200, description: "Phân tích số liệu và đóng góp doanh thu theo cơ sở" })
+  analytics(@CurrentUser() user: AuthenticatedUser) {
+    return this.service.analytics(user.id);
+  }
 }

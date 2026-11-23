@@ -1,6 +1,6 @@
-﻿# 13 – Deploy & Chi phí
+# 13 – Deploy & Chi phí
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Bảng chi phí mục tiêu (Đồ án – ~0đ đến ~800k/học kỳ)
 
@@ -8,10 +8,10 @@
 |---------|-----|---------|---------|---------|
 | **Neon** (PostgreSQL) | Free | 0.5 GB storage, 1 project | 0đ | Pause sau 5 ngày không hoạt động → cron ping |
 | **Vercel** (FE) | Hobby | 100 GB bandwidth, serverless functions | 0đ | ⚠️ Cấm thương mại; deploy dưới tài khoản sinh viên |
-| **Railway/Render** (BE) | Free | 500 MB RAM, 1 GB disk | 0đ | Sleep sau 15 phút; cron ping |
-| **Cloudflare R2** | Free | 10 GB/tháng, 10M request | 0đ | Lưu ảnh venue và ảnh xác nhận chuyển khoản (presigned URL) |
-| **Resend** (Email) | Free | 3,000 email/tháng | 0đ | |
-| **Sentry** | Free | 5,000 event/tháng | 0đ | |
+| **Railway/Render** (BE) | Free | 500 MB RAM, 1 GB disk | 0đ | Sleep sau 15 phút; cron ping (`/api/v1/health` hoặc `/api/v1/health/ping`) |
+| **Cloudflare R2** | Free | 10 GB/tháng, 10M request | 0đ | Lưu ảnh venue/avatar/review-report, ảnh xác nhận chuyển khoản (bucket private + signed GET TTL 5 phút), dữ liệu bản đồ `vietnam.pmtiles` và font glyphs `.pbf` |
+| **Resend / Gmail SMTP** (Email) | Free | Resend 3,000 email/tháng; hoặc Gmail App Password (`ADR-033`) | 0đ | `MAIL_PROVIDER=resend\|gmail` (trên Render Free dùng Resend HTTP API vì cổng SMTP bị chặn) |
+| **Sentry** (tuỳ chọn P1) | Free | 5,000 event/tháng | 0đ | Tùy chọn giám sát lỗi (hiện chưa cài SDK trong `package.json`) |
 | **UptimeRobot** | Free | 50 monitors, ping mỗi **5 phút** | 0đ | Dùng ping chống sleep; tần suất tối thiểu của free tier là 5 phút |
 | **Domain** (tuỳ chọn) | .id.vn | 1 năm | ~100k | Tuỳ nhu cầu |
 | **VPS sinh viên** | Azure/GitHub Education | $100 credit | 0đ | Thay thế Railway nếu có |
@@ -31,8 +31,12 @@
 | Env | FE | BE | DB | Mục đích |
 |-----|----|----|-----|---------|
 | **local** | localhost:3000 | localhost:3001 | Docker PostgreSQL | Phát triển hằng ngày |
-| **staging** | Vercel Preview | Railway | Neon (branch riêng) | Test trước merge |
-| **demo** | Vercel Production | Railway | Neon (production branch) | Buổi demo/nộp bài |
+| **staging** | Vercel Preview | Railway / Render | Neon (branch riêng) | Test trước merge |
+| **demo** | Vercel Production | Render / Railway (`https://booksportscourt.onrender.com`) | Neon (production branch) | Buổi demo/nộp bài |
+
+> **Cấu hình môi trường trên Render / Railway:**
+> - Bắt buộc khai báo `ALLOWED_ORIGINS`: danh sách domain frontend được phép gọi API (ví dụ `https://booksportscourt.vercel.app,http://localhost:3000`), phân tách bằng dấu phẩy. Thiếu biến này Backend NestJS sẽ từ chối khởi động (`Invalid environment configuration: ALLOWED_ORIGINS: Required`).
+> - Chuỗi kết nối DB (`DATABASE_URL` từ Neon): Thường có tham số `?sslmode=require`. Driver `pg` có thể đưa ra cảnh báo bảo mật về sự tương thích libpq so với `verify-full`, nhưng service vẫn hoạt động bình thường ("Deploy succeeded"). Để chuẩn hoá có thể dùng `sslmode=verify-full`.
 
 ## Docker Compose cho dev local
 

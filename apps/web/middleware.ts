@@ -6,8 +6,8 @@ import type { NextRequest } from 'next/server';
  *
  * Chạy ở Edge runtime để UX nhanh:
  * - (customer): cần session. Nếu chưa đăng nhập → redirect /login?next=<path>
- * - (owner): cần session & role in ['owner', 'admin']. Chưa đăng nhập → redirect /login?next=<path>;
- *   đã đăng nhập nhưng sai vai trò → rewrite 404 (redirect sẽ gây vòng lặp với /login)
+ * - (owner): cần session & role === 'owner'. Nếu chưa đăng nhập → redirect /login?next=<path>;
+ *   đăng nhập với role admin → redirect /admin/dashboard; role khác → rewrite 404
  * - (admin): cần session & role === 'admin'. Nếu không đủ → rewrite 404 (không để lộ route)
  *
  * Lưu ý bảo mật: Đây chỉ là lớp UX chặn sớm. Mọi validate bảo mật thực sự được BE
@@ -66,9 +66,16 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
     }
+    // Nếu là Admin, tự động chuyển hướng về Kênh quản trị viên
+    if (role === 'admin') {
+      const adminUrl = request.nextUrl.clone();
+      adminUrl.pathname = '/admin/dashboard';
+      adminUrl.search = '';
+      return NextResponse.redirect(adminUrl);
+    }
     // Đã đăng nhập nhưng sai vai trò: KHÔNG redirect về /login, vì /login đẩy người đã
     // có session quay lại `next` → vòng lặp vô hạn. Trả 404 giống nhánh admin.
-    if (role !== 'owner' && role !== 'admin') {
+    if (role !== 'owner') {
       const url = request.nextUrl.clone();
       url.pathname = '/not-found';
       url.search = '';

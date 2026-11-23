@@ -288,13 +288,17 @@ export class ReviewsService {
       rating: r.rating,
       comment: r.comment,
       content: r.comment,
-      ownerReply: r.ownerReply,
-      ownerRepliedAt: r.ownerRepliedAt?.toISOString() ?? null,
-      reportStatus: r.reportStatus,
-      reportReason: r.reportReason,
-      reportImageUrl: r.reportImageUrl,
-      reportedAt: r.reportedAt?.toISOString() ?? null,
-      createdAt: r.createdAt.toISOString(),
+      ownerReply: r.ownerReply ?? null,
+      ownerRepliedAt: r.ownerRepliedAt
+        ? new Date(r.ownerRepliedAt).toISOString()
+        : null,
+      reportStatus: r.reportStatus ?? "none",
+      reportReason: r.reportReason ?? null,
+      reportImageUrl: r.reportImageUrl ?? null,
+      reportedAt: r.reportedAt ? new Date(r.reportedAt).toISOString() : null,
+      createdAt: r.createdAt
+        ? new Date(r.createdAt).toISOString()
+        : new Date().toISOString(),
     }));
     return { data, meta: { page, limit, total, totalPages } };
   }

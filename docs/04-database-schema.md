@@ -1,17 +1,23 @@
 # 04 – Database Schema
 
-> **Phiên bản:** 1.9.0 | **Cập nhật lần cuối:** 2026-11-12
+> **Phiên bản:** 1.10.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Quy ước chung
 
-### Bổ sung thông tin tài khoản ngân hàng và CCCD hồ sơ chủ sân – migration 0014, 0015
+### Báo cáo đánh giá vi phạm từ Chủ sân – migration 0016
 
+- `0016_add_review_reports.sql`: Bổ sung 5 cột vào bảng `reviews`: `report_status VARCHAR(20) NOT NULL DEFAULT 'none'` (`none`, `pending`, `resolved`, `dismissed`), `report_reason TEXT`, `report_image_url VARCHAR(500)`, `reported_at TIMESTAMPTZ`, `reported_by UUID REFERENCES users(id) ON DELETE SET NULL`; và partial index `idx_reviews_report_status ON reviews(report_status) WHERE report_status <> 'none'`.
+
+### Bổ sung thông tin tài khoản ngân hàng, toạ độ và CCCD hồ sơ chủ sân – migrations 0011, 0014, 0015
+
+- `0011_add-owner-applications-coordinates.sql`: Thêm `lat NUMERIC(10, 7)` và `lng NUMERIC(10, 7)` vào bảng `owner_applications` để lưu vị trí cơ sở được chủ sân ghim ngay lúc đăng ký.
 - `0014_allow_12_digit_cccd_owner_applications.sql`: Nới lỏng ràng buộc `chk_owner_app_tax_code` trên bảng `owner_applications` để chấp nhận 10 chữ số (MST doanh nghiệp ngắn), 12 chữ số (CCCD cá nhân chủ hộ) hoặc 13 chữ số (MST chi nhánh/hộ kinh doanh cá thể): `CHECK (tax_code IS NULL OR tax_code ~ '^([0-9]{10}|[0-9]{12}|[0-9]{13})$')`.
-- `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin TEXT`, `bank_name TEXT`, `account_no TEXT`, `account_name TEXT` vào bảng `owner_applications`. Người dùng khi đăng ký làm chủ sân khai báo ngay số tài khoản nhận tiền chuyển khoản. Khi cơ sở đầu tiên được tạo hoặc khi xem tài khoản thanh toán cơ sở (`venue_payment_accounts`), hệ thống tự động kế thừa thông tin này để chủ sân không phải nhập lại từ đầu. Xem [ADR-029](18-decision-log.md).
+- `0015_add_bank_info_to_owner_applications.sql`: Bổ sung 4 cột `bank_bin TEXT`, `bank_name TEXT`, `account_no TEXT`, `account_name TEXT` vào bảng `owner_applications`. Người dùng khi đăng ký làm chủ sân khai báo ngay số tài khoản nhận tiền chuyển khoản. Khi cơ sở đầu tiên được tạo hoặc khi xem tài khoản thanh toán cơ sở (`venue_payment_accounts`), hệ thống tự động kế thừa thông tin này để chủ sân không phải nhập lại từ đầu. Xem [ADR-030](18-decision-log.md).
 
-### Bổ sung ĐVHC 2 cấp (34 Tỉnh / 3.321 Xã) – migration 0012, 0013
+### Bổ sung ĐVHC 2 cấp (34 Tỉnh / 3.321 Xã) – migrations 0012, 0013
 
-`0012_add-administrative-units-columns.sql` bổ sung cột `areas.code VARCHAR(10)`, `areas.unaccent_name TEXT`, nới lỏng `venues.district_id DROP NOT NULL` và thêm `venues.ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT`. Mở rộng ràng buộc `areas_type_check` chấp nhận `('province', 'ward', 'district')` và cập nhật ràng buộc phân cấp `areas_check` cho phép `ward` có `parent_id IS NOT NULL`. Bổ sung index `idx_areas_code`, `idx_areas_type_parent`, `idx_areas_unaccent_trgm` và `idx_venues_province_ward`. Xem [ADR-022, ADR-023](18-decision-log.md).
+- `0012_add-administrative-units-columns.sql`: Bổ sung cột `areas.code VARCHAR(10)`, `areas.unaccent_name TEXT`, nới lỏng `venues.district_id DROP NOT NULL` và thêm `venues.ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT`. Mở rộng ràng buộc `areas_type_check` chấp nhận `('province', 'ward', 'district')` và cập nhật ràng buộc phân cấp `areas_check` cho phép `ward` có `parent_id IS NOT NULL`. Bổ sung index `idx_areas_code`, `idx_areas_type_parent`, `idx_areas_parent_type`, `idx_areas_unaccent_trgm` và `idx_venues_province_ward`. Xem [ADR-022, ADR-023](18-decision-log.md).
+- `0013_update_validate_venue_areas.sql`: Cập nhật hàm `validate_venue_areas()` và trigger `trg_venues_validate_areas` (trên `province_id, district_id, ward_id`) để kiểm tra `province_id` hợp lệ, bắt buộc có ít nhất `ward_id` hoặc `district_id`, và bảo đảm `ward_id`/`district_id` thuộc đúng `province_id`.
 
 ### BSC-046/072 – tái sử dụng schema review
 
@@ -126,7 +132,7 @@ flowchart LR
     COURT ---|1| R_BO ---|N| BO
     USER ---|1| R_LNK ---|N| OAUTH
     USER ---|1| R_APP ---|N| APP
-    VENUE ---|N| R_LOC ---|"1 (tỉnh + quận)"| AREA
+    VENUE ---|N| R_LOC ---|"1 (tỉnh + xã)"| AREA
     VENUE ---|1| R_BANK ---|"0..1"| BANK
     VENUE ---|1| R_POL ---|"0..1"| POLICY
 ```
@@ -143,7 +149,7 @@ flowchart LR
     COURT["<b>SÂN</b><br/><u>id</u> · tên"]:::entity
     BOOK["<b>ĐẶT SÂN</b><br/><u>id</u> · khoảng thời gian · trạng thái · nguồn (online/thủ công)<br/>tổng tiền · tiền cọc · hết hạn giữ chỗ · lý do hủy"]:::entity
     PAY["<b>THANH TOÁN</b><br/><u>id</u> · số tiền · mã chuyển khoản<br/>ảnh xác nhận chuyển khoản · trạng thái · hoàn tiền"]:::entity
-    REV["<b>ĐÁNH GIÁ</b><br/><u>id</u> · điểm 1-5 · nội dung<br/>hiển thị · phản hồi của chủ sân"]:::entity
+    REV["<b>ĐÁNH GIÁ</b><br/><u>id</u> · điểm 1-5 · nội dung<br/>hiển thị · phản hồi của chủ sân · báo cáo vi phạm"]:::entity
     NOTI["<b>THÔNG BÁO</b><br/><u>id</u> · loại · tiêu đề<br/>nội dung · thời điểm đọc"]:::entity
     AUDIT["<b>NHẬT KÝ HỆ THỐNG</b><br/><u>id</u> · hành động · loại đối tượng<br/>dữ liệu cũ/mới · IP"]:::entity
 
@@ -192,6 +198,7 @@ erDiagram
         string avatar_url
         string role "customer, owner, admin"
         string status "active, suspended, pending"
+        int session_version "DEFAULT 0"
         datetime email_verified_at "NULL = chưa xác thực"
     }
     auth_tokens {
@@ -269,6 +276,10 @@ erDiagram
         decimal lng
         string status "pending, approved, rejected, suspended"
         string cover_url
+        string rejection_reason "nullable"
+        decimal rating_avg "0.00-5.00 cache"
+        int review_count "cache"
+        int from_price "nullable cache"
     }
     venue_images {
         id id PK
@@ -342,7 +353,9 @@ erDiagram
         int deposit_amount "VND khách phải chuyển khoản"
         string note
         string cancel_reason
+        datetime cancelled_at "nullable"
         datetime expires_at "chỉ dùng khi held"
+        datetime reminders_sent_at "nullable"
     }
     payments {
         id id PK
@@ -352,9 +365,13 @@ erDiagram
         string provider "bank_transfer, cash"
         string transfer_code "nullable, nội dung chuyển khoản trong QR; NULL khi cash"
         string proof_url "ảnh chuyển khoản"
+        json bank_account_snapshot "nullable, immutable"
+        string proof_object_key "nullable, R2 private key"
+        datetime proof_updated_at "nullable"
         string status "pending, submitted, completed, rejected, refunded, cancelled, expired"
         string reject_reason
         int refund_amount
+        string refund_note "nullable"
         string idempotency_key UK "nullable, dành cho webhook sau này"
         datetime paid_at
     }
@@ -368,6 +385,11 @@ erDiagram
         boolean is_visible
         text owner_reply "nullable"
         datetime owner_replied_at
+        string report_status "none, pending, resolved, dismissed"
+        text report_reason "nullable"
+        string report_image_url "nullable"
+        datetime reported_at "nullable"
+        id reported_by FK "nullable"
     }
     favorites {
         id user_id PK, FK
@@ -377,6 +399,7 @@ erDiagram
         id id PK
         id user_id FK
         string type
+        string event_key "nullable, UK cùng user_id"
         string title
         string body
         json data
@@ -404,13 +427,15 @@ erDiagram
     users |o--o{ bookings : "tạo thủ công"
     users |o--o{ payments : "duyệt"
     users ||--o{ reviews : "viết"
+    users |o--o{ reviews : "báo cáo"
     users ||--o{ favorites : "yêu thích"
     users ||--o{ notifications : "nhận"
     users |o--o{ audit_logs : "thực hiện"
 
     areas |o--o{ areas : "gồm"
     areas ||--o{ venues : "tỉnh"
-    areas ||--o{ venues : "quận"
+    areas |o--o{ venues : "xã"
+    areas |o--o{ venues : "quận (legacy)"
 
     venues ||--o| venue_payment_accounts : "nhận tiền qua"
     venues ||--o| cancellation_policies : "áp dụng"
@@ -449,6 +474,7 @@ erDiagram
         TEXT avatar_url
         TEXT role "CHECK customer, owner, admin"
         TEXT status "DEFAULT active, CHECK active, suspended, pending"
+        INT session_version "DEFAULT 0, CHECK >= 0"
         TIMESTAMPTZ email_verified_at "NULL = chưa xác thực"
         TIMESTAMPTZ created_at "DEFAULT now()"
         TIMESTAMPTZ updated_at "DEFAULT now()"
@@ -524,6 +550,10 @@ erDiagram
         NUMERIC_10_7 lng "NUMERIC(10,7)"
         TEXT status "DEFAULT pending, CHECK pending, approved, rejected, suspended"
         TEXT cover_url
+        TEXT rejection_reason "nullable"
+        NUMERIC_3_2 rating_avg "DEFAULT 0"
+        INT review_count "DEFAULT 0"
+        INT from_price "nullable"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
         TIMESTAMPTZ deleted_at "soft delete"
@@ -631,7 +661,9 @@ erDiagram
         INT deposit_amount "VND khách phải chuyển khoản"
         TEXT note
         TEXT cancel_reason
+        TIMESTAMPTZ cancelled_at "nullable"
         TIMESTAMPTZ expires_at "chỉ dùng khi held"
+        TIMESTAMPTZ reminders_sent_at "nullable"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -643,11 +675,15 @@ erDiagram
         TEXT provider "DEFAULT bank_transfer, CHECK bank_transfer, cash"
         TEXT transfer_code "nullable, NULL khi cash; CHECK bắt buộc khi bank_transfer"
         TEXT proof_url "ảnh chuyển khoản"
+        JSONB bank_account_snapshot "nullable, immutable"
+        TEXT proof_object_key "nullable, R2 private key"
         TIMESTAMPTZ proof_uploaded_at
+        TIMESTAMPTZ proof_updated_at "nullable"
         TEXT status "DEFAULT pending, CHECK pending, submitted, completed, rejected, refunded, cancelled, expired"
         TIMESTAMPTZ reviewed_at
         TEXT reject_reason
         INT refund_amount
+        TEXT refund_note "nullable"
         TIMESTAMPTZ refunded_at
         TEXT idempotency_key UK "nullable, dành cho webhook sau này"
         TIMESTAMPTZ paid_at
@@ -664,6 +700,11 @@ erDiagram
         BOOLEAN is_visible "DEFAULT true"
         TEXT owner_reply "nullable"
         TIMESTAMPTZ owner_replied_at
+        VARCHAR_20 report_status "DEFAULT none"
+        TEXT report_reason "nullable"
+        VARCHAR_500 report_image_url "nullable"
+        TIMESTAMPTZ reported_at "nullable"
+        UUID reported_by FK "nullable, ON DELETE SET NULL"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -676,6 +717,7 @@ erDiagram
         UUID id PK
         UUID user_id FK "ON DELETE CASCADE"
         TEXT type
+        TEXT event_key "nullable, UNIQUE(event_key, user_id)"
         TEXT title
         TEXT body
         JSONB data
@@ -693,6 +735,47 @@ erDiagram
         INET ip_address
         TIMESTAMPTZ created_at
     }
+    oauth_states {
+        UUID id PK
+        TEXT state_hash UK
+        TEXT binding_hash
+        TEXT nonce_hash
+        TEXT pkce_verifier_ciphertext
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ used_at "nullable"
+        TIMESTAMPTZ created_at
+    }
+    outbox_deliveries {
+        UUID id PK
+        TEXT event_key
+        TEXT event_type
+        TEXT channel "CHECK email, realtime"
+        UUID recipient_id FK "ON DELETE RESTRICT"
+        JSONB payload
+        TEXT status "pending, processing, delivered, failed, delivery_unknown"
+        INT attempts "0..5"
+        TIMESTAMPTZ next_attempt_at
+        UUID lease_token "nullable"
+        TIMESTAMPTZ lease_expires_at "nullable"
+        TIMESTAMPTZ delivered_at "nullable"
+        JSONB email_request "nullable"
+        TIMESTAMPTZ first_attempt_at "nullable"
+        TEXT last_error_code "nullable"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    storage_cleanup_jobs {
+        UUID id PK
+        TEXT object_key UK
+        TIMESTAMPTZ not_before
+        TEXT status "pending, processing, completed, failed"
+        INT attempts "0..5"
+        UUID lease_token "nullable"
+        TIMESTAMPTZ lease_expires_at "nullable"
+        TEXT last_error_code "nullable"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
 
     users ||--o{ oauth_accounts : "user_id"
     users ||--o{ refresh_tokens : "user_id"
@@ -705,9 +788,11 @@ erDiagram
     users |o--o{ bookings : "created_by"
     users |o--o{ payments : "reviewed_by"
     users ||--o{ reviews : "customer_id"
+    users |o--o{ reviews : "reported_by"
     users ||--o{ favorites : "user_id"
     users ||--o{ notifications : "user_id"
     users |o--o{ audit_logs : "actor_id"
+    users ||--o{ outbox_deliveries : "recipient_id"
 
     areas |o--o{ areas : "parent_id"
     areas ||--o{ venues : "province_id"
@@ -783,7 +868,7 @@ BEGIN
     SELECT MIN(pr.price_per_slot)
     FROM pricing_rules pr
     JOIN courts c ON c.id = pr.court_id
-    WHERE c.venue_id = p_venue AND c.is_active = true AND c.deleted_at IS NULL
+    WHERE c.venue_id = p_venue AND c.status = 'active' AND c.deleted_at IS NULL
   )
   WHERE id = p_venue;
 END;
@@ -799,11 +884,24 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_courts_refresh_price
-AFTER INSERT OR UPDATE OF is_active, deleted_at OR DELETE ON courts
+AFTER INSERT OR UPDATE OF status, deleted_at OR DELETE ON courts
 FOR EACH ROW EXECUTE FUNCTION trg_refresh_from_price_by_court();
-```
 
-> `pricing_rules` thay đổi cũng phải gọi `refresh_venue_from_price` cho venue của court tương ứng — viết trigger tương tự trên `pricing_rules`, tra `venue_id` qua `courts`.
+CREATE OR REPLACE FUNCTION trg_refresh_from_price_by_rule() RETURNS TRIGGER AS $$
+DECLARE
+  v_court_id UUID := COALESCE(NEW.court_id, OLD.court_id);
+  v_venue_id UUID;
+BEGIN
+  SELECT venue_id INTO v_venue_id FROM courts WHERE id = v_court_id;
+  PERFORM refresh_venue_from_price(v_venue_id);
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_pricing_rules_refresh_price
+AFTER INSERT OR UPDATE OR DELETE ON pricing_rules
+FOR EACH ROW EXECUTE FUNCTION trg_refresh_from_price_by_rule();
+```
 
 **Sửa lệch hàng loạt:** nếu nghi ngờ cache lệch (ví dụ sau khi import dữ liệu thô), chạy một lần:
 
@@ -815,7 +913,7 @@ UPDATE venues v SET
                   WHERE r.venue_id = v.id AND r.is_visible = true),
   from_price   = (SELECT MIN(pr.price_per_slot) FROM pricing_rules pr
                   JOIN courts c ON c.id = pr.court_id
-                  WHERE c.venue_id = v.id AND c.is_active = true AND c.deleted_at IS NULL);
+                  WHERE c.venue_id = v.id AND c.status = 'active' AND c.deleted_at IS NULL);
 ```
 
 ### Ghi chú thiết kế
@@ -960,6 +1058,7 @@ CREATE TABLE areas (
 CREATE INDEX idx_areas_parent ON areas(parent_id);
 CREATE INDEX idx_areas_code ON areas(code);
 CREATE INDEX idx_areas_type_parent ON areas(type, parent_id);
+CREATE INDEX idx_areas_parent_type ON areas(parent_id, type);
 CREATE INDEX idx_areas_unaccent_trgm ON areas USING gin (unaccent_name gin_trgm_ops);
 ```
 
@@ -1027,32 +1126,47 @@ CREATE TABLE venues (
 -- Ba cột cache trên do TRIGGER cập nhật, không do application ghi tay:
 --   reviews        INSERT/UPDATE/DELETE → tính lại rating_avg, review_count
 --   pricing_rules  INSERT/UPDATE/DELETE → tính lại from_price
---   courts         UPDATE is_active     → tính lại from_price
+--   courts         UPDATE status/deleted_at → tính lại from_price
 -- Xem mục "Trigger đồng bộ cột cache" bên dưới.
 CREATE INDEX idx_venues_owner   ON venues(owner_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_status  ON venues(status)   WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_area ON venues(province_id, district_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_venues_province_ward ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
--- Trigger kiểm tra tính toàn vẹn: ward_id phải trực thuộc province_id
-CREATE OR REPLACE FUNCTION check_venue_ward_province_match() RETURNS TRIGGER AS $$
-DECLARE
-  v_ward_parent UUID;
+-- Trigger kiểm tra tính toàn vẹn vùng địa lý (migration 0013_update_validate_venue_areas.sql):
+-- Kiểm tra province_id hợp lệ, bắt buộc có ward_id hoặc district_id, và xã/quận thuộc đúng tỉnh.
+CREATE OR REPLACE FUNCTION validate_venue_areas() RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.ward_id IS NOT NULL THEN
-    SELECT parent_id INTO v_ward_parent FROM areas WHERE id = NEW.ward_id;
-    IF v_ward_parent IS NULL OR v_ward_parent <> NEW.province_id THEN
-      RAISE EXCEPTION 'Lỗi toàn vẹn dữ liệu: Xã/phường (%) không trực thuộc Tỉnh/thành phố (%) đã chọn', 
-        NEW.ward_id, NEW.province_id
-        USING ERRCODE = 'check_violation';
-    END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM areas WHERE id = NEW.province_id AND type = 'province'
+  ) THEN
+    RAISE EXCEPTION 'VENUE_PROVINCE_INVALID' USING ERRCODE = '23514';
   END IF;
+
+  IF NEW.ward_id IS NULL AND NEW.district_id IS NULL THEN
+    RAISE EXCEPTION 'VENUE_WARD_REQUIRED' USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW.ward_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM areas
+    WHERE id = NEW.ward_id AND type = 'ward' AND parent_id = NEW.province_id
+  ) THEN
+    RAISE EXCEPTION 'VENUE_WARD_INVALID' USING ERRCODE = '23514';
+  END IF;
+
+  IF NEW.district_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM areas
+    WHERE id = NEW.district_id AND type = 'district' AND parent_id = NEW.province_id
+  ) THEN
+    RAISE EXCEPTION 'VENUE_DISTRICT_INVALID' USING ERRCODE = '23514';
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_venues_ward_province_match
-BEFORE INSERT OR UPDATE OF province_id, ward_id ON venues
-FOR EACH ROW EXECUTE FUNCTION check_venue_ward_province_match();
+CREATE TRIGGER trg_venues_validate_areas
+BEFORE INSERT OR UPDATE OF province_id, district_id, ward_id ON venues
+FOR EACH ROW EXECUTE FUNCTION validate_venue_areas();
 -- Index cho sort/filter đang được API hỗ trợ (xem 11-api-contract.md):
 --   sort=rating, sort=price, filter maxPrice
 CREATE INDEX idx_venues_rating ON venues(rating_avg DESC) WHERE status = 'approved' AND deleted_at IS NULL;
@@ -1245,7 +1359,12 @@ CREATE TABLE bookings (
   created_at      TIMESTAMPTZ DEFAULT now(),
   updated_at      TIMESTAMPTZ DEFAULT now(),
 
-  CHECK (customer_id IS NOT NULL OR guest_name IS NOT NULL),
+  CONSTRAINT chk_bookings_during_not_empty CHECK (NOT isempty(during)),
+  CONSTRAINT chk_bookings_source_party CHECK (
+    (source = 'online' AND customer_id IS NOT NULL)
+    OR (source = 'manual' AND (customer_id IS NOT NULL OR guest_name IS NOT NULL))
+  ),
+  CONSTRAINT chk_bookings_expires_for_hold CHECK (status = 'held' OR expires_at IS NULL),
 
   -- CONSTRAINT QUAN TRỌNG: Chống trùng lịch
   -- Chỉ áp dụng cho held, pending_payment, confirmed (không áp dụng cho cancelled/expired/no_show/completed)
@@ -1258,9 +1377,12 @@ CREATE TABLE bookings (
 
 CREATE INDEX idx_bookings_court_during ON bookings USING gist (court_id, during);
 CREATE INDEX idx_bookings_customer     ON bookings(customer_id);
+CREATE INDEX idx_bookings_start        ON bookings (lower(during));
 CREATE INDEX idx_bookings_status       ON bookings(status);
 CREATE INDEX idx_bookings_expires      ON bookings(expires_at) WHERE status = 'held';
 CREATE INDEX idx_bookings_pending      ON bookings(court_id) WHERE status = 'pending_payment';
+-- Trigger validate_booking_time_range() / trg_bookings_validate_time_range (0006):
+-- Bảo đảm lower(during) và upper(during) là bội số 30 phút và upper > lower.
 ```
 
 ### payments
@@ -1275,7 +1397,7 @@ CREATE TABLE payments (
   provider        TEXT NOT NULL DEFAULT 'bank_transfer' CHECK (provider IN ('bank_transfer','cash')),
   transfer_code   TEXT,                        -- Nội dung chuyển khoản điền sẵn trong QR, VD "BSC-7F3A91"; NULL khi provider = 'cash'
   proof_url       TEXT,                        -- Ảnh chuyển khoản khách tải lên
-  bank_account_snapshot JSONB, -- shape/immutability: migration 0008
+  bank_account_snapshot JSONB, -- shape/immutability: migration 0008 (trigger trg_payment_snapshot_immutable)
   proof_object_key TEXT,
   proof_updated_at TIMESTAMPTZ,
   refund_note TEXT,
@@ -1306,10 +1428,13 @@ CREATE UNIQUE INDEX idx_payments_transfer_code
   ON payments(transfer_code) WHERE transfer_code IS NOT NULL;
 
 CREATE INDEX idx_payments_booking ON payments(booking_id);
+CREATE INDEX idx_payments_collected_at ON payments(paid_at)
+  WHERE status IN ('completed','refunded') AND paid_at IS NOT NULL;
+CREATE INDEX idx_payments_refunded_at ON payments(refunded_at)
+  WHERE status = 'refunded' AND refund_amount IS NOT NULL AND refunded_at IS NOT NULL;
 -- Cron huỷ booking quá hạn duyệt quét theo cột này
 CREATE INDEX idx_payments_pending_proof
   ON payments(proof_uploaded_at) WHERE status = 'submitted';
-CREATE INDEX idx_payments_booking ON payments(booking_id);
 -- Mỗi booking chỉ có tối đa 1 thanh toán còn hiệu lực (rejected/cancelled/expired/refunded không tính)
 CREATE UNIQUE INDEX uq_payments_active ON payments(booking_id) WHERE status IN ('pending','submitted','completed');
 ```
@@ -1327,10 +1452,16 @@ CREATE TABLE reviews (
   is_visible  BOOLEAN NOT NULL DEFAULT true,
   owner_reply TEXT,                      -- Phản hồi của Owner (OWN-13)
   owner_replied_at TIMESTAMPTZ,
+  report_status VARCHAR(20) NOT NULL DEFAULT 'none', -- none | pending | resolved | dismissed (migration 0016)
+  report_reason TEXT,
+  report_image_url VARCHAR(500),
+  reported_at TIMESTAMPTZ,
+  reported_by UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at  TIMESTAMPTZ DEFAULT now(),
   updated_at  TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX idx_reviews_venue ON reviews(venue_id) WHERE is_visible = true;
+CREATE INDEX idx_reviews_report_status ON reviews(report_status) WHERE report_status <> 'none';
 ```
 
 ### favorites
@@ -1359,6 +1490,7 @@ CREATE TABLE notifications (
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX idx_notif_user_unread ON notifications(user_id) WHERE read_at IS NULL;
+CREATE UNIQUE INDEX uq_notifications_event_user ON notifications(event_key, user_id) WHERE event_key IS NOT NULL;
 ```
 
 ### audit_logs
@@ -1379,6 +1511,81 @@ CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_actor  ON audit_logs(actor_id);
 -- Phục vụ job dọn log cũ (xem "Job dọn dữ liệu hết hạn" bên dưới)
 CREATE INDEX idx_audit_created ON audit_logs(created_at);
+```
+
+### oauth_states (migration 0008)
+
+Lưu state/nonce/PKCE mã hoá AES-256-GCM một lần trong tối đa 10 phút cho Google OAuth.
+
+```sql
+CREATE TABLE oauth_states (
+  id UUID PRIMARY KEY,
+  state_hash TEXT NOT NULL UNIQUE,
+  binding_hash TEXT NOT NULL,
+  nonce_hash TEXT NOT NULL,
+  pkce_verifier_ciphertext TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_oauth_state_hashes CHECK (state_hash ~ '^[a-f0-9]{64}$' AND binding_hash ~ '^[a-f0-9]{64}$' AND nonce_hash ~ '^[a-f0-9]{64}$'),
+  CONSTRAINT chk_oauth_state_expiry CHECK (expires_at > created_at AND expires_at <= created_at + interval '10 minutes')
+);
+CREATE INDEX idx_oauth_states_expiry ON oauth_states(expires_at);
+```
+
+### outbox_deliveries (migrations 0008, 0010)
+
+Transactional outbox dùng chung cho cả worker email (`BusinessMailService`) và worker realtime (`RealtimeOutboxService`).
+
+```sql
+CREATE TABLE outbox_deliveries (
+  id UUID PRIMARY KEY,
+  event_key TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  channel TEXT NOT NULL CHECK (channel IN ('email','realtime')),
+  recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  payload JSONB NOT NULL CHECK (jsonb_typeof(payload) = 'object'),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','delivered','failed','delivery_unknown')),
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 5),
+  next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  lease_token UUID,
+  lease_expires_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  email_request JSONB,
+  first_attempt_at TIMESTAMPTZ,
+  last_error_code TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_outbox_delivery UNIQUE(event_key, channel, recipient_id),
+  CONSTRAINT outbox_email_request_object CHECK (email_request IS NULL OR (channel = 'email' AND jsonb_typeof(email_request) = 'object')),
+  CONSTRAINT chk_outbox_lease CHECK ((status = 'processing' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)
+    OR (status <> 'processing' AND lease_token IS NULL AND lease_expires_at IS NULL)),
+  CONSTRAINT chk_outbox_delivered CHECK ((status = 'delivered') = (delivered_at IS NOT NULL))
+);
+CREATE INDEX idx_outbox_due ON outbox_deliveries(status, next_attempt_at);
+CREATE INDEX idx_outbox_email_lease ON outbox_deliveries(lease_expires_at) WHERE channel = 'email' AND status = 'processing';
+```
+
+### storage_cleanup_jobs (migration 0008)
+
+Hàng đợi dọn object R2 mồ côi (`ProofCleanupService` chạy mỗi 60 giây).
+
+```sql
+CREATE TABLE storage_cleanup_jobs (
+  id UUID PRIMARY KEY,
+  object_key TEXT NOT NULL UNIQUE,
+  not_before TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','completed','failed')),
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts BETWEEN 0 AND 5),
+  lease_token UUID,
+  lease_expires_at TIMESTAMPTZ,
+  last_error_code TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT chk_cleanup_lease CHECK ((status = 'processing' AND lease_token IS NOT NULL AND lease_expires_at IS NOT NULL)
+    OR (status <> 'processing' AND lease_token IS NULL AND lease_expires_at IS NULL))
+);
+CREATE INDEX idx_storage_cleanup_due ON storage_cleanup_jobs(status, not_before);
 ```
 
 **Lưu giữ:** `audit_logs` giữ **12 tháng**, sau đó xoá theo lô bởi job dọn dẹp. Không có ràng buộc khoá ngoại nào chặn việc xoá log cũ (`actor_id` là `REFERENCES users(id)` không `ON DELETE`, nhưng xoá log chỉ làm mất tham chiếu chứ không lỗi).
@@ -1412,54 +1619,65 @@ Không có job này thì các bảng phụ trợ phình vô hạn và làm chậ
 ```
 apps/api/src/database/
 ├── migrations/
-│   ├── 0001_init-schema.sql
-│   ├── 0002_add-blackout-periods.sql
-│   └── ...
-├── schema/                     # Định nghĩa bảng bằng Drizzle TS
-└── seed/                       # Script dữ liệu mẫu
+│   ├── 0001_init-users-and-auth.sql
+│   ├── 0002_init-catalogs-and-venues.sql
+│   ├── 0003_init-courts-pricing-and-blackouts.sql
+│   ├── 0004_init-bookings-and-payments.sql
+│   ├── 0005_init-reviews-notifications-and-constraints.sql
+│   ├── 0006_add-integrity-constraints.sql
+│   ├── 0007_add-venue-rejection-reason.sql
+│   ├── 0008_phase4-foundation.sql
+│   ├── 0009_admin-reporting-indexes.sql
+│   ├── 0010_email-delivery.sql
+│   ├── 0011_add-owner-applications-coordinates.sql
+│   ├── 0012_add-administrative-units-columns.sql
+│   ├── 0013_update_validate_venue_areas.sql
+│   ├── 0014_allow_12_digit_cccd_owner_applications.sql
+│   ├── 0015_add_bank_info_to_owner_applications.sql
+│   └── 0016_add_review_reports.sql
+├── schema/                     # Định nghĩa bảng bằng Drizzle TS (schema.ts, index.ts)
+└── database.module.ts
 ```
 
-1. **Đặt tên file:** `NNNN_mô-tả-ngắn.sql` (vd: `0001_init-schema.sql`, `0002_add-blackout-periods.sql`).
+1. **Đặt tên file:** `NNNN_mô-tả-ngắn.sql` (vd: `0001_init-users-and-auth.sql`, `0016_add_review_reports.sql`).
 2. **Mỗi migration là idempotent hoặc có rollback script tương ứng.**
 3. **KHÔNG** sửa trực tiếp file migration đã được merge vào `main` hoặc `develop`.
 4. **Constraint EXCLUDE** phải được viết trong file SQL migration tùy chỉnh (Drizzle chưa hỗ trợ native).
 5. **Trigger và function** (mục "Trigger đồng bộ cột cache", chặn blackout) cũng phải nằm trong file migration SQL tùy chỉnh — Drizzle không sinh được.
 6. Chạy lệnh: `pnpm --filter @bsc/api db:migrate`
 
-### Migration Mẫu: V20261103_01__administrative_units_2levels.sql (Mô hình 2 cấp mốc 03/11/2026)
+### Trích dẫn Migration thực tế: `0012_add-administrative-units-columns.sql` (Mô hình 2 cấp mốc 03/11/2026)
 
 ```sql
--- 1. Bổ sung cột mã định danh GSO và tên không dấu cho bảng areas
-ALTER TABLE areas
-  ADD COLUMN IF NOT EXISTS code VARCHAR(10),
-  ADD COLUMN IF NOT EXISTS unaccent_name TEXT;
+-- 1. Bật extensions phục vụ tìm kiếm không dấu
+CREATE EXTENSION IF NOT EXISTS unaccent;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
--- 2. Cập nhật ràng buộc CHECK của areas.type để hỗ trợ 'ward' và giữ 'district' (legacy)
+-- 2. Thêm cột code và unaccent_name vào bảng areas
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS code VARCHAR(10);
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS unaccent_name TEXT;
+
+-- 3. Cập nhật ràng buộc type cho areas (chấp nhận 'province', 'ward', 'district')
 ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_type_check;
-ALTER TABLE areas ADD CONSTRAINT areas_type_check 
-  CHECK (type IN ('province', 'ward', 'district'));
+ALTER TABLE areas ADD CONSTRAINT areas_type_check CHECK (type IN ('province', 'ward', 'district'));
 
--- 3. Cập nhật ràng buộc phân cấp:
-ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_parent_check;
-ALTER TABLE areas ADD CONSTRAINT areas_parent_check 
-  CHECK (
-    (type = 'province' AND parent_id IS NULL) OR 
-    (type IN ('ward', 'district') AND parent_id IS NOT NULL)
-  );
+-- 4. Cập nhật ràng buộc hierarchy cho areas
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_check;
+ALTER TABLE areas ADD CONSTRAINT areas_check CHECK (
+  (type = 'province' AND parent_id IS NULL)
+  OR (type IN ('ward', 'district') AND parent_id IS NOT NULL)
+);
 
--- 4. Bổ sung index tối ưu truy vấn cho areas
+-- 5. Bổ sung indexes tối ưu tìm kiếm cho areas
 CREATE INDEX IF NOT EXISTS idx_areas_code ON areas(code);
 CREATE INDEX IF NOT EXISTS idx_areas_type_parent ON areas(type, parent_id);
+CREATE INDEX IF NOT EXISTS idx_areas_parent_type ON areas(parent_id, type);
 CREATE INDEX IF NOT EXISTS idx_areas_unaccent_trgm ON areas USING gin (unaccent_name gin_trgm_ops);
 
--- 5. Cập nhật bảng venues: thêm ward_id, nới lỏng district_id thành NULL
-ALTER TABLE venues 
-  ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT;
+-- 6. Cập nhật bảng venues: thêm ward_id, nới lỏng district_id thành NULL
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS ward_id UUID REFERENCES areas(id) ON DELETE RESTRICT;
+ALTER TABLE venues ALTER COLUMN district_id DROP NOT NULL;
 
-ALTER TABLE venues 
-  ALTER COLUMN district_id DROP NOT NULL;
-
--- 6. Index cho venues theo cặp tỉnh - xã mới
-CREATE INDEX IF NOT EXISTS idx_venues_province_ward 
-  ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
+-- 7. Bổ sung index cho venues theo province_id và ward_id
+CREATE INDEX IF NOT EXISTS idx_venues_province_ward ON venues(province_id, ward_id) WHERE deleted_at IS NULL;
 ```

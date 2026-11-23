@@ -25,12 +25,24 @@ export async function startMocking(): Promise<void> {
     // Đồng bộ state khi tab khác thao tác (điều kiện để demo Kịch bản B).
     subscribeToStorage();
 
-    // Cookie phiên là thứ `middleware.ts` đọc để phân quyền route, còn `db.currentUserId`
-    // là thứ API mẫu trả về. Mặc định db coi khách đã đăng nhập nhưng chưa có cookie nào
-    // (cookie chỉ được ghi khi bấm đăng nhập) → header hiện đã đăng nhập mà /bookings,
-    // /profile lại bị đẩy về /login. Đồng bộ hai bên ngay lúc khởi động để khỏi lệch.
-    if (db.currentUserId) setSession(db.currentUserId);
-    else clearSession();
+    // Đồng bộ session cookie và db.currentUserId:
+    // Nếu trình duyệt / Playwright test đã có sẵn cookie bsc_session thì ưu tiên giữ nguyên phiên đó;
+    // ngược lại mới dùng db.currentUserId hoặc xoá phiên đối với khách vãng lai (guest).
+    if (typeof document !== 'undefined') {
+      const match = document.cookie.match(/(?:^|;\s*)bsc_session=([^;]+)/);
+      if (match && match[1] && match[1] !== 'guest') {
+        const existingId = decodeURIComponent(match[1]);
+        db.currentUserId = existingId;
+        setSession(existingId);
+      } else if (match && match[1] === 'guest') {
+        db.currentUserId = null;
+        clearSession();
+      } else if (db.currentUserId) {
+        setSession(db.currentUserId);
+      } else {
+        clearSession();
+      }
+    }
 
     starting = worker.start({
       onUnhandledRequest: 'bypass',

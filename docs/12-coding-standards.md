@@ -1,17 +1,18 @@
-﻿# 12 – Tiêu chuẩn code
+# 12 – Tiêu chuẩn code
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## TypeScript Strict
 
-Tất cả apps và packages dùng TypeScript strict mode:
+Tất cả apps và packages kế thừa cấu hình TypeScript strict mode từ `tsconfig.base.json`:
 ```json
 // tsconfig.base.json
 {
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true
   }
 }
 ```
@@ -32,7 +33,7 @@ function foo(a: CreateVenueDto) {}
 
 ## ESLint + Prettier
 
-Cấu hình tại gốc monorepo. Chạy: `pnpm lint` và `pnpm format`.
+Cấu hình Prettier đặt tại gốc monorepo (`.prettierrc`), còn ESLint được cấu hình theo từng workspace (`apps/web/.eslintrc.json`, `packages/shared/.eslintrc.json`) và điều phối qua Turborepo. Chạy: `pnpm lint` và `pnpm format`.
 
 **Rules quan trọng:**
 - `@typescript-eslint/no-explicit-any`: error
@@ -83,7 +84,7 @@ test(booking): add concurrent hold race condition test #42
 
 Một issue được coi là hoàn thành khi:
 - [ ] Code đã được review và approve bởi ít nhất 1 thành viên khác
-- [ ] CI pass (lint, typecheck, test, build)
+- [ ] CI pass (`lint`, `typecheck`, `test`, `build`, `e2e`)
 - [ ] Unit test đã được viết (bắt buộc với booking/giá/phân quyền)
 - [ ] OpenAPI đã được cập nhật nếu thay đổi API
 - [ ] Migration đã được tạo nếu thay đổi DB
@@ -94,7 +95,7 @@ Một issue được coi là hoàn thành khi:
 
 ## Chiến lược Test
 
-### Unit Test (Vitest cho FE, Jest cho BE)
+### Unit Test (Vitest cho FE & `packages/shared`, Node.js built-in test runner `node --test` cho BE)
 ```typescript
 // Bắt buộc test cho: BookingService, PricingService, AuthGuard
 describe('BookingService.createHold', () => {
@@ -107,6 +108,10 @@ describe('BookingService.createHold', () => {
 ### API Test (Supertest)
 ```typescript
 // Test integration endpoints quan trọng.
+// Lưu ý: Trong thực tế triển khai (`JwtAuthGuard`), BE xác thực phiên qua cookie httpOnly
+// `access_token=<jwt>` (ví dụ `.set('Cookie', [`access_token=${tokens[i]}`])`).
+// Mã lỗi 409 khi tranh chấp slot trong BE là `BOOKING_CONFLICT` (hoặc `SLOT_TAKEN` ở MSW mock,
+// FE bắt cả hai qua `SLOT_CONFLICT_CODES` trong `@bsc/shared`).
 //
 // PHÂN BIỆT hai tình huống — trước đây tài liệu gộp làm một nên mâu thuẫn với
 // quy tắc idempotency ở 11-api-contract.md:
@@ -114,7 +119,7 @@ describe('BookingService.createHold', () => {
 //   (a) CÙNG người dùng gửi lại cùng courtId + during trong 10 phút
 //       → idempotent: request sau trả 200 kèm hold ĐANG CÓ, không tạo mới.
 //   (b) NHIỀU người dùng KHÁC NHAU tranh cùng một block
-//       → đúng 1 người nhận 201, những người còn lại nhận 409 SLOT_TAKEN.
+//       → đúng 1 người nhận 201, những người còn lại nhận 409 (BOOKING_CONFLICT / SLOT_TAKEN).
 //
 // Test dưới đây là (b): mỗi request dùng token của một user khác nhau.
 
@@ -122,7 +127,7 @@ it('POST /api/v1/bookings/hold - nhiều user tranh cùng block', async () => {
   const requests = Array(5).fill(null).map((_, i) =>
     request(app)
       .post('/api/v1/bookings/hold')
-      .set('Authorization', `Bearer ${tokens[i]}`) // 5 user KHÁC nhau
+      .set('Cookie', [`access_token=${tokens[i]}`]) // 5 user KHÁC nhau
       .send(sameSlotDto)
   );
   const results = await Promise.all(requests);
@@ -135,13 +140,13 @@ it('POST /api/v1/bookings/hold - nhiều user tranh cùng block', async () => {
 it('POST /api/v1/bookings/hold - cùng user gửi lại là idempotent', async () => {
   const first = await request(app)
     .post('/api/v1/bookings/hold')
-    .set('Authorization', `Bearer ${tokens[0]}`)
+    .set('Cookie', [`access_token=${tokens[0]}`])
     .send(sameSlotDto);
   expect(first.status).toBe(201);
 
   const again = await request(app)
     .post('/api/v1/bookings/hold')
-    .set('Authorization', `Bearer ${tokens[0]}`) // CÙNG user
+    .set('Cookie', [`access_token=${tokens[0]}`]) // CÙNG user
     .send(sameSlotDto);
   expect(again.status).toBe(200);                      // không phải 201
   expect(again.body.data.id).toBe(first.body.data.id); // đúng hold cũ
@@ -160,5 +165,5 @@ it('POST /api/v1/bookings/hold - cùng user gửi lại là idempotent', async (
 ## Logging
 
 - BE: Dùng `NestJS Logger`, không `console.log`.
-- FE: Không log trong production. Dùng Sentry cho error tracking.
+- FE: Không log trong production. Dùng Sentry cho error tracking (tùy chọn P1, hiện chưa cài đặt SDK trong `package.json`).
 - Không log: password, token, thông tin thẻ, PII nhạy cảm.
