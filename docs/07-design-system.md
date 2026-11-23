@@ -1,6 +1,6 @@
-﻿# 07 – Design System
+# 07 – Design System
 
-> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-11-21
 >
 > **AI AGENT KHÔNG ĐƯỢC tự ý quyết định thiết kế giao diện ngoài tài liệu này.**
 
@@ -40,6 +40,7 @@
   --color-primary-700: #15803d;
   --color-primary-800: #166534;
   --color-primary-900: #14532d;
+  --color-primary-950: #052e16;
 
   /* === ACCENT – Cam năng động === */
   --color-accent-500: #f97316;
@@ -111,26 +112,36 @@ Ngưỡng WCAG 2.1 AA: **4.5:1** cho text thường (< 18.66px bold hoặc < 24p
 ### Cấu hình Tailwind
 ```js
 // tailwind.config.ts
-colors: {
-  primary: { /* map từ CSS variables */ },
-  accent:  { /* map từ CSS variables */ },
-  neutral: { /* map từ CSS variables */ },
-  // Màu semantic — BẮT BUỘC khai báo, nếu không `bg-danger` / `text-info`
-  // (dùng ở mục Buttons và 08-ui-quality-rules.md) sẽ không resolve thành class nào.
-  success: 'var(--color-success)',
-  warning: 'var(--color-warning)',
-  danger:  'var(--color-danger)',
-  info:    'var(--color-info)',
-  slot: {
-    // 5 khoá đầu khớp đúng enum `status` của API.
-    // `my_hold` KHÔNG phải giá trị API — FE suy ra từ status === 'held' && mine === true.
-    // Đặt gạch dưới cho khớp quy ước `status` của API (xem 01-product-overview.md).
-    available: 'var(--color-slot-available)',
-    held:      'var(--color-slot-held)',
-    booked:    'var(--color-slot-booked)',
-    blocked:   'var(--color-slot-blocked)',
-    past:      'var(--color-slot-past)',
-    my_hold:   'var(--color-slot-my-hold)', // CSS variable giữ gạch nối theo lệ CSS
+darkMode: ['class'],
+theme: {
+  extend: {
+    colors: {
+      primary: { /* map từ CSS variables 50..950 */ },
+      accent:  { /* map từ CSS variables */ },
+      neutral: { /* map từ CSS variables */ },
+      // Màu semantic — BẮT BUỘC khai báo, nếu không `bg-danger` / `text-info`
+      // (dùng ở mục Buttons và 08-ui-quality-rules.md) sẽ không resolve thành class nào.
+      success: 'var(--color-success)',
+      warning: 'var(--color-warning)',
+      danger:  'var(--color-danger)',
+      info:    'var(--color-info)',
+      slot: {
+        // 5 khoá nền đầu khớp đúng enum `status` của API; class CSS/Tailwind dùng gạch nối
+        // (`my-hold`, `*-text`), còn khoá domain TS trong packages/shared giữ `my_hold`.
+        available:       'var(--color-slot-available)',
+        'available-text':'var(--color-slot-available-text)',
+        held:            'var(--color-slot-held)',
+        'held-text':     'var(--color-slot-held-text)',
+        booked:          'var(--color-slot-booked)',
+        'booked-text':   'var(--color-slot-booked-text)',
+        'my-hold':       'var(--color-slot-my-hold)',
+        'my-hold-text':  'var(--color-slot-my-hold-text)',
+        blocked:         'var(--color-slot-blocked)',
+        'blocked-text':  'var(--color-slot-blocked-text)',
+        past:            'var(--color-slot-past)',
+        'past-text':     'var(--color-slot-past-text)',
+      }
+    }
   }
 }
 ```
@@ -138,7 +149,7 @@ colors: {
 ## 4. Typography
 
 - **Font chính:** `Be Vietnam Pro` (Google Fonts) – ưu tiên; fallback `Inter`.
-- **Import:** Dùng `next/font/google` để tối ưu CLS.
+- **Import (`apps/web/app/layout.tsx`):** Dùng `next/font/google` cho `Be_Vietnam_Pro` (`weight: ['400','500','600','700','800']`, `display: 'swap'`, `preload: true`) và `Inter` (`display: 'swap'`, `preload: true`), gắn trực tiếp `${beVietnamPro.className}` vào `<body>` kết hợp chuỗi `font-sans` trong `tailwind.config.ts`. Trong `NODE_ENV === 'development'`, nạp thêm `<link>` Google Fonts CSS dự phòng nếu Node local không tải được font lúc khởi động.
 
 ### Thang cỡ chữ
 
@@ -189,9 +200,9 @@ new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(25
 
 | Component | Radius | Class |
 |-----------|--------|-------|
-| Button | 6px | `rounded-md` |
-| Input, Select, Textarea | 6px | `rounded-md` |
-| Card (venue, booking) | 8px | `rounded-lg` |
+| Button | 8px | `rounded-btn` (`DEFAULT: 8px`) |
+| Input, Select, Textarea | 8px | `rounded-input` |
+| Card (venue, booking) | 12px | `rounded-card` (`rounded-lg` cho card nhỏ) |
 | Modal, Sheet | 12px | `rounded-xl` |
 | Badge | 4px | `rounded` |
 | Avatar | 50% | `rounded-full` |
@@ -349,7 +360,10 @@ Mỗi trạng thái phải đủ **toàn bộ** giá trị trong enum tương �
 
 ## 13. Dark Mode
 
-**Quyết định:** MVP KHÔNG có dark mode để tiết kiệm thời gian. Ghi vào decision log. Token màu đã chuẩn bị sẵn CSS variable để dễ thêm sau.
+**Hiện trạng đã triển khai (`docs/specs/dark-mode-complete-fix-spec.md`, `globals.css`, `layout.tsx`):**
+- Hỗ trợ đầy đủ 3 chế độ giao diện (**Sáng / Tối / Theo hệ thống** – `light` / `dark` / `system`) qua `darkMode: ['class']` trong `tailwind.config.ts`.
+- Token `.dark` trong `globals.css` sử dụng thang màu trung tính Zinc (`--color-bg: #121214`, `--color-bg-card: #18181b`, `--color-border: #2e2e33`, `--color-text-primary: #f4f4f5`) và hạ bão hòa các biến màu `slot` để giữ độ tương phản cao trên nền tối, không bị ám tím.
+- Script đồng bộ trong `<head>` (`layout.tsx`) đọc `localStorage.getItem('bsc-theme-mode')` và gắn class `.dark` lên `<html>` trước lần paint đầu tiên để tránh hiện tượng chớp sáng (FOUC).
 
 ## 14. Copywriting tiếng Việt
 

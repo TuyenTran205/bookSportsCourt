@@ -237,4 +237,10 @@ export class AdminReportingService {
       }),
     );
   }
+  async analytics(actor: string) {
+    await this.admin(actor);
+    return this.safe(() =>
+      this.repo.snapshot(async (tx) => this.repo.analytics(tx)),
+    );
+  }
 }

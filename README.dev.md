@@ -80,12 +80,19 @@ pnpm dev
 # Test tất cả
 pnpm test
 
-# Test riêng API
+# Test riêng API (Node.js test runner)
+pnpm --filter @bsc/api test
 pnpm --filter @bsc/api test:auth
-pnpm --filter @bsc/api test:group1
+pnpm --filter @bsc/api test:venues
+pnpm --filter @bsc/api test:business-mail
+pnpm --filter @bsc/api test:google-oauth
+pnpm --filter @bsc/api test:password-recovery
 
-# Test Frontend
+# Test Frontend (Vitest)
 pnpm --filter @bsc/web test
+
+# Test Shared (Vitest)
+pnpm --filter @bsc/shared test
 
 # E2E tests (cần DB + API + FE đang chạy)
 pnpm test:e2e
@@ -109,13 +116,24 @@ pnpm --filter @bsc/web build
 
 ---
 
-## 🔑 Tài khoản test (sau khi seed)
+## 🔑 Tài khoản test (sau khi chạy `pnpm --filter @bsc/api db:seed`)
 
-| Role     | Email              | Password       |
-|----------|-------------------|----------------|
-| Admin    | admin@bsc.vn      | Admin@123456   |
-| Owner    | owner1@bsc.vn     | Owner@123456   |
-| Customer | customer1@bsc.vn  | Customer@123456|
+Mật khẩu mặc định dùng chung cho toàn bộ tài khoản seed DB (có thể ghi đè qua biến môi trường `SEED_PASSWORD`):
+`BookSportsCourt-Dev-Only-2026!`
+
+| Vai trò | Email | Họ tên | Ghi chú kịch bản |
+|---------|-------|--------|------------------|
+| **Admin** | `admin.demo@booksportscourt.local` | Quản trị viên Demo | Duyệt sân mới, duyệt hồ sơ chủ sân, kiểm duyệt báo cáo đánh giá, thống kê, Audit Logs |
+| **Owner 1** | `owner.duc@booksportscourt.local` | Trần Văn Đức | Cụm sân Cầu Giấy (HN), Mỹ Đình (HN - `pending`), Sông Hàn (ĐN); bảng giá 30p, duyệt cọc, phản hồi/báo cáo review |
+| **Owner 2** | `owner.thao@booksportscourt.local` | Lê Thu Thảo | Cụm sân Nam Sài Gòn (TP.HCM); đối soát đơn hủy hoàn cọc |
+| **Customer 1** | `customer.long@booksportscourt.local` | Nguyễn Hoàng Long | Đặt sân, đơn `completed`/`confirmed`, đánh giá 5 sao, sân yêu thích, liên kết Google OAuth |
+| **Customer 2** | `customer.tri@booksportscourt.local` | Vũ Minh Trí | Đơn đang giữ chỗ (`held`) và đơn đã hủy hoàn cọc (`cancelled`) |
+| **Applicant** | `applicant.anh@booksportscourt.local` | Đặng Tuấn Anh | Khách hàng đã nộp hồ sơ đăng ký chủ sân đang chờ duyệt (`pending`) |
+| *Owner (Legacy)* | `owner.demo@booksportscourt.local` | Chủ sân Demo | Tài khoản tương thích ngược |
+| *Customer (Legacy)* | `customer.demo@booksportscourt.local` | Khách hàng Demo | Tài khoản tương thích ngược |
+
+> Chi tiết kịch bản từng tài khoản xem tại `docs/demo-accounts.md`.
+> Nếu chạy FE ở chế độ MSW mock (`NEXT_PUBLIC_API_MOCKING=enabled`), dùng các tài khoản mock `admin@example.com`, `owner@example.com`, `khach@example.com` với mật khẩu `Password123` (xem `apps/web/mocks/README.md`).
 
 ---
 
@@ -172,9 +190,9 @@ pnpm --filter @bsc/api db:migrate
 
 ### ❌ Seed lỗi
 ```cmd
-# Xoá DB và chạy lại từ đầu
-psql postgresql://<user>:<password>@localhost:5432/<database> -c "DROP DATABASE IF EXISTS booksportscourt;"
-psql postgresql://<user>:<password>@localhost:5432/<database> -c "CREATE DATABASE booksportscourt;"
+# Xoá DB và chạy lại từ đầu (mặc định docker-compose dùng database booksports_dev)
+psql postgresql://<user>:<password>@localhost:5432/postgres -c "DROP DATABASE IF EXISTS booksports_dev;"
+psql postgresql://<user>:<password>@localhost:5432/postgres -c "CREATE DATABASE booksports_dev;"
 pnpm --filter @bsc/api db:migrate
 pnpm --filter @bsc/api db:seed
 ```
@@ -185,6 +203,8 @@ pnpm --filter @bsc/api db:seed
 
 - **Quy tắc tối thượng**: `AGENTS.md`
 - **Tổng quan**: `docs/00-README.md`
+- **Danh sách API đã triển khai**: `docs/implemented-apis.md`
+- **Tài khoản demo chi tiết**: `docs/demo-accounts.md`
 - **Frontend conventions**: `docs/09-frontend-conventions.md`
 - **Backend conventions**: `docs/10-backend-conventions.md`
 - **API contract**: `docs/11-api-contract.md`
@@ -204,4 +224,4 @@ pnpm --filter @bsc/api db:seed
 
 ---
 
-**Lưu ý**: Tất cả lệnh chạy từ thư mục gốc `d:\BTL_Chuyende\bookSportsCourt\`
+**Lưu ý**: Tất cả lệnh chạy từ thư mục gốc của repository `bookSportsCourt`.

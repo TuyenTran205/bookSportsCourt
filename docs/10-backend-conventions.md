@@ -1,57 +1,62 @@
 # 10 – Quy ước Backend
 
-> **Phiên bản:** 1.3.2 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Cấu trúc module NestJS
 
 ```
 apps/api/src/
-├── main.ts                     # Bootstrap, Swagger, CORS, Validation pipe
+├── main.ts                     # Bootstrap, Swagger, CORS, Validation pipe, IoAdapter
 ├── app.module.ts               # Root module
 ├── common/
 │   ├── filters/                # GlobalExceptionFilter
-│   ├── guards/                 # JwtAuthGuard, RolesGuard, OwnershipGuard
+│   ├── guards/                 # JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard, OwnershipGuard, RequestOriginGuard
+│   │                           # (AuthRequestGuard nằm trong modules/auth/auth-http.ts; ProofAccessGuard trong modules/payments/)
 │   ├── decorators/             # @Roles(), @CurrentUser(), @CheckOwnership()
 │   ├── interceptors/           # LoggingInterceptor, TransformResponseInterceptor
 │   └── pipes/                  # ZodValidationPipe
-├── config/                     # ConfigModule (env validation với Zod)
+├── config/                     # ConfigModule: app-config.ts, mail-config.ts, http-security.ts, allowed-origins.ts
 ├── database/
-│   ├── schema/                 # Drizzle schema files (id: uuid().primaryKey().$defaultFn(() => v7()), ADR-011)
-│   ├── migrations/             # SQL migration files
+│   ├── schema/                 # Drizzle schema: schema.ts, index.ts (id: uuid().primaryKey().$defaultFn(() => v7()), ADR-011)
+│   ├── migrations/             # SQL migration files (0001..0016)
 │   └── database.module.ts
 ├── modules/
-│   ├── auth/                   # AuthModule: đăng nhập, token, OAuth
-│   ├── users/                  # UsersModule: CRUD user, hồ sơ
-│   ├── venues/                 # VenuesModule: CRUD venue, duyệt
-│   ├── courts/                 # CourtsModule: CRUD court, giờ mở cửa
-│   ├── pricing/                # PricingModule: pricing rules
-│   ├── bookings/               # BookingsModule: hold, cancel
-│   ├── payments/               # PaymentsModule: QR chuyển khoản, upload ảnh, Owner duyệt
-│   ├── realtime/               # RealtimeModule: Socket.IO gateway
-│   ├── reviews/                # ReviewsModule
-│   ├── notifications/          # NotificationsModule
-│   ├── favorites/              # FavoritesModule: yêu thích venue (CUS-11)
-│   ├── owner-applications/     # OwnerApplicationsModule: đăng ký làm chủ sân
-│   ├── catalogs/               # CatalogsModule: areas, sports, amenities (public read + Admin CRUD)
-│   ├── reports/                # ReportsModule: doanh thu, thống kê cho Owner (OWN-11)
-│   ├── uploads/                # UploadsModule: presigned URL cho R2
-│   ├── health/                 # HealthModule: GET /health (không auth) – dùng cho keep-alive
-│   └── admin/                  # AdminModule: duyệt, thống kê, audit
-└── schedules/                  # Cron jobs (@nestjs/schedule)
+│   ├── auth/                   # AuthModule: đăng nhập, token, Google OAuth, ws-token, RealtimeSessionsService
+│   ├── users/                  # UsersModule: Admin list/detail/suspend user
+│   ├── venues/                 # VenuesModule: CRUD venue, duyệt, ảnh, chính sách huỷ/thanh toán
+│   ├── courts/                 # CourtsModule: CRUD court, giờ mở cửa, pricing_rules, blackouts
+│   ├── pricing/                # (Chỉ giữ .gitkeep; CRUD pricing_rules ở modules/courts/, tính giá ở modules/bookings/)
+│   ├── bookings/               # BookingsModule: slots, quote, hold, cancel, no-show, owner timeline/bookings/reports
+│   ├── payments/               # PaymentsModule: QR chuyển khoản, upload ảnh proof, Owner duyệt/từ chối
+│   ├── realtime/               # RealtimeModule: RealtimeGateway (/ws), RealtimeOutboxService (@Interval(5000)), RealtimePublisher
+│   ├── reviews/                # ReviewsModule: tạo/xem/ẩn-hiện, Owner xem/trả lời/báo cáo review, Admin duyệt báo cáo
+│   ├── notifications/          # NotificationsModule: danh sách, đếm chưa đọc, đánh dấu đã đọc
+│   ├── favorites/              # FavoritesModule: yêu thích venue (CUS-12)
+│   ├── owner-applications/     # OwnerApplicationsModule: đăng ký làm chủ sân & Admin duyệt
+│   ├── owner/                  # OwnerModule: OwnerController, BlackoutsController, OwnerService
+│   ├── catalogs/               # CatalogsModule & LocationsController: areas, sports, amenities, ĐVHC 2 cấp
+│   ├── reports/                # ReportsModule: doanh thu, công suất cho Owner (OWN-11, OWN-12)
+│   ├── mail/                   # BusinessMailModule / MailModule: MailTransport (Resend + Gmail SMTP), BusinessMailService (@Interval(10000))
+│   ├── uploads/                # UploadsModule: dịch vụ lưu trữ nội bộ (PublicStorage, ProofStorage, ProofCleanupService @Interval(60000), xử lý ảnh bằng sharp; không có HTTP controller độc lập)
+│   ├── audit/                  # AuditModule: GET /admin/audit-logs, writeAudit helper
+│   ├── health/                 # HealthModule: GET /health (SELECT 1) & GET /health/ping (liveness nhanh)
+│   └── admin/                  # AdminModule: AdminReportingController (bookings, stats, analytics)
+└── schedules/                  # Cron jobs (@nestjs/schedule) + schedules.module.ts
     ├── expire-holds.schedule.ts            # Mỗi phút  – held quá hạn → expired
     ├── auto-complete-bookings.schedule.ts  # Mỗi 5 phút – confirmed qua giờ → completed
     ├── cancel-stale-payments.schedule.ts   # Mỗi 5 phút – pending_payment quá hạn duyệt → cancelled
-    ├── send-reminders.schedule.ts          # Mỗi 15 phút – nhắc lịch trước 24h (CUS-14)
-    └── cleanup-expired-data.schedule.ts    # Hằng ngày 03:00 – dọn auth_tokens/notifications/audit_logs (xem 04)
+    └── send-reminders.schedule.ts          # Mỗi 15 phút – nhắc lịch trước 24h (CUS-14)
 ```
 
-> Mọi nhóm endpoint trong [11-api-contract.md](11-api-contract.md) phải có module tương ứng ở đây. `favorites`, `owner-applications`, `catalogs`, `reports`, `uploads`, `health` từng có endpoint trong hợp đồng API nhưng không xuất hiện trong cấu trúc thư mục — thiếu module nghĩa là không ai biết code đó đặt ở đâu.
+> Lưu ý về job dọn dẹp (`cleanup-expired-data.schedule.ts`): lịch dọn hằng ngày 03:00 cho `auth_tokens`/`notifications`/`audit_logs` hiện chưa có file cron độc lập trong `schedules/`; mới có dọn `oauth_states` (`@Interval(3600000)` trong `GoogleOAuthService`) và `storage_cleanup_jobs` (`@Interval(60000)` trong `ProofCleanupService`).
 >
-> **`catalogs`** gộp ba bảng danh mục (`areas`, `sports`, `amenities`) vào một module vì chúng cùng hình dạng: đọc công khai, chỉ Admin ghi. Tách ba module gần như trùng lặp là thừa.
+> Mọi nhóm endpoint trong [11-api-contract.md](11-api-contract.md) đều có module tương ứng ở đây.
 >
-> **`health`** phải **không** yêu cầu auth và không chạm DB nặng (chỉ `SELECT 1`) — `keep-alive.yml` gọi nó mỗi 10 phút, và endpoint này cũng là thứ giữ Neon không bị pause.
+> **`catalogs`** gộp ba bảng danh mục (`areas`, `sports`, `amenities`) cùng `LocationsController` (ĐVHC 2 cấp `/provinces`, `/wards`) vào một module.
 >
-> Năm cron này khớp với mục "Cron" trong [05-booking-and-realtime.md](05-booking-and-realtime.md). Thiếu `auto-complete-bookings` thì trạng thái `completed` không bao giờ đạt được, kéo theo CUS-13 (đánh giá) và OWN-09 (no-show) không dùng được.
+> **`health`** không yêu cầu auth: `GET /health` chạy `SELECT 1` giữ kết nối DB (dùng cho `keep-alive.yml` giữ Neon không bị pause), còn `GET /health/ping` trả `{ status: 'ok' }` không chạm DB.
+>
+> Bốn file cron trong `schedules/` kết hợp cùng các interval worker (`RealtimeOutboxService`, `BusinessMailService`, `ProofCleanupService`) bảo đảm vòng đời booking và thông báo thông suốt. Thiếu `auto-complete-bookings` thì trạng thái `completed` không bao giờ đạt được, kéo theo CUS-13 (đánh giá) và OWN-09 (no-show) không dùng được.
 
 ## Controller mỏng – Quy tắc vàng
 
@@ -170,12 +175,13 @@ throw new ForbiddenException('Bạn không có quyền thao tác trên venue nà
 ## Config qua env
 
 ```typescript
-// config/app.config.ts – validate env khi startup
+// config/app-config.ts – validate env khi startup
 const AppConfigSchema = z.object({
   DATABASE_URL:       z.string().url(),
   JWT_ACCESS_SECRET:  z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
-  PORT:               z.coerce.number().default(3001),
+  ALLOWED_ORIGINS:    z.string().min(1),
+  PORT:               z.coerce.number().int().min(1).max(65_535).default(3001),
   // ...
 });
 

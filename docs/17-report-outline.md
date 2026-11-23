@@ -1,6 +1,6 @@
-﻿# 17 – Dàn ý báo cáo đồ án
+# 17 – Dàn ý báo cáo đồ án
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Dàn ý các chương
 
@@ -87,8 +87,8 @@
 - 5.1 Môi trường phát triển (monorepo, công cụ)
 - 5.2 Cấu trúc code (feature-based, module NestJS)
 - 5.3 Chiến lược kiểm thử
-  - Unit test (Vitest/Jest)
-  - API test (Supertest)
+  - Unit test (Vitest cho FE & `@bsc/shared`, Node.js test runner `node --test` cho BE)
+  - API & Database concurrency test (Supertest + PostgreSQL thật)
   - E2E test (Playwright)
 - 5.4 CI/CD pipeline
 

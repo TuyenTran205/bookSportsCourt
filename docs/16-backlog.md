@@ -1,6 +1,6 @@
 # 16 – Backlog
 
-> **Phiên bản:** 1.2.1 | **Cập nhật lần cuối:** 2026-11-06
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-11-21
 >
 > Danh sách issue sẵn sàng tạo trên GitHub. Mã tính năng khớp với `02-features-by-role.md`.
 
@@ -29,11 +29,11 @@
 | BSC-014 | Venue CRUD API (Owner tạo, Admin duyệt) | OWN-02 ADM-02 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-013 |
 | BSC-015 | Court CRUD + Opening Hours + Pricing Rules API | OWN-03 OWN-04 OWN-05 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | L | BSC-014 |
 | BSC-016 | Sports + Amenities CRUD (Admin) & Seed Master Data Areas | ADM-04 ADM-05 ADM-06 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-013 |
-| BSC-017 | Venue search API (filter: sport, district, price) | CUS-04 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-014 |
+| BSC-017 | Venue search API (filter: sport, province/ward ĐVHC 2 cấp + legacy district, price) | CUS-04 | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | M | BSC-014 |
 | BSC-018 | FE: Trang đăng nhập / đăng ký | CUS-01 CUS-02 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | M | BSC-011 |
 | BSC-019 | FE: Header + Footer + Layout trang khách | — | `type:task` `area:web` `prio:P0` `phase:1` | TV4 | M | BSC-009 |
-| BSC-020 | FE: Trang tìm sân + danh sách kết quả | CUS-04 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | L | BSC-017 BSC-019 |
-| BSC-021 | FE: Bản đồ Leaflet + OSM | CUS-05 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | M | BSC-020 |
+| BSC-020 | FE: Trang tìm sân + danh sách kết quả + so sánh sân (`/venues/compare`) | GST-03 CUS-04 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | L | BSC-017 BSC-019 |
+| BSC-021 | FE: Bản đồ MapLibre GL JS + PMTiles (nâng cấp từ Leaflet theo ADR-032) | GST-02 CUS-05 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | M | BSC-020 |
 | BSC-022 | FE: Trang chi tiết Venue + gallery | CUS-06 | `type:feature` `area:web` `prio:P0` `phase:1` | TV3 | M | BSC-014 |
 
 ## Phase 2 – Booking & Realtime
@@ -72,9 +72,9 @@
 | BSC-042 | Thanh toán QR: chuyển khoản qua QR chủ sân, upload ảnh xác nhận | CUS-09 | `type:feature` `area:api` `prio:P0` `phase:4` | TV2 | L | BSC-024 |
 | BSC-043 | Owner duyệt/từ chối thanh toán idempotent + cron huỷ quá hạn | CUS-09 OWN-09 | `type:feature` `area:api` `prio:P0` `phase:4` | TV2 | M | BSC-042 |
 | BSC-044 | FE: Trang thanh toán QR + tải ảnh; trang Owner duyệt | CUS-09 OWN-09 | `type:feature` `area:web` `prio:P0` `phase:4` | TV3 | M | BSC-042 |
-| BSC-045 | Email thông báo (Resend) | CUS-14 OWN-14 | `type:feature` `area:api` `prio:P1` `phase:4` | TV1 | M | BSC-024 |
+| BSC-045 | Email thông báo (Resend / Gmail SMTP theo ADR-033) | CUS-14 OWN-14 | `type:feature` `area:api` `prio:P1` `phase:4` | TV1 | M | BSC-024 |
 | BSC-046 | Đánh giá sân API + FE | CUS-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-024 |
-| BSC-047 | Google OAuth | CUS-03 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV1 | M | BSC-011 |
+| BSC-047 | Google OAuth (OIDC code/PKCE) | CUS-03 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV1 | M | BSC-011 |
 
 ## Phase 5 – Hoàn thiện & Deploy
 
@@ -82,9 +82,9 @@
 |---|---------|----|----|---------|------|-----------|
 | BSC-048 | E2E test Playwright: flow đặt sân | — | `type:task` `area:web` `prio:P0` `phase:5` | TV3 | L | BSC-032 |
 | BSC-049 | SEO: generateMetadata, structured data | — | `type:chore` `area:web` `prio:P1` `phase:5` | TV3 | M | BSC-020 |
-| BSC-050 | Deploy FE lên Vercel + BE lên Railway | — | `type:task` `area:infra` `prio:P0` `phase:5` | TV4 | M | — |
+| BSC-050 | Deploy FE lên Vercel + BE lên Render/Railway | — | `type:task` `area:infra` `prio:P0` `phase:5` | TV4 | M | — |
 | BSC-051 | Seed dữ liệu demo thực tế | — | `type:task` `area:db` `prio:P0` `phase:5` | TV1 | S | BSC-050 |
-| BSC-052 | Sentry integration FE + BE | — | `type:chore` `area:infra` `prio:P1` `phase:5` | TV4 | S | BSC-050 |
+| BSC-052 | Sentry integration FE + BE (tùy chọn P1) | — | `type:chore` `area:infra` `prio:P1` `phase:5` | TV4 | S | BSC-050 |
 
 ## Bổ sung – work item còn thiếu
 
@@ -115,20 +115,20 @@
 | BSC-064 | Yêu thích sân API + FE | CUS-12 | `type:feature` `area:api` `area:web` `prio:P1` `phase:2` | TV3 | S | BSC-059 |
 | BSC-065 | Chính sách huỷ & cọc (cấu hình Owner + áp dụng khi huỷ) | OWN-10 CUS-11 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV2 | M | BSC-057 |
 | BSC-066 | Báo cáo tỷ lệ lấp đầy (Owner) | OWN-12 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV4 | M | BSC-036 |
-| BSC-067 | Owner xem và phản hồi đánh giá (không ẩn/hiện; kiểm duyệt thuộc Admin BSC-072) | OWN-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV3 | M | BSC-059 |
+| BSC-067 | Owner xem, phản hồi và báo cáo vi phạm đánh giá (ẩn/hiện và xử lý báo cáo thuộc Admin BSC-072) | OWN-13 | `type:feature` `area:api` `area:web` `prio:P1` `phase:3` | TV3 | M | BSC-059 |
 | BSC-068 | Admin: xem toàn bộ booking + lọc | ADM-07 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
-| BSC-069 | Admin: thống kê toàn hệ thống | ADM-08 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
+| BSC-069 | Admin: thống kê toàn hệ thống (dashboard KPI + pop-up chi tiết + analytics) | ADM-08 | `type:feature` `area:api` `area:web` `prio:P0` `phase:4` | TV4 | M | BSC-023 |
 | BSC-070 | Admin API: khoá / mở khoá tài khoản | ADM-03 | `type:feature` `area:api` `prio:P0` `phase:4` | TV1 | S | BSC-010 |
 | BSC-071 | Audit log middleware + ghi vết hành động Admin | ADM-09 | `type:feature` `area:api` `prio:P0` `phase:4` | TV1 | M | BSC-059 |
-| BSC-072 | Admin: kiểm duyệt đánh giá (ẩn/hiện) | ADM-10 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-059 |
+| BSC-072 | Admin: kiểm duyệt đánh giá (ẩn/hiện & duyệt/bác bỏ báo cáo vi phạm từ Owner) | ADM-10 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV3 | M | BSC-059 |
 
 ### Hạ tầng & vòng đời còn thiếu (C37, C40)
 
 | # | Tiêu đề | Mã | Labels | Assignee | Size | Phụ thuộc |
 |---|---------|----|----|---------|------|-----------|
-| BSC-073 | Health endpoint `GET /api/v1/health` (không auth, `SELECT 1`) | — | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | S | — |
-| BSC-074 | Upload R2 presigned URL | OWN-02 | `type:feature` `area:api` `prio:P0` `phase:1` | TV2 | M | BSC-010 |
-| BSC-075 | Rate limiting (`@nestjs/throttler`) cho auth + hold | — | `type:task` `area:api` `prio:P0` `phase:1` | TV1 | S | BSC-010 |
+| BSC-073 | Health endpoint `GET /api/v1/health` (không auth, `SELECT 1`) & `/api/v1/health/ping` | — | `type:feature` `area:api` `prio:P0` `phase:1` | TV1 | S | — |
+| BSC-074 | Upload R2 presigned URL & multipart proof private | OWN-02 CUS-09 | `type:feature` `area:api` `prio:P0` `phase:1` | TV2 | M | BSC-010 |
+| BSC-075 | Rate limiting (`AuthRequestGuard` cho auth + giới hạn hold trong transaction) | — | `type:task` `area:api` `prio:P0` `phase:1` | TV1 | S | BSC-010 |
 | BSC-076 | Quên / đặt lại mật khẩu | CUS-16 | `type:feature` `area:api` `area:web` `prio:P1` `phase:4` | TV1 | M | BSC-053 |
 | BSC-077 | Cron auto-complete booking (`confirmed` → `completed`) | — | `type:feature` `area:api` `prio:P0` `phase:2` | TV2 | S | BSC-024 |
 | BSC-078 | Cron nhắc lịch trước 24h (`reminders_sent_at`) | CUS-14 | `type:feature` `area:api` `prio:P1` `phase:2` | TV2 | S | BSC-024 |
