@@ -1,6 +1,6 @@
 # 11 – Hợp đồng API
 
-> **Phiên bản:** 1.19.1 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.20.0 | **Cập nhật lần cuối:** 2026-11-21
 >
 > **Quy tắc:** Cập nhật tài liệu này TRƯỚC khi chia việc FE/BE. OpenAPI spec là nguồn sự thật.
 
@@ -130,7 +130,8 @@ GET    /api/v1/auth/google/callback   OAuth callback
 POST   /api/v1/auth/forgot-password   Gửi email đặt lại mật khẩu (luôn trả 204, không lộ email có tồn tại)
 POST   /api/v1/auth/reset-password    Đặt mật khẩu mới bằng token trong email
 POST   /api/v1/auth/verify-email      Xác thực email bằng token (CUS-01)
-POST   /api/v1/auth/resend-verification  Gửi lại email xác thực
+POST   /api/v1/auth/ws-token          Cấp token WebSocket ngắn hạn từ cookie access_token (200)
+POST   /api/v1/auth/resend-verification  Gửi lại email xác thực (CUS-01 – thiết kế, chưa có handler ở BE)
 ```
 
 > **Thông tin user hiện tại:** dùng `GET /api/v1/users/me` (mục Users), **không** có `GET /auth/me` — trước đây tài liệu liệt kê cả hai cho cùng một chức năng. `/auth/*` chỉ còn các endpoint xác thực/phiên, không trả hồ sơ.
@@ -166,14 +167,14 @@ PATCH  /api/v1/users/me/password      Đổi mật khẩu (cần mật khẩu c�
 GET    /api/v1/venues                 Tìm kiếm venue (public, query: q, provinceId, provinceCode, wardId, wardCode, districtId, sportId, sportIds, amenityIds, minPrice, maxPrice, minRating, sort, page, limit)
 GET    /api/v1/venues/map             Venue cho bản đồ (public, GST-02): chỉ id, slug, name, lat, lng, giá thấp nhất, điểm TB; lọc cùng bộ lọc /venues + bbox (minLat, maxLat, minLng, maxLng, wardId, wardCode)
 GET    /api/v1/venues/:slug           Chi tiết venue (public, URL SEO — nhận cả slug lẫn UUID)
-POST   /api/v1/venues                 [Owner] Tạo venue
-PATCH  /api/v1/venues/:id             [Owner] Cập nhật venue (gồm sportIds, amenityIds)
-DELETE /api/v1/venues/:id             [Owner] Xoá venue
+POST   /api/v1/venues                 [Owner/Admin] Tạo venue (Admin bắt buộc kèm ownerId → approved)
+PATCH  /api/v1/venues/:id             [Owner/Admin] Cập nhật venue (gồm sportIds, amenityIds)
+DELETE /api/v1/venues/:id             [Owner/Admin] Xoá mềm venue
 PATCH  /api/v1/venues/:id/status      [Admin] Duyệt/từ chối/đình chỉ/đưa lại hàng đợi (body: status, reason?)
-GET    /api/v1/venues/:id/slots       Lấy trạng thái slots theo ngày
-POST   /api/v1/venues/:id/images      [Owner] Upload ảnh venue (multipart, xem mục Uploads)
-PATCH  /api/v1/venues/:id/images/order  [Owner] Sắp xếp lại ảnh (body: imageIds theo thứ tự)
-DELETE /api/v1/venues/:id/images/:imageId  [Owner] Xoá ảnh
+GET    /api/v1/venues/:id/slots       Lấy trạng thái slots theo ngày (kèm header Cache-Control: no-store & X-Grid-Version)
+POST   /api/v1/venues/:id/images      [Owner/Admin] Upload ảnh venue (multipart, xem mục Uploads)
+PATCH  /api/v1/venues/:id/images/order  [Owner/Admin] Sắp xếp lại ảnh (body: imageIds theo thứ tự)
+DELETE /api/v1/venues/:id/images/:imageId  [Owner/Admin] Xoá ảnh
 GET    /api/v1/owner/venues           [Owner] Venue của tôi (mọi trạng thái, kèm lý do bị từ chối)
 GET    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Chính sách huỷ và cọc (OWN-10)
 PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính sách huỷ và cọc
@@ -227,7 +228,7 @@ PUT    /api/v1/owner/venues/:id/cancellation-policy  [Owner] Cập nhật chính
 - DTO aliases, query schema Owner/Admin, ZodValidationPipe và metadata Swagger trong `apps/api/src/modules/venues/dto` đã gắn vào controller/service thật ở Bước 5–7. Bước 4 có test contract riêng; các bước sau bổ sung HTTP/PostgreSQL thật.
 - Query page/limit nhận JSON number nguyên dương an toàn hoặc chuỗi chỉ chứa chữ số 0–9; không nhận chuỗi rỗng, khoảng trắng, số mũ, số thập phân, boolean, array/object (kể cả query lặp). page tối đa Number.MAX_SAFE_INTEGER; limit tối đa 100. Schema query strict, status chỉ có ở Admin. q sau trim rỗng giữ "" và repository hiểu là không lọc. Đây là quy tắc parse chung dùng khi viết DTO/Swagger/test.
 
-- POST: name trim 2–200, address trim 5–500, description tùy chọn tối đa 5000, provinceId/districtId UUID bắt buộc, lat/lng JSON number hữu hạn bắt buộc trong [-90,90]/[-180,180]; sportIds/amenityIds mặc định []. `ownerId` chỉ Admin được gửi (bắt buộc với Admin, tạo hộ chủ sân → approved); Owner gửi ownerId → 400 VALIDATION_ERROR.
+- POST: name trim 2–200, address trim 5–500, description tùy chọn tối đa 5000, `provinceId` UUID bắt buộc, `wardId` UUID bắt buộc cho venue mới (`districtId` nullable legacy theo ĐVHC 2 cấp), lat/lng JSON number hữu hạn bắt buộc trong [-90,90]/[-180,180]; sportIds/amenityIds mặc định []. `ownerId` chỉ Admin được gửi (bắt buộc với Admin, tạo hộ chủ sân → approved); Owner gửi ownerId → 400 VALIDATION_ERROR.
 - PATCH: chỉ các trường POST, tất cả tùy chọn; object phải có ít nhất một field. Mảng không gửi giữ nguyên, [] xoá liên kết; loại ID trùng trước ghi. `ownerId` chỉ Admin được gửi để đổi chủ sân; Owner gửi ownerId → 400 VALIDATION_ERROR. Field ngoài allowlist (status/slug/cache/deletedAt/coverUrl...) → 400 VALIDATION_ERROR. Không nhận null cho field input; description="" bỏ nội dung.
 - Tỉnh/quận và danh mục phải tồn tại; quận thuộc tỉnh, đúng type; PATCH validate cặp cuối sau ghép dữ liệu. Toạ độ chuẩn hoá 7 chữ số thập phân trước so sánh/lưu; không ép null hoặc chuỗi rỗng thành 0.
 - POST trả 201; PATCH/update-status và các GET trả 200; DELETE đầu tiên thành công trả 204 không body.
@@ -299,14 +300,19 @@ PATCH  /api/v1/courts/:id                        [Owner] Cập nhật court
 DELETE /api/v1/courts/:id                        [Owner] Xoá court
 GET    /api/v1/courts/:id/opening-hours          Giờ mở cửa
 PUT    /api/v1/courts/:id/opening-hours          [Owner] Cập nhật giờ mở cửa
+GET    /api/v1/owner/venues/:id/opening-hours    [Owner] Alias cấp cơ sở: giờ mở cửa 7 ngày
+PUT    /api/v1/owner/venues/:id/opening-hours    [Owner] Alias cấp cơ sở: ghi giờ mở cửa cho toàn bộ sân con
 GET    /api/v1/courts/:id/pricing-rules          Pricing rules
 POST   /api/v1/courts/:id/pricing-rules          [Owner] Tạo pricing rule
 PATCH  /api/v1/courts/:id/pricing-rules/:ruleId  [Owner] Cập nhật rule
 DELETE /api/v1/courts/:id/pricing-rules/:ruleId  [Owner] Xoá rule
+GET    /api/v1/owner/venues/:id/pricing-rules    [Owner] Alias cấp cơ sở: bảng giá các sân con
+POST   /api/v1/owner/venues/:id/pricing-rules    [Owner] Alias cấp cơ sở: tạo khung giá cho toàn bộ sân con
+DELETE /api/v1/owner/pricing-rules/:ruleId       [Owner] Xoá khung giá đồng thời trên các sân con cùng cơ sở
 POST   /api/v1/courts/:id/blackouts              [Owner] Tạo blackout
 GET    /api/v1/courts/:id/blackouts              [Owner] Danh sách blackout (query: from, to)
 DELETE /api/v1/courts/:id/blackouts/:blackoutId  [Owner] Xoá blackout
-GET    /api/v1/owner/timeline                    [Owner] Dữ liệu OwnerTimeline (OWN-06)
+GET    /api/v1/owner/timeline                    [Owner/Admin] Dữ liệu OwnerTimeline (OWN-06)
 ```
 
 `GET /owner/timeline?venueId=&date=YYYY-MM-DD` trả mọi court của venue kèm block đã đặt, hold, blackout và giờ mở cửa của ngày đó (blackout được lọc theo ngày truy vấn để không ảnh hưởng các ngày khác). Realtime dùng chung room `join_venue`.
@@ -317,14 +323,18 @@ Quản lý khoảng khoá sân (Blackout Period – OWN-08):
 
 ### Bookings
 ```
-GET    /api/v1/bookings                  [Customer] Lịch sử của tôi (query: status, page, limit)
-GET    /api/v1/bookings/:id              Chi tiết booking
-POST   /api/v1/bookings/hold             [Customer] Tạo hold (body: courtId, start, end)
-PATCH  /api/v1/bookings/:id/cancel       Huỷ booking (body: reason)
+GET    /api/v1/bookings                  [Customer] Lịch sử của tôi (query: status, from, to, page, limit)
+GET    /api/v1/bookings/:id              [Customer/Owner/Admin] Chi tiết booking
+POST   /api/v1/bookings/hold             [Customer] Tạo hold (body: { courtId, start, end } hoặc { courtId, slots } hoặc { courtId, startAt, blocks })
+GET    /api/v1/bookings/hold/:id         [Customer] Trạng thái giữ chỗ hiện tại kèm remainingMs
+DELETE /api/v1/bookings/holds/:holdId    [Customer] Nhả giữ chỗ chủ động (204 No Content)
+POST   /api/v1/bookings/:id/confirm      [Customer] Xác nhận hold còn hiệu lực sang confirmed (200)
+POST   /api/v1/bookings/quote            [Public] Xem báo giá tạm tính & tiền cọc ({ total, deposit, depositPercent, ranges, unavailable })
+PATCH  /api/v1/bookings/:id/cancel       [Customer/Owner/Admin] Huỷ booking (body: reason; có alias POST /bookings/:id/cancel)
 GET    /api/v1/bookings/:id/cancellation-preview  [Customer] Xem điều kiện huỷ và số tiền hoàn trước khi xác nhận (CUS-11)
-PATCH  /api/v1/bookings/:id/no-show      [Owner] Đánh dấu no-show
-GET    /api/v1/owner/bookings            [Owner] Xem bookings của venue mình (query: venueId, courtId, status, from, to, q, page, limit)
-POST   /api/v1/owner/bookings/manual     [Owner] Tạo booking thủ công (body: courtId, start, end, customerId hoặc guestName + guestPhone); tạo thẳng `confirmed`, thanh toán `cash`
+PATCH  /api/v1/bookings/:id/no-show      [Owner/Admin] Đánh dấu no-show (có alias POST /owner/bookings/:id/no-show)
+GET    /api/v1/owner/bookings            [Owner/Admin] Xem bookings của venue mình (query: venueId, courtId, status, from, to, q, page, limit)
+POST   /api/v1/owner/bookings/manual     [Owner/Admin] Tạo booking thủ công (body: { courtId, start, end, customerId?, guestName?, guestPhone?, note?, totalPrice? }); tạo thẳng confirmed, thanh toán cash
 ```
 
 `GET /owner/bookings` nhận `q` tuỳ chọn để tìm không phân biệt hoa/thường theo mã booking, tên/số điện thoại khách và tên court; bộ lọc được áp dụng trước phân trang.
@@ -351,7 +361,7 @@ Snapshot ngân hàng lưu tại payment lúc hold, không đọc tài khoản hi
 **Hoàn tiền (refund):** MVP **không** có endpoint hoàn tiền tự động và **không** gọi API ngân hàng. Khi booking đã thanh toán (`payments.status = 'completed'`) bị huỷ theo chính sách, Owner chuyển khoản lại cho khách **ngoài hệ thống**, rồi đánh dấu để đóng sổ:
 
 ```
-PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiền (body: note?); payments.status → 'refunded'
+PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiền (body: note?); payments.status → 'refunded' (Thiết kế — chưa triển khai handler ở BE)
 ```
 
 > Ai đặt `payments.status = 'refunded'`? **Chỉ endpoint này** (do Owner bấm sau khi đã chuyển tiền thật). Các cron tự động **không** bao giờ đặt `refunded` — cron huỷ hold hết hạn và booking quá hạn duyệt chỉ đặt `expired`/`cancelled`, vì lúc đó Owner chưa xác nhận nhận tiền nên hệ thống không ghi nhận đã thu. Xem bảng ánh xạ trạng thái ở [05-booking-and-realtime.md](05-booking-and-realtime.md#trạng-thái-thanh-toán-đi-kèm).
@@ -364,19 +374,21 @@ PATCH  /api/v1/owner/payments/:id/refund   [Owner] Đánh dấu đã hoàn tiề
 
 GET public nhận UUID Venue, page/limit1–100 (mặc định1/20), thứ tự createdAt DESC/id DESC; chỉ Venue approved/chưa xoá và review visible, còn lại404. ReviewPublic không có bookingId/customerId/isVisible/updatedAt/PII. Admin query venueId/isVisible/page/limit; isVisible query chỉ true/false, bỏ qua trả cả hai; ReviewAdmin thêm bookingId/customerId/isVisible/updatedAt. Cả hai list trả data+meta(page,limit,total,totalPages), count/page cùng snapshot REPEATABLE READ READ ONLY; trang vượt phạm vi giữ total và trả[]. Mọi response no-store.
 
-Mutation khoá user active/version trước Venue FOR UPDATE; create khoá tiếp Court SHARE→booking UPDATE/recheck, moderation khoá review UPDATE/recheck. Trigger hiện có tính visible AVG làm tròn2 chữ số/count trong cùng transaction, rỗng0/0; không đổi trạng thái duyệt Venue. Visibility chỉ Admin, strict boolean JSON; cùng giá trị200 no-op, không đổi updatedAt/audit. Thay đổi thật ghi audit chỉ isVisible cùng transaction; Owner403. Review lịch sử vẫn tạo/kiểm duyệt khi Venue suspended/deleted nhưng không xuất hiện public. Deadlock/serialization retry tối đa3, hết lượt503; lỗi nội bộ500 không lộ SQL. Code/test và ranh giới FE/Phase2. Owner reply/list thuộc BSC-067, chưa triển khai trong lượt này.
+Mutation khoá user active/version trước Venue FOR UPDATE; create khoá tiếp Court SHARE→booking UPDATE/recheck, moderation khoá review UPDATE/recheck. Trigger hiện có tính visible AVG làm tròn2 chữ số/count trong cùng transaction, rỗng0/0; không đổi trạng thái duyệt Venue. Visibility chỉ Admin, strict boolean JSON; cùng giá trị200 no-op, không đổi updatedAt/audit. Thay đổi thật ghi audit chỉ isVisible cùng transaction; Owner403. Review lịch sử vẫn tạo/kiểm duyệt khi Venue suspended/deleted nhưng không xuất hiện public. Deadlock/serialization retry tối đa3, hết lượt503; lỗi nội bộ500 không lộ SQL. Owner list/reply và luồng báo cáo vi phạm (`OWN-13` / `ADM-10`) đã triển khai đầy đủ trong `ReviewsController`.
 ```
 GET    /api/v1/venues/:id/reviews        Danh sách review (public, chỉ review đang hiển thị)
 POST   /api/v1/reviews                   [Customer] Đánh giá (cần booking completed)
 PATCH  /api/v1/reviews/:id/visibility    [Admin] Ẩn/hiện review
-GET    /api/v1/owner/reviews             [Owner] Đánh giá tại venue mình (query: venueId, replied, page, limit)
-PATCH  /api/v1/owner/reviews/:id/reply   [Owner] Tạo hoặc sửa phản hồi (body: ownerReply)
-GET    /api/v1/admin/reviews             [Admin] Mọi review kể cả đang ẩn (query: venueId, isVisible, page, limit)
+GET    /api/v1/owner/reviews             [Owner/Admin] Đánh giá tại venue mình (query: venueId, replied, page, limit)
+PATCH  /api/v1/owner/reviews/:id/reply   [Owner/Admin] Tạo hoặc sửa phản hồi (body: ownerReply)
+POST   /api/v1/owner/reviews/:id/report  [Owner/Admin] Báo cáo đánh giá xấu (multipart field file ≤ 5 MB hoặc JSON { reason, imageUrl? })
+GET    /api/v1/admin/reviews             [Admin] Mọi review kể cả đang ẩn (query: venueId, isVisible, reportStatus, rating, q, page, limit)
+PATCH  /api/v1/admin/reviews/:id/report  [Admin] Duyệt hoặc từ chối báo cáo đánh giá (body: { action: 'approve' | 'reject' })
 ```
 
-`replied` lọc theo trạng thái phản hồi (`true` đã phản hồi, `false` chưa phản hồi). Danh sách Owner chỉ trả review thuộc venue của Owner hiện tại; lọc venue và trạng thái phải thực hiện trước phân trang. Phản hồi dài 1–2000 ký tự sau khi trim. API chỉ cho Owner sở hữu venue chứa review tạo/sửa phản hồi; Admin có thể quản lý review trên mọi venue. Venue ngoài quyền hoặc review không tồn tại trả `404 NOT_FOUND`.
+`replied` lọc theo trạng thái phản hồi (`true` đã phản hồi, `false` chưa phản hồi). Danh sách Owner chỉ trả review thuộc venue của Owner hiện tại; lọc venue và trạng thái phải thực hiện trước phân trang. Phản hồi dài 1–2000 ký tự sau khi trim. Báo cáo đánh giá xấu nhận `reason` (trim 5–1000 ký tự) kèm ảnh minh chứng tuỳ chọn; từ chối nếu đánh giá đang `pending` hoặc `resolved` (`409 ALREADY_EXISTS`). Admin `approve` chuyển `reportStatus → 'resolved'` và ẩn review (`isVisible = false`), `reject` chuyển `reportStatus → 'dismissed'` và giữ nguyên hiển thị; đồng thời ghi `audit_logs` (`review.reported` / `review.report_moderated`). Venue ngoài quyền hoặc review không tồn tại trả `404 NOT_FOUND`.
 
-> **Schema:** `reviews.owner_reply` và `reviews.owner_replied_at` đã có trong `04-database-schema.md`.
+> **Schema:** `reviews.owner_reply`, `reviews.owner_replied_at` và các cột báo cáo `report_status`, `report_reason`, `report_image_url`, `reported_at`, `reported_by` (migration `0016`) đã có trong `04-database-schema.md`.
 
 ### Favorites
 ```
@@ -387,7 +399,7 @@ DELETE /api/v1/favorites/:venueId        [Customer] Bỏ yêu thích (idempotent
 
 ### Notifications
 ```
-GET    /api/v1/notifications             Thông báo của tôi (query: unreadOnly, page, limit)
+GET    /api/v1/notifications             Thông báo của tôi (query: unreadOnly, type, page, limit)
 GET    /api/v1/notifications/unread-count  Số thông báo chưa đọc
 PATCH  /api/v1/notifications/:id/read    Đánh dấu đã đọc
 POST   /api/v1/notifications/read-all    Đánh dấu tất cả đã đọc
@@ -416,7 +428,7 @@ GET    /api/v1/owner-applications/me     [Customer/Owner] Trạng thái hồ sơ
   "idCardUrl": "https://example.com/owner-document.jpg"
 }
 ```
-`lat`, `lng`, `taxCode`, `note` và `idCardUrl` không bắt buộc. `lat` (-90 đến 90), `lng` (-180 đến 180) lưu tọa độ ghim mốc trên bản đồ định vị (tận dụng OpenStreetMap/Photon miễn phí). `phone` phải là số Việt Nam 10 chữ số; `bankBin` là mã BIN ngân hàng VietQR. Endpoint trả `OwnerApplication` kèm trạng thái hồ sơ. Các trường ngân hàng, mã số thuế và giấy tờ cần được bổ sung vào database bằng migration có version trước khi backend triển khai hợp đồng này; mock FE lưu hồ sơ trong trình duyệt để phục vụ demo.
+`lat`, `lng`, `taxCode`, `note` và `idCardUrl` không bắt buộc. `lat` (-90 đến 90), `lng` (-180 đến 180) lưu tọa độ ghim mốc trên bản đồ định vị (tận dụng bản đồ MapLibre/PMTiles và Photon geocoding miễn phí). `phone` phải là số Việt Nam 10 chữ số; `taxCode` chấp nhận 10/12 (CCCD)/13 chữ số (`migration 0014`); `bankBin` là mã BIN ngân hàng VietQR. Endpoint trả `OwnerApplication` kèm trạng thái hồ sơ. Các cột `lat`, `lng`, `bank_bin`, `bank_name`, `account_no`, `account_name` đã được bổ sung đầy đủ vào `owner_applications` qua migrations `0011` và `0015`.
 Chỉ tài khoản `customer` được gửi hồ sơ; request của Guest trả `401 UNAUTHORIZED`, request của Owner/Admin trả `403 FORBIDDEN`.
 
 > **Schema:** bảng `owner_applications` đã có trong `04-database-schema.md`. Khi Admin duyệt, `users.role` đổi từ `customer` sang `owner` trong cùng transaction.
@@ -482,7 +494,8 @@ Response: { "data": { "id": "uuid", "url": "https://..." } }
 
 ### Health
 ```
-GET    /api/v1/health                    Kiểm tra sống (public, không cần đăng nhập)
+GET    /api/v1/health                    Kiểm tra sống kèm SELECT 1 tới DB (public, không cần đăng nhập)
+GET    /api/v1/health/ping               Kiểm tra liveness nhanh không chạm DB (public)
 ```
 
 ### Admin
@@ -491,14 +504,22 @@ GET    /api/v1/admin/users               Danh sách user (query: role, status, q
 GET    /api/v1/admin/venues              Danh sách venue (query: status, q, page, limit; để trống status lấy tất cả)
 GET    /api/v1/admin/owner-applications  Hồ sơ chủ sân (query: status, page, limit; mặc định status=pending, truyền status=all để lấy tất cả)
 PATCH  /api/v1/admin/owner-applications/:id  Duyệt/từ chối hồ sơ (body: status, reviewNote)
-GET    /api/v1/admin/bookings            Toàn bộ booking (query: status, venueId, customerId, from, to, page, limit)
+GET    /api/v1/admin/bookings            Toàn bộ booking (query: status, venueId, customerId, q, from, to, page, limit)
 GET    /api/v1/admin/stats               Thống kê tổng quan (query: from, to, groupBy=day|week|month)
+GET    /api/v1/admin/analytics           Phân tích chuyên sâu theo trạng thái, môn thể thao và cơ sở (không nhận query params)
 GET    /api/v1/admin/audit-logs          Audit log (query: actorId, action, entityType, from, to, page, limit)
 ```
 
-`GET /admin/stats` trả: tổng booking theo trạng thái, doanh thu, số venue theo trạng thái, số user theo vai trò, và chuỗi theo thời gian cho biểu đồ (ADM-08). Audit log chỉ có `GET`, không có endpoint sửa hoặc xoá (ADM-09).
+`GET /admin/stats` trả: tổng booking theo trạng thái, doanh thu, số venue theo trạng thái, số user theo vai trò, và chuỗi theo thời gian cho biểu đồ (ADM-08).
 
-## Sự kiện WebSocket (Socket.IO)
+`GET /admin/analytics` trả dữ liệu phân tích tổng hợp (ADM-08, không nhận query params) gồm:
+- `byStatus`: mảng phân bổ toàn bộ booking theo trạng thái (`{ status: string, count: number }`).
+- `bySport`: mảng phân bổ lượt đặt theo môn thể thao (`{ sport: string, bookings: number }`).
+- `byVenue`: mảng đóng góp theo từng cơ sở chưa xoá (`{ venueId: string, name: string, bookings: number, revenue: number }`), trong đó `revenue` là tổng `bookings.total_price` của các đơn `confirmed`/`completed` phục vụ popup xem chi tiết doanh thu và cơ sở trên Admin Dashboard.
+
+Audit log chỉ có `GET`, không có endpoint sửa hoặc xoá (ADM-09).
+
+## Sự kiện WebSocket (Socket.IO – namespace `/ws`)
 
 Tên room dùng đúng quy ước ở [05-booking-and-realtime.md](05-booking-and-realtime.md#kênh-channelroom):
 `venue:{venueId}:date:{yyyy-mm-dd}`, `user:{userId}`, `owner:{userId}`.
@@ -517,4 +538,6 @@ Room `user:`/`owner:` do server gán sau khi xác thực JWT, client không tự
 | `payment_rejected` | Server → Client | `user:{userId}` | `{ bookingId, reason }` | Owner từ chối thanh toán |
 | `notification_created` | Server → Client | `user:{userId}` | `{ id, type, title }` | Có thông báo mới, FE tăng badge chưa đọc |
 
-**Xác thực socket:** JWT gửi qua `handshake.auth.token`. Token sai/hết hạn → server ngắt kết nối với lỗi `UNAUTHORIZED`, **không** gán room nào. Không có kết nối ẩn danh cho realtime (khác với xem lịch công khai qua REST).
+**Xác thực socket (`RealtimeSessionsService`):**
+- **Đã đăng nhập:** FE gọi `POST /api/v1/auth/ws-token` lấy token ngắn hạn và gửi qua `handshake.auth.token` (hoặc fallback cookie `access_token`). Token sai/hết hạn → server ngắt kết nối với lỗi `UNAUTHORIZED`, **không** gán room nào.
+- **Khách vãng lai (`GST-04`):** FE gửi `handshake.auth: { guest: true }` khi kết nối tới `/ws`; chỉ được phép emit `join_venue` / `leave_venue` để nhận `slot_updated` công khai, không join room cá nhân và mọi event khác bị chặn `UNAUTHORIZED`.

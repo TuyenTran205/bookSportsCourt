@@ -1,6 +1,6 @@
 # 06 – Bảo mật & Phân quyền
 
-> **Phiên bản:** 1.5.4 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.6.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Ma trận Role × Resource × Action
 
@@ -14,28 +14,29 @@
 |----------|-------|----------|-------|-------|
 | **Venues** – List/Search | ✅ | ✅ | ✅ | ✅ |
 | **Venues** – Detail | ✅ | ✅ | ✅ | ✅ |
-| **Venues** – Create | ❌ | ❌ | ✅ (chờ duyệt) | ❌ |
-| **Venues** – Update/Delete | ❌ | ❌ | ✅ (sở hữu) | ❌ |
+| **Venues** – Create | ❌ | ❌ | ✅ (chờ duyệt) | ✅ (tạo hộ Owner kèm `ownerId`, trạng thái `approved`) |
+| **Venues** – Update/Delete | ❌ | ❌ | ✅ (sở hữu) | ✅ (sửa/xoá hộ Owner, hỗ trợ đổi `ownerId`) |
 | **Venues** – Approve/Reject/Suspend/Đưa lại hàng đợi | ❌ | ❌ | ❌ | ✅ |
 | **Courts** – CRUD | ❌ | ❌ | ✅ (sở hữu venue) | ✅ |
 | **Bookings** – Create Hold | ❌ | ✅ | ❌ | ❌ |
-| **Bookings** – View own | ❌ | ✅ | ✅ (venue của mình) | ❌ |
+| **Bookings** – View own | ❌ | ✅ | ✅ (venue của mình) | ✅ (`GET /bookings/:id` hỗ trợ Admin) |
 | **Bookings** – View all | ❌ | ❌ | ❌ | ✅ |
-| **Bookings** – Cancel | ❌ | ✅ (theo chính sách) | ✅ (sở hữu venue) | ❌ |
-| **Bookings** – Manual create / No-show | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
+| **Bookings** – Cancel | ❌ | ✅ (theo chính sách) | ✅ (sở hữu venue) | ✅ (hỗ trợ huỷ đơn quản trị) |
+| **Bookings** – Manual create / No-show | ❌ | ❌ | ✅ (sở hữu venue) | ✅ (hỗ trợ thao tác quản trị) |
 | **Payments** – Upload/thay proof | ❌ | ✅ (booking của mình: held/pending trong hạn hold hoặc pending_payment/submitted trước review deadline) | ❌ | ❌ |
 | **Payments** – View | ❌ | ✅ (booking của mình) | ✅ (venue của mình) | ❌ |
 | **Payments** – Approve/Reject | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
 | **Payment account / Cancellation policy** – Edit | ❌ | ❌ | ✅ (sở hữu venue) | ❌ |
 | **Owner applications** – Submit/View own | ❌ | ✅ | ✅ (chỉ xem) | ❌ (dùng route Admin riêng) |
 | **Owner applications** – Approve/Reject | ❌ | ❌ | ❌ | ✅ |
-| **Favorites** – CRUD | ❌ | ✅ | ✅ | ❌ |
+| **Favorites** – CRUD | ❌ | ✅ | ✅ | ✅ (`JwtAuthGuard`, mọi user đã đăng nhập) |
 | **Notifications** – View/Mark read | ❌ | ✅ | ✅ | ✅ |
-| **Reviews** – Reply | ❌ | ❌ | ✅ (venue của mình) | ❌ |
+| **Reviews** – Reply | ❌ | ❌ | ✅ (venue của mình) | ✅ |
+| **Reviews** – Report (báo cáo đánh giá xấu) | ❌ | ❌ | ✅ (venue của mình, kèm lý do & ảnh minh chứng) | ✅ (tạo hộ / duyệt hoặc bác bỏ qua `PATCH /admin/reviews/:id/report`) |
 | **Catalogs (sports, amenities, areas)** – Read | ✅ | ✅ | ✅ | ✅ |
 | **Catalogs (sports, amenities, areas)** – CRUD | ❌ | ❌ | ❌ | ✅ |
-| **Owner reports** – View | ❌ | ❌ | ✅ (venue của mình) | ❌ |
-| **Admin stats** – View | ❌ | ❌ | ❌ | ✅ |
+| **Owner reports** – View | ❌ | ❌ | ✅ (venue của mình) | ❌ (riêng `OwnerReportsController` cho phép `owner`, `admin`) |
+| **Admin stats & analytics** – View | ❌ | ❌ | ❌ | ✅ |
 | **Pricing Rules** – CRUD | ❌ | ❌ | ✅ (sở hữu court) | ✅ |
 | **Users** – View/Edit own | ❌ | ✅ | ✅ | ✅ |
 | **Users** – Admin list/detail | ❌ | ❌ | ❌ | ✅ (projection tối thiểu, list che phone) |
@@ -100,14 +101,15 @@ app.enableCors({
 
 ## CSRF Protection
 
-- Access/Refresh Token lưu trong cookie `httpOnly; Secure; SameSite=Lax`.
+- Access/Refresh Token lưu trong cookie `httpOnly; Secure; SameSite=Lax` (với `Path=/api/v1`).
+- **Hint cookies (`bsc_session`, `bsc_role`):** `AuthCookies` (`apps/api/src/modules/auth/auth-http.ts`) thiết lập thêm 2 cookie gợi ý với `httpOnly: false`, `Path=/`, `SameSite=Lax`, `Secure` ở staging/production để Edge `middleware.ts` ở FE điều hướng sớm theo role (không chứa bí mật; bảo mật thật luôn kiểm tra lại bằng JWT & DB ở BE).
 - **Bắt buộc dùng `Lax`, KHÔNG dùng `Strict`:** luồng đăng nhập Google OAuth là redirect cross-site (`accounts.google.com` → callback của BE). Với `SameSite=Strict`, trình duyệt không gửi cookie `state`/phiên theo request redirect đó, khiến callback không đọc được `state` và OAuth luôn thất bại. `Lax` vẫn gửi cookie cho điều hướng top-level bằng GET, nên luồng OAuth chạy đúng.
 - `Lax` đã đủ chặn CSRF cho mutation: các request `POST/PUT/PATCH/DELETE` cross-site **không** được gửi kèm cookie.
 - Với mutation quan trọng (thanh toán), thêm header `X-Request-Origin` và kiểm tra ở BE (phòng thủ nhiều lớp).
 
 ## Rate Limiting (MVP – in-memory)
 
-**Runtime Auth hiện tại:** AuthRequestGuard tự triển khai giới hạn chung 10 request/IP/5 phút cho các route Auth, không thêm dependency throttler trong BSC-076. AuthService giới hạn thêm 100 tác vụ forgot đang chờ; vượt giới hạn trả 429 chung. Không tin forwarding header tự khai. Đoạn Throttler bên dưới là ví dụ thiết kế, không phải bằng chứng global limiter đã được cài hoặc hoạt động.
+**Runtime Auth hiện tại:** `AuthRequestGuard` (`apps/api/src/modules/auth/auth-http.ts`) tự triển khai giới hạn chung mặc định **20 request/IP/5 phút** (cấu hình qua biến môi trường `AUTH_RATE_LIMIT_MAX`) cho các route Auth, không thêm dependency throttler trong BSC-076. `AuthService` giới hạn thêm 100 tác vụ forgot đang chờ; vượt giới hạn trả 429 chung. Không tin forwarding header tự khai. Đoạn Throttler bên dưới là ví dụ thiết kế, không phải bằng chứng global limiter đã được cài hoặc hoạt động.
 
 ```typescript
 // Dùng @nestjs/throttler – không cần Redis
@@ -168,20 +170,49 @@ WHERE customer_id = $1 AND court_id = $2
 .env.production ← KHÔNG commit, lưu trong CI/CD secrets
 ```
 
-**Biến môi trường bắt buộc:**
+**Biến môi trường theo `apps/api/src/config/app-config.ts`:**
+
+1. **Bắt buộc khi khởi động (fail-fast nếu thiếu/sai):**
 ```env
 DATABASE_URL=
-JWT_ACCESS_SECRET=
-JWT_REFRESH_SECRET=
+JWT_ACCESS_SECRET=       # tối thiểu 32 ký tự
+JWT_REFRESH_SECRET=      # tối thiểu 32 ký tự
+ALLOWED_ORIGINS=         # danh sách origin HTTP(S) hợp lệ, phân tách bằng dấu phẩy
+```
+
+2. **Tuỳ chọn / theo từng tính năng:**
+```env
+PORT=3001
+NODE_ENV=development     # development | test | staging | production
+AUTH_FRONTEND_URL=
+AUTH_RATE_LIMIT_MAX=20
+OWNER_REVIEW_TIMEOUT_HOURS=2
+
+# Google OAuth (bắt buộc đủ bộ khi bật OAuth; key 64 hex chars khác JWT secrets)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=
+OAUTH_STATE_ENCRYPTION_KEY=
+
+# Cloudflare R2
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY=
 R2_SECRET_KEY=
 R2_BUCKET=
+R2_PROOF_BUCKET=
+R2_PUBLIC_URL=
+
+# Email & Outbox Workers
+MAIL_PROVIDER=resend     # resend | gmail
 RESEND_API_KEY=
-SENTRY_DSN=
-ALLOWED_ORIGINS=
+MAIL_FROM=
+SMTP_HOST=
+SMTP_PORT=
+SMTP_SECURE=
+SMTP_USER=
+SMTP_PASS=
+BUSINESS_MAIL_ENABLED=false
+REALTIME_OUTBOX_ENABLED=false
 ```
 
 ## Checklist trước khi deploy

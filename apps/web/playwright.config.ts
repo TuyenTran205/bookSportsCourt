@@ -32,13 +32,22 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } },
     },
   ],
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-    env: {
-      NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING ?? 'enabled',
+  webServer: [
+    {
+      command: 'pnpm --filter @bsc/api dev',
+      url: 'http://127.0.0.1:3001/api/v1/health/ping',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      cwd: '../..',
     },
-  },
+    {
+      command: 'pnpm dev',
+      url: 'http://localhost:3000',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+      env: {
+        NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING ?? 'enabled',
+      },
+    },
+  ],
 });

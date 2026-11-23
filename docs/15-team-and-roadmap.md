@@ -1,6 +1,6 @@
-﻿# 15 – Phân công & Lộ trình
+# 15 – Phân công & Lộ trình
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-11-21
 >
 > **Giả định:** 12 tuần khả dụng (điền thông tin thực tế vào mục Giả định ở cuối).
 
@@ -67,8 +67,8 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 | 13 | Court CRUD + Opening Hours + Pricing Rules API | TV1 | L |
 | 14 | Trang đăng nhập/đăng ký FE | TV3 | M |
 | 15 | Header + Footer + Layout trang khách | TV4 | M |
-| 16 | Trang tìm sân: search, filter, danh sách | TV3 | L |
-| 17 | Bản đồ Leaflet | TV3 | M |
+| 16 | Trang tìm sân: search, filter (ĐVHC 2 cấp Tỉnh/Xã), danh sách, so sánh sân | TV3 | L |
+| 17 | Bản đồ MapLibre GL JS + PMTiles (nâng cấp từ Leaflet theo ADR-032) | TV3 | M |
 | 18 | Trang chi tiết Venue | TV3 | M |
 
 **Tiêu chí hoàn thành:** Đăng nhập được, tìm kiếm venue, xem chi tiết. OpenAPI-1 published.
@@ -125,9 +125,9 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 | 35 | Admin: user management, audit log | TV4 | M |
 | 36 | Thanh toán chuyển khoản QR: người đặt chuyển khoản qua QR chủ sân, upload ảnh xác nhận | TV2 | L |
 | 37 | Owner duyệt/từ chối thanh toán + cron huỷ quá hạn | TV2 | M |
-| 38 | Email thông báo (Resend) | TV1 | M |
-| 39 | Đánh giá sân | TV3 | M |
-| 40 | Google OAuth | TV1 | M |
+| 38 | Email thông báo (Resend / Gmail SMTP theo ADR-033) | TV1 | M |
+| 39 | Đánh giá sân + Owner phản hồi/báo cáo vi phạm + Admin kiểm duyệt | TV3 | M |
+| 40 | Google OAuth (OIDC code/PKCE) | TV1 | M |
 
 **Tiêu chí hoàn thành:** Admin hoạt động, luồng thanh toán QR + Owner duyệt chạy được, email đi được.
 
@@ -142,11 +142,11 @@ Trước khi FE bắt đầu tích hợp API, BE phải publish OpenAPI spec:
 
 | # | Việc | Người | Estimate |
 |---|------|-------|---------|
-| 41 | **Dựng môi trường staging** (Vercel Preview + Railway staging + Neon branch) | TV4 | M |
+| 41 | **Dựng môi trường staging** (Vercel Preview + Render/Railway staging + Neon branch) | TV4 | M |
 | 42 | E2E test Playwright (flow đặt sân) | TV3 | L |
 | 43 | Test demo 2 trình duyệt race condition | TV2+TV3 | M |
 | 44 | SEO: metadata, structured data | TV3 | S |
-| 45 | Deploy production lên Vercel + Railway | TV4 | M |
+| 45 | Deploy production lên Vercel + Render/Railway | TV4 | M |
 | 46 | Seed dữ liệu demo | TV1 | S |
 | 47 | Quay video demo | Cả nhóm | M |
 | 48 | Viết báo cáo (dựa theo `17-report-outline.md`) | Cả nhóm | L |

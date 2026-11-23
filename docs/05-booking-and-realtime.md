@@ -1,8 +1,8 @@
 # 05 – Đặt sân & Realtime
 
-> **Phiên bản:** 1.4.3 | **Cập nhật lần cuối:** 2026-11-17 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
+> **Phiên bản:** 1.5.0 | **Cập nhật lần cuối:** 2026-11-21 | **Trạng thái:** TÀI LIỆU SỐNG CÒN
 
-**Email Gmail SMTP (ADR-032):** SMTP không có idempotency: lỗi chưa rõ kết quả hoặc lease hết hạn sau freeze chuyển delivery_unknown ngay; chỉ retry từ chối tạm thời rõ ràng. Snapshot lưu provider, legacy là Resend; không chuyển provider khi retry. Không cam kết exactly-once. Xem [hướng dẫn Gmail SMTP](gmail-smtp-setup.md).
+**Email Gmail SMTP (ADR-033):** SMTP không có idempotency: lỗi chưa rõ kết quả hoặc lease hết hạn sau freeze chuyển delivery_unknown ngay; chỉ retry từ chối tạm thời rõ ràng. Snapshot lưu provider, legacy là Resend; không chuyển provider khi retry. Không cam kết exactly-once. Xem [hướng dẫn Gmail SMTP](gmail-smtp-setup.md).
 
 **Bổ sung Phase 4 đã chốt:** snapshot/deadline/retry/lock/outbox. Protocol này cần được Phase 2 và Phase 4 cùng triển khai; chưa xác nhận runtime đã có. Các ví dụ SQL dưới đây minh hoạ chuyển trạng thái, không thay thế lock/recheck/outbox trong contract.
 
@@ -288,9 +288,11 @@ async cancelStalePendingPayments() {
 }
 ```
 
-### Cron dọn dữ liệu hết hạn (hằng ngày 03:00)
+### Cron dọn dữ liệu hết hạn (thiết kế – hằng ngày 03:00)
 
-Xoá theo lô các bản ghi không còn giá trị nghiệp vụ, tránh bảng phình vô hạn. Danh sách bảng và điều kiện xoá đầy đủ ở [04-database-schema.md](04-database-schema.md#job-dọn-dữ-liệu-hết-hạn).
+> **Hiện trạng code:** File `cleanup-expired-data.schedule.ts` (03:00 hằng ngày cho `auth_tokens`, `refresh_tokens`, `notifications`, `audit_logs`, `bookings` expired) **chưa được tạo** trong `apps/api/src/schedules/`. Hiện hệ thống mới chạy 2 interval worker dọn dẹp theo bảng cụ thể: `GoogleOAuthService` (`@Interval(3600000)` xoá `oauth_states` hết hạn > 24h) và `ProofCleanupService` (`@Interval(60000)` xử lý `storage_cleanup_jobs`).
+
+Thiết kế dự kiến để xoá theo lô các bản ghi không còn giá trị nghiệp vụ, tránh bảng phình vô hạn (xem [04-database-schema.md](04-database-schema.md#job-dọn-dữ-liệu-hết-hạn)):
 
 ```typescript
 @Cron('0 3 * * *', { timeZone: 'Asia/Ho_Chi_Minh' })
@@ -362,9 +364,19 @@ function specificity(rule: PricingRule): number {
 
 > `priority` chỉ là tiêu chí phá vỡ thế cân bằng trong cùng một mức, **không** được vượt qua mức. Nếu chỉ sort theo `priority` thì một rule chung có `priority` cao sẽ đè `date_override`, trái với thứ tự trên.
 
-**Không khớp rule ⇒ lỗi, không phải giá 0.** Mọi sân phải có ít nhất một rule chung phủ toàn bộ khung giờ hoạt động; `calculatePrice` ném `PRICING_RULE_NOT_FOUND` khi thiếu. Xem thêm ràng buộc dữ liệu ở [03-database-schema.md](03-database-schema.md).
+**Không khớp rule ⇒ lỗi, không phải giá 0.** Mọi sân phải có ít nhất một rule chung phủ toàn bộ khung giờ hoạt động; `calculatePrice` ném `PRICING_RULE_NOT_FOUND` khi thiếu. Xem thêm ràng buộc dữ liệu ở [04-database-schema.md](04-database-schema.md).
 
-## 6. Realtime (Socket.IO)
+## 6. Realtime (Socket.IO – namespace `/ws`)
+
+`RealtimeGateway` lắng nghe ở namespace `/ws` (`@WebSocketGateway({ namespace: '/ws', cors: { origin: true, credentials: true } })`).
+
+### Xác thực kết nối & Transactional Outbox
+
+1. **Xác thực (`RealtimeSessionsService`):**
+   - Kiểm tra `origin` thuộc `ALLOWED_ORIGINS`.
+   - **Người dùng đã đăng nhập:** gửi short-lived token lấy từ `POST /api/v1/auth/ws-token` qua `handshake.auth.token` (hoặc fallback cookie `access_token`). Server xác minh JWT, `sessionVersion` trong DB và theo dõi các packet tiếp theo; đồng thời tự join `user:{userId}` (và `owner:{userId}` nếu `role === 'owner'`).
+   - **Khách vãng lai (GST-04):** gửi `handshake.auth: { guest: true }` → chỉ được phép emit `join_venue` / `leave_venue` để nhận `slot_updated` công khai, không join room cá nhân và mọi event khác bị chặn `UNAUTHORIZED`.
+2. **Transactional Outbox (`outbox_deliveries` + `RealtimeOutboxService`):** Mọi mutation booking/payment ghi sự kiện (`booking_created`, `payment_submitted`, `booking_confirmed`, `booking_cancelled`, `payment_rejected`, `hold_expired`, `slot_refresh_requested`) vào `outbox_deliveries` trong cùng transaction DB. Khi `REALTIME_OUTBOX_ENABLED=true`, worker `@Interval(5000)` claim theo lease và phát qua Socket.IO **sau khi DB commit**, kết hợp cơ chế header `X-Grid-Version` trên `GET /venues/:id/slots` cho đồng bộ dự phòng.
 
 ### Kênh (Channel/Room)
 
@@ -372,15 +384,15 @@ Có **3 loại room**, đặt tên theo quy ước dưới đây. Mọi sự ki�
 
 | Room | Tên room | Cách tham gia | Sự kiện gửi vào |
 |------|----------|---------------|-----------------|
-| **Venue + ngày** | `venue:{venueId}:date:{yyyy-mm-dd}` | Client chủ động emit `join_venue` `{ venueId, date }` | `slot_updated` |
-| **Cá nhân** | `user:{userId}` | **Tự động** khi socket xác thực thành công (không cần emit) | `booking_confirmed`, `booking_cancelled`, `payment_rejected`, `notification_created` |
-| **Chủ sân** | `owner:{userId}` | **Tự động** khi socket xác thực thành công **và** `users.role = 'owner'` | `booking_created`, `payment_submitted` |
+| **Venue + ngày** | `venue:{venueId}:date:{yyyy-mm-dd}` | Client chủ động emit `join_venue` `{ venueId, date }` (cả khách vãng lai lẫn đã đăng nhập) | `slot_updated` |
+| **Cá nhân** | `user:{userId}` | **Tự động** khi socket đã xác thực kết nối thành công (không cần emit) | `booking_confirmed`, `booking_cancelled`, `payment_rejected`, `hold_expired`, `notification_created` |
+| **Chủ sân** | `owner:{userId}` | **Tự động** khi socket đã xác thực thành công **và** `users.role = 'owner'` | `booking_created`, `payment_submitted` |
 
 Ví dụ: `venue:uuid-abc:date:2026-10-15`, `user:uuid-cust-1`, `owner:uuid-own-1`
 
 **Quy tắc:**
-- `join_venue` **bắt buộc** kiểm tra `date` đúng định dạng `yyyy-mm-dd` và `venueId` tồn tại; sai thì trả lỗi `INVALID_ROOM` và không join.
-- Client chỉ được join room venue của ngày mình đang xem; rời room cũ trước khi join room mới (`leave_venue`) để tránh rò rỉ dữ liệu giữa các ngày.
+- `join_venue` **bắt buộc** kiểm tra `date` đúng định dạng `yyyy-mm-dd` và `venueId` là UUID hợp lệ; sai thì trả `{ ok: false, error: 'INVALID_ROOM' }` và không join.
+- Client chỉ theo dõi một room venue+ngày tại một thời điểm: gateway tự động rời các room `venue:` cũ trước khi join room mới (và hỗ trợ `leave_venue`) để tránh rò rỉ dữ liệu giữa các ngày.
 - `user:` và `owner:` do **server** gán từ `socket.data.user.id` sau khi xác thực JWT — client **không** được tự emit để join room của người khác. Đây là ràng buộc bảo mật, không phải tiện ích.
 - Một tài khoản vừa là owner vừa đặt sân vẫn nhận đủ cả `user:` lẫn `owner:`.
 - Khi emit cho nhiều room (ví dụ cron huỷ booking), emit riêng cho từng room; không gộp.
@@ -400,20 +412,18 @@ interface SlotUpdatedPayload {
 
 **Nguyên tắc payload:** Chỉ gửi dữ liệu tối thiểu cần thiết để update, không gửi toàn bộ lịch.
 
-### Phía client (FE)
+### Phía client (FE – `SocketProvider`)
 ```typescript
-// Merge vào TanStack Query cache (v5)
-// LƯU Ý cú pháp: setQueryData nhận queryKey TRỰC TIẾP (mảng), KHÔNG phải object.
-// Chỉ các hàm nhận "filters" (invalidateQueries, refetchQueries, removeQueries…)
-// mới dùng dạng object { queryKey: [...] }.
-queryClient.setQueryData<SlotsData>(['slots', venueId, date], (old) => ({
-  ...old,
-  courts: old!.courts.map(court =>
-    court.id === payload.courtId
-      ? { ...court, slots: mergeSlots(court.slots, payload.slots) }
-      : court
-  )
-}));
+// apps/web/components/common/SocketProvider.tsx:
+// Khi nhận event từ namespace /ws (hoặc BroadcastChannel ở chế độ mock),
+// SocketProvider đồng bộ TanStack Query cache theo ngữ cảnh bằng `invalidateQueries`:
+queryClient.invalidateQueries({ queryKey: ['venues'] });
+queryClient.invalidateQueries({ queryKey: ['bookings'] });
+queryClient.invalidateQueries({ queryKey: ['owner', 'timeline'] });
+queryClient.invalidateQueries({ queryKey: ['owner', 'bookings'] });
+queryClient.invalidateQueries({ queryKey: ['owner', 'payments'] });
+queryClient.invalidateQueries({ queryKey: ['notifications'] });
+// Đồng thời thông báo tới các component đang đăng ký qua `subscribeToEvents(...)`.
 ```
 
 ### Xử lý mất kết nối

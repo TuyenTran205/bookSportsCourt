@@ -49,7 +49,7 @@ describe('Middleware security & route guard (TC-SEC)', () => {
     expect(res.headers.get('x-middleware-rewrite')).toContain('/not-found');
   });
 
-  it('TC-SEC-04: truy cập /owner/dashboard với role owner hoặc admin được phép truy cập', () => {
+  it('TC-SEC-04: truy cập /owner/dashboard với role owner được phép truy cập, role admin chuyển hướng về /admin/dashboard', () => {
     const ownerReq = createRequest('/owner/dashboard', {
       session: 'sess-owner',
       role: 'owner',
@@ -63,8 +63,8 @@ describe('Middleware security & route guard (TC-SEC)', () => {
       role: 'admin',
     });
     const adminRes = middleware(adminReq);
-    expect(adminRes.headers.get('location')).toBeNull();
-    expect(adminRes.headers.get('x-middleware-rewrite')).toBeNull();
+    expect(adminRes.status).toBe(307);
+    expect(adminRes.headers.get('location')).toBe('http://localhost:3000/admin/dashboard');
   });
 
   it('TC-MID-01: truy cập /notifications khi chưa đăng nhập bị chuyển hướng sang /login', () => {

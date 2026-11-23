@@ -10,9 +10,9 @@ khung giờ, duyệt đơn; Admin duyệt venue và kiểm duyệt nội dung.
 
 | Tầng | Stack |
 |------|-------|
-| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query v5, Zustand, Socket.IO client |
-| Backend | NestJS 10, Drizzle ORM, PostgreSQL 16, Socket.IO, `@nestjs/schedule` |
-| Hạ tầng | Neon (DB), Vercel (FE), Railway/Render (BE), Cloudflare R2 (ảnh), Resend (email) |
+| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS (Dark Mode `class`), shadcn/ui, TanStack Query v5, Zustand, `next-intl`, Socket.IO client, MapLibre GL JS + PMTiles, Recharts |
+| Backend | NestJS 10, Drizzle ORM, PostgreSQL 16 (`btree_gist`, `pg_trgm`, `unaccent`), Socket.IO (`/ws`), `@nestjs/schedule`, `jose` (JWT cookie `httpOnly`), Argon2id, Sharp, Google OAuth 2.0 (PKCE) |
+| Hạ tầng | Neon (DB), Vercel (FE), Render/Railway (BE), Cloudflare R2 (ảnh, PMTiles, font glyphs), Resend / Gmail SMTP (email) |
 
 Monorepo pnpm workspace + Turborepo: `apps/web` (FE), `apps/api` (BE), `packages/shared` (types/schema dùng chung).
 
@@ -48,6 +48,7 @@ pnpm dev
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | Kiểm tra kiểu |
 | `pnpm test` | Unit + integration test |
+| `pnpm test:e2e` | E2E Playwright (cần DB + BE + FE đang chạy) |
 | `pnpm --filter @bsc/api db:migrate` | Chạy migration |
 | `pnpm --filter @bsc/api db:seed` | Nạp dữ liệu mẫu |
 | `pnpm --filter @bsc/api db:studio` | Drizzle Studio |
@@ -63,6 +64,8 @@ pnpm dev
 | [04-database-schema.md](docs/04-database-schema.md) | Schema, ràng buộc chống trùng lịch |
 | [05-booking-and-realtime.md](docs/05-booking-and-realtime.md) | Vòng đời booking, cron, WebSocket |
 | [11-api-contract.md](docs/11-api-contract.md) | Hợp đồng API + sự kiện realtime |
+| [implemented-apis.md](docs/implemented-apis.md) | Danh mục 125 route handlers thực tế đã triển khai + `/ws` |
+| [demo-accounts.md](docs/demo-accounts.md) | Danh sách tài khoản demo sau khi chạy `db:seed` |
 | [12-coding-standards.md](docs/12-coding-standards.md) | Quy ước code, test |
 | [13-deployment-and-cost.md](docs/13-deployment-and-cost.md) | Deploy và chi phí |
 | [14-github-workflow.md](docs/14-github-workflow.md) | Nhánh, commit, PR |

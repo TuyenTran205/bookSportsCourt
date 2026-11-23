@@ -1,10 +1,10 @@
 # Gmail SMTP cho BookSportsCourt
 
-> **Phiên bản:** 1.0.0 | **Cập nhật lần cuối:** 2026-11-17
+> **Phiên bản:** 1.0.1 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Phạm vi
 
-Bổ sung transport cho BSC-045, dùng chung với xác thực email CUS-01 và khôi phục mật khẩu CUS-16. Mặc định vẫn là Resend. Không thay đổi endpoint, schema DB hoặc nghiệp vụ booking. Dependency được ghi trong ADR-032 trước khi cài đặt.
+Bổ sung transport cho BSC-045, dùng chung với xác thực email CUS-01 và khôi phục mật khẩu CUS-16. Mặc định vẫn là Resend. Không thay đổi endpoint, schema DB hoặc nghiệp vụ booking. Dependency được ghi trong ADR-033 trước khi cài đặt.
 
 ## Cấu hình
 

@@ -1,10 +1,10 @@
 # Tổng hợp API đã triển khai
 
-> **Phiên bản:** 1.16.0 | **Cập nhật lần cuối:** 2026-11-09
+> **Phiên bản:** 1.17.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Phạm vi
 
-Danh sách Auth/Users/Health/Venue CRUD dưới đây ghi nhận mốc 16 endpoint BSC-014. Sau tích hợp đã có thêm Catalogs/Courts/Owner applications/Venue extensions; Swagger runtime là nơi tra cứu toàn bộ route hiện tại. Ngày 2026-11-09 hoàn thành Đợt 1 — Core Booking & Time Slot Grid Engine (`apps/api/src/modules/bookings/`), gồm 7 REST API chuẩn + 3 API bổ trợ, chống trùng lịch bằng PostgreSQL GiST `EXCLUDE` constraint + `pg_advisory_xact_lock(hashtext(courtId))`.
+Danh sách dưới đây ghi nhận hiện trạng đầy đủ các module đang chạy trong `apps/api/src/modules/` (**125 route handlers** + `RealtimeGateway /ws` + 4 Cron schedules + Outbox/Cleanup workers). Swagger runtime (`/api/docs`) là nơi tra cứu chi tiết schema hiện tại. Ngày 2026-11-09 hoàn thành Đợt 1 Core Booking (`apps/api/src/modules/bookings/`), tiếp theo là Đợt 2 (Owner Timeline, Blackouts, Manual Booking, Realtime `/ws`) và Đợt 3 (Notifications, Favorites, Owner Reports, Owner/Admin Reviews + Report Moderation, Avatar Upload, Admin Analytics).
 
 - Base URL local mặc định: `http://localhost:3001/api/v1` (port theo cấu hình).
 - Body JSON, riêng POST proof dùng multipart/form-data; tên trường camelCase. Xác thực bằng cookie httpOnly hoặc Bearer header (Optional JWT trên public slots).
@@ -27,7 +27,7 @@ Module `bookings` triển khai trọn vẹn tại `apps/api/src/modules/bookings
 | PATCH | /bookings/:id/cancel | Customer / Owner / Admin | Hủy đơn đặt theo chính sách `cancellation_policies` (Customer chỉ hủy khi cách giờ chơi ≥ `cancelBeforeHours`, mặc định 24h; Owner/Admin kèm lý do). Hỗ trợ alias `POST /bookings/:id/cancel`. |
 | GET | /bookings/:id/cancellation-preview | Customer | Xem trước điều kiện hủy: khả năng hủy `canCancel`, hạn chót `deadline`, phần trăm và số tiền hoàn cọc. |
 | PATCH | /bookings/:id/no-show | Owner / Admin | Đánh dấu khách không đến sau khi giờ bắt đầu của đơn `confirmed` đã qua. |
-| POST | /bookings/quote | Authenticated | Báo giá trước khi đặt: kiểm tra giờ mở cửa, tính tổng tiền server-side từ `pricing_rules`, tiền cọc từ cấu hình `venues.deposit_type`. |
+| POST | /bookings/quote | Public | Báo giá trước khi đặt: kiểm tra giờ mở cửa, tính tổng tiền server-side từ `pricing_rules`, tiền cọc từ `cancellation_policies.deposit_percent`; trả `{ total, deposit, depositPercent, ranges, unavailable }`. |
 
 Hệ thống Cron chạy nền trong module:
 - `@Cron(CronExpression.EVERY_MINUTE)`: Quét và giải phóng các hold quá hạn (`status = 'held' AND expires_at <= now()`), chuyển trạng thái payment sang `expired`, dùng `pg_try_advisory_xact_lock` an toàn trên môi trường nhiều instance.
@@ -50,16 +50,20 @@ POST /auth/forgot-password và POST /auth/reset-password dùng lại API hiện 
 
 Không auto-link theo email; trùng email chưa liên kết409, provider đã liên kết đọc role/status/version DB, user mới chỉ Customer. State tiêu thụ trước network, code lỗi/deny cần bắt đầu lại; invalid state400, token401, email/status403, provider503. No-store/no-referrer; rate guard429, PKCE mã hoá key riêng, user/account/refresh nguyên tử. Code, test và cấu hình/smoke còn thiếu. Chưa thử Google Cloud/account thật; không có explicit account linking trong MVP.
 
-## Đánh giá – BSC-046/072
+## Đánh giá & Báo cáo vi phạm – BSC-046/072/067 & migration 0016
 
 | Method | Endpoint (/api/v1) | Hành vi |
 |---|---|---|
 | POST | /reviews | Customer active; strict bookingId/rating1–5/comment?; chỉ completed đúng chủ; 201 ReviewAdmin, 422 REVIEW_NOT_ALLOWED, 409 ALREADY_EXISTS |
 | GET | /venues/:id/reviews | Public UUID Venue approved/chưa xoá; chỉ visible, page/limit; 200 ReviewPublic[]+meta, không có dữ liệu định danh Customer/booking |
-| GET | /admin/reviews | Admin active; venueId/isVisible/page/limit strict, gồm review ẩn; 200 ReviewAdmin[]+meta |
+| GET | /admin/reviews | Admin active; venueId/isVisible/reportStatus/rating/q/page/limit strict, gồm review ẩn; 200 ReviewAdmin[]+meta |
 | PATCH | /reviews/:id/visibility | Chỉ Admin, body isVisible boolean; 200 ReviewAdmin, retry cùng giá trị no-op, audit/cache nguyên tử |
+| GET | /owner/reviews | Owner/Admin; lọc theo venueId, replied (true/false), phân trang; trả danh sách đánh giá kèm trạng thái báo cáo |
+| PATCH | /owner/reviews/:id/reply | Owner/Admin; tạo hoặc cập nhật phản hồi của chủ sân (`ownerReply`) |
+| POST | /owner/reviews/:id/report | Owner/Admin; báo cáo đánh giá xấu kèm lý do (`5..1000` ký tự) và ảnh minh chứng tuỳ chọn (`multipart` field `file` ≤ 5 MB hoặc `imageUrl`); ghi audit `review.reported` |
+| PATCH | /admin/reviews/:id/report | Admin; duyệt (`approve` → `resolved` + ẩn review) hoặc bác bỏ (`reject` → `dismissed`); ghi audit `review.report_moderated` |
 
-Cookie auth cho private, no-store tất cả response. BE suy venue/customer, map comment→content/null; Venue UPDATE lock trước mutation, trigger tính visible average2 chữ số/count. Owner không ẩn/hiện; Owner list/reply BSC-067 chưa có trong lượt này. Code/test/FE handoff; Swagger/OpenAPI thiết kế0.7.0, chưa phải nghiệm thu toàn Phase4 hoặc FE.
+Cookie auth cho private, no-store tất cả response. BE suy venue/customer, map comment→content/null; Venue UPDATE lock trước mutation, trigger tính visible average2 chữ số/count. Owner không tự ẩn/hiện mà gửi báo cáo cho Admin xử lý.
 
 ## Booking và thống kê Admin – BSC-068/069
 
@@ -69,6 +73,7 @@ Email background BSC-045 đã có MailTransport dùng chung Auth, worker email o
 |---|---|---|
 | GET | /admin/bookings | Admin active; status/venueId/customerId/from/to/page/limit strict; ngày Việt Nam lọc start; 200 BookingAdmin[]+meta, lịch sử qua Venue/Court xoá mềm |
 | GET | /admin/stats | Admin active; from/to/groupBy day/week/month; 200 AdminStats, booking/population/thu/hoàn/series/data quality theo contract |
+| GET | /admin/analytics | Admin active (không nhận query params); 200 AdminAnalytics ({ byStatus: [{ status, count }], bySport: [{ sport, bookings }], byVenue: [{ venueId, name, bookings, revenue }] }) |
 
 Hai response no-store, shared projection/nullability. Ngày inclusive≤366, mặc định tháng Việt Nam; snapshot count/series nhất quán. Gross theo payment.amount/paidAt, refund theo refundAmount/refundedAt, gồm cash, không dùng tổng giá booking; net âm hợp lệ. Population và legacy excludedPaymentCount toàn cục; không bịa dữ liệu thiếu. Guest401, sai role403, query400, unsafe integer503. Giải thích code và kiểm thử. Migration0009 thêm ba index, đã áp dụng vào DB local; không coi FE Dashboard/Phase2 integration đã nghiệm thu.
 
@@ -121,7 +126,7 @@ Cron mỗi5 phút huỷ review quá hạn thành cancelled/cancelled, không ref
 
 Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sách Venue nhận query phân trang; public detail nhận slug/UUID.
 
-| Method | Endpoint | X?c th?c / quy?n | Input | Th?nh c?ng |
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
 |---|---|---|---|---|
 | POST | `/api/v1/auth/register` | Công khai | `fullName`, `email`, `phone`, `password`, `confirmPassword` | 201, hồ sơ Customer; không tự đăng nhập |
 | POST | `/api/v1/auth/login` | Công khai | `email`, `password`, `rememberMe?` | 200, hồ sơ user + hai cookie |
@@ -130,8 +135,11 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sá
 | POST | `/api/v1/auth/forgot-password` | Công khai | `email` | 204, xử lý gửi email nền |
 | POST | `/api/v1/auth/reset-password` | Token đặt lại mật khẩu | `token`, `password`, `confirmPassword` | 204, đổi mật khẩu và xoá cookie |
 | POST | `/api/v1/auth/verify-email` | Token xác thực email | `token` | 204, cập nhật thời điểm xác thực email |
+| POST | `/api/v1/auth/ws-token` | Cookie `access_token` | Không có | 200, token WebSocket ngắn hạn cho namespace `/ws` |
 | GET | `/api/v1/users/me` | Cookie `access_token`; tài khoản active, cả ba role | Không có | 200, hồ sơ hiện tại từ DB |
-| GET | `/api/v1/health` | Công khai | Không có | 200, trạng thái API và kết nối DB |
+| POST | `/api/v1/users/me/avatar` | Cookie `access_token`; tài khoản active | `multipart/form-data` (field `file` ≤ 5 MB) | 200, cập nhật ảnh đại diện trên R2/storage |
+| GET | `/api/v1/health` | Công khai | Không có | 200, trạng thái API và kết nối DB (`SELECT 1`) |
+| GET | `/api/v1/health/ping` | Công khai | Không có | 200, liveness nhanh không chạm DB |
 | POST | `/api/v1/venues` | Cookie `access_token`; Owner active đúng chủ hoặc Admin (kèm `ownerId`) | `name`, `address`, `provinceId`, `districtId`, `lat`, `lng`, `description?`, `sportIds?`, `amenityIds?`, `ownerId?` (chỉ Admin) | 201, OwnerVenueResponse; Owner → pending, Admin tạo hộ → approved; Owner gửi `ownerId` → 400 |
 | GET | `/api/v1/owner/venues` | Cookie; Owner active | Query page/limit | 200, danh sách của mình và meta; có trạng thái/reason |
 | GET | `/api/v1/admin/venues` | Cookie; Admin active | Query status/q/page/limit; không truyền status → mọi trạng thái còn sống | 200, private projection đủ duyệt và meta |
@@ -193,20 +201,38 @@ Các đường dẫn dưới đây đã bao gồm prefix `/api/v1`. Hai danh sá
 > - `GET /users/me`, `POST /auth/login`, `POST /auth/register`, `PATCH /users/me` trả **trực tiếp hồ sơ** trong `data` (không bọc `{ user }`) và **không** kèm `ownerProfile`.
 > - `GET /venues` nhận thêm `provinceCode`/`wardCode` (mã địa danh) và tự quy đổi sang `provinceId`/`districtId`.
 
-POST Venue dùng strict allowlist; ownerId/status/slug do server quyết định. Kiểm tra địa lý và danh mục, tạo Venue cùng liên kết trong một transaction; lỗi 400 VALIDATION_ERROR, 401 UNAUTHORIZED/TOKEN_EXPIRED, 403 FORBIDDEN/ACCOUNT_SUSPENDED, 409 ALREADY_EXISTS. Giải thích: [Bước 5](bsc-014-step-05-create-venue.md), [Bước 6](bsc-014-step-06-read-venues.md), [Bước 7](bsc-014-step-07-update-and-delete.md), [Bước 8](bsc-014-step-08-admin-moderation.md). Public search/map chưa triển khai.
+POST Venue dùng strict allowlist; ownerId/status/slug do server quyết định. Kiểm tra địa lý và danh mục, tạo Venue cùng liên kết trong một transaction; lỗi 400 VALIDATION_ERROR, 401 UNAUTHORIZED/TOKEN_EXPIRED, 403 FORBIDDEN/ACCOUNT_SUSPENDED, 409 ALREADY_EXISTS. Public search (`GET /venues`) và map (`GET /venues/map`) đã triển khai đầy đủ theo mô hình ĐVHC 2 cấp. Giải thích: [Bước 5](bsc-014-step-05-create-venue.md), [Bước 6](bsc-014-step-06-read-venues.md), [Bước 7](bsc-014-step-07-update-and-delete.md), [Bước 8](bsc-014-step-08-admin-moderation.md).
 
-### 6. Bookings & Slots (9 endpoints)
+### 6. Bookings, Slots, Owner Timeline & Blackouts
 | Method | Endpoint | Xác thực / quyền | Input | Thành công |
 |---|---|---|---|---|
 | GET | `/api/v1/venues/:id/slots` | Công khai (tuỳ chọn cookie) | Query `date=YYYY-MM-DD` | 200, ma trận slot 30 phút theo ngày (`available/past/blocked/booked/held`, `mine: true/false`, giá) |
-| POST | `/api/v1/bookings/hold` | Customer | `CreateHoldInput` (`courtId`, `slots`, `idempotencyKey`, `note?`) | 201 (hoặc 200 nếu idempotent), booking `held` 10 phút + `transferCode` + thông tin ngân hàng |
-| GET | `/api/v1/bookings` | Customer | Query `status?`, `page`, `limit` | 200, danh sách booking của khách kèm phân trang |
+| POST | `/api/v1/bookings/hold` | Customer | `CreateHoldInput` (`courtId`, `start/end` hoặc `slots` hoặc `startAt/blocks`) | 201 (hoặc 200 nếu idempotent), booking `held` 10 phút + `transferCode` + thông tin ngân hàng |
+| GET | `/api/v1/bookings` | Customer | Query `status?`, `from?`, `to?`, `page`, `limit` | 200, danh sách booking của khách kèm phân trang |
 | GET | `/api/v1/bookings/:id` | Customer (chính chủ) / Owner / Admin | Không có | 200, chi tiết booking (court, venue, customer mask phone, payment) |
-| GET | `/api/v1/bookings/:id/cancellation-preview` | Customer / Owner | Không có | 200, xem trước điều kiện huỷ và số tiền cọc được hoàn |
-| PATCH | `/api/v1/bookings/:id/cancel` | Customer (chính chủ) / Owner | `CancelBookingInput` (`reason?`) | 200, huỷ booking (cập nhật payments sang `cancelled` hoặc `refunded`) |
-| GET | `/api/v1/owner/bookings` | Owner | Query `venueId?`, `courtId?`, `status?`, `from?`, `to?`, `page`, `limit` | 200, danh sách booking tại các sân của chủ sân |
-| POST | `/api/v1/owner/bookings/manual` | Owner | `CreateManualBookingInput` (`courtId`, `slots`, `guestName`, `guestPhone`, `note?`) | 201, tạo booking `confirmed`, thanh toán `cash` completed |
-| PATCH | `/api/v1/bookings/:id/no-show` | Owner | Không có | 200, đánh dấu khách không đến (sau giờ bắt đầu) |
+| GET | `/api/v1/bookings/:id/cancellation-preview` | Customer | Không có | 200, xem trước điều kiện huỷ và số tiền cọc được hoàn |
+| PATCH | `/api/v1/bookings/:id/cancel` | Customer / Owner / Admin | `CancelBookingInput` (`reason?`) | 200, huỷ booking (có alias `POST /bookings/:id/cancel`) |
+| GET | `/api/v1/owner/bookings` | Owner / Admin | Query `venueId?`, `courtId?`, `status?`, `from?`, `to?`, `q?`, `page`, `limit` | 200, danh sách booking tại các sân của chủ sân |
+| POST | `/api/v1/owner/bookings/manual` | Owner / Admin | `{ courtId, start, end, guestName?, guestPhone?, customerId?, note?, totalPrice? }` | 201, tạo booking `confirmed`, thanh toán `cash` completed |
+| PATCH | `/api/v1/bookings/:id/no-show` | Owner / Admin | Không có | 200, đánh dấu khách không đến (có alias `POST /owner/bookings/:id/no-show`) |
+| GET | `/api/v1/owner/timeline` | Owner / Admin | Query `venueId`, `date=YYYY-MM-DD` | 200, lưới OwnerTimeline theo sân × giờ |
+| GET / POST / DELETE | `/api/v1/courts/:id/blackouts` (`/:blackoutId`) | Owner | `{ start, end, reason? }` | 200 / 201 / 204, quản lý khoảng khoá bảo trì & phát `slot_updated` |
+
+### 7. Notifications, Favorites & Owner Reports (Đợt 3)
+| Method | Endpoint | Xác thực / quyền | Input | Thành công |
+|---|---|---|---|---|
+| GET | `/api/v1/notifications` | Đã đăng nhập (`JwtAuthGuard`) | Query `unreadOnly?`, `type?`, `page`, `limit` | 200, danh sách thông báo của tài khoản hiện tại + `meta` |
+| GET | `/api/v1/notifications/unread-count` | Đã đăng nhập | Không có | 200, `{ count }` số thông báo chưa đọc |
+| PATCH | `/api/v1/notifications/:id/read` | Đã đăng nhập | Param `id` | 200, đánh dấu 1 thông báo đã đọc |
+| POST | `/api/v1/notifications/read-all` | Đã đăng nhập | Không có | 200, đánh dấu toàn bộ thông báo chưa đọc thành đã đọc |
+| GET | `/api/v1/favorites` | Đã đăng nhập | Không có | 200, danh sách cơ sở yêu thích (`VenueListItem[]`) |
+| PUT / DELETE | `/api/v1/favorites/:venueId` | Đã đăng nhập | Param `venueId` | 200, thêm/bỏ yêu thích idempotent |
+| GET | `/api/v1/owner/reports/revenue` | Owner / Admin | Query `from`, `to`, `groupBy=day\|week\|month`, `venueId?`, `courtId?` | 200, `{ summary, series }` doanh thu VND theo kỳ |
+| GET | `/api/v1/owner/reports/occupancy` | Owner / Admin | Query `from`, `to`, `venueId?`, `courtId?`, `compareWith?` | 200, tỷ lệ lấp đầy slot & giờ cao điểm |
+
+### 8. Realtime WebSocket Gateway (`/ws`)
+- **`RealtimeGateway` (`apps/api/src/modules/realtime/realtime.gateway.ts`):** Lắng nghe ở namespace `/ws`, gắn `RealtimeSessionsService` kiểm tra `ALLOWED_ORIGINS`, JWT `ws-token` (từ `POST /auth/ws-token`) / cookie `access_token`, hoặc chế độ khách vãng lai `{ guest: true }` (chỉ nhận `join_venue` / `leave_venue`).
+- **`RealtimeOutboxService`:** Claim sự kiện từ `outbox_deliveries` (`@Interval(5000)` khi `REALTIME_OUTBOX_ENABLED=true`) và phát tới đúng room `venue:{venueId}:date:{yyyy-mm-dd}`, `user:{userId}`, `owner:{userId}`.
 
 ## Input và hành vi từng API
 
@@ -290,7 +316,7 @@ JwtAuthGuard đọc access cookie, xác minh JWT rồi đọc lại user từ DB
 | `emailVerifiedAt` | ISO datetime hoặc null |
 | `createdAt`, `updatedAt` | ISO datetime |
 
-Lỗi chính: 401 `UNAUTHORIZED`/`TOKEN_EXPIRED`, 403 `ACCOUNT_SUSPENDED`/`FORBIDDEN`. Đây là API đọc hồ sơ; chưa có API sửa hồ sơ.
+Lỗi chính: 401 `UNAUTHORIZED`/`TOKEN_EXPIRED`, 403 `ACCOUNT_SUSPENDED`/`FORBIDDEN`. Cập nhật hồ sơ và ảnh đại diện xem `PATCH /api/v1/users/me` và `POST /api/v1/users/me/avatar`.
 
 ### 9. Health
 
@@ -308,16 +334,20 @@ DB không sẵn sàng: HTTP 503 với code `DATABASE_UNAVAILABLE`.
 - Cookie có `HttpOnly`, `SameSite=Lax`, `Path=/api/v1`; `Secure` bật ở staging/production.
 - `rememberMe=true`: cookie có Max-Age tương ứng 15 phút/30 ngày; false: session cookie, hạn JWT vẫn giữ nguyên.
 - FE gọi API với `credentials: 'include'`; origin phải thuộc `ALLOWED_ORIGINS`. Request có Origin ngoài danh sách bị 403 `FORBIDDEN`; request không có Origin không bị chặn chỉ vì thiếu header này.
-- Bảy endpoint `/auth/*` dùng chung giới hạn **10 request/IP/5 phút**, lưu trong bộ nhớ một instance. Vượt giới hạn trả 429 `RATE_LIMIT_EXCEEDED`.
+- Các endpoint `/auth/*` (gắn `AuthRequestGuard`) dùng chung giới hạn mặc định **20 request/IP/5 phút** (cấu hình qua biến môi trường `AUTH_RATE_LIMIT_MAX`), lưu trong bộ nhớ một instance. Vượt giới hạn trả 429 `RATE_LIMIT_EXCEEDED`.
 - `/users/me` và `/health` không dùng AuthRequestGuard này. Không suy ra đã có global limiter từ limiter auth.
 - `/auth/*` và `/users/me` có `Cache-Control: no-store`.
 - Lỗi ngoài dự kiến có thể trả 500 `INTERNAL_ERROR`.
 
-## Phần chưa có endpoint thực tế
+## Phần chưa có endpoint / schedule thực tế
 
-Slots/hold, refund payment, upload ảnh Venue R2, API notifications, Owner review list/reply, favorites, reports và các API Admin khác ngoài danh sách trên vẫn cần triển khai/nghiệm thu nghiệp vụ. Payment GET/proof/Owner approve/reject/cron đã có. Email MVP/cron reminder có worker/test độc lập; consumer realtime, provider email và R2 thật chưa nghiệm thu. Socket.IO chưa có gateway nghiệp vụ trong AppModule. Hồ sơ cá nhân, danh mục, hồ sơ Owner, search/map, Court/giá và cấu hình nhận tiền/chính sách/ảnh Venue đã được ghép; kiểm thử khởi động cơ bản không thay thế nghiệm thu đầy đủ từng issue.
+So với tài liệu thiết kế ban đầu, hầu hết các API trong hợp đồng và socket gateway đã được triển khai (125 route handlers trong `apps/api/src/modules/`). Chỉ còn lại các hạng mục sau chưa có runtime handler/file:
+- `PATCH /api/v1/owner/payments/:id/refund` (đánh dấu đã hoàn tiền thủ công ngoài hệ thống — hiện mới chỉ có trong contract thiết kế)
+- `POST /api/v1/auth/resend-verification` (gửi lại email xác thực)
+- `GET /api/v1/venues/:id/reviews/summary` (endpoint bổ sung ngoài hợp đồng cho biểu đồ tóm tắt sao đánh giá)
+- `apps/api/src/schedules/cleanup-expired-data.schedule.ts` (cron dọn dữ liệu hết hạn 03:00 hằng ngày; hiện mới có dọn `oauth_states` và `storage_cleanup_jobs`)
 
-Guards và OwnershipService đã có là nền tảng phân quyền, không phải các endpoint độc lập. Các route kiểm thử trong `scripts/` không nằm trong danh sách API chạy thật.
+Các Guards (`JwtAuthGuard`, `OptionalJwtAuthGuard`, `RolesGuard`, `OwnershipGuard`, `RequestOriginGuard`, `AuthRequestGuard`, `ProofAccessGuard`) và `OwnershipService` là tầng bảo vệ phân quyền dùng chung. Các script kiểm thử trong `apps/api/scripts/` không nằm trong danh sách API chạy thật.
 
 ## Nguồn đối chiếu
 

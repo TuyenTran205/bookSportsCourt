@@ -1,6 +1,6 @@
 # 18 – Decision Log (ADR)
 
-> **Phiên bản:** 1.6.2 | **Cập nhật lần cuối:** 2026-11-17
+> **Phiên bản:** 1.7.0 | **Cập nhật lần cuối:** 2026-11-21
 >
 > Mọi quyết định kiến trúc quan trọng được ghi ở đây. **Thêm dependency mới PHẢI có ADR.**
 
@@ -13,30 +13,33 @@
 | 005 | Drizzle ORM |
 | 006 | Thanh toán chuyển khoản QR + Owner duyệt |
 | 007 | Monorepo pnpm + Turborepo |
-| 008 | Dark mode – Không làm ở MVP |
-| 009 | Danh mục khu vực dạng bảng `areas` |
+| 008 | Dark mode – Không làm ở MVP *(Superseded: Đã triển khai Dark Mode qua class `.dark` & CSS variables)* |
+| 009 | Danh mục khu vực dạng bảng `areas` *(Cập nhật mô hình 2 cấp ở ADR-022/023)* |
 | 010 | Owner duyệt booking bằng ảnh chuyển khoản |
 | 011 | UUID v7 làm khoá chính |
 | 012 | Bộ thư viện frontend (Next.js, Tailwind, shadcn/ui, TanStack Query, Zustand) |
 | 013 | Socket.IO cho realtime |
-| 014 | Leaflet + OpenStreetMap thay Google Maps |
-| 015 | Xác thực bằng JWT trong cookie httpOnly + Argon2 |
+| 014 | Leaflet + OpenStreetMap thay Google Maps *(Superseded by ADR-032: MapLibre GL JS + PMTiles)* |
+| 015 | Xác thực bằng JWT (`jose`) trong cookie httpOnly + Argon2id |
 | 016 | Cloudflare R2 để lưu ảnh |
-| 017 | Resend cho email giao dịch |
-| 018 | Sentry để giám sát lỗi |
+| 017 | Resend cho email giao dịch *(Mở rộng thêm tùy chọn Gmail SMTP ở ADR-033)* |
+| 018 | Sentry để giám sát lỗi *(Tùy chọn P1, hiện chưa cài SDK)* |
 | 019 | Vercel + Railway/Render + Neon |
-| 020 | Bộ công cụ kiểm thử (Vitest, Supertest, Playwright) |
+| 020 | Bộ công cụ kiểm thử (Vitest, Node.js test runner, Supertest, Playwright) |
 | 021 | Sinh mã QR phía client |
-| 022 | Quy tắc kiểm duyệt, slug và xoá mềm Venue |
-| 023 | Dependency hỗ trợ DB/Swagger khi tích hợp backend |
-| 024 | Contract Phase 4: snapshot, proof private, lock protocol, session và outbox PostgreSQL |
-| 025 | SDK S3 cho proof R2 private và Sharp để giải mã/chuẩn hoá ảnh |
-| 026 | Google OIDC code/PKCE với jose hiện có, state mã hoá và không auto-link email |
-| 027 | Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) |
-| 028 | @vitejs/plugin-react cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
+| 022 (ĐVHC) | Chọn nguồn bộ dữ liệu Đơn vị Hành chính Việt Nam mốc 03/11/2026 |
+| 023 (ĐVHC) | Bãi bỏ cấp huyện — chuyển sang mô hình 2 cấp (34 Tỉnh / 3.321 Xã-Phường) & Legacy Support |
+| 024 (UI) | Xây dựng `LocationSelector` bằng Radix Popover & Tailwind có sẵn (Zero Dependency) |
+| 025 (BSC-014) | Kiểm duyệt, slug và vòng đời xoá mềm Venue |
+| 026 (Infra) | Dependency hỗ trợ công cụ DB và Swagger khi tích hợp backend |
+| 024 (Phase 4) | Quy tắc tích hợp Phase 4: snapshot, proof private, lock protocol, session và outbox PostgreSQL |
+| 025 (R2/Sharp) | SDK S3 cho proof R2 private và Sharp để giải mã/chuẩn hoá ảnh |
+| 026 (OAuth) | Google OIDC code/PKCE với `jose` hiện có, state mã hoá và không auto-link email |
+| 027 | Bản đồ và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application) *(Engine nâng cấp sang MapLibre ở ADR-032)* |
+| 028 | `@vitejs/plugin-react` cho Vitest (sửa lỗi "Invalid hook call" khi chạy cả bộ test FE) |
 | 029 | `socket.io-client` cho realtime end-to-end ở FE |
 | 030 | Lưu tài khoản nhận tiền từ hồ sơ chủ sân và hỗ trợ CCCD 12 số |
-| 031 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với protomaps-leaflet và lớp nhãn Biển Đông |
+| 031 | Bản đồ Việt Nam tự chủ PMTiles trên Cloudflare R2 với `protomaps-leaflet` và lớp nhãn Biển Đông *(Superseded by ADR-032)* |
 | 032 | Nâng cấp Engine Bản đồ sang MapLibre GL JS (WebGL) và PMTiles Singleton Cache |
 | 033 | Gmail SMTP tùy chọn cho email giao dịch |
 
@@ -175,19 +178,17 @@ interface PaymentAdapter {
 
 ## ADR-008: Dark mode – Không làm ở MVP
 
-**Ngày:** 2026-09-30 | **Trạng thái:** Accepted
+**Ngày:** 2026-09-30 | **Trạng thái:** Superseded (Đã triển khai Dark Mode trong `globals.css`, `tailwind.config.ts` và `layout.tsx` – xem `07-design-system.md` Mục 13)
 
-**Quyết định:** MVP không có dark mode.
+**Quyết định:** MVP ban đầu chưa làm dark mode; hiện tại hệ thống đã triển khai hoàn chỉnh Dark Mode theo cơ chế class `.dark` (`darkMode: ['class']`) với bộ biến CSS token trong `apps/web/app/globals.css`, script chống nháy sáng (FOUC) ở `apps/web/app/layout.tsx` và nút chuyển đổi giao diện Sáng/Tối lưu trong `localStorage` (`bsc-theme`).
 
-**Lý do:** Tiết kiệm thời gian phát triển; design token đã dùng CSS variables sẵn sàng cho dark mode sau.
-
-**Khi nào thêm:** Phase 5+ nếu còn thời gian; phải tạo ADR mới và cập nhật `07-design-system.md` trước.
+**Lý do:** Design token đã dùng CSS variables từ đầu nên việc bổ sung bảng màu `.dark` (Slate-950/900) không phá vỡ component hiện có.
 
 ---
 
 ## ADR-009: Danh mục khu vực dạng bảng `areas`
 
-**Ngày:** 2026-10-07 | **Trạng thái:** Accepted
+**Ngày:** 2026-10-07 | **Trạng thái:** Accepted (Mở rộng sang mô hình ĐVHC 2 cấp Tỉnh – Xã bởi ADR-022 và ADR-023)
 
 **Quyết định:** Khu vực hai cấp (tỉnh/thành, quận/huyện) lưu trong bảng `areas`; `venues` dùng `province_id` và `district_id` thay cho hai cột TEXT.
 
@@ -234,7 +235,7 @@ interface PaymentAdapter {
 
 **Bối cảnh:** Cần chốt stack FE trước khi chia việc. Các lựa chọn này trước đây chỉ xuất hiện trong sơ đồ kiến trúc và code mẫu, chưa có ADR nào ghi lại lý do — vi phạm quy tắc "không thêm dependency khi chưa có ADR".
 
-**Quyết định:** Dùng **Next.js 14 (App Router) + React 18 + TypeScript**, **Tailwind CSS 3** với **shadcn/ui** (component copy vào repo, không phải thư viện đóng gói), icon **Lucide**, **TanStack Query v5** cho server state, **Zustand 4** cho UI state cục bộ, **Zod** cho validate dùng chung với BE, **next-intl** cho i18n, **Framer Motion** cho animation.
+**Quyết định:** Dùng **Next.js 14 (App Router) + React 18 + TypeScript**, **Tailwind CSS 3** với **shadcn/ui** (component copy vào repo, không phải thư viện đóng gói), icon **Lucide**, **TanStack Query v5** cho server state, **Zustand 4** cho UI state cục bộ, **Zod** cho validate dùng chung với BE, **next-intl** cho i18n, **`tailwindcss-animate` & CSS transitions** cho animation (không cài `framer-motion` để giữ bundle nhẹ).
 
 **Lý do:**
 - **Next.js App Router:** SEO cho trang sân là yêu cầu thật (khách tìm qua Google); Server Component cho trang chi tiết sân giảm JS gửi xuống máy khách. Deploy Vercel free tier khớp ngân sách đồ án.
@@ -276,7 +277,7 @@ interface PaymentAdapter {
 
 ## ADR-014: Leaflet + OpenStreetMap thay Google Maps
 
-**Ngày:** 2026-10-12 | **Trạng thái:** Accepted
+**Ngày:** 2026-10-12 | **Trạng thái:** Superseded by ADR-032 (Nâng cấp sang MapLibre GL JS + PMTiles trên Cloudflare R2)
 
 **Bối cảnh:** Cần bản đồ hiển thị vị trí sân (GST-02) và bản đồ chọn vị trí khi Owner tạo venue.
 
@@ -301,7 +302,7 @@ interface PaymentAdapter {
 
 **Bối cảnh:** Cần cơ chế phiên cho web app có cả SSR (Next.js) và client component, đồng thời chống XSS và CSRF.
 
-**Quyết định:** **Access token + refresh token** ký JWT, lưu trong cookie **`httpOnly; Secure; SameSite=Lax`**. Mật khẩu băm bằng **Argon2id**. Xác thực qua **Passport** với chiến lược JWT đọc token từ cookie.
+**Quyết định:** **Access token + refresh token** ký JWT (qua thư viện **`jose`**), lưu trong cookie **`httpOnly; Secure; SameSite=Lax`**. Mật khẩu băm bằng **Argon2id**. Xác thực qua **`AuthJwtService` + custom `JwtAuthGuard`** đọc token trực tiếp từ cookie (không dùng Passport).
 
 **Lý do:**
 - `httpOnly` khiến JS không đọc được token → XSS không lấy được phiên.
@@ -398,7 +399,7 @@ interface PaymentAdapter {
 
 **Bối cảnh:** Cần test cho logic nghiệp vụ (đặc biệt chống trùng lịch), API, và luồng người dùng.
 
-**Quyết định:** **Vitest** cho unit/integration, **Supertest** cho API, **Playwright** cho E2E. Test DB chạy trên PostgreSQL thật (không mock) vì ràng buộc `EXCLUDE` là thứ cần kiểm chứng.
+**Quyết định:** **Vitest** cho unit/integration ở FE (`apps/web`) và `packages/shared`, **Node.js built-in test runner (`node --test`) + Supertest** cho unit/API/DB tests ở BE (`apps/api`), **Playwright** cho E2E. Test DB chạy trên PostgreSQL thật (không mock) vì ràng buộc `EXCLUDE` là thứ cần kiểm chứng.
 
 **Lý do:**
 - **Vitest** nhanh, cấu hình đơn giản, chạy tốt với TypeScript/ESM.
@@ -501,7 +502,7 @@ interface PaymentAdapter {
 
 ## ADR-025: Kiểm duyệt và vòng đời Venue (BSC-014)
 
-**Ngày:** 2026-10-30 | **Trạng thái:** Accepted (thiết kế; API chưa triển khai)
+**Ngày:** 2026-10-30 | **Trạng thái:** Accepted (Đã triển khai trong `VenuesModule` và migration `0007`)
 
 **Bối cảnh:** Contract thiếu transition, nơi lưu reason, hành vi sửa/xoá và projection; ma trận quyền cho Admin tạo/sửa trái nhãn Owner của API.
 
@@ -525,7 +526,7 @@ interface PaymentAdapter {
 
 ## ADR-024: Quy tắc tích hợp Phase 4
 
-**Ngày:** 2026-11-06 | **Trạng thái:** Accepted (thiết kế; chờ migration/code/test)
+**Ngày:** 2026-11-06 | **Trạng thái:** Accepted (Đã triển khai qua migrations `0008`–`0010` và các module Phase 4)
 
 **Bối cảnh:** Phase 4 triển khai trước khi thành viên khác bàn giao Phase 2; tài liệu chưa chốt thay proof/deadline/retry, snapshot ngân hàng, thứ tự khoá và việc gửi sau commit. ADR-016 direct upload còn lệch multipart proof ở API contract.
 
@@ -574,7 +575,7 @@ Liên kết bằng (google,sub), không bằng email. Provider đã liên kết 
 
 ## ADR-027: Bản đồ Leaflet miễn phí và Geocoding hai chiều cho hồ sơ chủ sân (Owner Application)
 
-**Ngày:** 2026-11-10 | **Trạng thái:** Accepted
+**Ngày:** 2026-11-10 | **Trạng thái:** Accepted (Engine hiển thị bản đồ sau đó được nâng cấp sang MapLibre GL JS + PMTiles theo ADR-032; cơ chế tọa độ `owner_applications` và geocoding hai chiều giữ nguyên)
 
 **Bối cảnh:**
 Khi khách hàng đăng ký trở thành chủ sân (`/owner/apply`), trước đây chỉ có ô text nhập địa chỉ cơ sở kinh doanh, không có tọa độ GPS. Khi cơ sở được duyệt, khách hàng tìm kiếm sân trên bản đồ sẽ không có tọa độ chính xác để ghim mốc định vị. Chủ sân cần có giao diện bản đồ trực quan để cắm ghim mốc và đồng bộ hai chiều với ô nhập địa chỉ, đồng thời cho phép mở ngoặc ghi chú bổ sung (`(* ...)`). Hệ thống yêu cầu ưu tiên chi phí 0đ (không tốn chi phí Google Maps API key).
