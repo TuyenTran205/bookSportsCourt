@@ -1,8 +1,8 @@
 # 02 – Tính năng theo vai trò
 
-> **Phiên bản:** 1.3.5 | **Cập nhật lần cuối:** 2026-11-17
+> **Phiên bản:** 1.4.0 | **Cập nhật lần cuối:** 2026-11-21
 
-**Email giao dịch:** CUS-01/CUS-16 và email BSC-045 dùng transport chung, mặc định Resend; có thể chọn Gmail SMTP cho demo qua cấu hình backend. Xem [cấu hình và giới hạn retry](gmail-smtp-setup.md), ADR-032.
+**Email giao dịch:** CUS-01/CUS-16 và email BSC-045 dùng transport chung, mặc định Resend; có thể chọn Gmail SMTP cho demo qua cấu hình backend. Xem [cấu hình và giới hạn retry](gmail-smtp-setup.md), ADR-033.
 
 Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue và được tham chiếu trong `16-backlog.md`.
 
@@ -12,10 +12,10 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 
 | Mã | Tính năng | Ưu tiên | Tiêu chí chấp nhận |
 |----|-----------|---------|---------------------|
-| GST-01 | Tìm kiếm sân (khu vực, môn, giá, tiện ích) | P0 | Lọc được theo: tỉnh/quận, môn thể thao, giá tối đa, tiện ích; hiển thị kết quả pagination; không cần đăng nhập |
-| GST-02 | Xem sân trên bản đồ (Leaflet + OpenStreetMap) | P0 | Hiển thị pin venue, click vào pin mở card venue; không cần đăng nhập |
-| GST-03 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa; không cần đăng nhập |
-| GST-04 | Xem lưới block 30 phút (chỉ đọc) | P0 | Hiển thị đúng trạng thái block (available/booked/held) theo realtime; không thể chọn block; hiển thị nút CTA "Đăng nhập để đặt sân" |
+| GST-01 | Tìm kiếm sân (khu vực, môn, giá, tiện ích) | P0 | Lọc được theo: tỉnh/thành phố, xã/phường (ĐVHC 2 cấp, hỗ trợ legacy quận/huyện), môn thể thao, giá tối đa, tiện ích; hiển thị kết quả pagination; không cần đăng nhập |
+| GST-02 | Xem sân trên bản đồ (MapLibre GL JS + PMTiles) | P0 | Hiển thị pin venue trên bản đồ WebGL (`MapLibre GL JS` + `PMTiles` trên Cloudflare R2, ADR-031/ADR-032; hỗ trợ fallback raster), click vào pin mở card venue; không cần đăng nhập |
+| GST-03 | Xem chi tiết & so sánh sân (Venue detail / compare) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa; hỗ trợ trang `/venues/compare` so sánh trực quan giá, môn thể thao, tiện ích và đánh giá giữa các cơ sở; không cần đăng nhập |
+| GST-04 | Xem lưới block 30 phút (chỉ đọc realtime) | P0 | Kết nối Socket.IO chế độ `{ guest: true }` hiển thị đúng trạng thái block (available/booked/held/blocked/past) theo realtime; chọn ô hiển thị nút CTA `"Đăng nhập để tiếp tục"` (không tạo hold được khi chưa đăng nhập) |
 | GST-05 | Xem đánh giá sân | P1 | Chỉ review visible của Venue approved/chưa xoá (sao, nhận xét, ngày); phân trang, không lộ định danh Customer/booking; không cần đăng nhập, không thể gửi đánh giá |
 | GST-06 | Đăng ký / Đăng nhập | P0 | Hiển thị form đăng ký và đăng nhập; sau khi đăng nhập thành công redirect về trang trước đó |
 
@@ -28,8 +28,8 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | CUS-01 | Đăng ký tài khoản (email + mật khẩu) | P0 | Tạo được tài khoản, nhận email xác nhận (P1), không cho trùng email |
 | CUS-02 | Đăng nhập / Đăng xuất | P0 | Access token + Refresh token httpOnly; tự động refresh; logout xoá cookie |
 | CUS-03 | Đăng nhập Google OAuth | P1 | BE xác minh Google OIDC/state/nonce/PKCE; liên kết bằng provider/sub. User mới chỉ Customer; email đã tồn tại nhưng chưa liên kết trả409, không tự merge. Dùng session/cookie hiện có; explicit linking ngoài MVP (ADR026) |
-| CUS-04 | Tìm kiếm sân (khu vực, môn, giá, tiện ích) | P0 | Lọc được theo: tỉnh/quận, môn thể thao, giá tối đa, tiện ích; hiển thị kết quả pagination |
-| CUS-05 | Xem sân trên bản đồ (Leaflet + OpenStreetMap) | P0 | Hiển thị pin venue, click vào pin mở card venue |
+| CUS-04 | Tìm kiếm sân (khu vực, môn, giá, tiện ích) | P0 | Lọc được theo: tỉnh/thành phố, xã/phường (ĐVHC 2 cấp, hỗ trợ legacy quận/huyện), môn thể thao, giá tối đa, tiện ích; hiển thị kết quả pagination |
+| CUS-05 | Xem sân trên bản đồ (MapLibre GL JS + PMTiles) | P0 | Hiển thị pin venue trên bản đồ WebGL (`MapLibre GL JS` + `PMTiles` trên Cloudflare R2, ADR-031/ADR-032), click vào pin mở card venue |
 | CUS-06 | Xem chi tiết sân (Venue detail) | P0 | Hiển thị thông tin venue, danh sách court, ảnh gallery, đánh giá, giờ mở cửa |
 | CUS-07 | Chọn ngày và xem lưới block 30 phút (SlotGrid) | P0 | Hiển thị đúng trạng thái block realtime; giá hiển thị ở mỗi block; kéo chọn nhiều block liên tiếp |
 | CUS-08 | Giữ chỗ (Hold) và đếm ngược 10 phút | P0 | Sau khi chọn block, server tạo hold; client hiển thị countdown; hết hạn tự động trả về available |
@@ -48,7 +48,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 
 | Mã | Tính năng | Ưu tiên | Tiêu chí chấp nhận |
 |----|-----------|---------|---------------------|
-| OWN-01 | Đăng ký làm chủ sân (gửi hồ sơ) | P0 | Form đăng ký, chờ Admin duyệt; trạng thái pending/approved/rejected |
+| OWN-01 | Đăng ký làm chủ sân (gửi hồ sơ) | P0 | Form đăng ký, chờ Admin duyệt; trạng thái pending/approved/rejected. Hỗ trợ MST 10/13 số hoặc CCCD 12 số (`0014`), ghim toạ độ `lat/lng` trên bản đồ (`0011`), và thông tin ngân hàng `bankBin`/`bankName`/`accountNo`/`accountName` (`0015`) để kế thừa sang `venue_payment_accounts` |
 | OWN-02 | Tạo và quản lý Venue | P0 | CRUD venue: tên, địa chỉ, mô tả, ảnh, môn thể thao, tiện ích, toạ độ GPS |
 | OWN-03 | Tạo và quản lý Court | P0 | CRUD court trong venue: tên, mô tả, ảnh, trạng thái active/inactive |
 | OWN-04 | Thiết lập giờ mở cửa (Opening Hours) | P0 | Cấu hình giờ mở/đóng theo thứ trong tuần cho từng court |
@@ -60,7 +60,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | OWN-10 | Thiết lập chính sách huỷ và cọc | P1 | Cấu hình: huỷ trước X giờ được hoàn Y%; yêu cầu cọc Z% |
 | OWN-11 | Báo cáo doanh thu | P1 | Biểu đồ doanh thu theo ngày/tuần/tháng; lọc theo venue/court |
 | OWN-12 | Báo cáo tỷ lệ lấp đầy | P1 | Phần trăm block được đặt; peak hours; so sánh kỳ |
-| OWN-13 | Quản lý đánh giá | P1 | Xem và phản hồi đánh giá từ khách; không có quyền ẩn/hiện review |
+| OWN-13 | Quản lý & báo cáo đánh giá | P1 | Xem và phản hồi đánh giá từ khách; gửi báo cáo đánh giá xấu (`POST /owner/reviews/:id/report`) kèm lý do (5–1.000 ký tự) và ảnh minh chứng (≤ 5 MB) để Admin xem xét; không có quyền tự ẩn/hiện review |
 | OWN-14 | Nhận thông báo booking mới | P1 | Thông báo realtime + email khi có booking mới, huỷ |
 
 ---
@@ -70,7 +70,7 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | Mã | Tính năng | Ưu tiên | Tiêu chí chấp nhận |
 |----|-----------|---------|---------------------|
 | ADM-01 | Duyệt / Từ chối Owner đăng ký | P0 | Xem hồ sơ, approve/reject với ghi chú; Owner nhận email thông báo |
-| ADM-02 | Kiểm duyệt Venue | P0 | Xem thông tin, approve/reject; đình chỉ approved và đưa suspended về pending để duyệt lại theo docs/11. Venue chỉ hiển thị khi approved và chưa xoá; không tự huỷ booking cũ |
+| ADM-02 | Kiểm duyệt & quản trị Venue | P0 | Xem thông tin, approve/reject; đình chỉ approved và đưa suspended về pending để duyệt lại theo docs/11; tạo/sửa/xoá hộ cơ sở cho Owner (`ownerId`; cơ sở do Admin tạo có trạng thái `approved` ngay). Venue chỉ hiển thị khi approved và chưa xoá; không tự huỷ booking cũ |
 | ADM-03 | Khoá / Mở khoá tài khoản | P0 | Khoá tài khoản Customer hoặc Owner; tài khoản bị khoá không thể đăng nhập |
 | ADM-04 | Quản lý danh mục môn thể thao | P0 | CRUD sport: tên, icon, slug (Tab 1 trên màn hình Danh mục Admin). Bộ chọn biểu tượng `IconPicker` có tìm kiếm, tự động làm mờ (`opacity-45`, `grayscale`), gắn nhãn "Đã có" và vô hiệu hoá các icon đã được dùng bởi môn khác để chống cấu hình trùng |
 | ADM-05 | Quản lý danh mục tiện ích (Amenity) | P0 | CRUD amenity: tên, icon (Tab 2 trên màn hình Danh mục Admin) |
@@ -78,4 +78,4 @@ Mọi mã tính năng (CUS-XX, OWN-XX, ADM-XX) là tiền tố cho GitHub Issue 
 | ADM-07 | Xem toàn bộ booking hệ thống | P0 | Danh sách booking với filter đầy đủ; xem chi tiết |
 | ADM-08 | Xem thống kê toàn hệ thống | P0 | Thống kê tổng quan và chuyên sâu theo kỳ (7 ngày, 30 ngày, 90 ngày). 4 thẻ KPI (Doanh thu, Người dùng, Cơ sở, Lượt đặt) có nút "Xem chi tiết →" mở pop-up chi tiết: phân bổ doanh thu theo từng cơ sở, cơ cấu người dùng, danh sách cơ sở theo trạng thái & khu vực, và phân loại lượt đặt |
 | ADM-09 | Audit log | P0 | Ghi lại mọi hành động admin; không thể sửa/xoá |
-| ADM-10 | Kiểm duyệt đánh giá | P1 | Chỉ Admin active ẩn/hiển thị review; list gồm review ẩn, retry no-op; audit và rating/count visible nhất quán trong transaction |
+| ADM-10 | Kiểm duyệt đánh giá & xử lý báo cáo | P1 | Chỉ Admin active ẩn/hiển thị review (`PATCH /reviews/:id/visibility`) và xử lý báo cáo vi phạm từ Chủ sân (`PATCH /admin/reviews/:id/report`: `approve` → ẩn review + `resolved`, `reject` → giữ hiển thị + `dismissed`); list hỗ trợ lọc `reportStatus`, gồm review ẩn, retry no-op; audit và rating/count visible nhất quán trong transaction |

@@ -1,4 +1,4 @@
-﻿# 14 – GitHub Workflow
+# 14 – GitHub Workflow
 
 > **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-10-12
 

@@ -1,6 +1,6 @@
 # 01 – Tổng quan sản phẩm
 
-> **Phiên bản:** 1.2.0 | **Cập nhật lần cuối:** 2026-10-12
+> **Phiên bản:** 1.3.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Mục tiêu sản phẩm
 
@@ -81,7 +81,7 @@ API trả `status` ∈ **`available | held | booked | blocked | past`** (enum du
 | `blocked` | API | Xám | Khoá (blackout, bảo trì) |
 | `past` | API | Xám nhạt | Đã qua giờ |
 
-> Màu lấy từ token ở [07-design-system.md](07-design-system.md#css-variables-thêm-vào-globalscss) — đó là nguồn đúng. Quy ước tên: **CSS variable dùng gạch nối** (`--color-slot-my-hold`, theo lệ CSS), còn **khoá trạng thái trong TS dùng gạch dưới** (`my_hold`, cho khớp cách đặt tên `status` của API).
+> Màu lấy từ token ở [07-design-system.md](07-design-system.md#css-variables-thêm-vào-globalscss) — đó là nguồn đúng. Quy ước tên: **CSS variable và Tailwind class dùng gạch nối** (`--color-slot-my-hold`, `bg-slot-my-hold`, theo lệ CSS), còn **khoá trạng thái domain trong TS dùng gạch dưới** (`my_hold` trong `SlotDisplayKey`, cho khớp cách đặt tên `status` của API).
 
 ## Phạm vi MVP (P0 – Bắt buộc)
 
@@ -121,12 +121,12 @@ API trả `status` ∈ **`available | held | booked | blocked | past`** (enum du
 
 - [ ] Báo cáo doanh thu & tỷ lệ lấp đầy (Owner) (OWN-11, OWN-12)
 - [ ] Chính sách huỷ và cọc (OWN-10); huỷ booking theo chính sách (CUS-11)
-- [ ] Email thông báo (Resend)
-- [ ] Đánh giá sân (CUS-13); Owner phản hồi đánh giá (OWN-13); Admin kiểm duyệt đánh giá (ADM-10)
+- [ ] Email thông báo (Resend hoặc Gmail SMTP tùy chọn – ADR-033)
+- [ ] Đánh giá sân (CUS-13); Owner phản hồi & báo cáo đánh giá xấu (OWN-13); Admin kiểm duyệt đánh giá & xử lý báo cáo (ADM-10)
 - [ ] Yêu thích sân (CUS-12)
 - [ ] Google OAuth (CUS-03)
 - [ ] Quên mật khẩu / đặt lại mật khẩu (CUS-16)
-- [ ] Xem sân trên bản đồ (GST-02, CUS-05); xem lưới chỉ đọc khi chưa đăng nhập (GST-04)
+- [ ] Xem sân trên bản đồ (MapLibre GL JS + PMTiles, GST-02, CUS-05); so sánh cơ sở (`/venues/compare`); xem lưới realtime chỉ đọc khi chưa đăng nhập (GST-04)
 - [ ] Owner nhận thông báo booking mới (OWN-14)
 
 **Ngoài phạm vi (P2 – KHÔNG làm trong đồ án)**

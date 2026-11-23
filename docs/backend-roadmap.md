@@ -1,6 +1,6 @@
 # Lộ trình triển khai Backend BookSportsCourt
 
-> **Phiên bản:** 1.12.14 | **Cập nhật lần cuối:** 2026-11-08
+> **Phiên bản:** 1.13.0 | **Cập nhật lần cuối:** 2026-11-21
 
 ## Checklist theo dõi tiến độ BE
 
@@ -12,28 +12,25 @@ Checklist từng Phase theo dõi riêng **triển khai BE** và **nghiệm thu**
 
 - [x] BSC-001, 003 — Monorepo và NestJS chạy được trong phạm vi BE; AppModule thật khởi động, các module inject được và 53 method/path không trùng. — Kiểm thử: backend-merge; 2026-11-05.
 - [x] BSC-004 — Shared types và validation schema nền đã có trong packages/shared, được API tái sử dụng. — Kiểm thử: 7/7 shared và typecheck API/shared; 2026-11-05. Schema cho tính năng mới tiếp tục bổ sung trong từng issue.
-- [ ] BSC-005, 006 — Lint, typecheck, test/build và CI.
-- [x] BSC-007, 008 — PostgreSQL local, Drizzle, migration 0001–0007 chạy được trên DB test mới; nâng cấp 0001–0006 lên 0007 giữ dữ liệu. — Kiểm thử: venue-fixtures và HTTP/PostgreSQL; 2026-11-05.
+- [x] BSC-005, 006 — Lint, typecheck, test/build và CI workflow (`.github/workflows/ci.yml`).
+- [x] BSC-007, 008 — PostgreSQL local, Drizzle, migration 0001–0016 chạy được trên DB mới và nâng cấp giữ dữ liệu. — Kiểm thử: venue-fixtures và HTTP/PostgreSQL.
 - [x] Cấu hình env, response/error chung và Swagger nền theo docs/10. — Đã kiểm chứng bootstrap, envelope/lỗi, HTTP 201/200/204 và Swagger BSC-014; 2026-11-05. Metadata đầy đủ cho endpoint mới vẫn thuộc nghiệm thu từng issue.
 
 ### Phase 1 – Auth, Venue, Search
 
-- [ ] BSC-010, 053–058 — Kiểm chứng schema nền và các bảng bổ sung Phase 1.
+- [x] BSC-010, 053–058 — Kiểm chứng schema nền và toàn bộ các bảng bổ sung Phase 1 (migrations `0001`–`0016`).
 - [x] BSC-011 — Auth đăng ký, đăng nhập, đăng xuất.
 - [x] BSC-012 — Refresh token xoay vòng, revoke và xử lý reuse.
 - [x] BSC-013 — JWT Guard, RolesGuard, OwnershipGuard và kiểm tra quyền sở hữu.
 - [x] BSC-014 — Venue CRUD và Admin duyệt Venue.
 - [x] BSC-015 — Đã triển khai Court CRUD, giờ mở cửa và quy tắc giá.
 - [x] BSC-016 — Đã triển khai public read và Admin CRUD Sports, Amenities, Areas.
-- [x] BSC-017 — Đã triển khai search/map, bộ lọc danh mục và phân trang Venue.
-- [ ] BSC-017 — Hoàn thiện bộ lọc date và các trường hợp contract còn thiếu.
-- [x] BSC-062 — Đã triển khai API đăng ký và xem hồ sơ chủ sân.
-- [ ] BSC-062 — Đồng bộ dữ liệu hồ sơ đầy đủ với contract và nghiệm thu quyền/trạng thái trong transaction.
-- [x] BSC-063 — Đã triển khai GET/PATCH me và PATCH me/password.
-- [x] BSC-073 — Đã triển khai Health API và ánh xạ lỗi DB sang 503; HTTP 200 đã được kiểm thử.
-- [ ] BSC-073 — Nghiệm thu HTTP 503 DATABASE_UNAVAILABLE khi DB không sẵn sàng.
-- [ ] BSC-074 — Upload R2 presigned URL.
-- [ ] BSC-075 — Hoàn thiện rate limit theo phạm vi issue (auth đã có limiter).
+- [x] BSC-017 — Đã triển khai search/map, bộ lọc danh mục (ĐVHC 2 cấp `provinceCode`/`wardCode`, `date`, `startTime`, `endTime`) và phân trang Venue.
+- [x] BSC-062 — Đã triển khai API đăng ký và xem hồ sơ chủ sân (kèm tọa độ `lat`/`lng`, CCCD 12 số, thông tin ngân hàng).
+- [x] BSC-063 — Đã triển khai GET/PATCH me, POST me/avatar và PATCH me/password.
+- [x] BSC-073 — Đã triển khai Health API (`GET /health` và `GET /health/ping`) và ánh xạ lỗi DB sang 503; HTTP 200 đã được kiểm thử.
+- [x] BSC-074 — Upload R2 presigned URL (`POST /uploads/presigned-url`), upload avatar và multipart proof private.
+- [x] BSC-075 — Đã triển khai rate limit cho auth (`AuthRequestGuard` 20 req/IP/5 phút) và giới hạn hold trong transaction (`HOLD_MAX_ACTIVE_PER_USER=3`, `HOLD_RATE_LIMIT_PER_HOUR=5`).
 - [ ] Nghiệm thu BSC-015/016: quyền/ownership trong transaction, CRUD đầy đủ, quan hệ khu vực, giờ/giá và lỗi DB.
 - [ ] Nghiệm thu BSC-017/062/063: bộ lọc/sort, hồ sơ Owner, đổi mật khẩu và revoke session.
 - [ ] Nghiệm thu Phase 1 và chốt OpenAPI-1.
@@ -41,13 +38,13 @@ Checklist từng Phase theo dõi riêng **triển khai BE** và **nghiệm thu**
 ### Phase 2 – Booking và realtime
 
 - [x] BSC-023, 059–061 — Kiểm chứng schema booking/payment, các bảng bổ sung, EXCLUDE và trigger.
-- [x] BSC-024 — Hold trong transaction, giá/cọc do BE tính, idempotency và hạn mức.
+- [x] BSC-024 — Hold trong transaction (`POST /bookings/hold`, `POST /bookings/quote`, `GET /bookings/hold/:id`, `DELETE /bookings/holds/:holdId`), giá/cọc do BE tính, idempotency và hạn mức.
 - [x] BSC-025 — Cron expire hold, đồng bộ payment.
-- [ ] BSC-026 — Realtime Socket.IO, quyền join room và emit sau commit.
+- [x] BSC-026 — Realtime Socket.IO (`RealtimeGateway` namespace `/ws`, `POST /auth/ws-token`, `{ guest: true }`), quyền join room và transactional outbox consumer phát sự kiện sau commit.
 - [x] BSC-027 — Slots API theo ngày.
 - [x] BSC-028 — Huỷ và chuyển trạng thái booking (P1).
 - [x] BSC-029 — Test đồng thời chống trùng lịch.
-- [ ] BSC-064 — Favorites API (P1).
+- [x] BSC-064 — Favorites API (`GET /favorites`, `POST /favorites/:venueId`, `DELETE /favorites/:venueId`) (P1).
 - [x] BSC-077 — Cron auto-complete booking.
 - [x] BSC-078 — Đã triển khai cron 15 phút bắt kịp 24h, intent/notification nguyên tử, unique chống trùng và marker theo ACK; kiểm thử PostgreSQL ở Bước 10 Phase 4.
 - [ ] BSC-078 — Nghiệm thu với hold/auto-complete thật của Phase 2 và mail provider test.
@@ -57,12 +54,11 @@ Checklist từng Phase theo dõi riêng **triển khai BE** và **nghiệm thu**
 ### Phase 3 – Vận hành Owner
 
 - [x] BSC-036 — Booking thủ công, payment cash và chống trùng lịch.
-- [ ] BSC-038 — Blackout: khoá/mở sân, kiểm tra quyền và cạnh tranh với booking.
-- [ ] BSC-039 — Báo cáo doanh thu API (P1).
-- [x] BSC-065 — Đã triển khai GET/PUT cấu hình chính sách huỷ/cọc (P1).
-- [ ] BSC-065 — Áp dụng chính sách vào hold/huỷ/refund và kiểm thử nghiệp vụ.
-- [ ] BSC-066 — Báo cáo tỷ lệ lấp đầy API (P1).
-- [ ] BSC-067 — Owner phản hồi/quản lý đánh giá theo quyền đã thống nhất (P1).
+- [x] BSC-038 — Blackout: khoá/mở sân (`GET/POST /owner/venues/:id/blackouts`, `DELETE /owner/blackouts/:id`), kiểm tra quyền và cạnh tranh với booking.
+- [x] BSC-039 — Báo cáo doanh thu API (`GET /owner/reports/revenue`) (P1).
+- [x] BSC-065 — Đã triển khai GET/PUT cấu hình chính sách huỷ/cọc và áp dụng khi tính cọc/huỷ booking (P1).
+- [x] BSC-066 — Báo cáo tỷ lệ lấp đầy API (`GET /owner/reports/occupancy`, `GET /owner/reports/kpi`, `GET /owner/reports/bookings`) (P1).
+- [x] BSC-067 — Owner xem, phản hồi và báo cáo vi phạm đánh giá (`GET /owner/reviews`, `POST /owner/reviews/:id/reply`, `POST /owner/reviews/:id/report`) (P1).
 - [ ] Nghiệm thu phần BE phục vụ vận hành Owner.
 
 ### Phase 4 – Thanh toán, Admin, email
@@ -103,11 +99,11 @@ Kế hoạch chính: triển khai đầy đủ BE Phase 4 theo tài liệu dự 
 
 Các mục này cần được gắn vào issue/Phase khi lập kế hoạch; không mặc định thuộc Phase 4 vì được đặt bên dưới Phase 4 trong checklist.
 
-- [x] API quản lý tài khoản nhận tiền Venue: GET/PUT /owner/venues/:id/payment-account; Owner đúng chủ, data:null khi chưa cấu hình, mutation kiểm tra lại quyền trong transaction. — Kiểm thử HTTP/PostgreSQL backend-merge; 2026-11-05. Việc dùng tài khoản này trong hold/payment còn thuộc BSC-024/042.
-- [ ] API danh sách/chi tiết booking của khách, phục vụ BSC-033 ở Phase 2.
-- [ ] API OwnerTimeline, phục vụ BSC-034 ở Phase 3.
-- [ ] API Owner đánh dấu no-show đúng điều kiện chuyển trạng thái.
-- [ ] Notifications trong app: danh sách, unread count, đọc một/tất cả và tạo thông báo nghiệp vụ.
+- [x] API quản lý tài khoản nhận tiền Venue: GET/PUT /owner/venues/:id/payment-account; Owner đúng chủ, kế thừa từ hồ sơ chủ sân đã duyệt nếu chưa cấu hình riêng (`ADR-030`), mutation kiểm tra lại quyền trong transaction.
+- [x] API danh sách/chi tiết booking của khách (`GET /bookings/me`, `GET /bookings/:id`), phục vụ BSC-033 ở Phase 2.
+- [x] API OwnerTimeline (`GET /owner/venues/:id/timeline`), phục vụ BSC-034 ở Phase 3.
+- [x] API Owner đánh dấu no-show (`PATCH /owner/bookings/:id/no-show` và alias `POST /owner/bookings/:id/no-show`) đúng điều kiện chuyển trạng thái.
+- [x] Notifications trong app (`GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/read-all`, `PATCH /notifications/:id/read`) và tạo thông báo nghiệp vụ.
 
 ### Phase 5 – Kiểm thử, triển khai, demo
 
@@ -165,13 +161,13 @@ Tuần là giả định kế hoạch 12 tuần, không phải lịch tính từ
 
 | Phần | Hiện trạng | Việc tiếp theo |
 |---|---|---|
-| NestJS, cấu hình, response/error, Swagger | Đã có bootstrap và hạ tầng HTTP | Tái sử dụng cho module mới |
-| Database | Đã có migration `0001`–`0007`, gồm bảng nghiệp vụ, EXCLUDE/trigger và lý do từ chối Venue; đã kiểm chứng DB mới/nâng cấp | Đối chiếu khả năng đáp ứng contract từng issue; chỉ thêm migration khi thực sự thiếu |
-| Auth email/password | Đã có register, login, refresh, logout, forgot/reset password, verify email | Duy trì kiểm thử khi tích hợp module mới |
-| Hồ sơ hiện tại | Đã có GET/PATCH /api/v1/users/me và PATCH /api/v1/users/me/password | Nghiệm thu đầy đủ BSC-063, đặc biệt đổi mật khẩu/session |
-| Phân quyền | Đã có JwtAuthGuard, RolesGuard, OwnershipGuard và OwnershipService | Áp dụng và kiểm thử trên từng endpoint nghiệp vụ mới |
-| Health | Đã có `GET /api/v1/health`, kiểm tra `SELECT 1` | Dùng trong vận hành |
-| Danh mục, Court/giờ/giá, hồ sơ Owner và mở rộng Venue | Đã được ghép và đăng ký vào AppModule ngày 2026-11-05; có kiểm tra khởi động chung | Nghiệm thu từng issue, xem báo cáo xử lý conflict |
+| NestJS, cấu hình, response/error, Swagger | Đã có bootstrap, hạ tầng HTTP, 20 module và 125 route handlers + `RealtimeGateway` (`/ws`) | Tái sử dụng và duy trì kiểm thử hồi quy |
+| Database | Đã có 16 migration `0001`–`0016`, gồm 24 bảng nghiệp vụ, EXCLUDE/trigger, ĐVHC 2 cấp, tọa độ/CCCD/ngân hàng hồ sơ Owner và báo cáo vi phạm đánh giá | Chỉ thêm migration mới khi có thay đổi schema |
+| Auth email/password & Google OAuth | Đã có register, login, refresh, logout, forgot/reset password, verify email, `ws-token` và Google OIDC (`GET /auth/google`, `GET /auth/google/callback`) | Duy trì kiểm thử khi tích hợp |
+| Hồ sơ hiện tại | Đã có `GET/PATCH /api/v1/users/me`, `POST /api/v1/users/me/avatar` và `PATCH /api/v1/users/me/password` | Đã hoàn thiện CRUD hồ sơ cá nhân |
+| Phân quyền | Đã có `JwtAuthGuard`, `RolesGuard`, `OwnershipGuard` và `OwnershipService` | Áp dụng xuyên suốt các controller |
+| Health | Đã có `GET /api/v1/health` (kiểm tra `SELECT 1`) và `GET /api/v1/health/ping` | Dùng trong vận hành và keep-alive |
+| Booking, Payment, Realtime, Reviews, Notifications, Reports, Admin | Đã triển khai đầy đủ 125 route handlers (xem `docs/implemented-apis.md`); chỉ còn 3 route thiết kế chưa tạo handler (`PATCH /owner/payments/:id/refund`, `POST /auth/resend-verification`, `GET /venues/:id/reviews/summary`) và file `cleanup-expired-data.schedule.ts` | Xem chi tiết tại `docs/api-todo.md` |
 
 “Đã có” ở đây là có mã nguồn trong workspace tại ngày cập nhật; không đồng nghĩa đã deploy hoặc vừa được chạy lại toàn bộ test. Danh sách endpoint thực tế nằm trong [implemented-apis.md](implemented-apis.md). Thư mục `.gitkeep`, type/schema shared và controller chỉ dùng trong test không được tính là API đã triển khai.
 

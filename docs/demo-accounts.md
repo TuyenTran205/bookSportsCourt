@@ -1,12 +1,16 @@
 # Danh Sách Tài Khoản Demo Hệ Thống (BookSportsCourt)
 
-Tài liệu này tổng hợp toàn bộ các tài khoản người dùng mẫu đã được nạp tự động vào cơ sở dữ liệu `booksports_dev` thông qua lệnh:
+> **Phiên bản:** 1.1.0 | **Cập nhật lần cuối:** 2026-11-21
+
+Tài liệu này tổng hợp toàn bộ các tài khoản người dùng mẫu đã được nạp tự động vào cơ sở dữ liệu `booksports_dev` thông qua lệnh (`apps/api/scripts/seed.ts`):
 ```bash
 pnpm --filter @bsc/api db:seed
 ```
 
-> **Mật khẩu dùng chung cho tất cả tài khoản:**  
+> **Mật khẩu dùng chung cho tất cả tài khoản seed DB (có thể ghi đè qua biến `SEED_PASSWORD`):**  
 > `BookSportsCourt-Dev-Only-2026!`
+>
+> *(Lưu ý: Nếu chạy Frontend ở chế độ giả lập MSW `NEXT_PUBLIC_API_MOCKING=enabled`, hãy sử dụng các tài khoản mock `admin@example.com`, `owner@example.com`, `khach@example.com` với mật khẩu `Password123` theo `apps/web/mocks/README.md`).*
 
 ---
 
@@ -18,7 +22,7 @@ pnpm --filter @bsc/api db:seed
 | **Chủ sân (Owner 1)** | Trần Văn Đức | `owner.duc@booksportscourt.local` | `0912345678` | Quản lý cụm sân HN & ĐN, bảng giá 30p, duyệt cọc, trả lời review. |
 | **Chủ sân (Owner 2)** | Lê Thu Thảo | `owner.thao@booksportscourt.local` | `0987654321` | Quản lý cụm sân TP.HCM, xử lý hoàn tiền cọc, xem hồ sơ ĐKKD. |
 | **Khách hàng (Customer 1)** | Nguyễn Hoàng Long | `customer.long@booksportscourt.local` | `0934567890` | Đặt sân, xem lịch sử đơn hoàn tất, review 5 sao, Google OAuth. |
-| **Khách hàng (Customer 2)** | Vũ Minh Trí | `customer.tri@booksportscourt.local` | `0945678901` | Trải nghiệm giữ chỗ 15p (held), kiểm tra đơn hủy được hoàn cọc. |
+| **Khách hàng (Customer 2)** | Vũ Minh Trí | `customer.tri@booksportscourt.local` | `0945678901` | Trải nghiệm đơn đang giữ chỗ (`held`), kiểm tra đơn hủy được hoàn cọc. |
 | **Ứng viên đối tác (Applicant)** | Đặng Tuấn Anh | `applicant.anh@booksportscourt.local` | `0956789012` | Kiểm tra luồng nộp hồ sơ xin làm chủ sân (đang chờ duyệt). |
 | *Chủ sân cũ (Legacy)* | Chủ sân Demo | `owner.demo@booksportscourt.local` | `0919999999` | Tài khoản tương thích ngược cho các bài test cũ. |
 | *Khách cũ (Legacy)* | Khách hàng Demo | `customer.demo@booksportscourt.local` | `0939999999` | Tài khoản tương thích ngược cho các bài test cũ. |
@@ -83,7 +87,7 @@ pnpm --filter @bsc/api db:seed
 ### 2.5. Khách hàng trải nghiệm giữ chỗ & hoàn tiền (Vũ Minh Trí)
 - **Tài khoản:** `customer.tri@booksportscourt.local`
 - **Lịch sử đơn đặt sân:**
-  - **Đơn 3 (Đang giữ chỗ - Held):** Sân Cầu Lông A1 (đang trong thời gian đếm ngược 15 phút chờ chuyển khoản cọc).
+  - **Đơn 3 (Đang giữ chỗ - Held):** Sân Cầu Lông A1 (dữ liệu seed đặt mốc `hold_expires_at` +15 phút kể từ thời điểm chạy `db:seed` để tiện mở giao diện demo; khi tạo hold mới trên hệ thống thì thời gian giữ chỗ chuẩn theo cấu hình runtime là `HOLD_TTL_MINUTES=10` phút).
   - **Đơn 4 (Đã hủy & hoàn cọc):** Sân Bóng Mini Nam Sài Gòn cuối tuần, lý do *"Đội bóng bận lịch thi đấu trường đột xuất"*, đã được hoàn trả 100% tiền cọc (225.000đ).
 - **Mục tiêu test:**
   - Trải nghiệm giao diện chuyển khoản thanh toán khi đang giữ chỗ.

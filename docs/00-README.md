@@ -1,6 +1,6 @@
 # 00 – Mục lục tài liệu BookSportsCourt
 
-> **Phiên bản:** 1.4.31 | **Cập nhật lần cuối:** 2026-11-17 | **Người duy trì:** Tech Lead
+> **Phiên bản:** 1.4.33 | **Cập nhật lần cuối:** 2026-11-21 | **Người duy trì:** Tech Lead
 
 ## Mục lục & Thứ tự đọc
 
@@ -27,22 +27,15 @@
 | `17-report-outline.md` | Dàn ý báo cáo | Khi viết báo cáo |
 | `gmail-smtp-setup.md` | Cấu hình Gmail SMTP, retry và chuyển provider | Khi dùng Gmail thay Resend |
 | `18-decision-log.md` | Nhật ký quyết định | Khi thêm dep/thay đổi lớn |
-| `implemented-apis.md` | Tổng hợp API thực tế đã triển khai | Khi tích hợp và tra cứu API hiện có |
-| `api-todo.md` | Danh mục toàn bộ API backend cần triển khai | Khi lập kế hoạch và triển khai các API còn thiếu |
-| `backend-roadmap.md` | Các giai đoạn BE và bước tiếp theo sau auth/phân quyền | Khi chọn issue và theo dõi phạm vi BE |
+| `implemented-apis.md` | Tổng hợp API thực tế đã triển khai (125 route handlers + `/ws`) | Khi tích hợp và tra cứu API hiện có |
+| `api-todo.md` | Danh mục rà soát tiến độ các API backend theo thiết kế | Khi lập kế hoạch và triển khai các API còn thiếu |
+| `demo-accounts.md` | Danh sách tài khoản demo sau khi chạy `db:seed` | Khi kiểm thử hoặc demo hệ thống theo từng vai trò |
+| `backend-administrative-units-guide.md` | Hướng dẫn BE cập nhật ĐVHC Việt Nam 2 cấp (34 Tỉnh / 3.321 Xã-Phường) | Khi làm việc với bảng `areas`, seed địa giới và lọc khu vực |
+| `backend-roadmap.md` | Các giai đoạn BE và checklist tiến độ theo Phase | Khi chọn issue và theo dõi phạm vi BE |
 | `backend-conflict-resolution.md` | Cách ghép hai nhánh backend, kiểm thử và giới hạn nghiệm thu | Khi review kết quả xử lý conflict ngày 2026-11-05 |
-| `bsc-014-implementation-plan.md` | Lộ trình từng bước cho Venue CRUD và Admin duyệt | Khi triển khai BSC-014 |
-| `bsc-014-progress.md` | Tiến độ BSC-014, bằng chứng kiểm tra và công việc còn lại | Khi theo dõi BSC-014 |
-| `bsc-014-step-01-scope-and-ac.md` | Đầu ra Bước 1: phạm vi, input/output, quyền/lỗi, AC và giải thích code | Khi chốt phạm vi BSC-014 |
-| `bsc-014-step-02-business-rules.md` | Kết quả Bước 2: quy tắc nghiệp vụ, giải thích code và tiến độ | Trước khi triển khai Venue service |
-| `bsc-014-step-03-schema-and-fixtures.md` | Kết quả Bước 3: fixture, kiểm chứng migration, cách chạy và giải thích code | Khi chuẩn bị test Venue |
-| `bsc-014-step-04-dto-and-response.md` | Kết quả Bước 4: query schema, DTO, pipe, Swagger và response | Khi triển khai controller Venue |
-| `openapi/bsc-014.openapi.json` | OpenAPI thiết kế bảy endpoint BSC-014 (chưa phải runtime) | Khi viết test/đối chiếu Swagger Venue |
-| `bsc-014-step-05-create-venue.md` | Module và POST Venue: giải thích controller/service/repository, transaction và test | Khi triển khai/kiểm tra Bước 5 |
-| `bsc-014-step-06-read-venues.md` | Ba API đọc: phân quyền, public projection, snapshot/phân trang và kiểm thử | Khi triển khai/kiểm tra Bước 6 |
-| `bsc-014-step-07-update-and-delete.md` | PATCH/DELETE: ownership trong transaction, duyệt lại/no-op, xoá mềm và booking chặn xoá | Khi triển khai/kiểm tra Bước 7 |
-| `bsc-014-step-08-admin-moderation.md` | Admin status: state machine, retry/legacy, audit nguyên tử và concurrency | Khi triển khai/kiểm tra Bước 8 |
-| `bsc-014-step-09-test-acceptance.md` | Ma trận nghiệm thu, test bổ sung, sửa precedence và kết quả chạy thật | Khi nghiệm thu Bước 9 |
+| `openapi/bsc-014.openapi.json` | OpenAPI thiết kế bảy endpoint BSC-014 | Khi viết test/đối chiếu Swagger Venue |
+| `specs/SPEC-MAP-002-resilient-tile-provider.md` | Đặc tả kỹ thuật cơ chế tự phục hồi bản đồ (Resilient Map Provider) | Khi chỉnh sửa/kiểm thử bản đồ MapLibre + PMTiles + fallback |
+| `specs/SPEC-PERF-001-frontend-performance-audit.md` | Báo cáo kiểm toán và tối ưu hiệu năng Frontend | Khi tối ưu bundle, LCP/CLS và render FE |
 
 ## Nguyên tắc cập nhật tài liệu
 
@@ -67,6 +60,7 @@
 
 | Ngày | Thay đổi | File ảnh hưởng |
 |------|----------|----------------|
+| 2026-11-21 | Đối chiếu toàn diện mã nguồn và cập nhật đồng bộ toàn bộ tài liệu Markdown trong repo: kiến trúc, chức năng, DB schema (migrations 0001–0016), phân quyền, design system (Dark Mode), quy ước FE/BE, hợp đồng API (125 handlers, `/ws`, báo cáo review, analytics, quotes/holds), tiêu chuẩn code, deploy, roadmap, backlog, dàn ý báo cáo, decision log (ADR-001..033), hướng dẫn ĐVHC 2 cấp, tài khoản demo và các README gốc. | `00`–`07`, `09`–`13`, `15`–`18`, `implemented-apis`, `api-todo`, `backend-roadmap`, `backend-administrative-units-guide`, `demo-accounts`, `gmail-smtp-setup`, `README.md`, `README.dev.md`, `apps/web/mocks/README.md` |
 | 2026-11-17 | BSC-045: thêm Gmail SMTP tùy chọn, ADR-032/Nodemailer, kiểm tra TLS/sender/config, bảo vệ retry/crash và chuyển provider; hướng dẫn cấu hình và test hồi quy. | Mail/Auth/config/tests, package/lockfile, `.env.example`, `02`, `05`, `18`, `gmail-smtp-setup` |
 | 2026-11-09 | Tạo tài liệu `api-todo.md` tổng hợp 31 API REST còn thiếu, Socket.IO Gateway và bảng chuẩn hoá FE-BE. | `docs/api-todo.md`, `docs/00-README.md` |
 | 2026-11-08 | Gỡ đường dẫn cũ tới tài liệu và artifact Phase 4 đã chuyển đi; giữ nội dung nghiệp vụ, tiến độ và lịch sử thay đổi. | Mục lục và các tài liệu Markdown tham chiếu Phase 4 |

@@ -1,25 +1,27 @@
 # Dữ liệu mẫu (MSW)
 
-Toàn bộ giao diện chạy bằng dữ liệu giả ở đây cho tới khi backend hoàn thành.
+Thư mục này cung cấp tầng giả lập API bằng MSW (Mock Service Worker) phục vụ unit/component test FE và chạy độc lập giao diện khi không bật Backend thật (`http://localhost:3001`).
 Bật/tắt bằng biến `NEXT_PUBLIC_API_MOCKING` trong `.env.local`:
 
 ```bash
-NEXT_PUBLIC_API_MOCKING=enabled    # chặn request, trả dữ liệu mẫu
-NEXT_PUBLIC_API_MOCKING=disabled   # gọi backend thật
+NEXT_PUBLIC_API_MOCKING=enabled    # chặn request bằng MSW, trả dữ liệu mẫu từ localStorage
+NEXT_PUBLIC_API_MOCKING=disabled   # gọi backend NestJS thật (mặc định khi chạy full-stack)
 ```
 
 Sau khi đổi giá trị phải **khởi động lại `pnpm dev`** — biến `NEXT_PUBLIC_*`
 được nhúng vào bundle lúc build, không đọc lại lúc chạy.
 
-## Tài khoản demo
+## Tài khoản demo (chế độ MSW mock)
 
-Mật khẩu của **mọi** tài khoản là `Password123`.
+> **Lưu ý:** Bảng dưới đây chỉ áp dụng khi `NEXT_PUBLIC_API_MOCKING=enabled`. Khi chạy với Backend PostgreSQL thật (`NEXT_PUBLIC_API_MOCKING=disabled`), hãy dùng danh sách tài khoản seed trong `docs/demo-accounts.md` (mật khẩu `BookSportsCourt-Dev-Only-2026!`).
+
+Mật khẩu của **mọi** tài khoản MSW mock là `Password123`.
 
 | Vai trò | Email | Xem được |
 |---------|-------|----------|
 | Khách đặt sân | `khach@example.com` | Tìm sân, đặt sân, lịch sử, yêu thích |
-| Chủ sân | `owner@example.com` | `/dashboard` – timeline, duyệt thanh toán, doanh thu |
-| Quản trị viên | `admin@example.com` | `/admin` – duyệt hồ sơ, người dùng, thống kê |
+| Chủ sân | `owner@example.com` | `/owner/dashboard` – timeline, duyệt thanh toán, doanh thu, đánh giá |
+| Quản trị viên | `admin@example.com` | `/admin/dashboard` – duyệt hồ sơ, duyệt cơ sở, người dùng, kiểm duyệt đánh giá, thống kê |
 
 ## Cấu trúc
 
@@ -30,7 +32,7 @@ mocks/
 ├── server.ts          # MSW cho test
 ├── utils.ts           # envelope { data, meta }, phân trang, mã lỗi
 ├── fixtures/          # dữ liệu mẫu
-│   ├── catalogs.ts    # tỉnh/quận, môn, tiện ích
+│   ├── catalogs.ts    # tỉnh/thành, xã/phường (ĐVHC 2 cấp + legacy quận), môn, tiện ích
 │   ├── users.ts       # người dùng, hồ sơ chủ sân
 │   ├── venues.ts      # cơ sở, sân con, giờ mở cửa, bảng giá, khoá sân
 │   ├── bookings.ts    # booking phủ đủ 7 trạng thái + thanh toán
