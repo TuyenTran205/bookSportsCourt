@@ -1,5 +1,5 @@
 import { setupWorker } from 'msw/browser';
-import { db, subscribeToStorage } from './db';
+import { db, saveCurrentUserId, subscribeToStorage } from './db';
 import { clearSession, setSession } from './handlers/auth';
 import { handlers } from './handlers';
 
@@ -33,9 +33,11 @@ export async function startMocking(): Promise<void> {
       if (match && match[1] && match[1] !== 'guest') {
         const existingId = decodeURIComponent(match[1]);
         db.currentUserId = existingId;
+        saveCurrentUserId(existingId);
         setSession(existingId);
       } else if (match && match[1] === 'guest') {
         db.currentUserId = null;
+        saveCurrentUserId(null);
         clearSession();
       } else if (db.currentUserId) {
         setSession(db.currentUserId);
