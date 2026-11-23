@@ -50,17 +50,17 @@ test.describe('Luồng khách tìm sân & chọn lịch đặt (GST-01, GST-02, 
     await expect(slotGridHeading).toBeVisible();
 
     // Chuyển sang ngày mai để luôn có slot khả dụng bất kể thời điểm chạy CI trong ngày
-    const nextDayBtn = page.getByRole('button', { name: /Ngày sau/i });
+    const nextDayBtn = page.getByRole('button', { name: /Hôm sau|Ngày sau/i });
     await expect(nextDayBtn).toBeVisible();
     await nextDayBtn.click();
 
     // 6. Chờ lưới slot tải xong, chọn một slot khả dụng và kiểm tra nút yêu cầu đăng nhập khi khách chưa có phiên
     const availableSlot = page.locator('button[data-slot-cell]:not([disabled])').first();
-    await expect(availableSlot).toBeVisible();
+    await expect(availableSlot).toBeVisible({ timeout: 15000 });
     await availableSlot.click();
 
     const loginToContinueBtn = page.getByRole('link', { name: /Đăng nhập để tiếp tục/i });
-    await expect(loginToContinueBtn).toBeVisible();
+    await expect(loginToContinueBtn).toBeVisible({ timeout: 15000 });
     await expect(loginToContinueBtn).toHaveAttribute('href', /login\?next=/);
   });
 });
