@@ -513,7 +513,11 @@ export async function runAdminReportingCases(
         app,
         new DocumentBuilder().build(),
       );
-      for (const path of ["/api/v1/admin/bookings", "/api/v1/admin/stats"])
+      for (const path of [
+        "/api/v1/admin/bookings",
+        "/api/v1/admin/stats",
+        "/api/v1/admin/analytics",
+      ])
         assert.ok(document.paths[path]?.get);
       const specUrl = new URL(
         "../../../../docs/openapi/phase-04.openapi.json",
@@ -536,6 +540,60 @@ export async function runAdminReportingCases(
           spec.components.schemas.AdminStats.required.sort(),
         );
       }
+    },
+  );
+  await t.test(
+    "GET /api/v1/admin/analytics enforces Admin role and aggregates byStatus, bySport and byVenue revenue",
+    async () => {
+      assert.equal((await request("/admin/analytics")).status, 401);
+      for (const who of ["customerA", "ownerA"] as const) {
+        assert.equal((await request("/admin/analytics", who)).status, 403);
+      }
+      const res = await request("/admin/analytics", "adminA");
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get("cache-control"), "no-store");
+      const { data } = (await res.json()) as {
+        data: {
+          byStatus: Array<{ status: string; count: number }>;
+          bySport: Array<{ sport: string; bookings: number }>;
+          byVenue: Array<{
+            venueId: string;
+            name: string;
+            bookings: number;
+            revenue: number;
+          }>;
+        };
+      };
+      assert.ok(Array.isArray(data.byStatus) && data.byStatus.length > 0);
+      assert.ok(Array.isArray(data.bySport) && data.bySport.length > 0);
+      assert.ok(Array.isArray(data.byVenue) && data.byVenue.length >= 2);
+      const venueA = data.byVenue.find((v) => v.venueId === ids.venues.a);
+      const venueB = data.byVenue.find((v) => v.venueId === ids.venues.b);
+      assert.ok(venueA, "Venue A must be included in analytics.byVenue");
+      assert.ok(venueB, "Venue B must be included in analytics.byVenue");
+      // Đối chiếu tổng bookings & doanh thu confirmed+completed trực tiếp từ DB
+      const expected = await pool.query<{
+        venue_id: string;
+        bookings: number;
+        revenue: number;
+      }>(
+        `SELECT v.id AS venue_id,
+                count(b.id)::int AS bookings,
+                coalesce(sum(case when b.status in ('confirmed', 'completed') then b.total_price else 0 end), 0)::int AS revenue
+         FROM venues v
+         LEFT JOIN courts c ON c.venue_id = v.id AND c.deleted_at IS NULL
+         LEFT JOIN bookings b ON b.court_id = c.id
+         WHERE v.deleted_at IS NULL AND v.id = ANY($1)
+         GROUP BY v.id`,
+        [[ids.venues.a, ids.venues.b]],
+      );
+      for (const row of expected.rows) {
+        const entry = data.byVenue.find((v) => v.venueId === row.venue_id);
+        assert.equal(entry?.bookings, row.bookings);
+        assert.equal(entry?.revenue, row.revenue);
+      }
+      assert.ok((venueA?.revenue ?? 0) > 0);
+      assert.ok((venueB?.revenue ?? 0) > 0);
     },
   );
 }
