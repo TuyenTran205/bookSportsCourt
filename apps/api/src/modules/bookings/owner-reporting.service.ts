@@ -471,7 +471,7 @@ export class OwnerReportingService {
         bookingId,
         amount: price,
         provider: "cash",
-        status: "paid",
+        status: "completed",
         paidAt: new Date(),
       });
 

@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import type { User } from '@bsc/shared';
 import { ProfileScreen } from './ProfileScreen';
-import { uploadAvatar, type AuthResult } from '@/lib/api/endpoints/auth';
+import { changePassword, updateProfile, uploadAvatar, type AuthResult } from '@/lib/api/endpoints/auth';
 
 const mockUserWithoutAvatar: User = {
   id: 'user-1',
@@ -153,6 +153,38 @@ describe('ProfileScreen Avatar Upload (TC-AVATAR)', () => {
     await waitFor(() => {
       expect(uploadAvatar).toHaveBeenCalledWith(validFile, expect.anything());
       expect(toast.success).toHaveBeenCalledWith('Cập nhật ảnh đại diện thành công');
+    });
+  });
+
+  it('CUS-15: cập nhật họ tên / SĐT gọi updateProfile và đổi mật khẩu gọi changePassword', async () => {
+    vi.mocked(updateProfile).mockResolvedValueOnce({ user: mockUserWithoutAvatar });
+    vi.mocked(changePassword).mockResolvedValueOnce({ success: true });
+
+    render(<ProfileScreen />, { wrapper: createWrapper() });
+
+    const nameInput = document.getElementById('profile-name') as HTMLInputElement;
+    fireEvent.change(nameInput, { target: { value: 'Trần Văn Mới' } });
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+    await waitFor(() => {
+      expect(updateProfile).toHaveBeenCalledWith(
+        { fullName: 'Trần Văn Mới', phone: '0912345678' },
+        expect.anything(),
+      );
+      expect(toast.success).toHaveBeenCalledWith('updated');
+    });
+
+    fireEvent.change(document.getElementById('pw-current')!, { target: { value: 'OldPass123' } });
+    fireEvent.change(document.getElementById('pw-new')!, { target: { value: 'NewPass123' } });
+    fireEvent.change(document.getElementById('pw-confirm')!, { target: { value: 'NewPass123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'changePassword' }));
+
+    await waitFor(() => {
+      expect(changePassword).toHaveBeenCalledWith(
+        { currentPassword: 'OldPass123', newPassword: 'NewPass123', confirmPassword: 'NewPass123' },
+        expect.anything(),
+      );
+      expect(toast.success).toHaveBeenCalledWith('passwordChanged');
     });
   });
 });

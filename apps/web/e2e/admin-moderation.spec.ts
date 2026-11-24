@@ -56,4 +56,29 @@ test.describe('Luồng Quản trị viên kiểm duyệt đánh giá (ADM-10)', 
       await expect(dialog).not.toBeVisible();
     }
   });
+
+  test('Admin mở 4 pop-up chi tiết KPI trên Dashboard và kiểm tra icon đã dùng ở Danh mục (ADM-04, ADM-08)', async ({
+    page,
+  }) => {
+    await page.goto('/admin/dashboard');
+    await expect(page).toHaveURL(/.*\/admin\/dashboard/);
+
+    const usersDetailBtn = page.getByRole('button', { name: 'Xem cơ cấu người dùng' });
+    await expect(usersDetailBtn).toBeVisible({ timeout: 15000 });
+    await usersDetailBtn.click();
+    const usersDialog = page.getByRole('dialog');
+    await expect(usersDialog).toBeVisible();
+    await usersDialog.getByRole('button', { name: /Đóng/i }).first().click();
+    await expect(usersDialog).not.toBeVisible();
+
+    await page.goto('/admin/catalogs');
+    await expect(page).toHaveURL(/.*\/admin\/catalogs/);
+    await page.getByRole('button', { name: /Thêm môn thể thao/i }).click();
+
+    const catalogDialog = page.getByRole('dialog');
+    await expect(catalogDialog).toBeVisible();
+    await expect(catalogDialog.getByText('Đã có').first()).toBeVisible();
+    await catalogDialog.getByRole('button', { name: /Huỷ|Hủy/i }).click();
+    await expect(catalogDialog).not.toBeVisible();
+  });
 });
