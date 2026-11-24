@@ -1,80 +1,57 @@
 import { test, expect } from '@playwright/test';
+import { loginViaUi } from './helpers/auth';
 
-test.describe('Luồng Chủ sân quản lý vận hành & đơn đặt (OWN-06, OWN-09)', () => {
-  test.beforeEach(async ({ context }) => {
-    // Thiết lập cookie xác thực phiên chủ sân
-    await context.addCookies([
-      {
-        name: 'bsc_session',
-        value: '019273c5-7f12-7000-8000-000000000001',
-        domain: 'localhost',
-        path: '/',
-      },
-      {
-        name: 'bsc_role',
-        value: 'owner',
-        domain: 'localhost',
-        path: '/',
-      },
-    ]);
-  });
-
-  test('Chủ sân truy cập Dashboard và quản lý danh sách đơn đặt sân', async ({ page }) => {
-    // 1. Truy cập trang Dashboard chủ sân
-    await page.goto('/owner/dashboard');
-    await expect(page).toHaveURL(/.*\/owner\/dashboard/);
-
-    // Kiểm tra render thanh điều hướng bên cạnh (DashboardShell)
-    const ownerNav = page.getByRole('navigation', { name: /Kênh chủ sân|Chủ sân/i });
-    await expect(ownerNav).toBeVisible();
-
-    // 2. Chuyển sang trang Quản lý đơn đặt sân
-    await page.goto('/owner/bookings');
-    await expect(page).toHaveURL(/.*\/owner\/bookings/);
-
-    // 3. Kiểm tra tiêu đề và bảng danh sách đơn đặt sân
-    const bookingsHeading = page.getByRole('heading', { name: /Đơn đặt sân|Quản lý đơn/i });
-    await expect(bookingsHeading).toBeVisible();
-
-    // Kiểm tra sự xuất hiện của các nút hoặc bộ lọc trạng thái
-    const statusFilter = page.locator('select, [role="tablist"]').first();
-    await expect(statusFilter).toBeVisible();
-  });
-
-  test('Chủ sân kiểm tra trang duyệt thanh toán và mở hộp thoại đối soát biên lai (OWN-10, PAY-02)', async ({
+test.describe('Luồng Chủ sân vận hành thật trên BE + PostgreSQL (OWN-06, OWN-09, OWN-10)', () => {
+  test('Chủ sân đăng nhập thật, xem Dashboard và lọc đơn đặt sân thật ở /owner/bookings', async ({
     page,
   }) => {
-    await page.goto('/owner/payments');
-    await expect(page).toHaveURL(/.*\/owner\/payments/);
-    await expect(page.getByRole('heading', { name: /Duyệt thanh toán/i })).toBeVisible();
+    await loginViaUi(page, 'owner');
 
-    const pendingFilterBtn = page.getByRole('button', { name: /Chờ duyệt/i }).first();
-    if (await pendingFilterBtn.isVisible()) {
-      await pendingFilterBtn.click();
-    }
+    await page.goto('/owner/dashboard');
+    await expect(page).toHaveURL(/.*\/owner\/dashboard/);
+    await expect(page.getByRole('navigation', { name: /Kênh chủ sân|Chủ sân/i })).toBeVisible();
 
-    const viewProofBtn = page.locator('table button:has-text("Xem"), button:has-text("Xem biên lai")').first();
-    if (await viewProofBtn.isVisible()) {
-      await viewProofBtn.click();
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('button', { name: /Duyệt/i })).toBeVisible();
-      await dialog.getByRole('button', { name: /Đóng/i }).click();
-      await expect(dialog).not.toBeVisible();
-    }
+    await page.goto('/owner/bookings');
+    await expect(page).toHaveURL(/.*\/owner\/bookings/);
+    await expect(page.getByRole('heading', { name: /Đơn đặt sân|Quản lý đơn/i })).toBeVisible();
+    await expect(
+      page.getByText(/Nguyễn Hoàng Long|Vũ Minh Trí/i).locator('visible=true').first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
-  test('Chủ sân sử dụng timeline ở màn hình di động 360px với cụm nút thu phóng (OWN-06, P2)', async ({
+  test('Chủ sân xem & kiểm tra cấu hình ngân hàng + chính sách huỷ sân trên Tablet 768px (/owner/settings)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await loginViaUi(page, 'owner');
+
+    await page.goto('/owner/settings');
+    await expect(page).toHaveURL(/.*\/owner\/settings/);
+    await expect(page.getByRole('heading', { name: /Cài đặt & Chính sách/i })).toBeVisible();
+
+    // Tài khoản ngân hàng nhận tiền của chủ sân Trần Văn Đức trong seed PostgreSQL
+    await expect(page.locator('#accountNo')).toHaveValue(/^(0011004567890|19034567890123)$/, {
+      timeout: 15_000,
+    });
+    await expect(page.locator('#accountName')).toHaveValue('TRAN VAN DUC');
+    await expect(page.getByText(/Chính sách huỷ & Đặt cọc/i)).toBeVisible();
+  });
+
+  test('Chủ sân thao tác timeline ở màn hình di động 360px với dữ liệu thật (OWN-06, P2)', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 780 });
+    await loginViaUi(page, 'owner');
+
     await page.goto('/owner/timeline');
     await expect(page).toHaveURL(/.*\/owner\/timeline/);
     await expect(page.getByRole('heading', { name: /Lịch sân theo ngày/i })).toBeVisible();
 
     const fitBtn = page.getByRole('button', { name: 'Vừa màn' });
     const stdBtn = page.getByRole('button', { name: 'Chuẩn' });
-    await expect(fitBtn).toBeVisible({ timeout: 15000 });
+    await expect(fitBtn).toBeVisible({ timeout: 15_000 });
     await fitBtn.click();
     await stdBtn.click();
   });

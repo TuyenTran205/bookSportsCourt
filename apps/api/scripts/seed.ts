@@ -1132,15 +1132,15 @@ try {
         )
         VALUES 
           (
-            $1, $2, 'approve_venue', 'venues', $3,
+            $1, $2, 'approve_venue', 'venue', $3,
             $4, '127.0.0.1'::inet, now() - interval '10 days'
           ),
           (
-            $5, $2, 'approve_owner_application', 'owner_applications', $6,
+            $5, $2, 'approve_owner_application', 'owner_application', $6,
             $7, '127.0.0.1'::inet, now() - interval '30 days'
           ),
           (
-            $8, $9, 'confirm_payment', 'payments', $10,
+            $8, $9, 'confirm_payment', 'payment', $10,
             $11, '127.0.0.1'::inet, now() - interval '2 hours'
           )
         ON CONFLICT DO NOTHING
