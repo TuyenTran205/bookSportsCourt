@@ -39,6 +39,13 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       cwd: '../..',
+      env: {
+        PORT: process.env.PORT ?? '3001',
+        ALLOWED_ORIGINS:
+          process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000,http://127.0.0.1:3000',
+        AUTH_RATE_LIMIT_MAX: process.env.AUTH_RATE_LIMIT_MAX ?? '200',
+        PROOF_STORAGE_DRIVER: process.env.PROOF_STORAGE_DRIVER ?? 'local',
+      },
     },
     {
       command: 'pnpm dev',
@@ -46,7 +53,9 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
       env: {
-        NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING ?? 'enabled',
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
+        NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:3001',
+        NEXT_PUBLIC_API_MOCKING: process.env.NEXT_PUBLIC_API_MOCKING ?? 'disabled',
       },
     },
   ],

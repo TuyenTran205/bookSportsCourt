@@ -1,84 +1,68 @@
 import { test, expect } from '@playwright/test';
+import { loginViaUi } from './helpers/auth';
 
-test.describe('Luồng Quản trị viên kiểm duyệt đánh giá (ADM-10)', () => {
-  test.beforeEach(async ({ context }) => {
-    // Thiết lập cookie xác thực phiên quản trị viên
-    await context.addCookies([
-      {
-        name: 'bsc_session',
-        value: '019273c5-7f12-7000-8000-000000000007',
-        domain: 'localhost',
-        path: '/',
-      },
-      {
-        name: 'bsc_role',
-        value: 'admin',
-        domain: 'localhost',
-        path: '/',
-      },
-    ]);
-  });
+test.describe('Luồng Quản trị viên kiểm duyệt thật trên BE + PostgreSQL (ADM-04, ADM-08, ADM-10, ADM-11)', () => {
+  test('Admin xem & kiểm duyệt đánh giá thật ở /admin/reviews', async ({ page }) => {
+    await loginViaUi(page, 'admin');
 
-  test('Admin truy cập trang kiểm duyệt đánh giá và thao tác mở dialog xác nhận', async ({
-    page,
-  }) => {
-    // 1. Truy cập Dashboard quản trị
     await page.goto('/admin/dashboard');
     await expect(page).toHaveURL(/.*\/admin\/dashboard/);
 
-    // 2. Kiểm tra link menu Đánh giá và truy cập /admin/reviews
     const reviewsNavLink = page.getByRole('link', { name: /Quản lý đánh giá|Đánh giá/i });
     await expect(reviewsNavLink).toBeVisible();
     await reviewsNavLink.click();
 
     await page.waitForURL('**/admin/reviews');
     await expect(page.getByRole('heading', { name: /Kiểm duyệt đánh giá/i })).toBeVisible();
+    await expect(
+      page.getByText(/Mặt thảm Yonex cực êm/i).locator('visible=true').first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
 
-    // 3. Kiểm tra các bộ lọc có mặt trên giao diện
-    const searchInput = page.getByPlaceholder(/Tìm theo nội dung, tên khách/i);
-    await expect(searchInput).toBeVisible();
-
-    // 4. Kiểm tra nút thao tác Ẩn/Hiện đánh giá và Dialog xác nhận
     const actionBtn = page.getByRole('button', { name: /Ẩn đánh giá|Hiện đánh giá/i }).first();
-    if (await actionBtn.isVisible()) {
-      await actionBtn.click();
+    await expect(actionBtn).toBeVisible();
+    await actionBtn.click();
 
-      // Kiểm tra dialog Radix UI xuất hiện
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
-
-      // Kiểm tra có nút Hủy
-      const cancelBtn = dialog.getByRole('button', { name: /Huỷ/i });
-      await expect(cancelBtn).toBeVisible();
-      await cancelBtn.click();
-
-      // Dialog phải đóng lại sau khi bấm Hủy
-      await expect(dialog).not.toBeVisible();
-    }
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: /Huỷ/i }).click();
+    await expect(dialog).not.toBeVisible();
   });
 
-  test('Admin mở 4 pop-up chi tiết KPI trên Dashboard và kiểm tra icon đã dùng ở Danh mục (ADM-04, ADM-08)', async ({
+  test('Admin mở pop-up KPI thật trên Dashboard, xem danh mục IconPicker và Nhật ký hoạt động (/admin/audit-logs)', async ({
     page,
   }) => {
-    await page.goto('/admin/dashboard');
-    await expect(page).toHaveURL(/.*\/admin\/dashboard/);
+    await loginViaUi(page, 'admin');
 
+    // 1. Dashboard KPI Popup với số liệu PostgreSQL thật
+    await page.goto('/admin/dashboard');
     const usersDetailBtn = page.getByRole('button', { name: 'Xem cơ cấu người dùng' });
-    await expect(usersDetailBtn).toBeVisible({ timeout: 15000 });
+    await expect(usersDetailBtn).toBeVisible({ timeout: 15_000 });
     await usersDetailBtn.click();
     const usersDialog = page.getByRole('dialog');
     await expect(usersDialog).toBeVisible();
     await usersDialog.getByRole('button', { name: /Đóng/i }).first().click();
     await expect(usersDialog).not.toBeVisible();
 
+    // 2. Danh mục môn thể thao thật + IconPicker hiển thị "Đã có"
     await page.goto('/admin/catalogs');
-    await expect(page).toHaveURL(/.*\/admin\/catalogs/);
     await page.getByRole('button', { name: /Thêm môn thể thao/i }).click();
-
     const catalogDialog = page.getByRole('dialog');
     await expect(catalogDialog).toBeVisible();
     await expect(catalogDialog.getByText('Đã có').first()).toBeVisible();
     await catalogDialog.getByRole('button', { name: /Huỷ|Hủy/i }).click();
-    await expect(catalogDialog).not.toBeVisible();
+
+    // 3. Nhật ký hoạt động /admin/audit-logs thật
+    await page.goto('/admin/audit-logs');
+    await expect(page.getByRole('heading', { name: /Nhật ký hoạt động/i })).toBeVisible();
+    await expect(
+      page.getByText(/Phê duyệt|Cơ sở thể thao/i).locator('visible=true').first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.getByRole('button', { name: 'Cơ sở thể thao' }).click();
+    await expect(page.getByText(/Phê duyệt/i).locator('visible=true').first()).toBeVisible();
   });
 });

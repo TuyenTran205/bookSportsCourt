@@ -171,11 +171,13 @@ jobs:
             JWT_ACCESS_SECRET: test-access-secret-at-least-32-chars
             JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars
             ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+            AUTH_RATE_LIMIT_MAX: "200"
+            PROOF_STORAGE_DRIVER: local
             NODE_ENV: test
             PORT: 3001
             NEXT_PUBLIC_API_URL: http://localhost:3001
             NEXT_PUBLIC_SOCKET_URL: http://localhost:3001
-            NEXT_PUBLIC_API_MOCKING: enabled
+            NEXT_PUBLIC_API_MOCKING: disabled
         steps:
             - uses: actions/checkout@v4
 
