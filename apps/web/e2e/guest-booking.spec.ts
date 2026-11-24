@@ -1,120 +1,158 @@
 import { test, expect } from '@playwright/test';
+import { loginViaUi } from './helpers/auth';
 
-test.describe('Luồng khách tìm sân & chọn lịch đặt (GST-01, GST-02, GST-03)', () => {
-  test.beforeEach(async ({ context }) => {
-    await context.clearCookies();
-    await context.addCookies([
-      {
-        name: 'bsc_session',
-        value: 'guest',
-        domain: 'localhost',
-        path: '/',
-      },
-    ]);
-  });
+const SEEDED_VENUE_SLUG = 'clb-cau-long-pickleball-cau-giay';
+const VALID_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-  test('Khách truy cập trang chủ, xem danh sách sân, mở chi tiết và xem bảng giờ mở cửa', async ({
-    page,
-  }) => {
-    // 1. Mở trang chủ
-    await page.goto('/');
-    await expect(page).toHaveTitle(/BookSportsCourt/);
-
-    // 2. Chuyển sang trang danh sách sân
-    const exploreLink = page.getByRole('link', { name: /Tìm sân|Khám phá|Đặt sân/i }).first();
-    if (await exploreLink.isVisible()) {
-      await exploreLink.click();
-    } else {
-      await page.goto('/venues');
-    }
-
-    await page.waitForURL('**/venues**');
-    await expect(page.locator('main')).toBeVisible();
-
-    // 3. Mở chi tiết sân Cầu Lông Thăng Long
-    await page.goto('/venues/san-cau-long-thang-long');
-    await expect(page.getByRole('heading', { level: 1, name: /Sân Cầu Lông Thăng Long/i })).toBeVisible();
-
-    // 4. Kiểm tra khối hiển thị bảng giờ mở cửa (TODO-07)
-    const hoursTab = page.getByRole('tab', { name: /Giờ mở|Giờ hoạt động/i });
-    if (await hoursTab.isVisible()) {
-      await hoursTab.click();
-    }
-
-    // Bảng phải hiển thị nhãn "Hôm nay" cho ngày hiện tại
-    const todayBadge = page.getByText('Hôm nay');
-    await expect(todayBadge).toBeVisible();
-
-    // 5. Kiểm tra lưới slot đặt sân
-    const slotGridHeading = page.getByRole('heading', { name: /Chọn giờ chơi|Lịch trống/i });
-    await expect(slotGridHeading).toBeVisible();
-
-    // Chuyển sang ngày mai để luôn có slot khả dụng bất kể thời điểm chạy CI trong ngày
-    const nextDayBtn = page.getByRole('button', { name: /Hôm sau|Ngày sau/i });
-    await expect(nextDayBtn).toBeVisible();
-    await nextDayBtn.click();
-
-    // 6. Chờ lưới slot tải xong, chọn một slot khả dụng và kiểm tra nút yêu cầu đăng nhập khi khách chưa có phiên
-    const availableSlot = page.locator('button[data-slot-cell]:not([disabled])').first();
-    await expect(availableSlot).toBeVisible({ timeout: 15000 });
-    await availableSlot.click();
-
-    const loginToContinueBtn = page.getByRole('link', { name: /Đăng nhập để tiếp tục/i });
-    await expect(loginToContinueBtn).toBeVisible({ timeout: 15000 });
-    await expect(loginToContinueBtn).toHaveAttribute('href', /login\?next=/);
-  });
-
-  test('Khách đăng nhập, giữ chỗ sân và tải lên minh chứng chuyển khoản ở màn checkout (CUS-06..CUS-09)', async ({
+test.describe('Luồng khách & đặt sân thật qua BE + PostgreSQL + Realtime (GST-01..CUS-09, PAY-02)', () => {
+  test('Khách xem danh sách sân thật, mở chi tiết, xem giờ mở cửa và thấy CTA đăng nhập khi chọn slot (GST-01..03)', async ({
     page,
     context,
   }) => {
     await context.clearCookies();
 
-    // 1. Đăng nhập với tài khoản khách mẫu
-    await page.goto('/login');
-    await page.locator('input[type="email"]').fill('khach@example.com');
-    await page.locator('input[type="password"]').fill('Password123');
-    await page.getByRole('button', { name: /^Đăng nhập$/i }).click();
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
+    // 1. Trang chủ -> Khám phá danh sách sân từ PostgreSQL
+    await page.goto('/');
+    await expect(page).toHaveTitle(/BookSportsCourt/);
 
-    // 2. Mở chi tiết sân & chọn ngày mai để có slot khả dụng
-    await page.goto('/venues/san-cau-long-thang-long');
-    await expect(page.getByRole('heading', { level: 1, name: /Sân Cầu Lông Thăng Long/i })).toBeVisible();
+    await page.goto('/venues');
+    await expect(page.getByText(/CLB Cầu Lông & Pickleball Cầu Giấy/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
 
+    // 2. Chi tiết sân thật & bảng giờ mở cửa
+    await page.goto(`/venues/${SEEDED_VENUE_SLUG}`);
+    await expect(
+      page.getByRole('heading', { level: 1, name: /CLB Cầu Lông & Pickleball Cầu Giấy/i }),
+    ).toBeVisible();
+
+    const hoursTab = page.getByRole('tab', { name: /Giờ mở|Giờ hoạt động/i });
+    if (await hoursTab.isVisible()) {
+      await hoursTab.click();
+    }
+    await expect(page.getByText('Hôm nay')).toBeVisible();
+
+    // 3. Chuyển sang ngày mai để chọn slot trống
     const nextDayBtn = page.getByRole('button', { name: /Hôm sau|Ngày sau/i });
     await expect(nextDayBtn).toBeVisible();
     await nextDayBtn.click();
 
-    // 3. Chọn slot trống, mở dialog xác nhận & tạo hold
     const availableSlot = page.locator('button[data-slot-cell]:not([disabled])').first();
-    await expect(availableSlot).toBeVisible({ timeout: 15000 });
+    await expect(availableSlot).toBeVisible({ timeout: 15_000 });
     await availableSlot.click();
 
-    const continueBtn = page.getByRole('button', { name: /Tiếp tục/i });
-    await expect(continueBtn).toBeEnabled({ timeout: 10000 });
-    await continueBtn.click();
+    const loginToContinueBtn = page.getByRole('link', { name: /Đăng nhập để tiếp tục/i });
+    await expect(loginToContinueBtn).toBeVisible({ timeout: 15_000 });
+    await expect(loginToContinueBtn).toHaveAttribute('href', /login\?next=/);
+  });
 
-    const confirmDialog = page.getByRole('dialog');
+  test('End-to-End thật: Socket.IO đa tab đồng bộ giữ chỗ + Upload biên lai PNG + Chủ sân duyệt thanh toán', async ({
+    browser,
+  }) => {
+    test.setTimeout(90_000);
+    // 1. Tab A (Khách xem cùng sân & ngày) lắng nghe Socket.IO room `venue:<id>:date:<date>`
+    const viewerContext = await browser.newContext();
+    const viewerPage = await viewerContext.newPage();
+    await viewerPage.goto(`/venues/${SEEDED_VENUE_SLUG}`);
+    await expect(
+      viewerPage.getByRole('heading', { level: 1, name: /CLB Cầu Lông & Pickleball Cầu Giấy/i }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    const viewerNextDay = viewerPage.getByRole('button', { name: /Hôm sau|Ngày sau/i });
+    await viewerNextDay.click();
+    await expect(viewerPage.locator('button[data-slot-cell]:not([disabled])').first()).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // Chờ Socket.IO client join_venue hoàn tất trước khi Tab B thao tác giữ chỗ
+    await viewerPage.waitForTimeout(1000);
+
+    // 2. Tab B (Khách hàng thật đăng nhập, giữ chỗ và tải lên biên lai thật qua multipart/form-data)
+    const customerContext = await browser.newContext();
+    const customerPage = await customerContext.newPage();
+    await loginViaUi(customerPage, 'customer');
+
+    await customerPage.goto(`/venues/${SEEDED_VENUE_SLUG}`);
+    await customerPage.getByRole('button', { name: /Hôm sau|Ngày sau/i }).click();
+
+    const targetSlot = customerPage.locator('button[data-slot-cell]:not([disabled])').first();
+    await expect(targetSlot).toBeVisible({ timeout: 15_000 });
+    const slotIndex = await targetSlot.getAttribute('data-slot-index');
+    expect(slotIndex).not.toBeNull();
+    const slotLabelPrefix = (await targetSlot.getAttribute('aria-label'))?.slice(0, 5) ?? '';
+
+    await targetSlot.click();
+    await customerPage.getByRole('button', { name: /Tiếp tục/i }).click();
+
+    const confirmDialog = customerPage.getByRole('dialog');
     await expect(confirmDialog).toBeVisible();
     await confirmDialog.getByRole('button', { name: /Xác nhận & Giữ chỗ/i }).click();
 
-    // 4. Chuyển sang màn Checkout & tải lên biên lai chuyển khoản
-    await page.waitForURL('**/checkout/**', { timeout: 15000 });
-    await expect(page.getByRole('heading', { name: /Thanh toán giữ chỗ/i })).toBeVisible();
+    await customerPage.waitForURL('**/checkout/**', { timeout: 20_000 });
+    await expect(
+      customerPage.getByRole('heading', { name: /Thanh toán giữ chỗ/i }),
+    ).toBeVisible();
 
-    const pngBase64 =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-    const fileInput = page.locator('input[type="file"]');
+    // 3. Kiểm tra Socket.IO đa tab thật: Tab A (không reload) phải thấy đúng ô vừa giữ bị khoá
+    const watchedSlotOnViewer = viewerPage.locator(
+      `button[data-slot-cell][data-slot-index="${slotIndex}"]`,
+    );
+    await expect(watchedSlotOnViewer).toBeDisabled({ timeout: 15_000 });
+
+    // 4. Tab B upload biên lai PNG thật (qua Sharp + ProofStorage)
+    const fileInput = customerPage.locator('input[type="file"]');
     await fileInput.setInputFiles({
-      name: 'bien-lai.png',
+      name: 'bien-lai-that.png',
       mimeType: 'image/png',
-      buffer: Buffer.from(pngBase64, 'base64'),
+      buffer: Buffer.from(VALID_PNG_BASE64, 'base64'),
     });
-
-    const submitProofBtn = page.getByRole('button', { name: /Xác nhận đã chuyển khoản/i });
+    const submitProofBtn = customerPage.getByRole('button', { name: /Xác nhận đã chuyển khoản/i });
     await expect(submitProofBtn).toBeEnabled();
     await submitProofBtn.click();
 
-    await expect(page.getByText(/Đơn đặt sân đang chờ chủ sân duyệt/i)).toBeVisible({ timeout: 15000 });
+    await expect(customerPage.getByText(/Đơn đặt sân đang chờ chủ sân duyệt/i)).toBeVisible({
+      timeout: 20_000,
+    });
+
+    // 5. Tab C (Chủ sân thật đăng nhập -> /owner/payments -> xem ảnh biên lai thật & Duyệt)
+    const ownerContext = await browser.newContext();
+    const ownerPage = await ownerContext.newPage();
+    await loginViaUi(ownerPage, 'owner');
+    await ownerPage.goto('/owner/payments');
+    await expect(ownerPage).toHaveURL(/.*\/owner\/payments/);
+
+    await ownerPage.locator('#payment-status').selectOption('submitted');
+
+    const viewProofBtn = ownerPage
+      .locator('table button:has-text("Xem"), button:has-text("Xem biên lai")')
+      .locator('visible=true')
+      .first();
+    await expect(viewProofBtn).toBeVisible({ timeout: 15_000 });
+    await viewProofBtn.click();
+
+    const reviewDialog = ownerPage.getByRole('dialog');
+    await expect(reviewDialog).toBeVisible();
+    if (slotLabelPrefix) {
+      await expect(reviewDialog.getByText(/CLB Cầu Lông & Pickleball Cầu Giấy/i)).toBeVisible();
+    }
+
+    // Xác nhận ảnh biên lai load thật (naturalWidth > 0)
+    const proofImg = reviewDialog.locator('img').first();
+    await expect(proofImg).toBeVisible({ timeout: 10_000 });
+    await expect
+      .poll(async () => proofImg.evaluate((el: HTMLImageElement) => el.naturalWidth), {
+        timeout: 10_000,
+      })
+      .toBeGreaterThan(0);
+
+    await reviewDialog.getByRole('button', { name: /^Duyệt$/i }).click();
+    await expect(ownerPage.getByText(/Đã duyệt thanh toán thành công/i)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await viewerContext.close();
+    await customerContext.close();
+    await ownerContext.close();
   });
 });
