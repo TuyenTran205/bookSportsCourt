@@ -621,4 +621,191 @@ export async function runReviewCases(
       }
     },
   );
+  await t.test(
+    "Owner list, reply, report (JSON & multipart) and Admin report moderation (approve/reject)",
+    async () => {
+      // Seed 3 reviews cleanly after beforeEach cleared reviews
+      const r1 = await review(ids.bookings.completed);
+      const r2 = await review(ids.bookings.reviewTwo);
+      const r3 = await review(ids.bookings.reviewThree);
+      void r1;
+
+      // 1. GET /owner/reviews RBAC & scope
+      assert.equal((await request("/owner/reviews")).status, 401);
+      assert.equal((await request("/owner/reviews", "customerA")).status, 403);
+      const ownerARes = await request("/owner/reviews?limit=50", "ownerA");
+      assert.equal(ownerARes.status, 200);
+      const ownerAList = (await ownerARes.json()) as {
+        data: Array<{ id: string; venueId: string; ownerReply: string | null }>;
+        meta: { total: number };
+      };
+      assert.ok(
+        ownerAList.meta.total >= 3,
+        `expected >=3 ownerA reviews, got ${ownerAList.meta.total}`,
+      );
+      assert.ok(
+        ownerAList.data.every((r) => r.venueId === ids.venues.a),
+        `unexpected venueId in ${JSON.stringify(ownerAList.data.map((r) => r.venueId))}`,
+      );
+
+      const ownerBRes = await request("/owner/reviews", "ownerB");
+      assert.equal(ownerBRes.status, 200);
+      const ownerBList = (await ownerBRes.json()) as {
+        data: Array<{ venueId: string }>;
+        meta: { total: number };
+      };
+      assert.ok(!ownerBList.data.some((r) => r.venueId === ids.venues.a));
+
+      // 2. PATCH /owner/reviews/:id/reply
+      const targetReplyId = r2.id;
+      assert.equal(
+        (
+          await request(`/owner/reviews/${targetReplyId}/reply`, "ownerA", "PATCH", {
+            ownerReply: "   ",
+          })
+        ).status,
+        400,
+      );
+      assert.equal(
+        (
+          await request(`/owner/reviews/${targetReplyId}/reply`, "ownerB", "PATCH", {
+            ownerReply: "Trộm trả lời",
+          })
+        ).status,
+        403,
+      );
+      const replyOk = await request(
+        `/owner/reviews/${targetReplyId}/reply`,
+        "ownerA",
+        "PATCH",
+        { ownerReply: "Cảm ơn bạn đã ủng hộ sân!" },
+      );
+      assert.equal(replyOk.status, 200);
+      const replyJson = (await replyOk.json()) as {
+        data: { ownerReply: string | null; ownerRepliedAt: string | null };
+      };
+      assert.equal(replyJson.data.ownerReply, "Cảm ơn bạn đã ủng hộ sân!");
+      assert.ok(replyJson.data.ownerRepliedAt);
+
+      const repliedFilter = (await (
+        await request("/owner/reviews?replied=true&limit=50", "ownerA")
+      ).json()) as { data: Array<{ id: string }> };
+      assert.ok(repliedFilter.data.some((r) => r.id === targetReplyId));
+
+      // 3. POST /owner/reviews/:id/report (validation, ownership, duplicate guard & admin approve/reject)
+      const reportTargetApprove = r3.id;
+      assert.equal(
+        (
+          await request(`/owner/reviews/${reportTargetApprove}/report`, "ownerA", "POST", {
+            reason: "ngắn",
+          })
+        ).status,
+        400,
+      );
+      assert.equal(
+        (
+          await request(`/owner/reviews/${reportTargetApprove}/report`, "ownerB", "POST", {
+            reason: "Nội dung xúc phạm không đúng sự thật",
+          })
+        ).status,
+        403,
+      );
+      const reportedRes = await request(
+        `/owner/reviews/${reportTargetApprove}/report`,
+        "ownerA",
+        "POST",
+        {
+          reason: "Khách bình luận sai sự thật về chất lượng mặt sân",
+          imageUrl: "https://cdn.example.test/evidence.png",
+        },
+      );
+      assert.equal(reportedRes.status, 201);
+      const reportedBody = (await reportedRes.json()) as {
+        data: { reportStatus: string; reportReason: string };
+      };
+      assert.equal(reportedBody.data.reportStatus, "pending");
+      assert.equal(
+        reportedBody.data.reportReason,
+        "Khách bình luận sai sự thật về chất lượng mặt sân",
+      );
+
+      // Duplicate pending report returns 409
+      assert.equal(
+        (
+          await request(`/owner/reviews/${reportTargetApprove}/report`, "ownerA", "POST", {
+            reason: "Báo cáo lại lần nữa",
+          })
+        ).status,
+        409,
+      );
+
+      // Admin filters reportStatus=pending
+      const pendingList = (await (
+        await request("/admin/reviews?reportStatus=pending", "adminA")
+      ).json()) as { data: Array<{ id: string }> };
+      assert.ok(pendingList.data.some((r) => r.id === reportTargetApprove));
+
+      // Non-admin cannot moderate report
+      assert.equal(
+        (
+          await request(
+            `/admin/reviews/${reportTargetApprove}/report`,
+            "ownerA",
+            "PATCH",
+            { action: "approve" },
+          )
+        ).status,
+        403,
+      );
+
+      // Admin approves report -> reportStatus=resolved & isVisible=false
+      const approveRes = await request(
+        `/admin/reviews/${reportTargetApprove}/report`,
+        "adminA",
+        "PATCH",
+        { action: "approve" },
+      );
+      assert.equal(approveRes.status, 200);
+      const approveBody = (await approveRes.json()) as {
+        data: { reportStatus: string; isVisible: boolean };
+      };
+      assert.equal(approveBody.data.reportStatus, "resolved");
+      assert.equal(approveBody.data.isVisible, false);
+
+      // Re-moderating resolved report returns 409
+      assert.equal(
+        (
+          await request(
+            `/admin/reviews/${reportTargetApprove}/report`,
+            "adminA",
+            "PATCH",
+            { action: "reject" },
+          )
+        ).status,
+        409,
+      );
+
+      // Reject report flow keeps review visible & marks dismissed
+      assert.equal(
+        (
+          await request(`/owner/reviews/${targetReplyId}/report`, "ownerA", "POST", {
+            reason: "Kiểm tra luồng từ chối báo cáo hợp lệ",
+          })
+        ).status,
+        201,
+      );
+      const rejectRes = await request(
+        `/admin/reviews/${targetReplyId}/report`,
+        "adminA",
+        "PATCH",
+        { action: "reject" },
+      );
+      assert.equal(rejectRes.status, 200);
+      const rejectBody = (await rejectRes.json()) as {
+        data: { reportStatus: string; isVisible: boolean };
+      };
+      assert.equal(rejectBody.data.reportStatus, "dismissed");
+      assert.equal(rejectBody.data.isVisible, true);
+    },
+  );
 }

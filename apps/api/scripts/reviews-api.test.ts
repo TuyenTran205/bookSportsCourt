@@ -5,6 +5,7 @@ import { readdir } from "node:fs/promises";
 import { test } from "node:test";
 import { MemoryProofStorage } from "./fixtures/payment-cases.js";
 import { ProofStorage } from "../src/modules/uploads/proof-storage.js";
+import { PublicStorage } from "../src/modules/uploads/public-storage.js";
 import { runReviewCases } from "./fixtures/review-cases.js";
 import { ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -72,6 +73,15 @@ test("Reviews HTTP and concurrency against PostgreSQL", async (t) => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ProofStorage)
       .useValue(storage)
+      .overrideProvider(PublicStorage)
+      .useValue({
+        saveReviewReportImage: async (id: string) =>
+          `https://mock-cdn.example.test/review-reports/${id}.webp`,
+        saveAvatar: async (id: string) =>
+          `https://mock-cdn.example.test/avatars/${id}.webp`,
+        saveVenueImage: async (id: string) =>
+          `https://mock-cdn.example.test/venues/${id}.webp`,
+      })
       .overrideProvider(DATABASE)
       .useValue(drizzle(pool, { schema }))
       .overrideProvider(DatabaseService)
